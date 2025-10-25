@@ -7,3 +7,27 @@
  */
 
 if (!defined('ABSPATH')) exit;
+
+// ====== CPT CLUBS ======
+add_action('init', function () {
+    register_post_type('club', [
+        'label' => 'Clubs',
+        'public' => true,
+        'show_in_menu' => true,
+        'menu_icon' => 'dashicons-groups',
+        'supports' => ['title', 'editor', 'thumbnail'],
+        'has_archive' => true,
+    ]);
+});
+
+// ====== CPT EVENEMENTS ======
+add_action('init', function () {
+    register_post_type('evenement', [
+        'label' => 'Événements',
+        'public' => true,
+        'show_in_menu' => true,
+        'menu_icon' => 'dashicons-calendar',
+        'supports' => ['title', 'editor', 'thumbnail'],
+        'has_archive' => true,
+    ]);
+});
