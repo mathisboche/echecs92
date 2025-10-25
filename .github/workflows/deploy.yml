@@ -22,5 +22,5 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftps
           server-dir: /www/wp-content/
-          local-dir: wp-content
+          local-dir: wp-content/
           dangerous-clean-slate: false
