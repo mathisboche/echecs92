@@ -1,0 +1,26 @@
+name: Deploy wp-content to OVH
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "wp-content/**"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          server-dir: /www/wp-content/
+          local-dir: wp-content
+          dangerous-clean-slate: false
