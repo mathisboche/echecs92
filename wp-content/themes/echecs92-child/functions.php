@@ -1,22 +1,21 @@
 <?php
-if (!defined('ABSPATH')) exit;
+if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-// Charger le CSS et le JS du thème enfant
 add_action('wp_enqueue_scripts', function () {
-    // CSS du thème enfant
+    // charge le CSS du child
     wp_enqueue_style(
         'echecs92-child',
         get_stylesheet_uri(),
         [],
-        '1.0'
+        wp_get_theme()->get('Version')
     );
 
-    // JS du header (menu burger)
+    // charge le JS du header
     wp_enqueue_script(
         'echecs92-header',
         get_stylesheet_directory_uri() . '/header.js',
         [],
-        '1.0',
-        true
+        wp_get_theme()->get('Version'),
+        true // charge le script en footer
     );
 });
