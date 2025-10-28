@@ -433,6 +433,66 @@ header.wp-block-template-part.is-elevated .cm-header{
   display:block;
 }
 
+/* ---------- LEGAL PAGES ---------- */
+.legal{
+  font-family:inherit;
+  color:#1e293b;
+  max-width:720px;
+  margin:0 auto;
+  padding:0 20px;
+}
+.legal__title{
+  font-size:26px;
+  margin:0;
+  font-weight:700;
+}
+.legal__intro{
+  font-size:15px;
+  color:#475569;
+  margin:0;
+  line-height:1.6;
+}
+.legal__section{
+  padding:18px 20px;
+  border:1px solid rgba(148,163,184,0.18);
+  border-radius:12px;
+  background:#ffffff;
+  box-shadow:0 1px 2px rgba(15,23,42,0.03);
+}
+.legal__section-title{
+  font-size:17px;
+  margin:0;
+  color:#0f172a;
+  font-weight:600;
+}
+.legal__section p,
+.legal__section ul{
+  margin:0;
+  font-size:14px;
+  line-height:1.6;
+  color:#475569;
+}
+.legal__section ul{
+  padding-left:18px;
+}
+.legal__section ul li{
+  margin-bottom:6px;
+}
+.legal__update{
+  margin:0;
+  font-size:14px;
+  color:#64748b;
+}
+
+@media (max-width:599px){
+  .legal__section{
+    padding:16px;
+  }
+  .legal{
+    padding:0 16px;
+  }
+}
+
 /* Desktop layout */
 @media (min-width:900px){
   .cm-footer__container{
