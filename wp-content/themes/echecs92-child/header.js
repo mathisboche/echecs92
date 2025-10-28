@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.setAttribute('aria-expanded', 'true');
     btn.classList.add('is-active');
     menu.removeEventListener('transitionend', onCloseTransitionEnd);
+    document.body.classList.add('cm-menu-open');
 
     // 1. on enlève hidden pour que l'élément existe visuellement
     menu.removeAttribute('hidden');
@@ -44,6 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btn.setAttribute('aria-expanded', 'false');
     btn.classList.remove('is-active');
+    document.body.classList.remove('cm-menu-open');
 
     // on retire la classe "is-open" -> revient à opacity:0 / translateY(-8px)
     menu.classList.remove('is-open');
