@@ -238,3 +238,12 @@ header.wp-block-template-part.is-elevated .cm-header{
   overflow:hidden;
   height:100%;
 }
+
+/* Focus outline only for keyboard navigation */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid rgba(15,23,42,0.4);
+  outline-offset: 4px;
+}
