@@ -437,91 +437,58 @@ header.wp-block-template-part.is-elevated .cm-header{
 .legal{
   font-family: system-ui,-apple-system,BlinkMacSystemFont,"Inter","Helvetica Neue",Arial,sans-serif;
   color:#1e293b;
-  max-width:660px;
-  margin:0 auto;
-  padding:96px 64px 120px 96px;
+  max-width:760px;
+  margin:80px auto 120px;
+  padding:0 48px;
   box-sizing:border-box;
+  font-size:16px;
+  line-height:1.7;
 }
-.legal > .wp-block-group,
-.legal > *{
-  width:100%;
-}
-.legal__title{
-  font-size:28px;
-  line-height:1.2;
-  margin:0;
+.legal h1{
+  font-size:32px;
+  line-height:1.25;
+  margin:0 0 24px;
   font-weight:700;
-}
-.legal__intro{
-  font-size:15px;
-  line-height:1.7;
-  color:#475569;
-  margin:0;
-}
-.legal__section{
-  padding:20px 24px;
-  border:1px solid rgba(148,163,184,0.22);
-  border-radius:12px;
-  background:#ffffff;
-  box-shadow:0 1px 3px rgba(15,23,42,0.05);
-}
-.legal__section-title{
-  font-size:18px;
-  line-height:1.4;
-  margin:0;
   color:#0f172a;
-  font-weight:600;
 }
-.legal__section p,
-.legal__section ul{
-  margin:0;
-  font-size:14.5px;
-  line-height:1.7;
+.legal h2{
+  font-size:20px;
+  line-height:1.4;
+  margin:32px 0 12px;
+  font-weight:650;
+  color:#0f172a;
+}
+.legal p{
+  margin:0 0 14px;
   color:#475569;
 }
-.legal__section ul{
-  padding-left:20px;
-  list-style:disc;
+.legal ul,
+.legal ol{
+  margin:0 0 14px 22px;
 }
-.legal__section ul li{
-  margin-bottom:6px;
-}
-.legal__section ul li:last-child{
-  margin-bottom:0;
-}
-.legal a{
-  color:#1d4ed8;
-  text-decoration:none;
-}
-.legal a:hover,
-.legal a:focus-visible{
-  text-decoration:underline;
-}
-.legal__update{
-  margin:4px 0 0;
-  font-size:13px;
-  color:#64748b;
-}
+.legal li{ margin-bottom:6px; }
+.legal li:last-child{ margin-bottom:0; }
+.legal a{ color:#1d4ed8; text-decoration:none; }
+.legal a:hover, .legal a:focus-visible{ text-decoration:underline; outline:none; }
+.legal section{ margin-top:24px; }
+.legal .legal__update{ margin-top:8px; font-size:13px; color:#64748b; }
 
 @media (max-width:799px){
   .legal{
-    padding:72px 40px 96px 64px;
+    margin:64px auto 96px;
+    padding:0 36px;
   }
+  .legal h1{ font-size:28px; }
+  .legal h2{ font-size:18px; }
 }
 
 @media (max-width:599px){
   .legal{
-    padding:56px 20px 72px 32px;
+    margin:56px auto 72px;
+    padding:0 20px;
   }
-  .legal__section{
-    padding:18px;
-  }
-  .legal__title{
-    font-size:24px;
-  }
-  .legal__section-title{
-    font-size:17px;
-  }
+  .legal h1{ font-size:24px; }
+  .legal h2{ font-size:17px; }
 }
 
 /* Desktop layout */
