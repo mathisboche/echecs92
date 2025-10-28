@@ -3,19 +3,35 @@
   <div class="cm-footer__container">
     <div class="cm-footer__left">
       <img src="/wp-content/themes/echecs92-child/assets/logo-cde92.svg" alt="Logo Comité des Échecs des Hauts-de-Seine" class="cm-footer__logo" />
+      <address class="cm-footer__address">
+        6 rue Philippe de Metz<br />
+        92270 Bois-Colombes
+      </address>
     </div>
-    <nav class="cm-footer__center" aria-label="Liens rapides">
-      <ul class="cm-footer__links">
-        <li><a href="/" class="cm-footer__link">Accueil</a></li>
-        <li><a href="/clubs" class="cm-footer__link">Clubs</a></li>
-        <li><a href="/competitions" class="cm-footer__link">Compétitions</a></li>
-        <li><a href="/resultats" class="cm-footer__link">Résultats</a></li>
-        <li><a href="/actualites" class="cm-footer__link">Actualités</a></li>
-        <li><a href="/contact" class="cm-footer__link">Contact</a></li>
-        <li><a href="/mentions-legales" class="cm-footer__link">Mentions légales</a></li>
-        <li><a href="/politique-confidentialite" class="cm-footer__link">Politique de confidentialité</a></li>
-      </ul>
-    </nav>
+    <div class="cm-footer__center">
+      <div class="cm-footer__list-block">
+        <p class="cm-footer__title">Navigation</p>
+        <nav class="cm-footer__nav" aria-label="Liens rapides">
+          <ul class="cm-footer__links">
+            <li><a href="/" class="cm-footer__link">Accueil</a></li>
+            <li><a href="/clubs" class="cm-footer__link">Clubs</a></li>
+            <li><a href="/competitions" class="cm-footer__link">Compétitions</a></li>
+            <li><a href="/resultats" class="cm-footer__link">Résultats</a></li>
+            <li><a href="/actualites" class="cm-footer__link">Actualités</a></li>
+            <li><a href="/contact" class="cm-footer__link">Contact</a></li>
+          </ul>
+        </nav>
+      </div>
+      <div class="cm-footer__list-block">
+        <p class="cm-footer__title">Informations</p>
+        <nav class="cm-footer__legal" aria-label="Liens légaux">
+          <ul class="cm-footer__legal-links">
+            <li><a href="/mentions-legales" class="cm-footer__link">Mentions légales</a></li>
+            <li><a href="/politique-confidentialite" class="cm-footer__link">Politique de confidentialité</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
     <div class="cm-footer__right">
       <nav class="cm-footer__social" aria-label="Réseaux sociaux">
         <a href="https://instagram.com/echecs92" class="cm-footer__social-link" target="_blank" rel="noopener noreferrer">
@@ -36,7 +52,13 @@
           LinkedIn
         </a>
       </nav>
-      <a href="mailto:contact@echecs92.com" class="cm-footer__contact">contact@echecs92.com</a>
+      <a href="mailto:contact@echecs92.com" class="cm-footer__contact">
+        <svg viewBox="0 0 24 24" class="cm-footer__contact-icon" aria-hidden="true" focusable="false">
+          <rect x="3.5" y="5.5" width="17" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
+          <path d="M5 7l7 5 7-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+        contact@echecs92.com
+      </a>
       <small class="cm-footer__credit">© <span id="cm-footer-year"></span> Site réalisé par <a href="https://mathisboche.com" class="cm-footer__credit-link" target="_blank" rel="noopener noreferrer">Mathis Boche</a></small>
     </div>
   </div>
