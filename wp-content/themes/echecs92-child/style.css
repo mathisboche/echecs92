@@ -504,13 +504,13 @@ header.wp-block-template-part.is-elevated .cm-header{
 
 /* ---------- CONTACT PAGE ---------- */
 .contact-wrapper{
-  max-width:1000px;
+  max-width:1020px;
   margin:0 auto;
-  padding:56px 32px 72px;
+  padding:56px 32px 80px;
   box-sizing:border-box;
   display:flex;
   flex-direction:column;
-  gap:32px;
+  gap:36px;
 }
 .contact-header{
   display:flex;
@@ -525,9 +525,9 @@ header.wp-block-template-part.is-elevated .cm-header{
   position:absolute;
   left:0;
   bottom:0;
-  width:52px;
+  width:48px;
   height:2px;
-  background:#014263;
+  background:#0b2e4c;
   border-radius:999px;
 }
 .contact-eyebrow{
@@ -548,8 +548,32 @@ header.wp-block-template-part.is-elevated .cm-header{
 .contact-subtitle{
   margin:0;
   font-size:16px;
-  line-height:1.7;
+  line-height:1.6;
+  color:#3f4a5a;
+}
+.contact-assurances{
+  border:1px solid #d8e0ea;
+  border-radius:10px;
+  padding:18px 22px;
+  background:#f7fafc;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.contact-assurances__title{
+  margin:0;
+  font-size:18px;
+  font-weight:650;
+  color:#0f172a;
+}
+.contact-assurances__list{
+  margin:0;
+  padding-left:18px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
   color:#475569;
+  font-size:15px;
 }
 .contact-grid{
   display:grid;
@@ -558,7 +582,7 @@ header.wp-block-template-part.is-elevated .cm-header{
 }
 .contact-card{
   background:#ffffff;
-  border:1px solid rgba(1,66,99,0.16);
+  border:1px solid #d8e0ea;
   border-radius:10px;
   padding:22px 24px;
   display:flex;
@@ -579,27 +603,164 @@ header.wp-block-template-part.is-elevated .cm-header{
   color:#475569;
 }
 .contact-card__content a{
-  color:#014263;
-  text-decoration:none;
+  color:#0b2e4c;
+  text-decoration:underline;
+  text-underline-offset:3px;
   font-weight:600;
 }
 .contact-card__content a:hover,
 .contact-card__content a:focus-visible{
-  text-decoration:underline;
+  color:#08233a;
   outline:none;
 }
 .contact-card__note{
   font-size:13px;
   color:#5f6b7a;
 }
+.contact-form-block{
+  border:1px solid #d8e0ea;
+  border-radius:12px;
+  padding:26px 28px;
+  background:#ffffff;
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+.contact-form__intro{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  max-width:580px;
+}
+.contact-form__title{
+  margin:0;
+  font-size:22px;
+  font-weight:650;
+  color:#0f172a;
+}
+.contact-form__subtitle{
+  margin:0;
+  font-size:15px;
+  color:#475569;
+  line-height:1.5;
+}
+.contact-form__container{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+.cdje92-contact-form-wrapper{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  width:100%;
+}
+.cdje92-contact-form{
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+.contact-form__notice{
+  border-radius:8px;
+  padding:12px 14px;
+  font-size:14px;
+  line-height:1.5;
+}
+.contact-form__notice--success{
+  background:#e6f4ea;
+  border:1px solid #9ad0a2;
+  color:#215736;
+}
+.contact-form__notice--error{
+  background:#fdeaea;
+  border:1px solid #f3b1b1;
+  color:#8b1c1c;
+}
+.contact-form__grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:16px;
+}
+.contact-form__field{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.contact-form__field--full{
+  grid-column:1 / -1;
+}
+.contact-form__label{
+  font-size:14px;
+  font-weight:600;
+  color:#2f3b4a;
+}
+.contact-form__label span{
+  color:#8b1c1c;
+  font-weight:400;
+  margin-left:4px;
+}
+.contact-form__input,
+.contact-form__textarea{
+  border:1px solid #c7d2df;
+  border-radius:6px;
+  padding:10px 12px;
+  font-size:15px;
+  font-family:inherit;
+  color:#1f2937;
+  background:#ffffff;
+  transition:border-color .2s ease, box-shadow .2s ease;
+}
+.contact-form__input:focus,
+.contact-form__textarea:focus{
+  border-color:#0b2e4c;
+  box-shadow:0 0 0 3px rgba(11,46,76,0.15);
+  outline:none;
+}
+.contact-form__textarea{
+  min-height:140px;
+  resize:vertical;
+}
+.contact-form__hint{
+  font-size:13px;
+  color:#64748b;
+}
+.contact-form__submit{
+  align-self:flex-start;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px 22px;
+  border-radius:999px;
+  border:none;
+  background:#0b2e4c;
+  color:#ffffff;
+  font-weight:600;
+  font-size:15px;
+  cursor:pointer;
+  transition:background-color .2s ease;
+}
+.contact-form__submit:hover,
+.contact-form__submit:focus-visible{
+  background:#08233a;
+  outline:none;
+}
+.contact-form__legal{
+  font-size:13px;
+  color:#64748b;
+  line-height:1.5;
+}
+.contact-form__hidden{
+  position:absolute;
+  left:-999em;
+}
 .contact-social{
-  border:1px solid rgba(1,66,99,0.18);
+  border:1px solid #d8e0ea;
   border-radius:10px;
   padding:20px 22px;
   display:flex;
   flex-direction:column;
   gap:12px;
-  background:#f4f7f9;
+  background:#f2f6fa;
 }
 .contact-social__title{
   font-size:18px;
@@ -619,16 +780,16 @@ header.wp-block-template-part.is-elevated .cm-header{
   padding:8px 14px;
   border-radius:8px;
   background:#ffffff;
-  border:1px solid rgba(1,66,99,0.18);
-  color:#014263;
+  border:1px solid #d8e0ea;
+  color:#0b2e4c;
   text-decoration:none;
   font-weight:600;
   transition:border-color .2s ease, background-color .2s ease;
 }
 .contact-social__link:hover,
 .contact-social__link:focus-visible{
-  border-color:#014263;
-  background:#e8f2f8;
+  border-color:#0b2e4c;
+  background:#e8f1f7;
   outline:none;
 }
 .contact-social__icon{
@@ -636,36 +797,45 @@ header.wp-block-template-part.is-elevated .cm-header{
   height:16px;
   display:block;
 }
+
+.contact-form__notice:empty{
+  display:none;
+}
+
 @media (max-width:899px){
   .contact-wrapper{
-    padding:48px 24px 68px;
+    padding:48px 24px 72px;
   }
-  .contact-title{
-    font-size:28px;
+  .contact-grid{
+    gap:16px;
   }
-  .contact-header::after{
-    width:44px;
+  .contact-form-block{
+    padding:22px 22px;
   }
 }
 
 @media (max-width:599px){
   .contact-wrapper{
-    padding:32px 18px 52px;
+    padding:36px 18px 60px;
   }
   .contact-grid{
-    gap:16px;
+    gap:14px;
   }
   .contact-card{
-    padding:18px 20px;
+    padding:20px 20px;
   }
-  .contact-title{
-    font-size:26px;
+  .contact-form-block{
+    padding:20px 18px;
   }
-  .contact-header::after{
-    width:36px;
+  .contact-form__grid{
+    grid-template-columns:1fr;
+  }
+  .contact-form__submit{
+    width:100%;
+    justify-content:center;
   }
   .contact-social{
-    padding:18px 20px;
+    padding:18px 18px;
   }
   .contact-social__links{
     flex-direction:column;
@@ -673,6 +843,317 @@ header.wp-block-template-part.is-elevated .cm-header{
   }
 }
 
+/* ---------- COMMITTEE PAGE ---------- */
+.committee{
+  max-width:1100px;
+  margin:0 auto;
+  padding:56px 24px 72px;
+  box-sizing:border-box;
+  display:flex;
+  flex-direction:column;
+  gap:48px;
+}
+.committee-hero{
+  position:relative;
+  padding-bottom:20px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.committee-hero::after{
+  content:"";
+  position:absolute;
+  left:0;
+  bottom:0;
+  width:48px;
+  height:2px;
+  background:#0b2e4c;
+}
+.committee-hero__eyebrow{
+  font-size:12px;
+  font-weight:600;
+  letter-spacing:0.15em;
+  text-transform:uppercase;
+  color:#5b7187;
+  margin:0;
+}
+.committee-hero__title{
+  margin:0;
+  font-size:32px;
+  line-height:1.25;
+  color:#0f172a;
+}
+.committee-hero__description{
+  margin:0;
+  font-size:16px;
+  line-height:1.5;
+  color:#3f4a5a;
+  max-width:680px;
+}
+.committee-section{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+.committee-section__header{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  border-bottom:1px solid #d8e0ea;
+  padding-bottom:6px;
+}
+.committee-section__header h2{
+  margin:0;
+  font-size:24px;
+  color:#0f172a;
+}
+.committee-governance__grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:16px;
+}
+.gov-card{
+  background:#ffffff;
+  border:1px solid #d8e0ea;
+  border-radius:10px;
+  padding:20px 22px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.gov-card__title{
+  margin:0;
+  font-size:16px;
+  font-weight:650;
+  color:#0f172a;
+}
+.gov-card__list{
+  list-style:none;
+  margin:0;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.gov-card__list li{
+  position:relative;
+  padding-left:16px;
+  font-size:15px;
+  color:#1f2937;
+}
+.gov-card__list li::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:9px;
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#0b2e4c;
+}
+.gov-card__role{
+  display:block;
+  font-size:12px;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  color:#637187;
+  font-weight:600;
+}
+.gov-card__name{
+  display:block;
+  font-weight:650;
+  color:#0f172a;
+}
+.committee-figures__grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:16px;
+}
+.figure-card{
+  background:#ffffff;
+  border:1px solid #d8e0ea;
+  border-radius:10px;
+  padding:18px 18px 20px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  border-left:4px solid #0b2e4c;
+}
+.figure-card__value{
+  font-size:34px;
+  font-weight:700;
+  color:#0b2e4c;
+  line-height:1.2;
+}
+.figure-card__label{
+  font-size:15px;
+  color:#1f2937;
+}
+.figure-card__note{
+  font-size:13px;
+  color:#637187;
+}
+.committee-docs__list{
+  list-style:none;
+  margin:0;
+  padding:0;
+  border-top:1px solid #d8e0ea;
+}
+.committee-docs__list li{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 0;
+  border-bottom:1px solid #d8e0ea;
+}
+.committee-docs__title{
+  font-weight:600;
+  color:#0f172a;
+}
+.committee-docs__actions{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  font-size:14px;
+}
+.committee-docs__actions a{
+  color:#0b2e4c;
+  text-decoration:underline;
+  text-underline-offset:3px;
+  font-weight:600;
+}
+.committee-partners__grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:16px;
+}
+.partner-card{
+  background:#ffffff;
+  border:1px solid #d8e0ea;
+  border-radius:10px;
+  padding:18px 16px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+}
+.partner-card__logo{
+  width:100%;
+  max-width:120px;
+  height:64px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.partner-card__logo img{
+  max-width:100%;
+  max-height:100%;
+  object-fit:contain;
+}
+.partner-card__caption{
+  margin:0;
+  font-size:13px;
+  color:#475569;
+  text-align:center;
+}
+.committee-callout{
+  border:1px solid #0b2e4c;
+  border-radius:12px;
+  background:#f2f6fa;
+  padding:24px 26px;
+}
+.committee-callout__inner{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  align-items:flex-start;
+}
+.committee-callout__inner h2{
+  margin:0;
+  font-size:21px;
+  color:#0b2e4c;
+}
+.committee-callout__inner p{
+  margin:0;
+  font-size:15px;
+  color:#2e3a4a;
+}
+.committee-callout__actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.committee-callout__link{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:9px 18px;
+  border-radius:20px;
+  font-weight:600;
+  font-size:14px;
+  text-decoration:none;
+  background:#0b2e4c;
+  color:#ffffff;
+}
+.committee-callout__link--ghost{
+  background:transparent;
+  border:1px solid #0b2e4c;
+  color:#0b2e4c;
+}
+
+@media (max-width:1023px){
+  .committee{
+    padding:48px 24px 64px;
+    gap:40px;
+  }
+  .committee-hero__title{
+    font-size:30px;
+  }
+}
+
+@media (max-width:767px){
+  .committee{
+    padding:40px 18px 56px;
+    gap:32px;
+  }
+  .committee-hero__title{
+    font-size:26px;
+  }
+  .committee-hero__description{
+    font-size:15px;
+  }
+  .committee-docs__list li{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+  .committee-docs__actions{
+    justify-content:flex-start;
+  }
+  .committee-callout{
+    padding:20px 20px;
+  }
+}
+
+@media (max-width:479px){
+  .committee{
+    padding:32px 16px 48px;
+  }
+  .figure-card__value{
+    font-size:30px;
+  }
+  .committee-callout__link{
+    width:100%;
+    justify-content:center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .committee-callout__link{
+    transition:none;
+  }
+}
 /* Desktop layout */
 @media (min-width:900px){
   .cm-footer__container{
