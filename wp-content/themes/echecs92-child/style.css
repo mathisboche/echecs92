@@ -1361,7 +1361,13 @@ header.wp-block-template-part.is-elevated .cm-header{
 .clubs-location__control{
   display:flex;
   flex-wrap:wrap;
-  gap:10px;
+  align-items:center;
+}
+#clubs-location{
+  margin:0 0 10px 0;
+}
+#clubs-location-apply{
+  margin:0 10px 0 0;
 }
 .clubs-location__status{
   min-height:20px;
@@ -1762,6 +1768,9 @@ header.wp-block-template-part.is-elevated .cm-header{
   .clubs-location__control{
     flex-direction:column;
     align-items:stretch;
+  }
+  #clubs-location-apply{
+    margin:0 0 10px 0;
   }
   #clubs-location-apply,
   #clubs-use-geoloc{
