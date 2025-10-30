@@ -10,6 +10,13 @@
   const GEOCODE_MIN_DELAY = 1200; // ms between requests (respect Nominatim policy)
   const SEARCH_DELAY = 420;
   const VISIBLE_RESULTS_DEFAULT = 5;
+  const POSITIVE_MATCH_THRESHOLD = 1.15;
+  const SUMMARY_MAX_LENGTH = 150;
+  const TAG_LABELS = {
+    debutants: 'Débutants',
+    jeunes: 'Jeunes',
+    adultes: 'Adultes',
+  };
 
   const searchInput = document.getElementById('clubs-search');
   const resultsEl = document.getElementById('clubs-results');
@@ -32,9 +39,21 @@
   totalCounter.className = 'clubs-total';
   totalCounter.setAttribute('aria-live', 'polite');
   resultsEl.before(totalCounter);
+  resultsEl.setAttribute('data-loading-label', 'Recherche en cours…');
 
   let searchTimer = null;
   let loadingTimer = null;
+  const loadingReasons = new Set();
+  let loadingActive = false;
+  const deriveLoadingLabel = () => {
+    if (loadingReasons.has('distance')) {
+      return 'Calcul des distances…';
+    }
+    if (loadingReasons.has('geocode')) {
+      return 'Localisation en cours…';
+    }
+    return 'Recherche en cours…';
+  };
 
   const setLocationStatus = (message, tone = 'info') => {
     if (!locationStatus) {
@@ -120,27 +139,125 @@
     }
   };
 
-  const setLoading = (isLoading) => {
-    window.clearTimeout(loadingTimer);
+  const setLoading = (isLoading, reason = 'generic') => {
     if (isLoading) {
+      loadingReasons.add(reason);
+    } else {
+      loadingReasons.delete(reason);
+    }
+    const shouldActivate = loadingReasons.size > 0;
+    const loadingLabel = deriveLoadingLabel();
+    window.clearTimeout(loadingTimer);
+    if (shouldActivate) {
       if (resultsEl) {
-        resultsEl.classList.add('is-loading');
+        resultsEl.setAttribute('data-loading-label', loadingLabel);
       }
       if (searchButton) {
-        searchButton.disabled = true;
         searchButton.dataset.label = searchButton.dataset.label || searchButton.textContent;
-        searchButton.textContent = 'Recherche…';
+        searchButton.textContent = loadingLabel;
+        searchButton.disabled = true;
       }
-    } else {
+      if (!loadingActive) {
+        if (resultsEl) {
+          resultsEl.classList.add('is-loading');
+        }
+        loadingActive = true;
+      }
+    } else if (loadingActive) {
       loadingTimer = window.setTimeout(() => {
         resultsEl?.classList.remove('is-loading');
+        resultsEl?.removeAttribute('data-loading-label');
         if (searchButton) {
           searchButton.disabled = false;
           if (searchButton.dataset.label) {
             searchButton.textContent = searchButton.dataset.label;
           }
         }
+        loadingActive = false;
       }, 150);
+    }
+  };
+
+  const scheduleDistanceRelease = (delay = 200) => {
+    window.clearTimeout(state.distanceReleaseTimer);
+    state.distanceReleaseTimer = window.setTimeout(() => {
+      endDistanceLoading(false);
+    }, delay);
+  };
+
+  const scheduleDistanceFallback = () => {
+    window.clearTimeout(state.distanceFallbackTimer);
+    state.distanceFallbackTimer = window.setTimeout(() => {
+      endDistanceLoading(true);
+    }, 6500);
+  };
+
+  const startDistanceLoading = (options = {}) => {
+    const { onComplete = null } = options || {};
+    state.distanceLoading = true;
+    state.activeDistanceRequest += 1;
+    state.pendingDistanceClubIds.clear();
+    state.distanceLoadingCallback = typeof onComplete === 'function' ? onComplete : null;
+    window.clearTimeout(state.distanceReleaseTimer);
+    state.distanceReleaseTimer = null;
+    window.clearTimeout(state.distanceFallbackTimer);
+    state.distanceFallbackTimer = null;
+    setLoading(true, 'distance');
+    scheduleDistanceFallback();
+    return state.activeDistanceRequest;
+  };
+
+  const endDistanceLoading = (force = false) => {
+    if (!state.distanceLoading) {
+      return;
+    }
+    if (!force && state.pendingDistanceClubIds.size > 0) {
+      return;
+    }
+    state.distanceLoading = false;
+    state.pendingDistanceClubIds.clear();
+    window.clearTimeout(state.distanceReleaseTimer);
+    state.distanceReleaseTimer = null;
+    window.clearTimeout(state.distanceFallbackTimer);
+    state.distanceFallbackTimer = null;
+    setLoading(false, 'distance');
+    if (typeof state.distanceLoadingCallback === 'function') {
+      const callback = state.distanceLoadingCallback;
+      state.distanceLoadingCallback = null;
+      try {
+        callback();
+      } catch (err) {
+        // Ignored – UX callback failures should not break flow
+      }
+    } else {
+      state.distanceLoadingCallback = null;
+    }
+  };
+
+  const registerPendingDistanceClub = (clubId, requestId) => {
+    if (!state.distanceLoading || state.activeDistanceRequest !== requestId) {
+      return;
+    }
+    state.pendingDistanceClubIds.add(`${requestId}:${clubId}`);
+  };
+
+  const markResolvedDistanceClub = (clubId, requestId) => {
+    if (!requestId) {
+      return;
+    }
+    const key = `${requestId}:${clubId}`;
+    if (!state.pendingDistanceClubIds.has(key)) {
+      return;
+    }
+    state.pendingDistanceClubIds.delete(key);
+    if (state.distanceLoading && state.activeDistanceRequest === requestId && state.pendingDistanceClubIds.size === 0) {
+      scheduleDistanceRelease(220);
+    }
+  };
+
+  const ensureDistanceLoadingProgress = () => {
+    if (state.distanceLoading && state.pendingDistanceClubIds.size === 0) {
+      scheduleDistanceRelease(180);
     }
   };
 
@@ -159,6 +276,14 @@
     geocodingQueue: [],
     geocodingTimer: null,
     geocodingActive: false,
+    distanceLoading: false,
+    activeDistanceRequest: 0,
+    pendingDistanceClubIds: new Set(),
+    distanceReleaseTimer: null,
+    distanceFallbackTimer: null,
+    distanceRefreshScheduled: false,
+    distanceRefreshOptions: null,
+    distanceLoadingCallback: null,
   };
 
   const normalise = (value) =>
@@ -167,6 +292,75 @@
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase();
+
+  const cleanWhitespace = (value) =>
+    (value || '')
+      .toString()
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const summariseText = (value, limit = SUMMARY_MAX_LENGTH) => {
+    const cleaned = cleanWhitespace(value);
+    if (!cleaned) {
+      return '';
+    }
+    if (cleaned.length <= limit) {
+      return cleaned;
+    }
+    let cut = cleaned.lastIndexOf(' ', limit - 1);
+    if (cut < Math.floor(limit * 0.6)) {
+      cut = limit - 1;
+    }
+    const truncated = cleaned.slice(0, cut).replace(/[.,;:]+$/, '');
+    return `${truncated}…`;
+  };
+
+  const getShortAddress = (address) => {
+    const cleaned = cleanWhitespace(address);
+    if (!cleaned) {
+      return '';
+    }
+    const parts = cleaned.split(',').map((part) => part.trim()).filter(Boolean);
+    return parts[0] || '';
+  };
+
+  const formatTagLabel = (tag) => {
+    if (!tag) {
+      return '';
+    }
+    const key = tag.toLowerCase();
+    if (TAG_LABELS[key]) {
+      return TAG_LABELS[key];
+    }
+    return key.charAt(0).toUpperCase() + key.slice(1);
+  };
+
+  const buildClubMetaLine = (club) => {
+    const parts = [];
+    if (club.commune) {
+      parts.push(cleanWhitespace(club.commune));
+    }
+    const shortAddress = getShortAddress(club.address);
+    if (shortAddress) {
+      const communeNorm = normalise(club.commune);
+      const addressNorm = normalise(shortAddress);
+      if (!communeNorm || !addressNorm.includes(communeNorm)) {
+        parts.push(shortAddress);
+      }
+    }
+    return parts.join(' · ');
+  };
+
+  const buildClubSummary = (club) => {
+    const candidates = [club.publics, club.notes, club.hours];
+    for (let i = 0; i < candidates.length; i += 1) {
+      const summary = summariseText(candidates[i]);
+      if (summary) {
+        return summary;
+      }
+    }
+    return '';
+  };
 
   const haversineKm = (lat1, lon1, lat2, lon2) => {
     const R = 6371;
@@ -180,20 +374,22 @@
     return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
-  const getDistanceLabel = (club) => {
+  const getDistanceInfo = (club) => {
     let distanceValue = null;
     let referenceLabel = '';
     if (state.userLocation && typeof club.distanceKm === 'number') {
       distanceValue = club.distanceKm;
     } else if (!state.userLocation && state.queryLocation && typeof club.distanceFromQueryKm === 'number') {
       distanceValue = club.distanceFromQueryKm;
-      referenceLabel = state.queryLocation.label ? ` · depuis ${state.queryLocation.label}` : '';
+      referenceLabel = state.queryLocation.label ? `Depuis ${state.queryLocation.label}` : '';
     }
     if (typeof distanceValue !== 'number') {
       return null;
     }
     const round = distanceValue < 10 ? distanceValue.toFixed(1) : Math.round(distanceValue);
-    return `${round} km${referenceLabel}`;
+    const label = `${round} km`;
+    const context = referenceLabel || (state.userLocation ? 'Depuis votre position' : '');
+    return { label, context };
   };
 
   const levenshtein = (a, b) => {
@@ -264,21 +460,50 @@
     }
   };
 
-  const queueGeocoding = (club) => {
+  const queueGeocoding = (club, options = {}) => {
+    const { track = false, requestId = null } = options;
+    const resolvedRequestId = track ? requestId ?? state.activeDistanceRequest : null;
+
+    if (track && resolvedRequestId != null) {
+      registerPendingDistanceClub(club.id, resolvedRequestId);
+    }
+
     if (club.lat != null && club.lng != null) {
+      if (track && resolvedRequestId != null) {
+        markResolvedDistanceClub(club.id, resolvedRequestId);
+      }
+      ensureDistanceLoadingProgress();
       return Promise.resolve(club);
     }
 
     if (club._geocodePromise) {
+      if (track && resolvedRequestId != null) {
+        club._geocodeTracking = Array.isArray(club._geocodeTracking) ? club._geocodeTracking : [];
+        if (!club._geocodeTracking.includes(resolvedRequestId)) {
+          club._geocodeTracking.push(resolvedRequestId);
+          club._geocodePromise.finally(() => {
+            markResolvedDistanceClub(club.id, resolvedRequestId);
+          });
+        }
+      }
       return club._geocodePromise;
     }
 
     const promise = new Promise((resolve) => {
-      state.geocodingQueue.push({ club, resolve });
+      state.geocodingQueue.push({ club, resolve, track, requestId: resolvedRequestId });
       processGeocodingQueue();
     });
 
     club._geocodePromise = promise;
+    if (track && resolvedRequestId != null) {
+      club._geocodeTracking = Array.isArray(club._geocodeTracking) ? club._geocodeTracking : [];
+      if (!club._geocodeTracking.includes(resolvedRequestId)) {
+        club._geocodeTracking.push(resolvedRequestId);
+        promise.finally(() => {
+          markResolvedDistanceClub(club.id, resolvedRequestId);
+        });
+      }
+    }
     return promise;
   };
 
@@ -287,17 +512,30 @@
       return;
     }
 
-    const { club, resolve } = state.geocodingQueue.shift();
+    const { club, resolve, track = false, requestId = null } = state.geocodingQueue.shift();
     state.geocodingActive = true;
 
     const finish = (success) => {
+      if (track && requestId != null) {
+        markResolvedDistanceClub(club.id, requestId);
+      }
       state.geocodingActive = false;
       state.geocodingTimer = window.setTimeout(() => {
         state.geocodingTimer = null;
         processGeocodingQueue();
       }, GEOCODE_MIN_DELAY);
       club._geocodePromise = null;
+      if (Array.isArray(club._geocodeTracking)) {
+        const index = club._geocodeTracking.indexOf(requestId);
+        if (index >= 0) {
+          club._geocodeTracking.splice(index, 1);
+        }
+        if (!club._geocodeTracking.length) {
+          delete club._geocodeTracking;
+        }
+      }
       resolve(success ? club : null);
+      ensureDistanceLoadingProgress();
     };
 
     if (!navigator.onLine) {
@@ -339,29 +577,43 @@
         club.lng = Number.parseFloat(payload[0].lon);
         persistClubCoordinates(club);
         finish(true);
-        refreshDistances(true);
+        scheduleDistanceRefresh({ preserveVisibility: true });
       })
       .catch(() => finish(false));
   };
 
-  const refreshDistances = (preserveVisibility = false) => {
+  const refreshDistances = (options = {}) => {
+    let preserveVisibility = false;
+    let trackGeocodes = state.distanceLoading;
+    if (typeof options === 'boolean') {
+      preserveVisibility = options;
+    } else if (options && typeof options === 'object') {
+      preserveVisibility = Boolean(options.preserveVisibility);
+      if (typeof options.trackGeocodes === 'boolean') {
+        trackGeocodes = options.trackGeocodes;
+      }
+    }
+    const requestId = trackGeocodes ? state.activeDistanceRequest : null;
+
     if (state.userLocation) {
       const { latitude, longitude } = state.userLocation;
       state.clubs.forEach((club) => {
         if (club.lat == null || club.lng == null) {
           delete club.distanceKm;
-          queueGeocoding(club);
+          queueGeocoding(club, { track: trackGeocodes, requestId });
           return;
         }
         club.distanceKm = haversineKm(latitude, longitude, club.lat, club.lng);
       });
       applyFilters({ preserveVisibility });
+      ensureDistanceLoadingProgress();
       return;
     }
 
     if (state.queryLocation) {
       computeDistancesForQueryLocation();
       applyFilters({ preserveVisibility });
+      ensureDistanceLoadingProgress();
       return;
     }
 
@@ -370,7 +622,32 @@
       delete club.distanceFromQueryKm;
     });
     applyFilters({ preserveVisibility });
+    ensureDistanceLoadingProgress();
   };
+
+  function scheduleDistanceRefresh(options = {}) {
+    const mergedOptions =
+      typeof options === 'boolean'
+        ? { preserveVisibility: options, trackGeocodes: false }
+        : { ...(options || {}) };
+    if (typeof mergedOptions.trackGeocodes !== 'boolean') {
+      mergedOptions.trackGeocodes = false;
+    }
+    state.distanceRefreshOptions = {
+      ...(state.distanceRefreshOptions || {}),
+      ...mergedOptions,
+    };
+    if (state.distanceRefreshScheduled) {
+      return;
+    }
+    state.distanceRefreshScheduled = true;
+    window.requestAnimationFrame(() => {
+      state.distanceRefreshScheduled = false;
+      const opts = state.distanceRefreshOptions || {};
+      state.distanceRefreshOptions = null;
+      refreshDistances(opts);
+    });
+  }
 
   const computeSearchScore = (club, terms) => {
     if (!terms.length) {
@@ -378,6 +655,10 @@
     }
     const keywords = club._keywords || [];
     const searchString = club._search || '';
+    const nameNormalized = club._nameNormalized || '';
+    const communeNormalized = club._communeNormalized || '';
+    const tagTokens = club._tagTokens || [];
+    const combinedLabel = [nameNormalized, communeNormalized].filter(Boolean).join(' ');
     let score = 0;
 
     terms.forEach((term) => {
@@ -385,6 +666,41 @@
         return;
       }
       let best = 0;
+      if (nameNormalized) {
+        if (nameNormalized === term) {
+          best = Math.max(best, 8.5);
+        } else if (nameNormalized.startsWith(term)) {
+          best = Math.max(best, 6.8);
+        } else if (term.startsWith(nameNormalized)) {
+          best = Math.max(best, 6);
+        } else if (nameNormalized.includes(term)) {
+          best = Math.max(best, 5.2);
+        } else {
+          const distance = levenshtein(nameNormalized, term);
+          const similarity = 1 - distance / Math.max(nameNormalized.length, term.length);
+          if (similarity >= 0.55) {
+            best = Math.max(best, similarity * 6.5);
+          }
+        }
+      }
+      if (communeNormalized) {
+        if (communeNormalized === term) {
+          best = Math.max(best, 5.5);
+        } else if (communeNormalized.startsWith(term) || term.startsWith(communeNormalized)) {
+          best = Math.max(best, 4.6);
+        } else if (communeNormalized.includes(term)) {
+          best = Math.max(best, 3.8);
+        } else {
+          const distance = levenshtein(communeNormalized, term);
+          const similarity = 1 - distance / Math.max(communeNormalized.length, term.length);
+          if (similarity >= 0.6) {
+            best = Math.max(best, similarity * 4.8);
+          }
+        }
+      }
+      if (combinedLabel && combinedLabel.includes(term)) {
+        best = Math.max(best, 4.2);
+      }
       if (searchString.includes(term)) {
         best = Math.max(best, 2.5);
       }
@@ -454,13 +770,29 @@
           }
         }
       }
+      if (tagTokens.length) {
+        if (tagTokens.includes(term)) {
+          best = Math.max(best, 4.2);
+        } else {
+          for (let i = 0; i < tagTokens.length; i += 1) {
+            const tag = tagTokens[i];
+            const distance = levenshtein(tag, term);
+            const similarity = 1 - distance / Math.max(tag.length, term.length);
+            if (similarity >= 0.65) {
+              best = Math.max(best, similarity * 3.6);
+              break;
+            }
+          }
+        }
+      }
       score += best;
     });
 
     return score;
   };
 
-  const computeDistancesForQueryLocation = () => {
+  const computeDistancesForQueryLocation = (trackGeocodes = state.distanceLoading) => {
+    const requestId = trackGeocodes ? state.activeDistanceRequest : null;
     if (!state.queryLocation) {
       state.clubs.forEach((club) => {
         delete club.distanceFromQueryKm;
@@ -471,7 +803,7 @@
     state.clubs.forEach((club) => {
       if (club.lat == null || club.lng == null) {
         delete club.distanceFromQueryKm;
-        queueGeocoding(club);
+        queueGeocoding(club, { track: trackGeocodes, requestId });
         return;
       }
       club.distanceFromQueryKm = haversineKm(latitude, longitude, club.lat, club.lng);
@@ -495,7 +827,7 @@
         scoreMap.set(club.id, score);
         return { club, score, index };
       });
-      const positives = scored.filter((entry) => entry.score > 0);
+      const positives = scored.filter((entry) => entry.score >= POSITIVE_MATCH_THRESHOLD);
       matches = positives.length;
       const candidates = positives.length ? positives : scored;
       fallbackUsed = positives.length === 0;
@@ -612,6 +944,9 @@
     const header = document.createElement('div');
     header.className = 'club-row__header';
 
+    const heading = document.createElement('div');
+    heading.className = 'club-row__heading';
+
     const title = document.createElement('h2');
     title.className = 'club-row__title';
     const link = document.createElement('a');
@@ -620,17 +955,77 @@
     link.textContent = club.name;
     link.setAttribute('aria-label', `Voir la fiche du club ${club.name}`);
     title.appendChild(link);
-    header.appendChild(title);
+    heading.appendChild(title);
 
-    const distanceLabel = getDistanceLabel(club);
-    if (distanceLabel) {
+    const metaLine = club._metaLine || buildClubMetaLine(club);
+    if (metaLine) {
+      const meta = document.createElement('p');
+      meta.className = 'club-row__meta';
+      meta.textContent = metaLine;
+      heading.appendChild(meta);
+    }
+
+    header.appendChild(heading);
+
+    const distanceInfo = getDistanceInfo(club);
+    if (distanceInfo) {
       const distanceNode = document.createElement('span');
       distanceNode.className = 'club-row__distance';
-      distanceNode.textContent = distanceLabel;
+      distanceNode.textContent = distanceInfo.label;
+      if (distanceInfo.context) {
+        distanceNode.title = distanceInfo.context;
+        distanceNode.setAttribute('aria-label', `${distanceInfo.label} (${distanceInfo.context})`);
+      } else {
+        distanceNode.setAttribute('aria-label', distanceInfo.label);
+      }
       header.appendChild(distanceNode);
     }
 
     article.appendChild(header);
+
+    const summary = club._summary || buildClubSummary(club);
+    const tags = Array.isArray(club.tags) ? club.tags : [];
+    const distanceContext = distanceInfo && distanceInfo.context && distanceInfo.context !== 'Depuis votre position' ? distanceInfo.context : '';
+    if (summary || tags.length || distanceContext) {
+      const body = document.createElement('div');
+      body.className = 'club-row__body';
+
+      if (summary) {
+        const summaryEl = document.createElement('p');
+        summaryEl.className = 'club-row__summary';
+        summaryEl.textContent = summary;
+        body.appendChild(summaryEl);
+      }
+
+      if (distanceContext) {
+        const contextEl = document.createElement('p');
+        contextEl.className = 'club-row__distance-context';
+        contextEl.textContent = distanceContext;
+        body.appendChild(contextEl);
+      }
+
+      if (tags.length) {
+        const tagsList = document.createElement('ul');
+        tagsList.className = 'club-row__tags';
+        tags.forEach((tag) => {
+          const label = formatTagLabel(tag);
+          if (!label) {
+            return;
+          }
+          const item = document.createElement('li');
+          item.className = 'club-row__tag';
+          item.textContent = label;
+          tagsList.appendChild(item);
+        });
+        if (tagsList.childElementCount) {
+          body.appendChild(tagsList);
+        }
+      }
+
+      if (body.childElementCount) {
+        article.appendChild(body);
+      }
+    }
 
     const actions = document.createElement('div');
     actions.className = 'club-row__actions';
@@ -716,20 +1111,20 @@
     computeDistancesForQueryLocation();
     window.clearTimeout(searchTimer);
     setSearchStatus('Recherche en cours…', 'info');
-    setLoading(true);
+    setLoading(true, 'search');
     searchTimer = window.setTimeout(() => {
       try {
         const meta = applyFilters();
         maybeApplyQueryLocation(meta);
       } finally {
-        setLoading(false);
+        setLoading(false, 'search');
       }
     }, SEARCH_DELAY);
   };
 
   const resetSearch = () => {
     window.clearTimeout(searchTimer);
-    setLoading(false);
+    setLoading(false, 'search');
     state.pendingQuery = '';
     state.query = '';
     if (searchInput) {
@@ -766,9 +1161,14 @@
 
     const token = postalMatch[0];
     if (state.queryLocation && state.queryLocationToken === token) {
-      computeDistancesForQueryLocation();
-      applyFilters({ silentStatus: true });
-      updateSearchStatus(state.lastSearchMeta);
+      startDistanceLoading({
+        onComplete: () => {
+          if (state.lastSearchMeta) {
+            updateSearchStatus(state.lastSearchMeta);
+          }
+        },
+      });
+      refreshDistances({ preserveVisibility: true, trackGeocodes: true });
       return;
     }
 
@@ -776,25 +1176,41 @@
     if (cached) {
       state.queryLocationToken = token;
       state.queryLocation = cached;
-      computeDistancesForQueryLocation();
-      const metaWithDistances = applyFilters({ silentStatus: true });
-      updateSearchStatus(metaWithDistances);
+      startDistanceLoading({
+        onComplete: () => {
+          if (state.lastSearchMeta) {
+            updateSearchStatus(state.lastSearchMeta);
+          }
+        },
+      });
+      refreshDistances({ preserveVisibility: true, trackGeocodes: true });
       return;
     }
 
+    setLoading(true, 'search');
+    setSearchStatus('Localisation du code postal…', 'info');
     geocodePlace(token)
       .then(({ latitude, longitude, label }) => {
         const locationData = { latitude, longitude, label };
         state.queryLocationCache.set(token, locationData);
         state.queryLocationToken = token;
         state.queryLocation = locationData;
-        computeDistancesForQueryLocation();
-        const metaWithDistances = applyFilters({ silentStatus: true });
-        updateSearchStatus(metaWithDistances);
+        startDistanceLoading({
+          onComplete: () => {
+            if (state.lastSearchMeta) {
+              updateSearchStatus(state.lastSearchMeta);
+            }
+          },
+        });
+        refreshDistances({ preserveVisibility: true, trackGeocodes: true });
       })
       .catch(() => {
         state.queryLocation = null;
         state.queryLocationToken = null;
+        setSearchStatus("Impossible d'estimer la distance pour ce code postal pour le moment.", 'error');
+      })
+      .finally(() => {
+        setLoading(false, 'search');
       });
   };
 
@@ -900,12 +1316,12 @@
       optionsDetails.open = true;
     }
     setLocationStatus('Calcul des distances…', 'info');
-    setLoading(true);
-    window.setTimeout(() => {
-      setLocationStatus(`Distances calculées depuis ${state.distanceReference}.`, 'success');
-      refreshDistances(true);
-      setLoading(false);
-    }, 700);
+    startDistanceLoading({
+      onComplete: () => {
+        setLocationStatus(`Distances calculées depuis ${state.distanceReference}.`, 'success');
+      },
+    });
+    refreshDistances({ preserveVisibility: true, trackGeocodes: true });
   };
 
   const handleLocationSubmit = () => {
@@ -928,7 +1344,7 @@
       button.disabled = true;
       button.textContent = 'Recherche…';
     }
-    setLoading(true);
+    setLoading(true, 'geocode');
     geocodePlace(raw)
       .then(({ latitude, longitude, label }) => {
         applyUserLocation({ latitude, longitude, label, query: raw });
@@ -938,9 +1354,10 @@
           'Localisation introuvable. Essayez un autre nom de ville ou code postal.',
           'error'
         );
-        setLoading(false);
+        setLoading(false, 'geocode');
       })
       .finally(() => {
+        setLoading(false, 'geocode');
         if (button) {
           button.disabled = false;
           button.textContent = button.dataset.label || 'Valider';
@@ -958,7 +1375,9 @@
       locationInput.value = '';
     }
     setLocationStatus('Localisation effacée.', 'info');
-    setLoading(false);
+    endDistanceLoading(true);
+    setLoading(false, 'distance');
+    setLoading(false, 'geocode');
     refreshDistances();
   };
 
@@ -973,7 +1392,7 @@
       geolocButton.textContent = 'Recherche…';
     }
     setLocationStatus('Recherche de votre position…', 'info');
-    setLoading(true);
+    setLoading(true, 'geocode');
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
@@ -992,11 +1411,12 @@
               geolocButton.disabled = false;
               geolocButton.textContent = geolocButton.dataset.label || 'Autour de moi';
             }
+            setLoading(false, 'geocode');
           });
       },
       () => {
         setLocationStatus('Impossible de récupérer votre position.', 'error');
-        setLoading(false);
+        setLoading(false, 'geocode');
         if (geolocButton) {
           geolocButton.disabled = false;
           geolocButton.textContent = geolocButton.dataset.label || 'Autour de moi';
@@ -1039,6 +1459,10 @@
 
   const hydrateClub = (raw) => {
     const club = { ...raw };
+    const tagList = Array.isArray(club.tags) ? club.tags : [];
+    club._nameNormalized = normalise(club.name);
+    club._communeNormalized = normalise(club.commune);
+    club._tagTokens = tagList.map((value) => normalise(value)).filter(Boolean);
     club._search = normalise(
       [
         club.name,
@@ -1049,6 +1473,7 @@
         club.tarifs,
         club.president,
         club.notes,
+        tagList.join(' '),
       ]
         .filter(Boolean)
         .join(' ')
@@ -1062,6 +1487,7 @@
       club.tarifs,
       club.president,
       club.notes,
+      ...tagList,
     ].filter(Boolean);
     const keywordSet = new Set();
     keywordSource.forEach((value) => {
@@ -1075,6 +1501,7 @@
         .filter(Boolean)
         .forEach((token) => keywordSet.add(token));
     });
+    club._tagTokens.forEach((token) => keywordSet.add(token));
     club._keywords = Array.from(keywordSet);
     const postalCodes = [];
     [club.address, club.commune].forEach((value) => {
@@ -1092,6 +1519,8 @@
     const totalLicenses =
       (Number.isFinite(licenseA) ? licenseA : 0) + (Number.isFinite(licenseB) ? licenseB : 0);
     club.totalLicenses = totalLicenses > 0 ? totalLicenses : null;
+    club._metaLine = buildClubMetaLine(club);
+    club._summary = buildClubSummary(club);
     if (club.lat != null) {
       club.lat = Number.parseFloat(club.lat);
     }
