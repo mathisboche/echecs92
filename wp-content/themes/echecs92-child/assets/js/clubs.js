@@ -199,17 +199,6 @@
     return `${round} km ${suffix}`;
   };
 
-  const formatPhone = (value) => {
-    if (!value) {
-      return null;
-    }
-    const digits = value.replace(/\D/g, '');
-    if (digits.length !== 10) {
-      return value;
-    }
-    return digits.replace(/(\d{2})(?=\d)/g, '$1 ').trim();
-  };
-
   const levenshtein = (a, b) => {
     if (a === b) {
       return 0;
@@ -651,41 +640,6 @@
     }
   };
 
-  const setCardExpansion = (article, expand, options = {}) => {
-    const toggle = article.querySelector('.club-card__toggle');
-    const body = article.querySelector('.club-card__body');
-    if (!toggle || !body) {
-      if (!options.silent) {
-        article.classList.add('club-card--highlight');
-        window.setTimeout(() => {
-          article.classList.remove('club-card--highlight');
-        }, 900);
-      }
-      return;
-    }
-    const { silent = false } = options;
-    const currentlyExpanded = toggle.getAttribute('aria-expanded') === 'true';
-    const nextState = typeof expand === 'boolean' ? expand : !currentlyExpanded;
-    toggle.setAttribute('aria-expanded', nextState ? 'true' : 'false');
-    body.hidden = !nextState;
-    const labelNode = toggle.querySelector('.club-card__toggle-label');
-    if (labelNode) {
-      const closed = toggle.dataset.labelClosed || "Plus d'infos";
-      const open = toggle.dataset.labelOpen || 'Masquer les infos';
-      labelNode.textContent = nextState ? open : closed;
-    }
-    const iconNode = toggle.querySelector('.club-card__toggle-icon');
-    if (iconNode) {
-      iconNode.textContent = nextState ? '-' : '+';
-    }
-    if (nextState && !silent) {
-      article.classList.add('club-card--highlight');
-      window.setTimeout(() => {
-        article.classList.remove('club-card--highlight');
-      }, 900);
-    }
-  };
-
   const createMetaChip = (type, text) => {
     const chip = document.createElement('span');
     chip.className = `club-chip club-chip--${type}`;
@@ -693,35 +647,59 @@
     return chip;
   };
 
-  const createDetailSection = (title) => {
-    const container = document.createElement('section');
-    container.className = 'club-card__section';
-    const heading = document.createElement('h3');
-    heading.textContent = title;
-    container.appendChild(heading);
+  const detailBaseUrl = (() => {
+    if (!resultsEl) {
+      return null;
+    }
+    const base = resultsEl.dataset.detailBase || '';
+    if (base) {
+      return base;
+    }
+    const current = new URL(window.location.href);
+    current.searchParams.delete('club');
+    current.searchParams.delete('id');
+    current.hash = '';
+    return `${current.pathname}?club=`;
+  })();
 
-    const list = document.createElement('ul');
-    list.className = 'club-card__details';
-    container.appendChild(list);
-
-    return { container, list };
+  const getClubDetailUrl = (clubId) => {
+    if (!clubId) {
+      return '#';
+    }
+    if (!detailBaseUrl) {
+      return `?club=${encodeURIComponent(clubId)}`;
+    }
+    if (detailBaseUrl.includes('?')) {
+      const url = new URL(detailBaseUrl, window.location.origin);
+      const firstParam = Array.from(url.searchParams.keys())[0] || 'id';
+      url.searchParams.set(firstParam, clubId);
+      return url.pathname + url.search;
+    }
+    const base = detailBaseUrl.endsWith('/') ? detailBaseUrl : `${detailBaseUrl}/`;
+    return `${base}${encodeURIComponent(clubId)}`;
   };
 
-  const createClubCard = (club) => {
+  const createResultRow = (club) => {
     const article = document.createElement('article');
-    article.className = 'club-card';
+    article.className = 'club-row';
     article.dataset.clubId = club.id;
     article.setAttribute('role', 'listitem');
 
-    const summary = document.createElement('div');
-    summary.className = 'club-card__summary';
+    const header = document.createElement('div');
+    header.className = 'club-row__header';
 
     const title = document.createElement('h2');
-    title.textContent = club.name;
-    summary.appendChild(title);
+    title.className = 'club-row__title';
+    const link = document.createElement('a');
+    link.className = 'club-row__link';
+    link.href = getClubDetailUrl(club.id);
+    link.textContent = club.name;
+    link.setAttribute('aria-label', `Voir la fiche du club ${club.name}`);
+    title.appendChild(link);
+    header.appendChild(title);
 
     const meta = document.createElement('div');
-    meta.className = 'club-card__meta';
+    meta.className = 'club-row__meta';
     if (club.commune) {
       meta.appendChild(createMetaChip('commune', club.commune));
     }
@@ -730,145 +708,30 @@
       meta.appendChild(createMetaChip('distance', distanceLabel));
     }
     if (meta.childElementCount) {
-      summary.appendChild(meta);
+      header.appendChild(meta);
     }
 
-    article.appendChild(summary);
+    article.appendChild(header);
 
-    const detailsWrapper = document.createElement('div');
-    detailsWrapper.className = 'club-card__details-wrapper';
-
-    const toggle = document.createElement('button');
-    toggle.type = 'button';
-    toggle.className = 'club-card__toggle';
-    toggle.setAttribute('aria-expanded', 'false');
-    const bodyId = `club-details-${club.id}`;
-    toggle.setAttribute('aria-controls', bodyId);
-    toggle.dataset.labelClosed = "Plus d'infos";
-    toggle.dataset.labelOpen = 'Masquer les infos';
-
-    const toggleLabel = document.createElement('span');
-    toggleLabel.className = 'club-card__toggle-label';
-    toggleLabel.textContent = toggle.dataset.labelClosed;
-    toggle.appendChild(toggleLabel);
-
-    const toggleIcon = document.createElement('span');
-    toggleIcon.className = 'club-card__toggle-icon';
-    toggleIcon.setAttribute('aria-hidden', 'true');
-    toggleIcon.textContent = '+';
-    toggle.appendChild(toggleIcon);
-
-    toggle.addEventListener('click', () => {
-      setCardExpansion(article);
-    });
-
-    detailsWrapper.appendChild(toggle);
-
-    const body = document.createElement('div');
-    body.className = 'club-card__body';
-    body.hidden = true;
-    body.id = bodyId;
-
-    const sections = {
-      coordonnees: createDetailSection('Coordonnées'),
-      activites: createDetailSection('Activités'),
-      organisation: createDetailSection('Organisation'),
-      ressources: createDetailSection('Ressources'),
-    };
-
-    const addDetail = (sectionKey, term, value, options = {}) => {
-      if (!value) {
-        return;
-      }
-      const section = sections[sectionKey];
-      if (!section) {
-        return;
-      }
-      const item = document.createElement('li');
-      item.className = 'club-card__detail-item';
-
-      const label = document.createElement('span');
-      label.className = 'club-card__detail-label';
-      label.textContent = term;
-      item.appendChild(label);
-
-      if (options.isLink) {
-        const link = document.createElement('a');
-        link.href = value;
-        link.rel = 'noopener';
-        link.target = '_blank';
-        link.textContent = options.label || value;
-        item.appendChild(link);
-      } else if (options.isMail) {
-        const link = document.createElement('a');
-        link.href = `mailto:${value}`;
-        link.textContent = value;
-        item.appendChild(link);
-      } else if (options.isPhone) {
-        const formatted = formatPhone(value) || value;
-        const cleaned = value.replace(/[^\d+]/g, '');
-        const link = document.createElement('a');
-        link.href = `tel:${cleaned || value}`;
-        link.textContent = formatted;
-        item.appendChild(link);
-      } else {
-        const text = document.createElement('div');
-        text.className = 'club-card__detail-value';
-        text.textContent = value;
-        item.appendChild(text);
-      }
-
-      section.list.appendChild(item);
-    };
-
-    addDetail('coordonnees', 'Adresse', club.address);
-    if (!club.address && club.commune) {
-      addDetail('coordonnees', 'Commune', club.commune);
-    }
-    addDetail('coordonnees', 'Email', club.email, { isMail: true });
-    addDetail('coordonnees', 'Téléphone', club.phone, { isPhone: true });
-    addDetail('coordonnees', 'Site internet', club.site, {
-      isLink: true,
-      label: 'Accéder au site du club',
-    });
-
-    addDetail('activites', 'Publics accueillis', club.publics);
-    addDetail('activites', 'Horaires', club.hours);
-    addDetail('activites', 'Tarifs', club.tarifs);
-    addDetail('activites', 'Remarques', club.notes);
-
-    addDetail('organisation', 'Président·e', club.president);
-    if (club.licenses && (club.licenses.A || club.licenses.B)) {
-      const licenseInfo = [];
-      if (club.licenses.A) {
-        licenseInfo.push(`Licence A : ${club.licenses.A}`);
-      }
-      if (club.licenses.B) {
-        licenseInfo.push(`Licence B : ${club.licenses.B}`);
-      }
-      addDetail('organisation', 'Répartition licences', licenseInfo.join(' · '));
+    const summaryText = club.publics || club.notes || '';
+    if (summaryText) {
+      const summary = document.createElement('p');
+      summary.className = 'club-row__summary';
+      summary.textContent = summaryText;
+      article.appendChild(summary);
     }
 
-    if (Number.isFinite(club.totalLicenses) && club.totalLicenses > 0) {
-      const licenseLabel = `${club.totalLicenses} licencié${club.totalLicenses > 1 ? 's' : ''}`;
-      addDetail('organisation', 'Total licenciés', licenseLabel);
-    }
+    const actions = document.createElement('div');
+    actions.className = 'club-row__actions';
 
-    addDetail('ressources', 'Fiche FFE', club.fiche_ffe, {
-      isLink: true,
-      label: 'Consulter la fiche FFE',
-    });
+    const detailLink = document.createElement('a');
+    detailLink.className = 'club-row__cta';
+    detailLink.href = getClubDetailUrl(club.id);
+    detailLink.textContent = 'Voir la fiche du club';
+    detailLink.setAttribute('aria-label', `Voir la fiche du club ${club.name}`);
+    actions.appendChild(detailLink);
 
-    Object.values(sections).forEach((section) => {
-      if (section.list.childElementCount) {
-        body.appendChild(section.container);
-      }
-    });
-
-    if (body.childElementCount) {
-      detailsWrapper.appendChild(body);
-      article.appendChild(detailsWrapper);
-    }
+    article.appendChild(actions);
 
     return article;
   };
@@ -877,13 +740,6 @@
     if (!resultsEl) {
       return;
     }
-
-    const expandedIds = new Set(
-      Array.from(resultsEl.querySelectorAll('.club-card__toggle[aria-expanded="true"]'))
-        .map((toggle) => toggle.closest('.club-card'))
-        .filter(Boolean)
-        .map((card) => card.dataset.clubId)
-    );
 
     if (resetVisible || state.visibleCount === 0) {
       state.visibleCount = Math.min(VISIBLE_RESULTS_DEFAULT, state.filtered.length);
@@ -905,11 +761,8 @@
 
     const fragment = document.createDocumentFragment();
     state.filtered.slice(0, state.visibleCount).forEach((club) => {
-      const card = createClubCard(club);
-      if (expandedIds.has(club.id)) {
-        setCardExpansion(card, true, { silent: true });
-      }
-      fragment.appendChild(card);
+      const row = createResultRow(club);
+      fragment.appendChild(row);
     });
 
     resultsEl.innerHTML = '';
