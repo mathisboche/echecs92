@@ -1,0 +1,49 @@
+<!-- wp:template-part {"slug":"header","tagName":"header","theme":"echecs92-child"} /-->
+
+<!-- wp:html -->
+<div class="clubs-page legal">
+  <h1>Clubs du 92</h1>
+  <p>Trouvez un club près de chez vous. Débutants bienvenus (jeunes & adultes). <a href="/contact">Pas sûr ? Écrivez-nous</a>.</p>
+
+  <!-- Toolbar -->
+  <div class="clubs-toolbar" role="region" aria-label="Outils de recherche de clubs">
+    <input id="clubs-search" class="clubs-input" type="search" placeholder="Rechercher un club ou une commune…" aria-label="Rechercher un club ou une commune">
+
+    <div class="clubs-filters" role="group" aria-label="Filtres">
+      <button class="filter-pill" data-tag="debutants" aria-pressed="false">Débutants</button>
+      <button class="filter-pill" data-tag="jeunes" aria-pressed="false">Jeunes</button>
+      <button class="filter-pill" data-tag="adultes" aria-pressed="false">Adultes</button>
+      <button class="filter-pill" data-tag="pmr" aria-pressed="false">PMR</button>
+    </div>
+
+    <label class="clubs-sort">
+      <span>Tri</span>
+      <select id="clubs-sort">
+        <option value="name">Nom du club (A→Z)</option>
+        <option value="commune">Commune (A→Z)</option>
+        <option value="distance">Distance (si autorisée)</option>
+      </select>
+    </label>
+
+    <div class="clubs-actions">
+      <button id="clubs-geoloc" class="btn-geo" type="button">Près de moi</button>
+      <button id="clubs-toggle-map" class="btn-map" type="button" aria-expanded="false" aria-controls="clubs-map">Afficher la carte</button>
+    </div>
+  </div>
+
+  <!-- Map (hidden by default) -->
+  <div id="clubs-map" hidden></div>
+
+  <!-- Results list -->
+  <div id="clubs-results" class="clubs-list" role="list" aria-label="Liste des clubs"></div>
+
+  <p class="clubs-help">Une info à corriger ? Écrivez à <a href="mailto:contact@echecs92.com">contact@echecs92.com</a> (objet : Mise à jour fiche club).</p>
+</div>
+
+<!-- Leaflet CSS/JS (CDN) + App script -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="/wp-content/themes/echecs92-child/assets/js/clubs.js" defer></script>
+<!-- /wp:html -->
+
+<!-- wp:template-part {"slug":"footer","tagName":"footer","theme":"echecs92-child"} /-->
