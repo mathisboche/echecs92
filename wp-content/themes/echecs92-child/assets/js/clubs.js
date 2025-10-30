@@ -8,13 +8,11 @@
   const STORAGE_PREFIX = 'echecs92-club-geo:';
   const GEOCODE_BASE_URL = 'https://nominatim.openstreetmap.org/search';
   const GEOCODE_MIN_DELAY = 1200; // ms between requests (respect Nominatim policy)
-  const USER_LOCATION_KEY = 'echecs92-user-location';
   const SEARCH_DELAY = 420;
   const VISIBLE_RESULTS_DEFAULT = 5;
 
   const searchInput = document.getElementById('clubs-search');
   const resultsEl = document.getElementById('clubs-results');
-  const sortSelect = document.getElementById('clubs-sort');
   const locationInput = document.getElementById('clubs-location');
   const locationApplyButton = document.getElementById('clubs-location-apply');
   const locationStatus = document.getElementById('clubs-location-status');
@@ -67,10 +65,11 @@
       return message;
     }
     if (state.filtered.length > state.visibleCount && state.visibleCount > 0) {
+      const proximityMode = Boolean(state.userLocation || state.queryLocation);
       if (state.visibleCount === 1) {
-        return `${message} Le résultat le plus pertinent est affiché en premier.`;
+        return `${message} Le club le plus ${proximityMode ? 'proche' : 'pertinent'} est affiché en premier.`;
       }
-      return `${message} Les ${state.visibleCount} résultats les plus pertinents sont affichés en premier.`;
+      return `${message} Les ${state.visibleCount} clubs les plus ${proximityMode ? 'proches' : 'pertinents'} sont affichés en premier.`;
     }
     return message;
   };
@@ -150,10 +149,8 @@
     filtered: [],
     query: '',
     pendingQuery: searchInput ? searchInput.value.trim() : '',
-    sort: sortSelect ? sortSelect.value || 'relevance' : 'relevance',
     userLocation: null,
-    userLocationLabel: '',
-    lastLocationQuery: '',
+    distanceReference: '',
     queryLocation: null,
     queryLocationToken: null,
     queryLocationCache: new Map(),
@@ -185,18 +182,18 @@
 
   const getDistanceLabel = (club) => {
     let distanceValue = null;
-    let suffix = 'de vous';
+    let referenceLabel = '';
     if (state.userLocation && typeof club.distanceKm === 'number') {
       distanceValue = club.distanceKm;
     } else if (!state.userLocation && state.queryLocation && typeof club.distanceFromQueryKm === 'number') {
       distanceValue = club.distanceFromQueryKm;
-      suffix = `depuis ${state.queryLocation.label}`;
+      referenceLabel = state.queryLocation.label ? ` · depuis ${state.queryLocation.label}` : '';
     }
     if (typeof distanceValue !== 'number') {
       return null;
     }
     const round = distanceValue < 10 ? distanceValue.toFixed(1) : Math.round(distanceValue);
-    return `${round} km ${suffix}`;
+    return `${round} km${referenceLabel}`;
   };
 
   const levenshtein = (a, b) => {
@@ -264,50 +261,6 @@
       return true;
     } catch (err) {
       return false;
-    }
-  };
-
-  const saveUserLocation = (payload) => {
-    try {
-      localStorage.setItem(
-        USER_LOCATION_KEY,
-        JSON.stringify({
-          ...payload,
-          ts: Date.now(),
-        })
-      );
-    } catch (err) {
-      // Ignore storage failures (private browsing, quota, etc.)
-    }
-  };
-
-  const loadStoredLocation = () => {
-    try {
-      const cached = localStorage.getItem(USER_LOCATION_KEY);
-      if (!cached) {
-        return null;
-      }
-      const parsed = JSON.parse(cached);
-      if (
-        !parsed ||
-        typeof parsed.latitude !== 'number' ||
-        typeof parsed.longitude !== 'number' ||
-        Number.isNaN(parsed.latitude) ||
-        Number.isNaN(parsed.longitude)
-      ) {
-        return null;
-      }
-      return parsed;
-    } catch (err) {
-      return null;
-    }
-  };
-
-  const clearStoredLocation = () => {
-    try {
-      localStorage.removeItem(USER_LOCATION_KEY);
-    } catch (err) {
-      // Ignore
     }
   };
 
@@ -558,12 +511,12 @@
       state.clubs.forEach((club) => scoreMap.set(club.id, 0));
     }
 
-    const sorter = getSorter(state.sort);
     orderedClubs.sort((a, b) => {
-      if (state.userLocation && state.sort === 'distance') {
-        const distanceDiff = sorter(a, b);
-        if (distanceDiff !== 0) {
-          return distanceDiff;
+      if (state.userLocation) {
+        const da = typeof a.distanceKm === 'number' ? a.distanceKm : Number.POSITIVE_INFINITY;
+        const db = typeof b.distanceKm === 'number' ? b.distanceKm : Number.POSITIVE_INFINITY;
+        if (da !== db) {
+          return da - db;
         }
       } else if (!state.userLocation && state.queryLocation) {
         const distanceA = a.distanceFromQueryKm;
@@ -577,9 +530,6 @@
         if (diff !== 0) {
           return diff;
         }
-      }
-      if (state.sort !== 'distance') {
-        return sorter(a, b);
       }
       return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
     });
@@ -607,8 +557,10 @@
     const total = state.filtered.length;
     const visibleCount = Math.min(state.visibleCount, total);
     const parts = [];
-    if (state.userLocation && state.userLocationLabel) {
-      parts.push(`distances depuis ${state.userLocationLabel}`);
+    if (state.userLocation && state.distanceReference) {
+      const ref = state.distanceReference;
+      const formattedRef = ref ? `${ref.charAt(0).toUpperCase()}${ref.slice(1)}` : 'votre position';
+      parts.push(`distances depuis ${formattedRef}`);
     } else if (!state.userLocation && state.queryLocation) {
       parts.push(`distances estimées depuis ${state.queryLocation.label}`);
     }
@@ -618,34 +570,6 @@
     const suffix = parts.length ? ` · ${parts.join(' · ')}` : '';
     totalCounter.textContent = `${total} club${total > 1 ? 's' : ''} dans les Hauts-de-Seine${suffix}`;
   }
-
-  const getSorter = (sortKey) => {
-    switch (sortKey) {
-      case 'licenses':
-        return (a, b) => {
-          const totalA = Number.isFinite(a.totalLicenses) ? a.totalLicenses : 0;
-          const totalB = Number.isFinite(b.totalLicenses) ? b.totalLicenses : 0;
-          return totalB - totalA;
-        };
-      case 'distance':
-        return (a, b) => {
-          const da = typeof a.distanceKm === 'number' ? a.distanceKm : Number.POSITIVE_INFINITY;
-          const db = typeof b.distanceKm === 'number' ? b.distanceKm : Number.POSITIVE_INFINITY;
-          return da - db;
-        };
-      case 'name':
-      case 'relevance':
-      default:
-        return (a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
-    }
-  };
-
-  const createMetaChip = (type, text) => {
-    const chip = document.createElement('span');
-    chip.className = `club-chip club-chip--${type}`;
-    chip.textContent = text;
-    return chip;
-  };
 
   const detailBaseUrl = (() => {
     if (!resultsEl) {
@@ -698,28 +622,15 @@
     title.appendChild(link);
     header.appendChild(title);
 
-    const meta = document.createElement('div');
-    meta.className = 'club-row__meta';
-    if (club.commune) {
-      meta.appendChild(createMetaChip('commune', club.commune));
-    }
     const distanceLabel = getDistanceLabel(club);
     if (distanceLabel) {
-      meta.appendChild(createMetaChip('distance', distanceLabel));
-    }
-    if (meta.childElementCount) {
-      header.appendChild(meta);
+      const distanceNode = document.createElement('span');
+      distanceNode.className = 'club-row__distance';
+      distanceNode.textContent = distanceLabel;
+      header.appendChild(distanceNode);
     }
 
     article.appendChild(header);
-
-    const summaryText = club.publics || club.notes || '';
-    if (summaryText) {
-      const summary = document.createElement('p');
-      summary.className = 'club-row__summary';
-      summary.textContent = summaryText;
-      article.appendChild(summary);
-    }
 
     const actions = document.createElement('div');
     actions.className = 'club-row__actions';
@@ -887,22 +798,6 @@
       });
   };
 
-  const handleSortChange = (event) => {
-    const selected = event.target.value;
-    if (selected === 'distance' && !state.userLocation) {
-      setSearchStatus(
-        'Indiquez votre ville ou utilisez la géolocalisation pour activer le tri par distance.',
-        'info'
-      );
-      if (sortSelect) {
-        sortSelect.value = state.sort;
-      }
-      return;
-    }
-    state.sort = selected;
-    applyFilters();
-  };
-
   const formatPlaceLabel = (place) => {
     if (!place) {
       return '';
@@ -989,13 +884,11 @@
       .then((payload) => formatPlaceLabel(payload) || '');
   };
 
-  const applyUserLocation = ({ latitude, longitude, label, query, source }) => {
+  const applyUserLocation = ({ latitude, longitude, label, query }) => {
+    state.userLocation = { latitude, longitude };
+    state.distanceReference = label || query || 'votre position';
     state.queryLocation = null;
     state.queryLocationToken = null;
-    computeDistancesForQueryLocation();
-    state.userLocation = { latitude, longitude };
-    state.userLocationLabel = label || query || 'Votre position';
-    state.lastLocationQuery = query || label || '';
     if (locationInput) {
       if (query) {
         locationInput.value = query;
@@ -1003,22 +896,16 @@
         locationInput.value = label;
       }
     }
-    state.sort = 'distance';
-    if (sortSelect) {
-      sortSelect.value = 'distance';
-    }
     if (optionsDetails && !optionsDetails.open) {
       optionsDetails.open = true;
     }
-    saveUserLocation({
-      latitude,
-      longitude,
-      label: state.userLocationLabel,
-      query: query || '',
-      source,
-    });
-    setLocationStatus(`Distances calculées depuis ${state.userLocationLabel}.`, 'success');
-    refreshDistances();
+    setLocationStatus('Calcul des distances…', 'info');
+    setLoading(true);
+    window.setTimeout(() => {
+      setLocationStatus(`Distances calculées depuis ${state.distanceReference}.`, 'success');
+      refreshDistances(true);
+      setLoading(false);
+    }, 700);
   };
 
   const handleLocationSubmit = () => {
@@ -1036,25 +923,22 @@
       return;
     }
 
-    if (state.userLocation && raw === state.lastLocationQuery) {
-      setLocationStatus(`Distances calculées depuis ${state.userLocationLabel}.`, 'success');
-      return;
-    }
-
     setLocationStatus('Recherche en cours…', 'info');
     if (button) {
       button.disabled = true;
       button.textContent = 'Recherche…';
     }
+    setLoading(true);
     geocodePlace(raw)
       .then(({ latitude, longitude, label }) => {
-        applyUserLocation({ latitude, longitude, label, query: raw, source: 'manual' });
+        applyUserLocation({ latitude, longitude, label, query: raw });
       })
       .catch(() => {
         setLocationStatus(
           'Localisation introuvable. Essayez un autre nom de ville ou code postal.',
           'error'
         );
+        setLoading(false);
       })
       .finally(() => {
         if (button) {
@@ -1066,22 +950,15 @@
 
   const handleLocationClear = () => {
     state.userLocation = null;
-    state.userLocationLabel = '';
-    state.lastLocationQuery = '';
-    clearStoredLocation();
+    state.distanceReference = '';
     state.queryLocation = null;
     state.queryLocationToken = null;
     computeDistancesForQueryLocation();
     if (locationInput) {
       locationInput.value = '';
     }
-    if (state.sort === 'distance') {
-      state.sort = 'relevance';
-      if (sortSelect) {
-        sortSelect.value = 'relevance';
-      }
-    }
     setLocationStatus('Localisation effacée.', 'info');
+    setLoading(false);
     refreshDistances();
   };
 
@@ -1096,6 +973,7 @@
       geolocButton.textContent = 'Recherche…';
     }
     setLocationStatus('Recherche de votre position…', 'info');
+    setLoading(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
@@ -1105,9 +983,8 @@
             applyUserLocation({
               latitude,
               longitude,
-              label: label || 'Votre position',
+              label: label || 'votre position',
               query: '',
-              source: 'geoloc',
             });
           })
           .finally(() => {
@@ -1119,6 +996,7 @@
       },
       () => {
         setLocationStatus('Impossible de récupérer votre position.', 'error');
+        setLoading(false);
         if (geolocButton) {
           geolocButton.disabled = false;
           geolocButton.textContent = geolocButton.dataset.label || 'Autour de moi';
@@ -1150,7 +1028,6 @@
         handleLocationSubmit();
       }
     });
-    sortSelect?.addEventListener('change', handleSortChange);
     moreButton?.addEventListener('click', showAllResults);
 
     document.addEventListener('visibilitychange', () => {
@@ -1229,25 +1106,6 @@
     return club;
   };
 
-  const restorePersistedLocation = () => {
-    const stored = loadStoredLocation();
-    if (!stored) {
-      return false;
-    }
-    const { latitude, longitude } = stored;
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      return false;
-    }
-    applyUserLocation({
-      latitude,
-      longitude,
-      label: stored.label || 'Votre position',
-      query: stored.query || '',
-      source: stored.source || 'stored',
-    });
-    return true;
-  };
-
   const init = () => {
     fetch(DATA_URL, { headers: { Accept: 'application/json' } })
       .then((response) => {
@@ -1258,10 +1116,8 @@
       })
       .then((data) => {
         state.clubs = (Array.isArray(data) ? data : []).map(hydrateClub);
-        if (!restorePersistedLocation()) {
-          const meta = applyFilters({ silentStatus: true });
-          updateSearchStatus(meta);
-        }
+        const meta = applyFilters({ silentStatus: true });
+        updateSearchStatus(meta);
       })
       .catch(() => {
         resultsEl.innerHTML =

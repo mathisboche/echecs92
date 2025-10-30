@@ -1233,21 +1233,18 @@ header.wp-block-template-part.is-elevated .cm-header{
   border-radius:12px;
   background:#f5f7fb;
 }
-.clubs-field,
-.clubs-sort{
+.clubs-field{
   display:flex;
   flex-direction:column;
   gap:6px;
   font-size:14px;
   color:#1f2937;
 }
-.clubs-field span,
-.clubs-sort span{
+.clubs-field span{
   font-weight:600;
   color:#0f172a;
 }
 .clubs-input,
-.clubs-sort select,
 #clubs-location{
   width:100%;
   padding:12px 14px;
@@ -1258,7 +1255,6 @@ header.wp-block-template-part.is-elevated .cm-header{
   background:#ffffff;
 }
 .clubs-input:focus,
-.clubs-sort select:focus,
 #clubs-location:focus{
   outline:2px solid #1d4ed8;
   outline-offset:1px;
@@ -1379,13 +1375,6 @@ header.wp-block-template-part.is-elevated .cm-header{
 .clubs-location__status[data-tone="error"]{
   color:#b91c1c;
 }
-.clubs-sort select{
-  padding-right:36px;
-  background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2367748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;
-  background-position:right 12px center;
-  appearance:none;
-}
 .btn{
   display:inline-flex;
   align-items:center;
@@ -1477,12 +1466,14 @@ header.wp-block-template-part.is-elevated .cm-header{
   padding:16px 18px;
   display:flex;
   flex-direction:column;
-  gap:12px;
+  gap:14px;
 }
 .club-row__header{
   display:flex;
-  flex-direction:column;
-  gap:8px;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
 }
 .club-row__title{
   font-size:18px;
@@ -1499,34 +1490,17 @@ header.wp-block-template-part.is-elevated .cm-header{
   color:#1d4ed8;
   outline:none;
 }
-.club-row__meta{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-}
-.club-chip{
-  display:inline-flex;
-  align-items:center;
-  padding:4px 10px;
-  border-radius:999px;
-  font-size:13px;
-  font-weight:600;
-  background:#e2e8f0;
-  color:#0f172a;
-}
-.club-chip--distance{
-  background:#dbeafe;
-  color:#1d4ed8;
-}
-.club-row__summary{
-  margin:0;
-  font-size:14px;
-  color:#475569;
-}
 .club-row__actions{
   display:flex;
   flex-wrap:wrap;
   gap:12px;
+  align-items:center;
+}
+.club-row__distance{
+  font-size:13px;
+  font-weight:600;
+  color:#1d4ed8;
+  margin-left:auto;
 }
 .club-row__cta{
   font-size:14px;
@@ -1542,11 +1516,8 @@ header.wp-block-template-part.is-elevated .cm-header{
 @media (min-width:720px){
   .club-row{
     flex-direction:row;
-    justify-content:space-between;
     align-items:center;
-  }
-  .club-row__header{
-    max-width:70%;
+    justify-content:space-between;
   }
   .club-row__actions{
     align-self:flex-start;
@@ -1596,6 +1567,20 @@ header.wp-block-template-part.is-elevated .cm-header{
 .club-detail__back:focus-visible{
   color:#1d4ed8;
   outline:none;
+}
+.club-chip{
+  display:inline-flex;
+  align-items:center;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:13px;
+  font-weight:600;
+  background:#e2e8f0;
+  color:#0f172a;
+}
+.club-chip--distance{
+  background:#dbeafe;
+  color:#1d4ed8;
 }
 .club-sheet{
   display:flex;
