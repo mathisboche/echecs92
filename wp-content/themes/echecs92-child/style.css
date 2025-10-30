@@ -1637,6 +1637,9 @@ header.wp-block-template-part.is-elevated .cm-header{
   font-size:14px;
   color:#475569;
 }
+.legal .clubs-help{
+  margin-top:24px;
+}
 .clubs-help a{
   color:#1d4ed8;
   text-decoration:none;
