@@ -921,6 +921,9 @@
       state.pendingQuery = searchInput.value;
     }
     state.query = (state.pendingQuery || '').trim();
+    if (state.userLocation) {
+      handleLocationClear({ silent: true });
+    }
     window.clearTimeout(searchTimer);
     setSearchStatus('Recherche en cours…', 'info');
     setLoading(true, 'search');
@@ -1035,6 +1038,12 @@
     state.userLocation = { latitude, longitude };
     const referenceSource = (label || query || 'votre position') ?? 'votre position';
     state.distanceReference = referenceSource.trim() || 'votre position';
+    state.query = '';
+    state.pendingQuery = '';
+    if (searchInput) {
+      searchInput.value = '';
+    }
+    setSearchStatus('Tri des clubs par distance…', 'info');
     if (locationInput) {
       if (query) {
         locationInput.value = query;
@@ -1095,13 +1104,24 @@
       });
   };
 
-  const handleLocationClear = () => {
+  const handleLocationClear = (eventOrOptions) => {
+    let options = {};
+    if (eventOrOptions && typeof eventOrOptions.preventDefault === 'function') {
+      eventOrOptions.preventDefault();
+    } else if (eventOrOptions && typeof eventOrOptions === 'object') {
+      options = eventOrOptions;
+    }
+    const silent = Boolean(options.silent);
     state.userLocation = null;
     state.distanceReference = '';
     if (locationInput) {
       locationInput.value = '';
     }
-    setLocationStatus('Localisation effacée.', 'info');
+    if (silent) {
+      setLocationStatus('', 'info');
+    } else {
+      setLocationStatus('Localisation effacée.', 'info');
+    }
     endDistanceLoading(true);
     setLoading(false, 'distance');
     setLoading(false, 'geocode');
