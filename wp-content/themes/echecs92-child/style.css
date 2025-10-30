@@ -1513,6 +1513,7 @@ header.wp-block-template-part.is-elevated .cm-header{
   transition:border-color .2s ease, background-color .2s ease;
   cursor:pointer;
   width:100%;
+  box-sizing:border-box;
 }
 .club-row__card:hover,
 .club-row__card:focus-visible{
@@ -1548,6 +1549,10 @@ header.wp-block-template-part.is-elevated .cm-header{
   padding:4px 14px;
   white-space:nowrap;
   flex-shrink:0;
+  max-width:100%;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 .club-row__footer{
   display:flex;
@@ -1586,6 +1591,7 @@ header.wp-block-template-part.is-elevated .cm-header{
     align-items:center;
     justify-content:space-between;
     gap:16px;
+    flex-wrap:wrap;
   }
   .club-row__distance{
     align-self:center;
