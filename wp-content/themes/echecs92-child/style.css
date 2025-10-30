@@ -1494,7 +1494,6 @@ header.wp-block-template-part.is-elevated .cm-header{
   display:inline-flex;
   padding:0;
   margin-top:4px;
-  margin-bottom:16px;
 }
 .clubs-more-button:hover,
 .clubs-more-button:focus-visible{
@@ -1634,7 +1633,7 @@ header.wp-block-template-part.is-elevated .cm-header{
   text-align:center;
 }
 .clubs-help{
-  margin-top:48px;
+  margin-top:24px;
   font-size:14px;
   color:#475569;
 }
