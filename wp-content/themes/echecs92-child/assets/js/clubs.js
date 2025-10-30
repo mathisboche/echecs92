@@ -366,6 +366,12 @@
     const toggle = article.querySelector('.club-card__toggle');
     const body = article.querySelector('.club-card__body');
     if (!toggle || !body) {
+      if (!options.silent) {
+        article.classList.add('club-card--highlight');
+        window.setTimeout(() => {
+          article.classList.remove('club-card--highlight');
+        }, 900);
+      }
       return;
     }
     const { silent = false } = options;
@@ -373,6 +379,12 @@
     const nextState = typeof expand === 'boolean' ? expand : !currentlyExpanded;
     toggle.setAttribute('aria-expanded', nextState ? 'true' : 'false');
     body.hidden = !nextState;
+    const labelNode = toggle.querySelector('.club-card__toggle-label');
+    if (labelNode) {
+      const closed = toggle.dataset.labelClosed || 'Voir les détails';
+      const open = toggle.dataset.labelOpen || 'Masquer les détails';
+      labelNode.textContent = nextState ? open : closed;
+    }
     if (nextState && !silent) {
       article.classList.add('club-card--highlight');
       window.setTimeout(() => {
@@ -381,11 +393,121 @@
     }
   };
 
+  const createMetaChip = (type, text) => {
+    const chip = document.createElement('span');
+    chip.className = `club-chip club-chip--${type}`;
+    chip.textContent = text;
+    return chip;
+  };
+
+  const createContactLink = (label, href, textContent) => {
+    const link = document.createElement('a');
+    link.className = 'club-card__contact';
+    link.href = href;
+    link.textContent = textContent || label;
+    link.title = label;
+    link.setAttribute('aria-label', `${label}: ${link.textContent}`);
+    link.rel = 'noopener';
+    return link;
+  };
+
+  const createDetailSection = (title) => {
+    const container = document.createElement('section');
+    container.className = 'club-card__section';
+    const heading = document.createElement('h3');
+    heading.textContent = title;
+    container.appendChild(heading);
+
+    const list = document.createElement('ul');
+    list.className = 'club-card__details';
+    container.appendChild(list);
+
+    return { container, list };
+  };
+
   const createClubCard = (club) => {
     const article = document.createElement('article');
     article.className = 'club-card';
     article.dataset.clubId = club.id;
     article.setAttribute('role', 'listitem');
+
+    const summary = document.createElement('div');
+    summary.className = 'club-card__summary';
+
+    const title = document.createElement('h2');
+    title.textContent = club.name;
+    summary.appendChild(title);
+
+    const meta = document.createElement('div');
+    meta.className = 'club-card__meta';
+    if (club.commune) {
+      meta.appendChild(createMetaChip('commune', club.commune));
+    }
+    const distanceLabel = getDistanceLabel(club);
+    if (distanceLabel) {
+      meta.appendChild(createMetaChip('distance', distanceLabel));
+    }
+    if (Number.isFinite(club.totalLicenses) && club.totalLicenses > 0) {
+      const licenseLabel = `${club.totalLicenses} licencié${
+        club.totalLicenses > 1 ? 's' : ''
+      }`;
+      meta.appendChild(createMetaChip('licenses', licenseLabel));
+    }
+    if (meta.childElementCount) {
+      summary.appendChild(meta);
+    }
+
+    if (club.address) {
+      const address = document.createElement('p');
+      address.className = 'club-card__address';
+      address.textContent = club.address;
+      summary.appendChild(address);
+    }
+
+    const contacts = document.createElement('div');
+    contacts.className = 'club-card__contacts';
+    if (club.email) {
+      contacts.appendChild(createContactLink('Email', `mailto:${club.email}`, club.email));
+    }
+    if (club.phone) {
+      const telValue = club.phone.replace(/[^\d+]/g, '');
+      const phoneLabel = formatPhone(club.phone) || club.phone;
+      contacts.appendChild(createContactLink('Téléphone', `tel:${telValue || club.phone}`, phoneLabel));
+    }
+    if (contacts.childElementCount) {
+      summary.appendChild(contacts);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'club-card__actions';
+    if (club.site) {
+      const siteLink = document.createElement('a');
+      siteLink.className = 'btn';
+      siteLink.href = club.site;
+      siteLink.target = '_blank';
+      siteLink.rel = 'noopener';
+      siteLink.textContent = 'Site du club';
+      actions.appendChild(siteLink);
+    }
+    if (mapContainer) {
+      const mapAction = document.createElement('button');
+      mapAction.type = 'button';
+      mapAction.className = 'btn btn-secondary';
+      mapAction.textContent = 'Voir sur la carte';
+      mapAction.addEventListener('click', (event) => {
+        event.stopPropagation();
+        focusOnMap(club);
+      });
+      actions.appendChild(mapAction);
+    }
+    if (actions.childElementCount) {
+      summary.appendChild(actions);
+    }
+
+    article.appendChild(summary);
+
+    const detailsWrapper = document.createElement('div');
+    detailsWrapper.className = 'club-card__details-wrapper';
 
     const toggle = document.createElement('button');
     toggle.type = 'button';
@@ -393,74 +515,53 @@
     toggle.setAttribute('aria-expanded', 'false');
     const bodyId = `club-details-${club.id}`;
     toggle.setAttribute('aria-controls', bodyId);
+    toggle.dataset.labelClosed = 'Voir les détails';
+    toggle.dataset.labelOpen = 'Masquer les détails';
 
-    const header = document.createElement('div');
-    header.className = 'club-card__header';
-    const title = document.createElement('h2');
-    title.textContent = club.name;
-    header.appendChild(title);
+    const toggleLabel = document.createElement('span');
+    toggleLabel.className = 'club-card__toggle-label';
+    toggleLabel.textContent = toggle.dataset.labelClosed;
+    toggle.appendChild(toggleLabel);
 
-    const metaParts = [];
-    if (club.commune) {
-      metaParts.push(club.commune);
-    }
-    const distanceLabel = getDistanceLabel(club);
-    if (distanceLabel) {
-      metaParts.push(distanceLabel);
-    }
-    if (metaParts.length) {
-      const meta = document.createElement('p');
-      meta.className = 'club-card__meta';
-      meta.textContent = metaParts.join(' · ');
-      header.appendChild(meta);
-    }
-
-    if (Number.isFinite(club.totalLicenses) && club.totalLicenses > 0) {
-      const stats = document.createElement('span');
-      stats.className = 'club-card__stats';
-      stats.textContent = `${club.totalLicenses} licencié${
-        club.totalLicenses > 1 ? 's' : ''
-      }`;
-      header.appendChild(stats);
-    }
-
-    toggle.appendChild(header);
-
-    const icon = document.createElement('span');
-    icon.className = 'club-card__icon';
-    icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = '▾';
-    toggle.appendChild(icon);
+    const toggleIcon = document.createElement('span');
+    toggleIcon.className = 'club-card__toggle-icon';
+    toggleIcon.setAttribute('aria-hidden', 'true');
+    toggleIcon.textContent = '▾';
+    toggle.appendChild(toggleIcon);
 
     toggle.addEventListener('click', () => {
       setCardExpansion(article);
     });
 
-    article.appendChild(toggle);
+    detailsWrapper.appendChild(toggle);
 
     const body = document.createElement('div');
     body.className = 'club-card__body';
     body.hidden = true;
     body.id = bodyId;
 
-    if (club.address) {
-      const address = document.createElement('p');
-      address.className = 'club-card__address';
-      address.textContent = club.address;
-      body.appendChild(address);
-    }
+    const sections = {
+      activites: createDetailSection('Activités'),
+      organisation: createDetailSection('Organisation'),
+      ressources: createDetailSection('Ressources'),
+    };
 
-    const infoList = document.createElement('ul');
-    infoList.className = 'club-card__details';
-
-    const addItem = (term, value, options = {}) => {
+    const addDetail = (sectionKey, term, value, options = {}) => {
       if (!value) {
         return;
       }
+      const section = sections[sectionKey];
+      if (!section) {
+        return;
+      }
       const item = document.createElement('li');
+      item.className = 'club-card__detail-item';
+
       const label = document.createElement('span');
+      label.className = 'club-card__detail-label';
       label.textContent = term;
       item.appendChild(label);
+
       if (options.isLink) {
         const link = document.createElement('a');
         link.href = value;
@@ -482,18 +583,19 @@
         item.appendChild(link);
       } else {
         const text = document.createElement('div');
+        text.className = 'club-card__detail-value';
         text.textContent = value;
         item.appendChild(text);
       }
-      infoList.appendChild(item);
+
+      section.list.appendChild(item);
     };
 
-    addItem('Président·e', club.president);
-    addItem('Email', club.email, { isMail: true });
-    addItem('Téléphone', club.phone, { isPhone: true });
-    addItem('Publics', club.publics);
-    addItem('Horaires', club.hours);
-    addItem('Tarifs', club.tarifs);
+    addDetail('activites', 'Publics accueillis', club.publics);
+    addDetail('activites', 'Horaires', club.hours);
+    addDetail('activites', 'Tarifs', club.tarifs);
+
+    addDetail('organisation', 'Président·e', club.president);
     if (club.licenses && (club.licenses.A || club.licenses.B)) {
       const licenseInfo = [];
       if (club.licenses.A) {
@@ -502,45 +604,24 @@
       if (club.licenses.B) {
         licenseInfo.push(`Licence B : ${club.licenses.B}`);
       }
-      addItem('Licences', licenseInfo.join(' · '));
-    }
-    addItem('Site web', club.site, { isLink: true, label: 'Ouvrir le site' });
-    addItem('Fiche FFE', club.fiche_ffe, { isLink: true, label: 'Voir la fiche FFE' });
-
-    if (infoList.childElementCount) {
-      body.appendChild(infoList);
+      addDetail('organisation', 'Répartition licences', licenseInfo.join(' · '));
     }
 
-    const actions = document.createElement('div');
-    actions.className = 'club-card__actions';
+    addDetail('ressources', 'Fiche FFE', club.fiche_ffe, {
+      isLink: true,
+      label: 'Consulter la fiche FFE',
+    });
 
-    if (club.site) {
-      const siteLink = document.createElement('a');
-      siteLink.className = 'btn';
-      siteLink.href = club.site;
-      siteLink.target = '_blank';
-      siteLink.rel = 'noopener';
-      siteLink.textContent = 'Site du club';
-      actions.appendChild(siteLink);
+    Object.values(sections).forEach((section) => {
+      if (section.list.childElementCount) {
+        body.appendChild(section.container);
+      }
+    });
+
+    if (body.childElementCount) {
+      detailsWrapper.appendChild(body);
+      article.appendChild(detailsWrapper);
     }
-
-    if (mapContainer) {
-      const mapAction = document.createElement('button');
-      mapAction.type = 'button';
-      mapAction.className = 'btn btn-secondary';
-      mapAction.textContent = 'Voir sur la carte';
-      mapAction.addEventListener('click', (event) => {
-        event.stopPropagation();
-        focusOnMap(club);
-      });
-      actions.appendChild(mapAction);
-    }
-
-    if (actions.childElementCount) {
-      body.appendChild(actions);
-    }
-
-    article.appendChild(body);
 
     return article;
   };
@@ -660,7 +741,7 @@
     }
     const raw = locationInput.value.trim();
     const button = locationButton;
-    const baseLabel = button?.dataset.label || button?.textContent || 'Définir';
+    const baseLabel = button?.dataset.label || button?.textContent || 'Valider';
     if (button) {
       button.dataset.label = baseLabel;
     }
@@ -677,7 +758,7 @@
       setLocationStatus('Localisation effacée.', 'info');
       if (button) {
         button.disabled = false;
-        button.textContent = button.dataset.label || 'Définir';
+        button.textContent = button.dataset.label || 'Valider';
       }
       refreshDistances();
       return;
@@ -687,7 +768,7 @@
       setLocationStatus(`Distances calculées depuis ${state.userLocationLabel}.`, 'success');
       if (button) {
         button.disabled = false;
-        button.textContent = button.dataset.label || 'Définir';
+        button.textContent = button.dataset.label || 'Valider';
       }
       return;
     }
@@ -705,7 +786,7 @@
         setLocationStatus(`Distances calculées depuis ${label}.`, 'success');
         if (button) {
           button.disabled = false;
-          button.textContent = button.dataset.label || 'Définir';
+          button.textContent = button.dataset.label || 'Valider';
         }
         refreshDistances();
       })
