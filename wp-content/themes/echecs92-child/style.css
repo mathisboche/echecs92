@@ -1492,7 +1492,7 @@ header.wp-block-template-part.is-elevated .cm-header{
   color:#0f172a;
   text-decoration:underline;
   display:inline-flex;
-  padding:0 26px;
+  padding:0;
   margin-top:4px;
   margin-bottom:16px;
 }
@@ -1608,9 +1608,6 @@ header.wp-block-template-part.is-elevated .cm-header{
   }
   .club-row__name{
     font-size:21px;
-  }
-  .clubs-more-button{
-    padding:0 28px;
   }
 }
 @media (prefers-reduced-motion:reduce){
