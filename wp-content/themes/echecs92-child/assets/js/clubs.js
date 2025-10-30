@@ -191,11 +191,15 @@
     if (!state.distanceLoading) {
       return;
     }
-    if (!force && state.pendingDistanceClubIds.size > 0) {
+    if (
+      !force &&
+      (state.pendingDistanceClubIds.size > 0 || state.awaitingDistanceRefresh || state.distanceRefreshScheduled)
+    ) {
       return;
     }
     state.distanceLoading = false;
     state.pendingDistanceClubIds.clear();
+    state.awaitingDistanceRefresh = false;
     window.clearTimeout(state.distanceReleaseTimer);
     state.distanceReleaseTimer = null;
     window.clearTimeout(state.distanceFallbackTimer);
@@ -236,7 +240,12 @@
   };
 
   const ensureDistanceLoadingProgress = () => {
-    if (state.distanceLoading && state.pendingDistanceClubIds.size === 0) {
+    if (
+      state.distanceLoading &&
+      state.pendingDistanceClubIds.size === 0 &&
+      !state.awaitingDistanceRefresh &&
+      !state.distanceRefreshScheduled
+    ) {
       scheduleDistanceRelease(180);
     }
   };
@@ -261,6 +270,7 @@
     distanceRefreshScheduled: false,
     distanceRefreshOptions: null,
     distanceLoadingCallback: null,
+    awaitingDistanceRefresh: false,
   };
 
   const normalise = (value) =>
@@ -563,6 +573,7 @@
       ...(state.distanceRefreshOptions || {}),
       ...mergedOptions,
     };
+    state.awaitingDistanceRefresh = true;
     if (state.distanceRefreshScheduled) {
       return;
     }
@@ -571,7 +582,14 @@
       state.distanceRefreshScheduled = false;
       const opts = state.distanceRefreshOptions || {};
       state.distanceRefreshOptions = null;
-      refreshDistances(opts);
+      try {
+        refreshDistances(opts);
+      } finally {
+        if (!state.distanceRefreshScheduled) {
+          state.awaitingDistanceRefresh = false;
+          ensureDistanceLoadingProgress();
+        }
+      }
     });
   }
 
