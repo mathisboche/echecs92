@@ -1253,6 +1253,7 @@ header.wp-block-template-part.is-elevated .cm-header{
   font-size:15px;
   line-height:1.4;
   background:#ffffff;
+  box-sizing:border-box;
 }
 .clubs-input:focus,
 #clubs-location:focus{
