@@ -1,7 +1,7 @@
 /**
  * Clubs directory interactions for echecs92.fr.
- * Provides client-side search, filtering, sorting, map display (Leaflet)
- * and optional geolocation to surface nearby clubs.
+ * Provides client-side search, sorting, map display (Leaflet)
+ * and distance estimates based on a user-supplied city or postcode.
  */
 (function () {
   const DATA_URL = '/wp-content/themes/echecs92-child/assets/data/clubs.json';
@@ -13,9 +13,10 @@
   const searchInput = document.getElementById('clubs-search');
   const resultsEl = document.getElementById('clubs-results');
   const sortSelect = document.getElementById('clubs-sort');
-  const geoButton = document.getElementById('clubs-geoloc');
+  const locationInput = document.getElementById('clubs-location');
+  const locationButton = document.getElementById('clubs-location-apply');
+  const locationStatus = document.getElementById('clubs-location-status');
   const toggleMapButton = document.getElementById('clubs-toggle-map');
-  const filterButtons = Array.from(document.querySelectorAll('.filter-pill'));
   const mapContainer = document.getElementById('clubs-map');
   const totalCounter = document.createElement('p');
 
@@ -27,13 +28,26 @@
   totalCounter.setAttribute('aria-live', 'polite');
   resultsEl.before(totalCounter);
 
+  const setLocationStatus = (message, tone = 'info') => {
+    if (!locationStatus) {
+      return;
+    }
+    locationStatus.textContent = message || '';
+    if (message) {
+      locationStatus.dataset.tone = tone;
+    } else {
+      delete locationStatus.dataset.tone;
+    }
+  };
+
   const state = {
     clubs: [],
     filtered: [],
-    activeTags: new Set(),
     query: '',
     sort: 'name',
     userLocation: null,
+    userLocationLabel: '',
+    lastLocationQuery: '',
     map: null,
     markers: new Map(),
     geocodingQueue: [],
@@ -260,7 +274,7 @@
       state.clubs.forEach((club) => {
         delete club.distanceKm;
       });
-      renderResults();
+      applyFilters();
       return;
     }
 
@@ -273,22 +287,17 @@
       }
       club.distanceKm = haversineKm(latitude, longitude, club.lat, club.lng);
     });
-    applyFilters(); // ensures sorting updates with distances
+    applyFilters();
   };
 
   const applyFilters = () => {
     const query = normalise(state.query);
-    const activeTags = state.activeTags;
 
     const filtered = state.clubs.filter((club) => {
-      if (activeTags.size && !club.tags.some((tag) => activeTags.has(tag))) {
-        return false;
-      }
       if (!query) {
         return true;
       }
-      const haystack = club._search;
-      return haystack.includes(query);
+      return club._search.includes(query);
     });
 
     const sorter = getSorter(state.sort);
@@ -301,8 +310,12 @@
 
   const getSorter = (sortKey) => {
     switch (sortKey) {
-      case 'commune':
-        return (a, b) => a.commune.localeCompare(b.commune, 'fr', { sensitivity: 'base' });
+      case 'licenses':
+        return (a, b) => {
+          const totalA = Number.isFinite(a.totalLicenses) ? a.totalLicenses : 0;
+          const totalB = Number.isFinite(b.totalLicenses) ? b.totalLicenses : 0;
+          return totalB - totalA;
+        };
       case 'distance':
         return (a, b) => {
           const da = typeof a.distanceKm === 'number' ? a.distanceKm : Number.POSITIVE_INFINITY;
@@ -316,9 +329,12 @@
   };
 
   const renderResults = () => {
+    const suffix = state.userLocationLabel
+      ? ` · distances depuis ${state.userLocationLabel}`
+      : '';
     totalCounter.textContent = `${state.filtered.length} club${
       state.filtered.length > 1 ? 's' : ''
-    } dans les Hauts-de-Seine`;
+    } dans les Hauts-de-Seine${suffix}`;
 
     if (!state.filtered.length) {
       resultsEl.innerHTML =
@@ -326,13 +342,43 @@
       return;
     }
 
+    const expandedIds = new Set(
+      Array.from(resultsEl.querySelectorAll('.club-card__toggle[aria-expanded="true"]'))
+        .map((toggle) => toggle.closest('.club-card'))
+        .filter(Boolean)
+        .map((card) => card.dataset.clubId)
+    );
+
     const fragment = document.createDocumentFragment();
     state.filtered.forEach((club) => {
-      fragment.appendChild(createClubCard(club));
+      const card = createClubCard(club);
+      if (expandedIds.has(club.id)) {
+        setCardExpansion(card, true, { silent: true });
+      }
+      fragment.appendChild(card);
     });
 
     resultsEl.innerHTML = '';
     resultsEl.appendChild(fragment);
+  };
+
+  const setCardExpansion = (article, expand, options = {}) => {
+    const toggle = article.querySelector('.club-card__toggle');
+    const body = article.querySelector('.club-card__body');
+    if (!toggle || !body) {
+      return;
+    }
+    const { silent = false } = options;
+    const currentlyExpanded = toggle.getAttribute('aria-expanded') === 'true';
+    const nextState = typeof expand === 'boolean' ? expand : !currentlyExpanded;
+    toggle.setAttribute('aria-expanded', nextState ? 'true' : 'false');
+    body.hidden = !nextState;
+    if (nextState && !silent) {
+      article.classList.add('club-card--highlight');
+      window.setTimeout(() => {
+        article.classList.remove('club-card--highlight');
+      }, 900);
+    }
   };
 
   const createClubCard = (club) => {
@@ -341,102 +387,110 @@
     article.dataset.clubId = club.id;
     article.setAttribute('role', 'listitem');
 
-    const header = document.createElement('header');
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'club-card__toggle';
+    toggle.setAttribute('aria-expanded', 'false');
+    const bodyId = `club-details-${club.id}`;
+    toggle.setAttribute('aria-controls', bodyId);
+
+    const header = document.createElement('div');
     header.className = 'club-card__header';
     const title = document.createElement('h2');
     title.textContent = club.name;
     header.appendChild(title);
 
-    const meta = document.createElement('p');
-    meta.className = 'club-card__meta';
-    const parts = [];
+    const metaParts = [];
     if (club.commune) {
-      parts.push(club.commune);
+      metaParts.push(club.commune);
     }
     const distanceLabel = getDistanceLabel(club);
     if (distanceLabel) {
-      parts.push(distanceLabel);
+      metaParts.push(distanceLabel);
     }
-    meta.textContent = parts.join(' · ');
-    header.appendChild(meta);
-
-    if (club.tags && club.tags.length) {
-      const tags = document.createElement('ul');
-      tags.className = 'club-card__tags';
-      club.tags.forEach((tag) => {
-        const badge = document.createElement('li');
-        badge.dataset.tag = tag;
-        switch (tag) {
-          case 'debutants':
-            badge.textContent = 'Débutants bienvenus';
-            break;
-          case 'jeunes':
-            badge.textContent = 'Jeunes';
-            break;
-          case 'adultes':
-            badge.textContent = 'Adultes';
-            break;
-          case 'pmr':
-            badge.textContent = 'Accessible PMR';
-            break;
-          default:
-            badge.textContent = tag;
-        }
-        tags.appendChild(badge);
-      });
-      header.appendChild(tags);
+    if (metaParts.length) {
+      const meta = document.createElement('p');
+      meta.className = 'club-card__meta';
+      meta.textContent = metaParts.join(' · ');
+      header.appendChild(meta);
     }
 
-    article.appendChild(header);
+    if (Number.isFinite(club.totalLicenses) && club.totalLicenses > 0) {
+      const stats = document.createElement('span');
+      stats.className = 'club-card__stats';
+      stats.textContent = `${club.totalLicenses} licencié${
+        club.totalLicenses > 1 ? 's' : ''
+      }`;
+      header.appendChild(stats);
+    }
+
+    toggle.appendChild(header);
+
+    const icon = document.createElement('span');
+    icon.className = 'club-card__icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = '▾';
+    toggle.appendChild(icon);
+
+    toggle.addEventListener('click', () => {
+      setCardExpansion(article);
+    });
+
+    article.appendChild(toggle);
+
+    const body = document.createElement('div');
+    body.className = 'club-card__body';
+    body.hidden = true;
+    body.id = bodyId;
 
     if (club.address) {
       const address = document.createElement('p');
       address.className = 'club-card__address';
       address.textContent = club.address;
-      article.appendChild(address);
+      body.appendChild(address);
     }
 
-    const infoList = document.createElement('dl');
+    const infoList = document.createElement('ul');
     infoList.className = 'club-card__details';
 
     const addItem = (term, value, options = {}) => {
       if (!value) {
         return;
       }
-      const dt = document.createElement('dt');
-      dt.textContent = term;
-      const dd = document.createElement('dd');
+      const item = document.createElement('li');
+      const label = document.createElement('span');
+      label.textContent = term;
+      item.appendChild(label);
       if (options.isLink) {
         const link = document.createElement('a');
         link.href = value;
         link.rel = 'noopener';
         link.target = '_blank';
         link.textContent = options.label || value;
-        dd.appendChild(link);
+        item.appendChild(link);
       } else if (options.isMail) {
         const link = document.createElement('a');
         link.href = `mailto:${value}`;
         link.textContent = value;
-        dd.appendChild(link);
+        item.appendChild(link);
       } else if (options.isPhone) {
         const formatted = formatPhone(value) || value;
         const cleaned = value.replace(/[^\d+]/g, '');
         const link = document.createElement('a');
         link.href = `tel:${cleaned || value}`;
         link.textContent = formatted;
-        dd.appendChild(link);
+        item.appendChild(link);
       } else {
-        dd.textContent = value;
+        const text = document.createElement('div');
+        text.textContent = value;
+        item.appendChild(text);
       }
-      infoList.appendChild(dt);
-      infoList.appendChild(dd);
+      infoList.appendChild(item);
     };
 
     addItem('Président·e', club.president);
     addItem('Email', club.email, { isMail: true });
     addItem('Téléphone', club.phone, { isPhone: true });
-    addItem('Site web', club.site, { isLink: true, label: 'Voir le site' });
-    addItem('Fiche FFE', club.fiche_ffe, { isLink: true, label: 'Voir la fiche' });
     addItem('Publics', club.publics);
     addItem('Horaires', club.hours);
     addItem('Tarifs', club.tarifs);
@@ -448,11 +502,14 @@
       if (club.licenses.B) {
         licenseInfo.push(`Licence B : ${club.licenses.B}`);
       }
-      addItem('Licenciés', licenseInfo.join(' · '));
+      addItem('Licences', licenseInfo.join(' · '));
     }
-    addItem('Notes', club.notes);
+    addItem('Site web', club.site, { isLink: true, label: 'Ouvrir le site' });
+    addItem('Fiche FFE', club.fiche_ffe, { isLink: true, label: 'Voir la fiche FFE' });
 
-    article.appendChild(infoList);
+    if (infoList.childElementCount) {
+      body.appendChild(infoList);
+    }
 
     const actions = document.createElement('div');
     actions.className = 'club-card__actions';
@@ -467,14 +524,23 @@
       actions.appendChild(siteLink);
     }
 
-    const mapAction = document.createElement('button');
-    mapAction.type = 'button';
-    mapAction.className = 'btn btn-secondary';
-    mapAction.textContent = 'Voir sur la carte';
-    mapAction.addEventListener('click', () => focusOnMap(club));
-    actions.appendChild(mapAction);
+    if (mapContainer) {
+      const mapAction = document.createElement('button');
+      mapAction.type = 'button';
+      mapAction.className = 'btn btn-secondary';
+      mapAction.textContent = 'Voir sur la carte';
+      mapAction.addEventListener('click', (event) => {
+        event.stopPropagation();
+        focusOnMap(club);
+      });
+      actions.appendChild(mapAction);
+    }
 
-    article.appendChild(actions);
+    if (actions.childElementCount) {
+      body.appendChild(actions);
+    }
+
+    article.appendChild(body);
 
     return article;
   };
@@ -484,11 +550,8 @@
     if (!target) {
       return;
     }
-    target.classList.add('club-card--highlight');
+    setCardExpansion(target, true);
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    window.setTimeout(() => {
-      target.classList.remove('club-card--highlight');
-    }, 1500);
   };
 
   const focusOnMap = (club) => {
@@ -514,66 +577,158 @@
     applyFilters();
   };
 
-  const handleFilterClick = (event) => {
-    const btn = event.currentTarget;
-    const tag = btn.dataset.tag;
-    if (!tag) {
+  const handleSortChange = (event) => {
+    const selected = event.target.value;
+    if (selected === 'distance' && !state.userLocation) {
+      setLocationStatus('Indiquez votre ville pour trier par distance.', 'info');
+      state.sort = 'name';
+      if (sortSelect) {
+        sortSelect.value = 'name';
+      }
+      applyFilters();
       return;
     }
-    if (state.activeTags.has(tag)) {
-      state.activeTags.delete(tag);
-      btn.setAttribute('aria-pressed', 'false');
-    } else {
-      state.activeTags.add(tag);
-      btn.setAttribute('aria-pressed', 'true');
-    }
+    state.sort = selected;
     applyFilters();
   };
 
-  const handleSortChange = (event) => {
-    state.sort = event.target.value;
-    if (state.sort === 'distance' && !state.userLocation) {
-      requestGeolocation();
-    } else {
-      applyFilters();
+  const formatPlaceLabel = (place) => {
+    if (!place) {
+      return '';
     }
+    const { address = {}, display_name: displayName = '' } = place;
+    const locality =
+      address.city ||
+      address.town ||
+      address.village ||
+      address.municipality ||
+      address.suburb ||
+      address.hamlet ||
+      '';
+    const postalCode = address.postcode;
+    const department = address.county || address.state || '';
+    const parts = [locality, postalCode, department].filter(Boolean);
+    if (!parts.length && displayName) {
+      const [first] = displayName.split(',');
+      parts.push(first.trim());
+    }
+    return parts.join(' · ');
   };
 
-  const requestGeolocation = () => {
-    if (!navigator.geolocation) {
-      geoButton.disabled = true;
-      geoButton.textContent = 'Géolocalisation indisponible';
+  const geocodePlace = (query) => {
+    const params = new URLSearchParams({
+      format: 'json',
+      addressdetails: '1',
+      limit: '1',
+      countrycodes: 'fr',
+      q: query,
+    });
+
+    return fetch(`${GEOCODE_BASE_URL}?${params.toString()}`, {
+      headers: {
+        Accept: 'application/json',
+        'Accept-Language': 'fr',
+      },
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((payload) => {
+        if (!Array.isArray(payload) || !payload.length) {
+          throw new Error('NO_RESULT');
+        }
+        const result = payload[0];
+        const latitude = Number.parseFloat(result.lat);
+        const longitude = Number.parseFloat(result.lon);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+          throw new Error('INVALID_COORDS');
+        }
+        return {
+          latitude,
+          longitude,
+          label: formatPlaceLabel(result) || query,
+        };
+      });
+  };
+
+  const handleLocationSubmit = () => {
+    if (!locationInput) {
+      return;
+    }
+    const raw = locationInput.value.trim();
+    const button = locationButton;
+    const baseLabel = button?.dataset.label || button?.textContent || 'Définir';
+    if (button) {
+      button.dataset.label = baseLabel;
+    }
+    if (!raw) {
+      state.userLocation = null;
+      state.userLocationLabel = '';
+      state.lastLocationQuery = '';
+      if (state.sort === 'distance') {
+        state.sort = 'name';
+        if (sortSelect) {
+          sortSelect.value = 'name';
+        }
+      }
+      setLocationStatus('Localisation effacée.', 'info');
+      if (button) {
+        button.disabled = false;
+        button.textContent = button.dataset.label || 'Définir';
+      }
+      refreshDistances();
       return;
     }
 
-    geoButton.disabled = true;
-    geoButton.textContent = 'Recherche…';
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        state.userLocation = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
-        geoButton.textContent = 'Près de moi';
-        geoButton.disabled = false;
+    if (state.userLocation && raw === state.lastLocationQuery) {
+      setLocationStatus(`Distances calculées depuis ${state.userLocationLabel}.`, 'success');
+      if (button) {
+        button.disabled = false;
+        button.textContent = button.dataset.label || 'Définir';
+      }
+      return;
+    }
+
+    setLocationStatus('Recherche en cours…', 'info');
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Recherche…';
+    }
+    geocodePlace(raw)
+      .then(({ latitude, longitude, label }) => {
+        state.userLocation = { latitude, longitude };
+        state.userLocationLabel = label;
+        state.lastLocationQuery = raw;
+        setLocationStatus(`Distances calculées depuis ${label}.`, 'success');
+        if (button) {
+          button.disabled = false;
+          button.textContent = button.dataset.label || 'Définir';
+        }
         refreshDistances();
-      },
-      () => {
-        geoButton.textContent = 'Autoriser la localisation';
-        geoButton.disabled = false;
+      })
+      .catch(() => {
+        state.userLocation = null;
+        state.userLocationLabel = '';
+        state.lastLocationQuery = '';
+        setLocationStatus(
+          'Localisation introuvable. Essayez un autre nom de ville ou code postal.',
+          'error'
+        );
         if (state.sort === 'distance') {
           state.sort = 'name';
           if (sortSelect) {
             sortSelect.value = 'name';
           }
-          applyFilters();
         }
-      },
-      {
-        enableHighAccuracy: false,
-        timeout: 8000,
-      }
-    );
+        if (button) {
+          button.disabled = false;
+          button.textContent = button.dataset.label || 'Définir';
+        }
+        refreshDistances();
+      });
   };
 
   const toggleMapVisibility = () => {
@@ -593,9 +748,14 @@
 
   const bindEvents = () => {
     searchInput?.addEventListener('input', handleSearchInput);
-    filterButtons.forEach((btn) => btn.addEventListener('click', handleFilterClick));
+    locationButton?.addEventListener('click', handleLocationSubmit);
+    locationInput?.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        handleLocationSubmit();
+      }
+    });
     sortSelect?.addEventListener('change', handleSortChange);
-    geoButton?.addEventListener('click', requestGeolocation);
     toggleMapButton?.addEventListener('click', toggleMapVisibility);
 
     document.addEventListener('visibilitychange', () => {
@@ -608,11 +768,23 @@
   const hydrateClub = (raw) => {
     const club = { ...raw };
     club._search = normalise(
-      [club.name, club.commune, club.address, club.notes, club.publics].filter(Boolean).join(' ')
+      [
+        club.name,
+        club.commune,
+        club.address,
+        club.publics,
+        club.hours,
+        club.tarifs,
+        club.president,
+      ]
+        .filter(Boolean)
+        .join(' ')
     );
-    if (!Array.isArray(club.tags)) {
-      club.tags = [];
-    }
+    const licenseA = Number.parseInt(club.licenses?.A, 10);
+    const licenseB = Number.parseInt(club.licenses?.B, 10);
+    const totalLicenses =
+      (Number.isFinite(licenseA) ? licenseA : 0) + (Number.isFinite(licenseB) ? licenseB : 0);
+    club.totalLicenses = totalLicenses > 0 ? totalLicenses : null;
     if (club.lat != null) {
       club.lat = Number.parseFloat(club.lat);
     }

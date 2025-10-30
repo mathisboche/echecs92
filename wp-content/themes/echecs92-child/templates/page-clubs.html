@@ -7,26 +7,30 @@
 
   <!-- Toolbar -->
   <div class="clubs-toolbar" role="region" aria-label="Outils de recherche de clubs">
-    <input id="clubs-search" class="clubs-input" type="search" placeholder="Rechercher un club ou une commune…" aria-label="Rechercher un club ou une commune">
+    <label class="clubs-field">
+      <span>Recherche</span>
+      <input id="clubs-search" class="clubs-input" type="search" placeholder="Nom du club, ville, code postal…" aria-label="Rechercher un club">
+    </label>
 
-    <div class="clubs-filters" role="group" aria-label="Filtres">
-      <button class="filter-pill" data-tag="debutants" aria-pressed="false">Débutants</button>
-      <button class="filter-pill" data-tag="jeunes" aria-pressed="false">Jeunes</button>
-      <button class="filter-pill" data-tag="adultes" aria-pressed="false">Adultes</button>
-      <button class="filter-pill" data-tag="pmr" aria-pressed="false">PMR</button>
+    <div class="clubs-location">
+      <label for="clubs-location">Ma ville ou mon code postal</label>
+      <div class="clubs-location__control">
+        <input id="clubs-location" type="text" inputmode="search" autocomplete="postal-code" placeholder="Ex. Courbevoie ou 92000">
+        <button id="clubs-location-apply" type="button">Définir</button>
+      </div>
+      <p id="clubs-location-status" class="clubs-location__status" role="status" aria-live="polite"></p>
     </div>
 
     <label class="clubs-sort">
       <span>Tri</span>
       <select id="clubs-sort">
         <option value="name">Nom du club (A→Z)</option>
-        <option value="commune">Commune (A→Z)</option>
-        <option value="distance">Distance (si autorisée)</option>
+        <option value="licenses">Nombre de licenciés</option>
+        <option value="distance">Distance (depuis ma ville)</option>
       </select>
     </label>
 
     <div class="clubs-actions">
-      <button id="clubs-geoloc" class="btn-geo" type="button">Près de moi</button>
       <button id="clubs-toggle-map" class="btn-map" type="button" aria-expanded="false" aria-controls="clubs-map">Afficher la carte</button>
     </div>
   </div>
