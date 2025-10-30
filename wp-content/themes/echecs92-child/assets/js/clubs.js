@@ -11,12 +11,6 @@
   const SEARCH_DELAY = 420;
   const VISIBLE_RESULTS_DEFAULT = 5;
   const POSITIVE_MATCH_THRESHOLD = 1.15;
-  const SUMMARY_MAX_LENGTH = 150;
-  const TAG_LABELS = {
-    debutants: 'Débutants',
-    jeunes: 'Jeunes',
-    adultes: 'Adultes',
-  };
 
   const searchInput = document.getElementById('clubs-search');
   const resultsEl = document.getElementById('clubs-results');
@@ -84,7 +78,7 @@
       return message;
     }
     if (state.filtered.length > state.visibleCount && state.visibleCount > 0) {
-      const proximityMode = Boolean(state.userLocation || state.queryLocation);
+      const proximityMode = Boolean(state.userLocation);
       if (state.visibleCount === 1) {
         return `${message} Le club le plus ${proximityMode ? 'proche' : 'pertinent'} est affiché en premier.`;
       }
@@ -116,19 +110,10 @@
       const label = meta.matches === 1 ? 'résultat pertinent' : 'résultats pertinents';
       setSearchStatus(withVisibilityNote(`${meta.matches} ${label}.`), 'success');
     } else if (meta.fallbackUsed) {
-      if (state.queryLocation) {
-        setSearchStatus(
-          withVisibilityNote(
-            `Aucun résultat exact. Clubs les plus proches de ${state.queryLocation.label}.`
-          ),
-          'info'
-        );
-      } else {
-        setSearchStatus(
-          withVisibilityNote('Aucun résultat exact. Affichage des clubs les plus proches et pertinents.'),
-          'info'
-        );
-      }
+      setSearchStatus(
+        withVisibilityNote('Aucun résultat exact. Affichage des clubs les plus pertinents disponibles.'),
+        'info'
+      );
     } else {
       setSearchStatus(
         withVisibilityNote(
@@ -268,9 +253,6 @@
     pendingQuery: searchInput ? searchInput.value.trim() : '',
     userLocation: null,
     distanceReference: '',
-    queryLocation: null,
-    queryLocationToken: null,
-    queryLocationCache: new Map(),
     lastSearchMeta: null,
     visibleCount: VISIBLE_RESULTS_DEFAULT,
     geocodingQueue: [],
@@ -293,75 +275,6 @@
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase();
 
-  const cleanWhitespace = (value) =>
-    (value || '')
-      .toString()
-      .replace(/\s+/g, ' ')
-      .trim();
-
-  const summariseText = (value, limit = SUMMARY_MAX_LENGTH) => {
-    const cleaned = cleanWhitespace(value);
-    if (!cleaned) {
-      return '';
-    }
-    if (cleaned.length <= limit) {
-      return cleaned;
-    }
-    let cut = cleaned.lastIndexOf(' ', limit - 1);
-    if (cut < Math.floor(limit * 0.6)) {
-      cut = limit - 1;
-    }
-    const truncated = cleaned.slice(0, cut).replace(/[.,;:]+$/, '');
-    return `${truncated}…`;
-  };
-
-  const getShortAddress = (address) => {
-    const cleaned = cleanWhitespace(address);
-    if (!cleaned) {
-      return '';
-    }
-    const parts = cleaned.split(',').map((part) => part.trim()).filter(Boolean);
-    return parts[0] || '';
-  };
-
-  const formatTagLabel = (tag) => {
-    if (!tag) {
-      return '';
-    }
-    const key = tag.toLowerCase();
-    if (TAG_LABELS[key]) {
-      return TAG_LABELS[key];
-    }
-    return key.charAt(0).toUpperCase() + key.slice(1);
-  };
-
-  const buildClubMetaLine = (club) => {
-    const parts = [];
-    if (club.commune) {
-      parts.push(cleanWhitespace(club.commune));
-    }
-    const shortAddress = getShortAddress(club.address);
-    if (shortAddress) {
-      const communeNorm = normalise(club.commune);
-      const addressNorm = normalise(shortAddress);
-      if (!communeNorm || !addressNorm.includes(communeNorm)) {
-        parts.push(shortAddress);
-      }
-    }
-    return parts.join(' · ');
-  };
-
-  const buildClubSummary = (club) => {
-    const candidates = [club.publics, club.notes, club.hours];
-    for (let i = 0; i < candidates.length; i += 1) {
-      const summary = summariseText(candidates[i]);
-      if (summary) {
-        return summary;
-      }
-    }
-    return '';
-  };
-
   const haversineKm = (lat1, lon1, lat2, lon2) => {
     const R = 6371;
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -375,20 +288,15 @@
   };
 
   const getDistanceInfo = (club) => {
-    let distanceValue = null;
-    let referenceLabel = '';
-    if (state.userLocation && typeof club.distanceKm === 'number') {
-      distanceValue = club.distanceKm;
-    } else if (!state.userLocation && state.queryLocation && typeof club.distanceFromQueryKm === 'number') {
-      distanceValue = club.distanceFromQueryKm;
-      referenceLabel = state.queryLocation.label ? `Depuis ${state.queryLocation.label}` : '';
-    }
-    if (typeof distanceValue !== 'number') {
+    if (!state.userLocation || typeof club.distanceKm !== 'number') {
       return null;
     }
-    const round = distanceValue < 10 ? distanceValue.toFixed(1) : Math.round(distanceValue);
+    const round = club.distanceKm < 10 ? club.distanceKm.toFixed(1) : Math.round(club.distanceKm);
     const label = `${round} km`;
-    const context = referenceLabel || (state.userLocation ? 'Depuis votre position' : '');
+    const reference = state.distanceReference || 'votre position';
+    const context = reference
+      ? `Depuis ${reference.charAt(0).toUpperCase()}${reference.slice(1)}`
+      : 'Depuis votre position';
     return { label, context };
   };
 
@@ -610,16 +518,8 @@
       return;
     }
 
-    if (state.queryLocation) {
-      computeDistancesForQueryLocation();
-      applyFilters({ preserveVisibility });
-      ensureDistanceLoadingProgress();
-      return;
-    }
-
     state.clubs.forEach((club) => {
       delete club.distanceKm;
-      delete club.distanceFromQueryKm;
     });
     applyFilters({ preserveVisibility });
     ensureDistanceLoadingProgress();
@@ -791,25 +691,6 @@
     return score;
   };
 
-  const computeDistancesForQueryLocation = (trackGeocodes = state.distanceLoading) => {
-    const requestId = trackGeocodes ? state.activeDistanceRequest : null;
-    if (!state.queryLocation) {
-      state.clubs.forEach((club) => {
-        delete club.distanceFromQueryKm;
-      });
-      return;
-    }
-    const { latitude, longitude } = state.queryLocation;
-    state.clubs.forEach((club) => {
-      if (club.lat == null || club.lng == null) {
-        delete club.distanceFromQueryKm;
-        queueGeocoding(club, { track: trackGeocodes, requestId });
-        return;
-      }
-      club.distanceFromQueryKm = haversineKm(latitude, longitude, club.lat, club.lng);
-    });
-  };
-
   const applyFilters = (options = {}) => {
     const { silentStatus = false, preserveVisibility = false } = options;
     const rawQuery = state.query || '';
@@ -850,12 +731,6 @@
         if (da !== db) {
           return da - db;
         }
-      } else if (!state.userLocation && state.queryLocation) {
-        const distanceA = a.distanceFromQueryKm;
-        const distanceB = b.distanceFromQueryKm;
-        if (typeof distanceA === 'number' && typeof distanceB === 'number' && distanceA !== distanceB) {
-          return distanceA - distanceB;
-        }
       }
       if (terms.length) {
         const diff = (scoreMap.get(b.id) || 0) - (scoreMap.get(a.id) || 0);
@@ -893,8 +768,6 @@
       const ref = state.distanceReference;
       const formattedRef = ref ? `${ref.charAt(0).toUpperCase()}${ref.slice(1)}` : 'votre position';
       parts.push(`distances depuis ${formattedRef}`);
-    } else if (!state.userLocation && state.queryLocation) {
-      parts.push(`distances estimées depuis ${state.queryLocation.label}`);
     }
     if (total && visibleCount < total) {
       parts.push(`${visibleCount} affiché${visibleCount > 1 ? 's' : ''} en premier`);
@@ -941,31 +814,18 @@
     article.dataset.clubId = club.id;
     article.setAttribute('role', 'listitem');
 
-    const header = document.createElement('div');
-    header.className = 'club-row__header';
+    const cardLink = document.createElement('a');
+    cardLink.className = 'club-row__card';
+    cardLink.href = getClubDetailUrl(club.id);
+    cardLink.setAttribute('aria-label', `Voir la fiche du club ${club.name}`);
 
-    const heading = document.createElement('div');
-    heading.className = 'club-row__heading';
+    const header = document.createElement('div');
+    header.className = 'club-row__top';
 
     const title = document.createElement('h2');
-    title.className = 'club-row__title';
-    const link = document.createElement('a');
-    link.className = 'club-row__link';
-    link.href = getClubDetailUrl(club.id);
-    link.textContent = club.name;
-    link.setAttribute('aria-label', `Voir la fiche du club ${club.name}`);
-    title.appendChild(link);
-    heading.appendChild(title);
-
-    const metaLine = club._metaLine || buildClubMetaLine(club);
-    if (metaLine) {
-      const meta = document.createElement('p');
-      meta.className = 'club-row__meta';
-      meta.textContent = metaLine;
-      heading.appendChild(meta);
-    }
-
-    header.appendChild(heading);
+    title.className = 'club-row__name';
+    title.textContent = club.name;
+    header.appendChild(title);
 
     const distanceInfo = getDistanceInfo(club);
     if (distanceInfo) {
@@ -981,63 +841,18 @@
       header.appendChild(distanceNode);
     }
 
-    article.appendChild(header);
+    cardLink.appendChild(header);
 
-    const summary = club._summary || buildClubSummary(club);
-    const tags = Array.isArray(club.tags) ? club.tags : [];
-    const distanceContext = distanceInfo && distanceInfo.context && distanceInfo.context !== 'Depuis votre position' ? distanceInfo.context : '';
-    if (summary || tags.length || distanceContext) {
-      const body = document.createElement('div');
-      body.className = 'club-row__body';
+    const footer = document.createElement('div');
+    footer.className = 'club-row__footer';
 
-      if (summary) {
-        const summaryEl = document.createElement('p');
-        summaryEl.className = 'club-row__summary';
-        summaryEl.textContent = summary;
-        body.appendChild(summaryEl);
-      }
+    const cta = document.createElement('span');
+    cta.className = 'club-row__cta';
+    cta.textContent = 'Voir la fiche du club';
+    footer.appendChild(cta);
 
-      if (distanceContext) {
-        const contextEl = document.createElement('p');
-        contextEl.className = 'club-row__distance-context';
-        contextEl.textContent = distanceContext;
-        body.appendChild(contextEl);
-      }
-
-      if (tags.length) {
-        const tagsList = document.createElement('ul');
-        tagsList.className = 'club-row__tags';
-        tags.forEach((tag) => {
-          const label = formatTagLabel(tag);
-          if (!label) {
-            return;
-          }
-          const item = document.createElement('li');
-          item.className = 'club-row__tag';
-          item.textContent = label;
-          tagsList.appendChild(item);
-        });
-        if (tagsList.childElementCount) {
-          body.appendChild(tagsList);
-        }
-      }
-
-      if (body.childElementCount) {
-        article.appendChild(body);
-      }
-    }
-
-    const actions = document.createElement('div');
-    actions.className = 'club-row__actions';
-
-    const detailLink = document.createElement('a');
-    detailLink.className = 'club-row__cta';
-    detailLink.href = getClubDetailUrl(club.id);
-    detailLink.textContent = 'Voir la fiche du club';
-    detailLink.setAttribute('aria-label', `Voir la fiche du club ${club.name}`);
-    actions.appendChild(detailLink);
-
-    article.appendChild(actions);
+    cardLink.appendChild(footer);
+    article.appendChild(cardLink);
 
     return article;
   };
@@ -1106,16 +921,12 @@
       state.pendingQuery = searchInput.value;
     }
     state.query = (state.pendingQuery || '').trim();
-    state.queryLocation = null;
-    state.queryLocationToken = null;
-    computeDistancesForQueryLocation();
     window.clearTimeout(searchTimer);
     setSearchStatus('Recherche en cours…', 'info');
     setLoading(true, 'search');
     searchTimer = window.setTimeout(() => {
       try {
-        const meta = applyFilters();
-        maybeApplyQueryLocation(meta);
+        applyFilters();
       } finally {
         setLoading(false, 'search');
       }
@@ -1130,88 +941,8 @@
     if (searchInput) {
       searchInput.value = '';
     }
-    state.queryLocation = null;
-    state.queryLocationToken = null;
-    computeDistancesForQueryLocation();
     applyFilters({ silentStatus: true });
     setSearchStatus('Recherche réinitialisée. Tous les clubs sont affichés.', 'success');
-  };
-
-  const maybeApplyQueryLocation = (meta) => {
-    if (
-      state.userLocation ||
-      !meta ||
-      !meta.termsCount ||
-      !state.query ||
-      (!meta.fallbackUsed && meta.matches > 0)
-    ) {
-      state.queryLocation = null;
-      state.queryLocationToken = null;
-      computeDistancesForQueryLocation();
-      return;
-    }
-
-    const postalMatch = state.query.match(/\b\d{5}\b/);
-    if (!postalMatch) {
-      state.queryLocation = null;
-      state.queryLocationToken = null;
-      computeDistancesForQueryLocation();
-      return;
-    }
-
-    const token = postalMatch[0];
-    if (state.queryLocation && state.queryLocationToken === token) {
-      startDistanceLoading({
-        onComplete: () => {
-          if (state.lastSearchMeta) {
-            updateSearchStatus(state.lastSearchMeta);
-          }
-        },
-      });
-      refreshDistances({ preserveVisibility: true, trackGeocodes: true });
-      return;
-    }
-
-    const cached = state.queryLocationCache.get(token);
-    if (cached) {
-      state.queryLocationToken = token;
-      state.queryLocation = cached;
-      startDistanceLoading({
-        onComplete: () => {
-          if (state.lastSearchMeta) {
-            updateSearchStatus(state.lastSearchMeta);
-          }
-        },
-      });
-      refreshDistances({ preserveVisibility: true, trackGeocodes: true });
-      return;
-    }
-
-    setLoading(true, 'search');
-    setSearchStatus('Localisation du code postal…', 'info');
-    geocodePlace(token)
-      .then(({ latitude, longitude, label }) => {
-        const locationData = { latitude, longitude, label };
-        state.queryLocationCache.set(token, locationData);
-        state.queryLocationToken = token;
-        state.queryLocation = locationData;
-        startDistanceLoading({
-          onComplete: () => {
-            if (state.lastSearchMeta) {
-              updateSearchStatus(state.lastSearchMeta);
-            }
-          },
-        });
-        refreshDistances({ preserveVisibility: true, trackGeocodes: true });
-      })
-      .catch(() => {
-        state.queryLocation = null;
-        state.queryLocationToken = null;
-        setSearchStatus("Impossible d'estimer la distance pour ce code postal pour le moment.", 'error');
-      })
-      .finally(() => {
-        setLoading(false, 'search');
-      });
   };
 
   const formatPlaceLabel = (place) => {
@@ -1302,9 +1033,8 @@
 
   const applyUserLocation = ({ latitude, longitude, label, query }) => {
     state.userLocation = { latitude, longitude };
-    state.distanceReference = label || query || 'votre position';
-    state.queryLocation = null;
-    state.queryLocationToken = null;
+    const referenceSource = (label || query || 'votre position') ?? 'votre position';
+    state.distanceReference = referenceSource.trim() || 'votre position';
     if (locationInput) {
       if (query) {
         locationInput.value = query;
@@ -1368,9 +1098,6 @@
   const handleLocationClear = () => {
     state.userLocation = null;
     state.distanceReference = '';
-    state.queryLocation = null;
-    state.queryLocationToken = null;
-    computeDistancesForQueryLocation();
     if (locationInput) {
       locationInput.value = '';
     }
@@ -1519,8 +1246,6 @@
     const totalLicenses =
       (Number.isFinite(licenseA) ? licenseA : 0) + (Number.isFinite(licenseB) ? licenseB : 0);
     club.totalLicenses = totalLicenses > 0 ? totalLicenses : null;
-    club._metaLine = buildClubMetaLine(club);
-    club._summary = buildClubSummary(club);
     if (club.lat != null) {
       club.lat = Number.parseFloat(club.lat);
     }
