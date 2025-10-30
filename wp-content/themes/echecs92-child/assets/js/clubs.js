@@ -1,16 +1,16 @@
 /**
  * Clubs directory interactions for echecs92.fr.
- * Provides client-side search, sorting, map display (Leaflet)
- * and distance estimates based on a user-supplied city or postcode.
+ * Provides client-side search, sorting and distance estimates
+ * based on a user-supplied city or postcode.
  */
 (function () {
   const DATA_URL = '/wp-content/themes/echecs92-child/assets/data/clubs.json';
-  const DEFAULT_CENTER = [48.875, 2.231]; // Hauts-de-Seine centroid approximation
   const STORAGE_PREFIX = 'echecs92-club-geo:';
   const GEOCODE_BASE_URL = 'https://nominatim.openstreetmap.org/search';
   const GEOCODE_MIN_DELAY = 1200; // ms between requests (respect Nominatim policy)
   const USER_LOCATION_KEY = 'echecs92-user-location';
   const SEARCH_DELAY = 420;
+  const VISIBLE_RESULTS_DEFAULT = 5;
 
   const searchInput = document.getElementById('clubs-search');
   const resultsEl = document.getElementById('clubs-results');
@@ -23,10 +23,8 @@
   const searchStatus = document.getElementById('clubs-search-status');
   const geolocButton = document.getElementById('clubs-use-geoloc');
   const locationClearButton = document.getElementById('clubs-location-clear');
-  const advancedToggle = document.getElementById('clubs-advanced-toggle');
-  const advancedPanel = document.getElementById('clubs-advanced-panel');
-  const toggleMapButton = document.getElementById('clubs-toggle-map');
-  const mapContainer = document.getElementById('clubs-map');
+  const moreButton = document.getElementById('clubs-more-button');
+  const optionsDetails = document.getElementById('clubs-options');
   const totalCounter = document.createElement('p');
 
   if (!resultsEl) {
@@ -64,30 +62,60 @@
     }
   };
 
+  const withVisibilityNote = (message) => {
+    if (!message) {
+      return message;
+    }
+    if (state.filtered.length > state.visibleCount && state.visibleCount > 0) {
+      if (state.visibleCount === 1) {
+        return `${message} Le résultat le plus pertinent est affiché en premier.`;
+      }
+      return `${message} Les ${state.visibleCount} résultats les plus pertinents sont affichés en premier.`;
+    }
+    return message;
+  };
+
   const updateSearchStatus = (meta) => {
     if (!meta) {
-      setSearchStatus(`${state.filtered.length} club${state.filtered.length > 1 ? 's' : ''} affiché${state.filtered.length > 1 ? 's' : ''}.`, 'info');
+      setSearchStatus(
+        withVisibilityNote(
+          `${state.filtered.length} club${state.filtered.length > 1 ? 's' : ''} affiché${state.filtered.length > 1 ? 's' : ''}.`
+        ),
+        'info'
+      );
       return;
     }
     if (!meta.termsCount) {
-      setSearchStatus(`${meta.total} club${meta.total > 1 ? 's' : ''} dans les Hauts-de-Seine.`, 'info');
+      setSearchStatus(
+        withVisibilityNote(
+          `${meta.total} club${meta.total > 1 ? 's' : ''} dans les Hauts-de-Seine.`
+        ),
+        'info'
+      );
       return;
     }
     if (meta.matches > 0) {
       const label = meta.matches === 1 ? 'résultat pertinent' : 'résultats pertinents';
-      setSearchStatus(`${meta.matches} ${label}.`, 'success');
+      setSearchStatus(withVisibilityNote(`${meta.matches} ${label}.`), 'success');
     } else if (meta.fallbackUsed) {
       if (state.queryLocation) {
         setSearchStatus(
-          `Aucun résultat exact. Clubs les plus proches de ${state.queryLocation.label}.`,
+          withVisibilityNote(
+            `Aucun résultat exact. Clubs les plus proches de ${state.queryLocation.label}.`
+          ),
           'info'
         );
       } else {
-        setSearchStatus('Aucun résultat exact. Affichage des clubs les plus proches et pertinents.', 'info');
+        setSearchStatus(
+          withVisibilityNote('Aucun résultat exact. Affichage des clubs les plus proches et pertinents.'),
+          'info'
+        );
       }
     } else {
       setSearchStatus(
-        `${meta.total} club${meta.total > 1 ? 's' : ''} correspondant${meta.total > 1 ? 's' : ''} trouvé${meta.total > 1 ? 's' : ''}.`,
+        withVisibilityNote(
+          `${meta.total} club${meta.total > 1 ? 's' : ''} correspondant${meta.total > 1 ? 's' : ''} trouvé${meta.total > 1 ? 's' : ''}.`
+        ),
         'info'
       );
     }
@@ -122,7 +150,7 @@
     filtered: [],
     query: '',
     pendingQuery: searchInput ? searchInput.value.trim() : '',
-    sort: 'name',
+    sort: sortSelect ? sortSelect.value || 'relevance' : 'relevance',
     userLocation: null,
     userLocationLabel: '',
     lastLocationQuery: '',
@@ -130,8 +158,7 @@
     queryLocationToken: null,
     queryLocationCache: new Map(),
     lastSearchMeta: null,
-    map: null,
-    markers: new Map(),
+    visibleCount: VISIBLE_RESULTS_DEFAULT,
     geocodingQueue: [],
     geocodingTimer: null,
     geocodingActive: false,
@@ -370,73 +397,12 @@
         club.lng = Number.parseFloat(payload[0].lon);
         persistClubCoordinates(club);
         finish(true);
-        refreshMapMarkers();
-        refreshDistances();
+        refreshDistances(true);
       })
       .catch(() => finish(false));
   };
 
-  const ensureMap = () => {
-    if (!window.L || state.map) {
-      return;
-    }
-    state.map = L.map(mapContainer, {
-      scrollWheelZoom: false,
-      closePopupOnClick: false,
-    }).setView(DEFAULT_CENTER, 11);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(state.map);
-  };
-
-  const refreshMapMarkers = () => {
-    if (!state.map) {
-      return;
-    }
-    const visibleIds = new Set(state.filtered.map((club) => club.id));
-    state.markers.forEach((marker, id) => {
-      if (!visibleIds.has(id)) {
-        marker.remove();
-        state.markers.delete(id);
-      }
-    });
-
-    if (!state.filtered.length) {
-      state.map.setView(DEFAULT_CENTER, 11);
-      return;
-    }
-
-    const bounds = [];
-    state.filtered.forEach((club) => {
-      if (club.lat == null || club.lng == null) {
-        queueGeocoding(club);
-        return;
-      }
-      if (state.markers.has(club.id)) {
-        bounds.push([club.lat, club.lng]);
-        return;
-      }
-      const marker = L.marker([club.lat, club.lng], { title: club.name }).addTo(state.map);
-      marker.bindPopup(
-        `<strong>${club.name}</strong><br>${club.commune || ''}${
-          club.address ? `<br>${club.address}` : ''
-        }`
-      );
-      marker.on('click', () => {
-        focusClubCard(club.id);
-      });
-      state.markers.set(club.id, marker);
-      bounds.push([club.lat, club.lng]);
-    });
-
-    if (bounds.length) {
-      state.map.fitBounds(bounds, { padding: [32, 32], maxZoom: 14 });
-    }
-  };
-
-  const refreshDistances = () => {
+  const refreshDistances = (preserveVisibility = false) => {
     if (state.userLocation) {
       const { latitude, longitude } = state.userLocation;
       state.clubs.forEach((club) => {
@@ -447,13 +413,13 @@
         }
         club.distanceKm = haversineKm(latitude, longitude, club.lat, club.lng);
       });
-      applyFilters();
+      applyFilters({ preserveVisibility });
       return;
     }
 
     if (state.queryLocation) {
       computeDistancesForQueryLocation();
-      applyFilters();
+      applyFilters({ preserveVisibility });
       return;
     }
 
@@ -461,7 +427,7 @@
       delete club.distanceKm;
       delete club.distanceFromQueryKm;
     });
-    applyFilters();
+    applyFilters({ preserveVisibility });
   };
 
   const computeSearchScore = (club, terms) => {
@@ -571,7 +537,7 @@
   };
 
   const applyFilters = (options = {}) => {
-    const { silentStatus = false } = options;
+    const { silentStatus = false, preserveVisibility = false } = options;
     const rawQuery = state.query || '';
     const query = normalise(rawQuery);
     const terms = query ? query.split(/\s+/).filter(Boolean) : [];
@@ -630,41 +596,9 @@
     });
 
     state.filtered = orderedClubs;
-    let suffix = '';
-    if (state.userLocation && state.userLocationLabel) {
-      suffix = ` · distances depuis ${state.userLocationLabel}`;
-    } else if (!state.userLocation && state.queryLocation) {
-      suffix = ` · distances estimées depuis ${state.queryLocation.label}`;
-    }
-    totalCounter.textContent = `${state.filtered.length} club${
-      state.filtered.length > 1 ? 's' : ''
-    } dans les Hauts-de-Seine${suffix}`;
+    renderResults({ resetVisible: !preserveVisibility });
 
-    if (!state.filtered.length) {
-      resultsEl.innerHTML =
-        '<p class="clubs-empty">Aucun club ne correspond à votre recherche pour le moment.</p>';
-    } else {
-      const expandedIds = new Set(
-        Array.from(resultsEl.querySelectorAll('.club-card__toggle[aria-expanded="true"]'))
-          .map((toggle) => toggle.closest('.club-card'))
-          .filter(Boolean)
-          .map((card) => card.dataset.clubId)
-      );
-
-      const fragment = document.createDocumentFragment();
-      state.filtered.forEach((club) => {
-        const card = createClubCard(club);
-        if (expandedIds.has(club.id)) {
-          setCardExpansion(card, true, { silent: true });
-        }
-        fragment.appendChild(card);
-      });
-
-      resultsEl.innerHTML = '';
-      resultsEl.appendChild(fragment);
-    }
-
-    refreshMapMarkers();
+    updateTotalCounter();
 
     const meta = {
       query: rawQuery,
@@ -679,6 +613,22 @@
     }
     return meta;
   };
+
+  function updateTotalCounter() {
+    const total = state.filtered.length;
+    const visibleCount = Math.min(state.visibleCount, total);
+    const parts = [];
+    if (state.userLocation && state.userLocationLabel) {
+      parts.push(`distances depuis ${state.userLocationLabel}`);
+    } else if (!state.userLocation && state.queryLocation) {
+      parts.push(`distances estimées depuis ${state.queryLocation.label}`);
+    }
+    if (total && visibleCount < total) {
+      parts.push(`${visibleCount} affiché${visibleCount > 1 ? 's' : ''} en premier`);
+    }
+    const suffix = parts.length ? ` · ${parts.join(' · ')}` : '';
+    totalCounter.textContent = `${total} club${total > 1 ? 's' : ''} dans les Hauts-de-Seine${suffix}`;
+  }
 
   const getSorter = (sortKey) => {
     switch (sortKey) {
@@ -695,6 +645,7 @@
           return da - db;
         };
       case 'name':
+      case 'relevance':
       default:
         return (a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
     }
@@ -719,9 +670,13 @@
     body.hidden = !nextState;
     const labelNode = toggle.querySelector('.club-card__toggle-label');
     if (labelNode) {
-      const closed = toggle.dataset.labelClosed || 'Voir les détails';
-      const open = toggle.dataset.labelOpen || 'Masquer les détails';
+      const closed = toggle.dataset.labelClosed || "Plus d'infos";
+      const open = toggle.dataset.labelOpen || 'Masquer les infos';
       labelNode.textContent = nextState ? open : closed;
+    }
+    const iconNode = toggle.querySelector('.club-card__toggle-icon');
+    if (iconNode) {
+      iconNode.textContent = nextState ? '-' : '+';
     }
     if (nextState && !silent) {
       article.classList.add('club-card--highlight');
@@ -736,17 +691,6 @@
     chip.className = `club-chip club-chip--${type}`;
     chip.textContent = text;
     return chip;
-  };
-
-  const createContactLink = (label, href, textContent) => {
-    const link = document.createElement('a');
-    link.className = 'club-card__contact';
-    link.href = href;
-    link.textContent = textContent || label;
-    link.title = label;
-    link.setAttribute('aria-label', `${label}: ${link.textContent}`);
-    link.rel = 'noopener';
-    return link;
   };
 
   const createDetailSection = (title) => {
@@ -785,61 +729,8 @@
     if (distanceLabel) {
       meta.appendChild(createMetaChip('distance', distanceLabel));
     }
-    if (Number.isFinite(club.totalLicenses) && club.totalLicenses > 0) {
-      const licenseLabel = `${club.totalLicenses} licencié${
-        club.totalLicenses > 1 ? 's' : ''
-      }`;
-      meta.appendChild(createMetaChip('licenses', licenseLabel));
-    }
     if (meta.childElementCount) {
       summary.appendChild(meta);
-    }
-
-    if (club.address) {
-      const address = document.createElement('p');
-      address.className = 'club-card__address';
-      address.textContent = club.address;
-      summary.appendChild(address);
-    }
-
-    const contacts = document.createElement('div');
-    contacts.className = 'club-card__contacts';
-    if (club.email) {
-      contacts.appendChild(createContactLink('Email', `mailto:${club.email}`, club.email));
-    }
-    if (club.phone) {
-      const telValue = club.phone.replace(/[^\d+]/g, '');
-      const phoneLabel = formatPhone(club.phone) || club.phone;
-      contacts.appendChild(createContactLink('Téléphone', `tel:${telValue || club.phone}`, phoneLabel));
-    }
-    if (contacts.childElementCount) {
-      summary.appendChild(contacts);
-    }
-
-    const actions = document.createElement('div');
-    actions.className = 'club-card__actions';
-    if (club.site) {
-      const siteLink = document.createElement('a');
-      siteLink.className = 'btn';
-      siteLink.href = club.site;
-      siteLink.target = '_blank';
-      siteLink.rel = 'noopener';
-      siteLink.textContent = 'Site du club';
-      actions.appendChild(siteLink);
-    }
-    if (mapContainer) {
-      const mapAction = document.createElement('button');
-      mapAction.type = 'button';
-      mapAction.className = 'btn btn-secondary';
-      mapAction.textContent = 'Voir sur la carte';
-      mapAction.addEventListener('click', (event) => {
-        event.stopPropagation();
-        focusOnMap(club);
-      });
-      actions.appendChild(mapAction);
-    }
-    if (actions.childElementCount) {
-      summary.appendChild(actions);
     }
 
     article.appendChild(summary);
@@ -853,8 +744,8 @@
     toggle.setAttribute('aria-expanded', 'false');
     const bodyId = `club-details-${club.id}`;
     toggle.setAttribute('aria-controls', bodyId);
-    toggle.dataset.labelClosed = 'Voir les détails';
-    toggle.dataset.labelOpen = 'Masquer les détails';
+    toggle.dataset.labelClosed = "Plus d'infos";
+    toggle.dataset.labelOpen = 'Masquer les infos';
 
     const toggleLabel = document.createElement('span');
     toggleLabel.className = 'club-card__toggle-label';
@@ -864,7 +755,7 @@
     const toggleIcon = document.createElement('span');
     toggleIcon.className = 'club-card__toggle-icon';
     toggleIcon.setAttribute('aria-hidden', 'true');
-    toggleIcon.textContent = '▾';
+    toggleIcon.textContent = '+';
     toggle.appendChild(toggleIcon);
 
     toggle.addEventListener('click', () => {
@@ -879,6 +770,7 @@
     body.id = bodyId;
 
     const sections = {
+      coordonnees: createDetailSection('Coordonnées'),
       activites: createDetailSection('Activités'),
       organisation: createDetailSection('Organisation'),
       ressources: createDetailSection('Ressources'),
@@ -929,9 +821,21 @@
       section.list.appendChild(item);
     };
 
+    addDetail('coordonnees', 'Adresse', club.address);
+    if (!club.address && club.commune) {
+      addDetail('coordonnees', 'Commune', club.commune);
+    }
+    addDetail('coordonnees', 'Email', club.email, { isMail: true });
+    addDetail('coordonnees', 'Téléphone', club.phone, { isPhone: true });
+    addDetail('coordonnees', 'Site internet', club.site, {
+      isLink: true,
+      label: 'Accéder au site du club',
+    });
+
     addDetail('activites', 'Publics accueillis', club.publics);
     addDetail('activites', 'Horaires', club.hours);
     addDetail('activites', 'Tarifs', club.tarifs);
+    addDetail('activites', 'Remarques', club.notes);
 
     addDetail('organisation', 'Président·e', club.president);
     if (club.licenses && (club.licenses.A || club.licenses.B)) {
@@ -943,6 +847,11 @@
         licenseInfo.push(`Licence B : ${club.licenses.B}`);
       }
       addDetail('organisation', 'Répartition licences', licenseInfo.join(' · '));
+    }
+
+    if (Number.isFinite(club.totalLicenses) && club.totalLicenses > 0) {
+      const licenseLabel = `${club.totalLicenses} licencié${club.totalLicenses > 1 ? 's' : ''}`;
+      addDetail('organisation', 'Total licenciés', licenseLabel);
     }
 
     addDetail('ressources', 'Fiche FFE', club.fiche_ffe, {
@@ -964,31 +873,69 @@
     return article;
   };
 
-  const focusClubCard = (clubId) => {
-    const target = resultsEl.querySelector(`[data-club-id="${clubId}"]`);
-    if (!target) {
+  function renderResults({ resetVisible = false } = {}) {
+    if (!resultsEl) {
       return;
     }
-    setCardExpansion(target, true);
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
 
-  const focusOnMap = (club) => {
-    if (mapContainer.hasAttribute('hidden')) {
-      mapContainer.removeAttribute('hidden');
-      toggleMapButton.setAttribute('aria-expanded', 'true');
-      toggleMapButton.textContent = 'Masquer la carte';
-      ensureMap();
-    }
-    queueGeocoding(club).then(() => {
-      ensureMap();
-      refreshMapMarkers();
-      const marker = state.markers.get(club.id);
-      if (marker) {
-        marker.openPopup();
-        state.map.setView(marker.getLatLng(), 14);
+    const expandedIds = new Set(
+      Array.from(resultsEl.querySelectorAll('.club-card__toggle[aria-expanded="true"]'))
+        .map((toggle) => toggle.closest('.club-card'))
+        .filter(Boolean)
+        .map((card) => card.dataset.clubId)
+    );
+
+    if (resetVisible || state.visibleCount === 0) {
+      state.visibleCount = Math.min(VISIBLE_RESULTS_DEFAULT, state.filtered.length);
+    } else {
+      state.visibleCount = Math.min(state.visibleCount, state.filtered.length);
+      if (state.visibleCount === 0 && state.filtered.length) {
+        state.visibleCount = Math.min(VISIBLE_RESULTS_DEFAULT, state.filtered.length);
       }
+    }
+
+    if (!state.filtered.length) {
+      resultsEl.innerHTML =
+        '<p class="clubs-empty">Aucun club ne correspond à votre recherche pour le moment.</p>';
+      if (moreButton) {
+        moreButton.hidden = true;
+      }
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    state.filtered.slice(0, state.visibleCount).forEach((club) => {
+      const card = createClubCard(club);
+      if (expandedIds.has(club.id)) {
+        setCardExpansion(card, true, { silent: true });
+      }
+      fragment.appendChild(card);
     });
+
+    resultsEl.innerHTML = '';
+    resultsEl.appendChild(fragment);
+
+    if (moreButton) {
+      if (state.visibleCount < state.filtered.length) {
+        const remaining = state.filtered.length - state.visibleCount;
+        moreButton.hidden = false;
+        moreButton.textContent = `Afficher ${remaining} autre${remaining > 1 ? 's' : ''} club${remaining > 1 ? 's' : ''}`;
+      } else {
+        moreButton.hidden = true;
+      }
+    }
+  }
+
+  const showAllResults = () => {
+    if (state.visibleCount >= state.filtered.length) {
+      return;
+    }
+    state.visibleCount = state.filtered.length;
+    renderResults({ resetVisible: false });
+    updateTotalCounter();
+    if (state.lastSearchMeta) {
+      updateSearchStatus(state.lastSearchMeta);
+    }
   };
 
   const handleSearchInputChange = (event) => {
@@ -1207,6 +1154,9 @@
     if (sortSelect) {
       sortSelect.value = 'distance';
     }
+    if (optionsDetails && !optionsDetails.open) {
+      optionsDetails.open = true;
+    }
     saveUserLocation({
       latitude,
       longitude,
@@ -1273,9 +1223,9 @@
       locationInput.value = '';
     }
     if (state.sort === 'distance') {
-      state.sort = 'name';
+      state.sort = 'relevance';
       if (sortSelect) {
-        sortSelect.value = 'name';
+        sortSelect.value = 'relevance';
       }
     }
     setLocationStatus('Localisation effacée.', 'info');
@@ -1328,36 +1278,6 @@
     );
   };
 
-  const toggleAdvancedOptions = () => {
-    if (!advancedToggle || !advancedPanel) {
-      return;
-    }
-    const expanded = advancedToggle.getAttribute('aria-expanded') === 'true';
-    const next = !expanded;
-    advancedToggle.setAttribute('aria-expanded', String(next));
-    advancedToggle.textContent = next ? 'Masquer les options avancées' : 'Options avancées';
-    if (next) {
-      advancedPanel.removeAttribute('hidden');
-    } else {
-      advancedPanel.setAttribute('hidden', '');
-    }
-  };
-
-  const toggleMapVisibility = () => {
-    const visible = !mapContainer.hasAttribute('hidden');
-    if (visible) {
-      mapContainer.setAttribute('hidden', '');
-      toggleMapButton.setAttribute('aria-expanded', 'false');
-      toggleMapButton.textContent = 'Afficher la carte';
-      return;
-    }
-    mapContainer.removeAttribute('hidden');
-    toggleMapButton.setAttribute('aria-expanded', 'true');
-    toggleMapButton.textContent = 'Masquer la carte';
-    ensureMap();
-    refreshMapMarkers();
-  };
-
   const bindEvents = () => {
     searchInput?.addEventListener('input', handleSearchInputChange);
     searchInput?.addEventListener('keydown', (event) => {
@@ -1378,8 +1298,7 @@
       }
     });
     sortSelect?.addEventListener('change', handleSortChange);
-    toggleMapButton?.addEventListener('click', toggleMapVisibility);
-    advancedToggle?.addEventListener('click', toggleAdvancedOptions);
+    moreButton?.addEventListener('click', showAllResults);
 
     document.addEventListener('visibilitychange', () => {
       if (!state.geocodingActive && state.geocodingQueue.length) {

@@ -1207,32 +1207,31 @@ header.wp-block-template-part.is-elevated .cm-header{
 .clubs-page{
   font-family: system-ui,-apple-system,BlinkMacSystemFont,"Inter","Helvetica Neue",Arial,sans-serif;
   color:#0f172a;
-  max-width:1080px;
+  max-width:960px;
   margin:0 auto;
-  padding:48px 20px 80px;
+  padding:40px 16px 72px;
   box-sizing:border-box;
 }
 .clubs-page h1{
-  font-size:44px;
-  line-height:1.05;
-  margin-bottom:12px;
-  letter-spacing:-0.015em;
+  font-size:36px;
+  line-height:1.08;
+  margin-bottom:8px;
+  letter-spacing:-0.01em;
 }
 .clubs-page p{
-  font-size:16px;
+  font-size:15px;
   line-height:1.6;
-  margin-bottom:16px;
+  margin-bottom:14px;
 }
-.clubs-toolbar{
+.clubs-search-block{
   display:flex;
   flex-direction:column;
-  gap:24px;
-  align-items:stretch;
-  background:#f1f5f9;
-  border:1px solid #d0d7e7;
+  gap:16px;
+  padding:20px;
+  margin:24px 0 20px;
+  border:1px solid #d6dbe7;
   border-radius:12px;
-  padding:28px 24px;
-  margin:32px 0;
+  background:#f5f7fb;
 }
 .clubs-field,
 .clubs-sort{
@@ -1240,7 +1239,7 @@ header.wp-block-template-part.is-elevated .cm-header{
   flex-direction:column;
   gap:6px;
   font-size:14px;
-  color:#475569;
+  color:#1f2937;
 }
 .clubs-field span,
 .clubs-sort span{
@@ -1252,23 +1251,17 @@ header.wp-block-template-part.is-elevated .cm-header{
 #clubs-location{
   width:100%;
   padding:12px 14px;
-  border-radius:10px;
-  border:1px solid #cbd5e1;
+  border-radius:8px;
+  border:1px solid #c7cfde;
   font-size:15px;
   line-height:1.4;
   background:#ffffff;
-  transition:border-color .2s ease;
 }
 .clubs-input:focus,
 .clubs-sort select:focus,
 #clubs-location:focus{
-  outline:none;
-  border-color:#1d4ed8;
-}
-.clubs-search{
-  display:flex;
-  flex-direction:column;
-  gap:14px;
+  outline:2px solid #1d4ed8;
+  outline-offset:1px;
 }
 .clubs-search__actions{
   display:flex;
@@ -1287,11 +1280,51 @@ header.wp-block-template-part.is-elevated .cm-header{
 .clubs-search__status[data-tone="error"]{
   color:#b91c1c;
 }
+.clubs-options{
+  margin:0 0 28px;
+  border:1px solid #d6dbe7;
+  border-radius:12px;
+  background:#f9fafc;
+  overflow:hidden;
+}
+.clubs-options>summary{
+  padding:16px 20px;
+  font-weight:600;
+  font-size:15px;
+  color:#0f172a;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  list-style:none;
+}
+.clubs-options>summary::after{
+  content:'+';
+  font-size:16px;
+  font-weight:600;
+  color:#1f2937;
+}
+.clubs-options>summary::marker,
+.clubs-options>summary::-webkit-details-marker{
+  display:none;
+}
+.clubs-options[open]>summary{
+  border-bottom:1px solid #d6dbe7;
+}
+.clubs-options[open]>summary::after{
+  content:'-';
+}
+.clubs-options__inner{
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+  padding:20px;
+}
 .clubs-location-box{
   background:#ffffff;
-  border:1px solid #d8e0ef;
-  border-radius:12px;
-  padding:20px;
+  border:1px solid #dce2ef;
+  border-radius:10px;
+  padding:18px;
   display:flex;
   flex-direction:column;
   gap:12px;
@@ -1303,7 +1336,7 @@ header.wp-block-template-part.is-elevated .cm-header{
   gap:12px;
 }
 .clubs-location-box__header h2{
-  font-size:15px;
+  font-size:14px;
   text-transform:uppercase;
   letter-spacing:.08em;
   color:#475569;
@@ -1334,22 +1367,6 @@ header.wp-block-template-part.is-elevated .cm-header{
   flex-wrap:wrap;
   gap:10px;
 }
-#clubs-location-apply{
-  padding:12px 18px;
-  border-radius:10px;
-  border:1px solid #1d4ed8;
-  background:#1d4ed8;
-  color:#ffffff;
-  font-weight:600;
-  font-size:15px;
-  cursor:pointer;
-}
-#clubs-location-apply:hover,
-#clubs-location-apply:focus-visible{
-  background:#173eae;
-  border-color:#173eae;
-  outline:none;
-}
 .clubs-location__status{
   min-height:20px;
   margin:0;
@@ -1362,47 +1379,67 @@ header.wp-block-template-part.is-elevated .cm-header{
 .clubs-location__status[data-tone="error"]{
   color:#b91c1c;
 }
-.clubs-advanced{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
+.clubs-sort select{
+  padding-right:36px;
+  background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2367748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 12px center;
+  appearance:none;
 }
-.clubs-advanced__panel{
-  display:flex;
-  flex-direction:column;
-  gap:16px;
-  padding:16px;
-  background:#ffffff;
-  border:1px dashed #cbd5e1;
-  border-radius:10px;
-}
-.btn-map{
-  padding:12px 18px;
-  border-radius:10px;
-  border:1px solid #94a3b8;
-  background:#ffffff;
-  color:#0f172a;
-  font-size:14px;
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:11px 18px;
+  border-radius:8px;
+  border:1px solid #0f172a;
+  background:#0f172a;
+  color:#ffffff;
+  font-size:15px;
   font-weight:600;
   cursor:pointer;
+  text-decoration:none;
 }
-.btn-map:hover,
-.btn-map:focus-visible{
-  background:#e2e8f0;
-  border-color:#64748b;
+.btn:hover,
+.btn:focus-visible{
+  background:#1e293b;
+  border-color:#1e293b;
   outline:none;
+}
+.btn:active{
+  transform:none;
+}
+.btn[disabled]{
+  opacity:.6;
+  cursor:progress;
+}
+.btn-secondary{
+  background:#ffffff;
+  color:#0f172a;
+  border-color:#a3acc2;
+}
+.btn-secondary:hover,
+.btn-secondary:focus-visible{
+  background:#e6ebf4;
+  border-color:#7b869b;
 }
 .clubs-total{
   font-size:15px;
-  font-weight:500;
+  font-weight:600;
   color:#1d4ed8;
-  margin-bottom:12px;
+  margin:0;
+}
+.clubs-results-wrapper{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  margin-top:24px;
 }
 .clubs-list{
   display:flex;
   flex-direction:column;
-  gap:20px;
-  margin-top:16px;
+  gap:16px;
   position:relative;
 }
 #clubs-results.is-loading{
@@ -1418,69 +1455,40 @@ header.wp-block-template-part.is-elevated .cm-header{
   justify-content:center;
   font-weight:600;
   color:#1d4ed8;
-  background:rgba(241,245,249,0.85);
+  background:rgba(245,247,251,0.85);
   z-index:1;
 }
-.btn{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
-  padding:12px 20px;
-  border-radius:10px;
-  border:1px solid #0f172a;
-  background:#0f172a;
-  color:#ffffff;
-  font-size:15px;
+.clubs-more-button{
+  align-self:flex-start;
+  font-size:14px;
   font-weight:600;
-  cursor:pointer;
-  text-decoration:none;
-  transition:background-color .2s ease, border-color .2s ease, transform .15s ease;
-}
-.btn:hover,
-.btn:focus-visible{
-  background:#1e293b;
-  border-color:#1e293b;
-  outline:none;
-  transform:translateY(-1px);
-}
-.btn:active{
-  transform:translateY(0);
-}
-.btn[disabled]{
-  opacity:.6;
-  cursor:progress;
-  transform:none;
-}
-.btn-secondary{
-  background:#ffffff;
   color:#0f172a;
-  border-color:#94a3b8;
+  text-decoration:underline;
 }
-.btn-secondary:hover,
-.btn-secondary:focus-visible{
-  background:#e2e8f0;
-  border-color:#64748b;
+.clubs-more-button:hover,
+.clubs-more-button:focus-visible{
+  color:#1d4ed8;
+  outline:none;
 }
 .club-card{
   border:1px solid #d0d7e7;
   border-radius:12px;
   background:#ffffff;
   overflow:hidden;
-  transition:border-color .2s ease, box-shadow .2s ease;
 }
 .club-card--highlight{
   border-color:#1d4ed8;
-  box-shadow:0 0 0 2px rgba(29,78,216,0.1);
+  outline:2px solid rgba(29,78,216,0.18);
+  outline-offset:2px;
 }
 .club-card__summary{
   display:flex;
   flex-direction:column;
-  gap:12px;
-  padding:20px;
+  gap:10px;
+  padding:18px 20px;
 }
 .club-card__summary h2{
-  font-size:20px;
+  font-size:19px;
   margin:0;
   color:#0f172a;
 }
@@ -1503,44 +1511,6 @@ header.wp-block-template-part.is-elevated .cm-header{
   background:#dbeafe;
   color:#1d4ed8;
 }
-.club-chip--licenses{
-  background:#dcfce7;
-  color:#166534;
-}
-.club-card__address{
-  margin:0;
-  font-weight:500;
-  color:#0f172a;
-}
-.club-card__contacts{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-}
-.club-card__contact{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  padding:6px 12px;
-  border-radius:999px;
-  border:1px solid #cbd5e1;
-  background:#f8fafc;
-  font-size:14px;
-  font-weight:600;
-  color:#0f172a;
-  text-decoration:none;
-}
-.club-card__contact:hover,
-.club-card__contact:focus-visible{
-  border-color:#1d4ed8;
-  color:#1d4ed8;
-  outline:none;
-}
-.club-card__actions{
-  display:flex;
-  flex-wrap:wrap;
-  gap:12px;
-}
 .club-card__details-wrapper{
   border-top:1px solid #e2e8f0;
   background:#f8fafc;
@@ -1552,8 +1522,9 @@ header.wp-block-template-part.is-elevated .cm-header{
   align-items:center;
   gap:12px;
   padding:14px 20px;
-  background:none;
+  background:#eef2f8;
   border:none;
+  border-top:1px solid #dce2ef;
   text-align:left;
   cursor:pointer;
   font:inherit;
@@ -1561,7 +1532,7 @@ header.wp-block-template-part.is-elevated .cm-header{
 }
 .club-card__toggle:hover,
 .club-card__toggle:focus-visible{
-  background:#eef2f8;
+  background:#e2e7f2;
   outline:none;
 }
 .club-card__toggle-label{
@@ -1570,14 +1541,11 @@ header.wp-block-template-part.is-elevated .cm-header{
 }
 .club-card__toggle-icon{
   font-size:18px;
-  color:#475569;
-  transition:transform .2s ease;
-}
-.club-card__toggle[aria-expanded="true"] .club-card__toggle-icon{
-  transform:rotate(180deg);
+  font-weight:600;
+  color:#1f2937;
 }
 .club-card__body{
-  padding:0 20px 20px;
+  padding:16px 20px 20px;
   display:flex;
   flex-direction:column;
   gap:20px;
@@ -1591,7 +1559,7 @@ header.wp-block-template-part.is-elevated .cm-header{
   gap:12px;
 }
 .club-card__section h3{
-  font-size:14px;
+  font-size:13px;
   text-transform:uppercase;
   letter-spacing:.08em;
   color:#475569;
@@ -1640,7 +1608,7 @@ header.wp-block-template-part.is-elevated .cm-header{
   text-align:center;
 }
 .clubs-help{
-  margin-top:40px;
+  margin-top:36px;
   font-size:14px;
   color:#475569;
 }
@@ -1653,59 +1621,25 @@ header.wp-block-template-part.is-elevated .cm-header{
   text-decoration:underline;
   outline:none;
 }
-#clubs-map{
-  height:380px;
-  border-radius:12px;
-  margin:12px 0 32px;
-  border:1px solid #d0d7e7;
-  overflow:hidden;
-}
-#clubs-map.leaflet-container{
-  font:inherit;
-}
-#clubs-map[hidden]{
-  display:none !important;
-}
-
-@media (min-width:720px){
-  .clubs-location__control{
-    gap:12px;
-  }
-}
 @media (min-width:960px){
-  .clubs-toolbar{
-    flex-direction:row;
-    align-items:flex-start;
-    gap:24px;
-  }
-  .clubs-search{
-    flex:2 1 0;
-  }
-  .clubs-location-box{
-    flex:1 1 0;
-  }
-  .clubs-advanced{
-    flex:0 0 220px;
-  }
-  .clubs-location__control{
-    flex-wrap:nowrap;
-  }
-  #clubs-location{
-    flex:1 1 auto;
-  }
-  #clubs-location-apply,
-  #clubs-use-geoloc{
-    flex:0 0 auto;
+  .clubs-page{
+    padding:56px 24px 96px;
   }
   .clubs-list{
     display:grid;
     grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:24px;
+    gap:20px;
   }
 }
 @media (max-width:599px){
-  .clubs-toolbar{
-    padding:20px;
+  .clubs-search-block{
+    padding:16px;
+  }
+  .clubs-options>summary{
+    padding:14px 16px;
+  }
+  .clubs-options__inner{
+    padding:16px;
   }
   .clubs-location__control{
     flex-direction:column;
@@ -1716,7 +1650,7 @@ header.wp-block-template-part.is-elevated .cm-header{
     width:100%;
   }
   .club-card__body{
-    padding:0 16px 16px;
+    padding:16px;
   }
   .club-card__toggle{
     padding:16px;
