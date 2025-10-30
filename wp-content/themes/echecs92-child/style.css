@@ -1601,6 +1601,9 @@ header.wp-block-template-part.is-elevated .cm-header{
     align-self:center;
     margin-left:auto;
   }
+  .clubs-help{
+    margin-top:48px;
+  }
 }
 @media (min-width:720px){
   .club-row__card{
@@ -1634,7 +1637,7 @@ header.wp-block-template-part.is-elevated .cm-header{
   text-align:center;
 }
 .clubs-help{
-  margin-top:56px;
+  margin-top:32px;
   font-size:14px;
   color:#475569;
 }
