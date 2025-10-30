@@ -6,32 +6,46 @@
   <p>Trouvez un club près de chez vous. Débutants bienvenus (jeunes & adultes). <a href="/contact">Pas sûr ? Écrivez-nous</a>.</p>
 
   <!-- Toolbar -->
-  <div class="clubs-toolbar" role="region" aria-label="Outils de recherche de clubs">
-    <label class="clubs-field">
-      <span>Recherche</span>
-      <input id="clubs-search" class="clubs-input" type="search" placeholder="Nom du club, ville, code postal…" aria-label="Rechercher un club">
-    </label>
+  <div class="clubs-toolbar" role="region" aria-label="Recherche de clubs">
+    <div class="clubs-search">
+      <label for="clubs-search" class="clubs-field">
+        <span>Rechercher un club</span>
+        <input id="clubs-search" class="clubs-input" type="search" placeholder="Nom du club, ville, établissement…" aria-label="Saisissez votre recherche">
+      </label>
+      <div class="clubs-search__actions">
+        <button id="clubs-search-btn" class="btn" type="button">Rechercher</button>
+        <button id="clubs-reset-btn" class="btn btn-secondary" type="button">Réinitialiser</button>
+      </div>
+      <p id="clubs-search-status" class="clubs-search__status" role="status" aria-live="polite"></p>
+    </div>
 
-    <div class="clubs-location">
-      <label for="clubs-location">Ma ville ou mon code postal</label>
+    <div class="clubs-location-box" aria-label="Localisation personnelle">
+      <div class="clubs-location-box__header">
+        <h2>Votre localisation</h2>
+        <button id="clubs-location-clear" type="button" class="link-button">Effacer</button>
+      </div>
+      <label for="clubs-location" class="clubs-location__label">Ville ou code postal</label>
       <div class="clubs-location__control">
         <input id="clubs-location" type="text" inputmode="search" autocomplete="postal-code" placeholder="Ex. Courbevoie ou 92000">
-        <button id="clubs-location-apply" type="button">Valider</button>
+        <button id="clubs-location-apply" class="btn" type="button">Valider</button>
+        <button id="clubs-use-geoloc" class="btn btn-secondary" type="button">Autour de moi</button>
       </div>
       <p id="clubs-location-status" class="clubs-location__status" role="status" aria-live="polite"></p>
     </div>
 
-    <label class="clubs-sort">
-      <span>Tri</span>
-      <select id="clubs-sort">
-        <option value="name">Nom du club (A→Z)</option>
-        <option value="licenses">Nombre de licenciés</option>
-        <option value="distance">Distance (depuis ma ville)</option>
-      </select>
-    </label>
-
-    <div class="clubs-actions">
-      <button id="clubs-toggle-map" class="btn-map" type="button" aria-expanded="false" aria-controls="clubs-map">Afficher la carte</button>
+    <div class="clubs-advanced">
+      <button id="clubs-advanced-toggle" class="link-button" type="button" aria-expanded="false" aria-controls="clubs-advanced-panel">Options avancées</button>
+      <div id="clubs-advanced-panel" class="clubs-advanced__panel" hidden>
+        <label class="clubs-sort">
+          <span>Tri</span>
+          <select id="clubs-sort">
+            <option value="name">Nom du club (A→Z)</option>
+            <option value="licenses">Nombre de licenciés</option>
+            <option value="distance">Distance (depuis ma ville)</option>
+          </select>
+        </label>
+        <button id="clubs-toggle-map" class="btn-map" type="button" aria-expanded="false" aria-controls="clubs-map">Afficher la carte</button>
+      </div>
     </div>
   </div>
 

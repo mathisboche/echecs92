@@ -1224,19 +1224,18 @@ header.wp-block-template-part.is-elevated .cm-header{
   margin-bottom:16px;
 }
 .clubs-toolbar{
-  display:grid;
-  grid-template-columns:1fr;
-  gap:16px;
-  align-items:start;
+  display:flex;
+  flex-direction:column;
+  gap:24px;
+  align-items:stretch;
   background:#f1f5f9;
   border:1px solid #d0d7e7;
   border-radius:12px;
-  padding:24px;
+  padding:28px 24px;
   margin:32px 0;
 }
 .clubs-field,
-.clubs-sort,
-.clubs-location{
+.clubs-sort{
   display:flex;
   flex-direction:column;
   gap:6px;
@@ -1244,8 +1243,7 @@ header.wp-block-template-part.is-elevated .cm-header{
   color:#475569;
 }
 .clubs-field span,
-.clubs-sort span,
-.clubs-location > label{
+.clubs-sort span{
   font-weight:600;
   color:#0f172a;
 }
@@ -1267,10 +1265,74 @@ header.wp-block-template-part.is-elevated .cm-header{
   outline:none;
   border-color:#1d4ed8;
 }
+.clubs-search{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.clubs-search__actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+}
+.clubs-search__status{
+  min-height:20px;
+  margin:0;
+  font-size:13px;
+  color:#334155;
+}
+.clubs-search__status[data-tone="success"]{
+  color:#166534;
+}
+.clubs-search__status[data-tone="error"]{
+  color:#b91c1c;
+}
+.clubs-location-box{
+  background:#ffffff;
+  border:1px solid #d8e0ef;
+  border-radius:12px;
+  padding:20px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.clubs-location-box__header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+}
+.clubs-location-box__header h2{
+  font-size:15px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:#475569;
+  margin:0;
+}
+.link-button{
+  padding:0;
+  border:none;
+  background:none;
+  color:#1d4ed8;
+  font-weight:600;
+  font-size:13px;
+  text-decoration:underline;
+  cursor:pointer;
+}
+.link-button:hover,
+.link-button:focus-visible{
+  color:#173eae;
+  outline:none;
+}
+.clubs-location__label{
+  font-size:14px;
+  font-weight:600;
+  color:#0f172a;
+}
 .clubs-location__control{
   display:flex;
   flex-wrap:wrap;
-  gap:8px;
+  gap:10px;
 }
 #clubs-location-apply{
   padding:12px 18px;
@@ -1300,11 +1362,19 @@ header.wp-block-template-part.is-elevated .cm-header{
 .clubs-location__status[data-tone="error"]{
   color:#b91c1c;
 }
-.clubs-actions{
+.clubs-advanced{
   display:flex;
-  align-items:center;
+  flex-direction:column;
   gap:12px;
-  justify-content:flex-start;
+}
+.clubs-advanced__panel{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  padding:16px;
+  background:#ffffff;
+  border:1px dashed #cbd5e1;
+  border-radius:10px;
 }
 .btn-map{
   padding:12px 18px;
@@ -1333,6 +1403,64 @@ header.wp-block-template-part.is-elevated .cm-header{
   flex-direction:column;
   gap:20px;
   margin-top:16px;
+  position:relative;
+}
+#clubs-results.is-loading{
+  opacity:0.55;
+  pointer-events:none;
+}
+#clubs-results.is-loading::after{
+  content:'Recherche en cours…';
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:600;
+  color:#1d4ed8;
+  background:rgba(241,245,249,0.85);
+  z-index:1;
+}
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:12px 20px;
+  border-radius:10px;
+  border:1px solid #0f172a;
+  background:#0f172a;
+  color:#ffffff;
+  font-size:15px;
+  font-weight:600;
+  cursor:pointer;
+  text-decoration:none;
+  transition:background-color .2s ease, border-color .2s ease, transform .15s ease;
+}
+.btn:hover,
+.btn:focus-visible{
+  background:#1e293b;
+  border-color:#1e293b;
+  outline:none;
+  transform:translateY(-1px);
+}
+.btn:active{
+  transform:translateY(0);
+}
+.btn[disabled]{
+  opacity:.6;
+  cursor:progress;
+  transform:none;
+}
+.btn-secondary{
+  background:#ffffff;
+  color:#0f172a;
+  border-color:#94a3b8;
+}
+.btn-secondary:hover,
+.btn-secondary:focus-visible{
+  background:#e2e8f0;
+  border-color:#64748b;
 }
 .club-card{
   border:1px solid #d0d7e7;
@@ -1412,32 +1540,6 @@ header.wp-block-template-part.is-elevated .cm-header{
   display:flex;
   flex-wrap:wrap;
   gap:12px;
-}
-.club-card__actions .btn{
-  padding:10px 16px;
-  border-radius:10px;
-  border:1px solid #0f172a;
-  background:#0f172a;
-  color:#ffffff;
-  font-size:14px;
-  font-weight:600;
-  text-decoration:none;
-}
-.club-card__actions .btn:hover,
-.club-card__actions .btn:focus-visible{
-  background:#1e293b;
-  border-color:#1e293b;
-  outline:none;
-}
-.club-card__actions .btn-secondary{
-  background:#ffffff;
-  color:#0f172a;
-  border-color:#94a3b8;
-}
-.club-card__actions .btn-secondary:hover,
-.club-card__actions .btn-secondary:focus-visible{
-  background:#e2e8f0;
-  border-color:#64748b;
 }
 .club-card__details-wrapper{
   border-top:1px solid #e2e8f0;
@@ -1566,21 +1668,35 @@ header.wp-block-template-part.is-elevated .cm-header{
 }
 
 @media (min-width:720px){
-  .clubs-toolbar{
-    grid-template-columns:2fr 1.5fr 1fr auto;
-    gap:20px;
+  .clubs-location__control{
+    gap:12px;
   }
-  .clubs-actions{
-    justify-content:flex-end;
+}
+@media (min-width:960px){
+  .clubs-toolbar{
+    flex-direction:row;
+    align-items:flex-start;
+    gap:24px;
+  }
+  .clubs-search{
+    flex:2 1 0;
+  }
+  .clubs-location-box{
+    flex:1 1 0;
+  }
+  .clubs-advanced{
+    flex:0 0 220px;
   }
   .clubs-location__control{
     flex-wrap:nowrap;
   }
-  #clubs-location-apply{
+  #clubs-location{
+    flex:1 1 auto;
+  }
+  #clubs-location-apply,
+  #clubs-use-geoloc{
     flex:0 0 auto;
   }
-}
-@media (min-width:960px){
   .clubs-list{
     display:grid;
     grid-template-columns:repeat(2,minmax(0,1fr));
@@ -1595,7 +1711,8 @@ header.wp-block-template-part.is-elevated .cm-header{
     flex-direction:column;
     align-items:stretch;
   }
-  #clubs-location-apply{
+  #clubs-location-apply,
+  #clubs-use-geoloc{
     width:100%;
   }
   .club-card__body{
