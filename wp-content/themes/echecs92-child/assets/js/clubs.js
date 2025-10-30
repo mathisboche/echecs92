@@ -275,6 +275,37 @@
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase();
 
+  const locationFallbackCache = new Map();
+
+  const normaliseQueryKey = (value) => normalise(value).replace(/\s+/g, ' ').trim();
+
+  const isLikelyLocationQuery = (value) => {
+    if (!value) {
+      return false;
+    }
+    const trimmed = value.trim();
+    if (trimmed.length < 2) {
+      return false;
+    }
+    const digitsCandidate = trimmed.replace(/\s/g, '');
+    if (/^\d{2,5}$/.test(digitsCandidate)) {
+      return true;
+    }
+    const ascii = trimmed
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s'’\-]/gi, '')
+      .trim();
+    if (!ascii) {
+      return false;
+    }
+    const letters = ascii.replace(/[^a-z]/gi, '');
+    if (letters.length < 3) {
+      return false;
+    }
+    return true;
+  };
+
   const haversineKm = (lat1, lon1, lat2, lon2) => {
     const R = 6371;
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -916,26 +947,6 @@
     state.pendingQuery = event.target.value;
   };
 
-  const performSearch = () => {
-    if (searchInput) {
-      state.pendingQuery = searchInput.value;
-    }
-    state.query = (state.pendingQuery || '').trim();
-    if (state.userLocation) {
-      handleLocationClear({ silent: true });
-    }
-    window.clearTimeout(searchTimer);
-    setSearchStatus('Recherche en cours…', 'info');
-    setLoading(true, 'search');
-    searchTimer = window.setTimeout(() => {
-      try {
-        applyFilters();
-      } finally {
-        setLoading(false, 'search');
-      }
-    }, SEARCH_DELAY);
-  };
-
   const resetSearch = () => {
     window.clearTimeout(searchTimer);
     setLoading(false, 'search');
@@ -1061,6 +1072,107 @@
       },
     });
     refreshDistances({ preserveVisibility: true, trackGeocodes: true });
+  };
+
+  const maybeTriggerLocationFallback = (meta = {}) => {
+    if (!meta || typeof meta !== 'object') {
+      return false;
+    }
+    const rawQuery = (meta.query || '').trim();
+    if (!rawQuery) {
+      return false;
+    }
+    if (state.userLocation) {
+      return false;
+    }
+    if (!meta.fallbackUsed || meta.matches > 0) {
+      return false;
+    }
+    if (!isLikelyLocationQuery(rawQuery)) {
+      return false;
+    }
+    const key = normaliseQueryKey(rawQuery);
+    if (!key) {
+      return false;
+    }
+    const cached = locationFallbackCache.get(key);
+    if (cached) {
+      if (cached.status === 'success') {
+        if (normaliseQueryKey(state.query || '') === key) {
+          applyUserLocation({
+            latitude: cached.latitude,
+            longitude: cached.longitude,
+            label: cached.label,
+            query: rawQuery,
+          });
+        }
+        return true;
+      }
+      if (cached.status === 'pending') {
+        setSearchStatus('Localisation détectée, recherche des clubs proches…', 'info');
+        return true;
+      }
+      const elapsed = Date.now() - (cached.timestamp || 0);
+      if (elapsed < 60000) {
+        return false;
+      }
+    }
+
+    const entry = {
+      status: 'pending',
+      timestamp: Date.now(),
+      query: rawQuery,
+    };
+    locationFallbackCache.set(key, entry);
+    setSearchStatus('Localisation détectée, recherche des clubs proches…', 'info');
+
+    geocodePlace(rawQuery)
+      .then(({ latitude, longitude, label }) => {
+        entry.status = 'success';
+        entry.timestamp = Date.now();
+        entry.latitude = latitude;
+        entry.longitude = longitude;
+        entry.label = label || rawQuery;
+        if (normaliseQueryKey(state.query || '') === key) {
+          applyUserLocation({ latitude, longitude, label: entry.label, query: rawQuery });
+        }
+      })
+      .catch(() => {
+        entry.status = 'error';
+        entry.timestamp = Date.now();
+        if (normaliseQueryKey(state.query || '') === key) {
+          setSearchStatus(
+            'Aucun club ne correspond à cette recherche. Essayez un autre nom ou une autre localisation.',
+            'error'
+          );
+        }
+      });
+
+    return true;
+  };
+
+  const performSearch = () => {
+    if (searchInput) {
+      state.pendingQuery = searchInput.value;
+    }
+    state.query = (state.pendingQuery || '').trim();
+    if (state.userLocation) {
+      handleLocationClear({ silent: true });
+    }
+    window.clearTimeout(searchTimer);
+    setSearchStatus('Recherche en cours…', 'info');
+    setLoading(true, 'search');
+    searchTimer = window.setTimeout(() => {
+      let meta;
+      try {
+        meta = applyFilters();
+      } finally {
+        setLoading(false, 'search');
+      }
+      if (meta) {
+        maybeTriggerLocationFallback(meta);
+      }
+    }, SEARCH_DELAY);
   };
 
   const handleLocationSubmit = () => {
