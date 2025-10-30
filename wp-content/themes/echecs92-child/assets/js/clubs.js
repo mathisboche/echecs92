@@ -730,6 +730,9 @@
 
     let orderedClubs;
 
+    const digitsQuery = rawQuery.replace(/\s/g, '');
+    const numericQuery = /^\d{2,5}$/.test(digitsQuery) ? digitsQuery : null;
+
     if (terms.length) {
       const scored = state.clubs.map((club, index) => {
         const score = computeSearchScore(club, terms);
@@ -738,7 +741,36 @@
       });
       const positives = scored.filter((entry) => entry.score >= POSITIVE_MATCH_THRESHOLD);
       matches = positives.length;
+      let hasNameMatch = false;
+      let hasCommuneMatch = false;
+      let hasExactPostal = false;
       if (positives.length) {
+        positives.forEach(({ club }) => {
+          if (!hasNameMatch && club._nameNormalized) {
+            const nameMatchesAll = terms.every((term) => club._nameNormalized.includes(term));
+            if (nameMatchesAll) {
+              hasNameMatch = true;
+            }
+          }
+          if (!hasCommuneMatch && club._communeNormalized) {
+            const communeMatchesAll = terms.every((term) => club._communeNormalized.includes(term));
+            if (communeMatchesAll) {
+              hasCommuneMatch = true;
+            }
+          }
+          if (!hasExactPostal && numericQuery) {
+            const codes = Array.isArray(club._postalCodes) ? club._postalCodes : [];
+            if (codes.includes(numericQuery)) {
+              hasExactPostal = true;
+            }
+          }
+        });
+      }
+
+      const allowLocationPositives =
+        !likelyLocation || hasNameMatch || hasCommuneMatch || hasExactPostal;
+
+      if (positives.length && allowLocationPositives) {
         positives.sort((a, b) => {
           if (b.score !== a.score) {
             return b.score - a.score;
@@ -748,6 +780,9 @@
         orderedClubs = positives.map((entry) => entry.club);
       } else {
         orderedClubs = [];
+        if (likelyLocation && !allowLocationPositives) {
+          matches = 0;
+        }
       }
     } else {
       orderedClubs = state.clubs.slice();
