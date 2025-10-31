@@ -836,6 +836,9 @@
     }
 
     if (!meta.hasQuery) {
+      if (state.distanceMode) {
+        handleLocationClear();
+      }
       updateStatusIfCurrent('Tous les clubs sont affichés.', 'info');
       return;
     }
@@ -845,6 +848,9 @@
         meta.total === 1
           ? `1 club correspond à "${meta.rawQuery}".`
           : `${meta.total} clubs correspondent à "${meta.rawQuery}".`;
+      if (state.distanceMode) {
+        handleLocationClear();
+      }
       updateStatusIfCurrent(label, 'info');
       return;
     }
@@ -909,11 +915,11 @@
     }
   };
 
-  const handleLocationClear = (event) => {
-    if (event && typeof event.preventDefault === 'function') {
-      event.preventDefault();
-    }
-    locationRequestId += 1;
+const handleLocationClear = (event) => {
+  if (event && typeof event.preventDefault === 'function') {
+    event.preventDefault();
+  }
+  locationRequestId += 1;
     state.distanceMode = false;
     state.distanceReference = '';
     state.clubs.forEach((club) => {
@@ -928,7 +934,7 @@
     void performSearch();
   };
 
-  const handleLocationSubmit = async (event) => {
+const handleLocationSubmit = async (event) => {
     if (event && typeof event.preventDefault === 'function') {
       event.preventDefault();
     }
@@ -941,8 +947,13 @@
       return;
     }
 
-    const requestId = ++locationRequestId;
-    setLocationStatus(`Recherche de ${raw}…`, 'info');
+  const requestId = ++locationRequestId;
+  if (searchInput && searchInput.value) {
+    searchInput.value = '';
+    state.query = '';
+    state.pendingQuery = '';
+  }
+  setLocationStatus(`Recherche de ${raw}…`, 'info');
     const releaseButton = beginButtonWait(locationApplyButton, 'Recherche…');
 
     try {
@@ -1004,6 +1015,11 @@
     }
 
     const requestId = ++locationRequestId;
+    if (searchInput && searchInput.value) {
+      searchInput.value = '';
+      state.query = '';
+      state.pendingQuery = '';
+    }
     setLocationStatus('Recherche de votre position…', 'info');
     const releaseButton = beginButtonWait(geolocButton, 'Recherche…');
 
