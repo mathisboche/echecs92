@@ -78,12 +78,13 @@
     if (!message) {
       return message;
     }
-    if (state.filtered.length > state.visibleCount && state.visibleCount > 0) {
+    const maxVisible = state.visibleCount <= 0 ? 0 : Math.min(state.visibleCount, state.filtered.length);
+    if (state.filtered.length > maxVisible && maxVisible > 0) {
       const proximityMode = Boolean(state.userLocation);
-      if (state.visibleCount === 1) {
+      if (maxVisible === 1) {
         return `${message} Le club le plus ${proximityMode ? 'proche' : 'pertinent'} est affiché en premier.`;
       }
-      return `${message} Les ${state.visibleCount} clubs les plus ${proximityMode ? 'proches' : 'pertinents'} sont affichés en premier.`;
+      return `${message} Les ${maxVisible} clubs les plus ${proximityMode ? 'proches' : 'pertinents'} sont affichés en premier.`;
     }
     return message;
   };
@@ -578,6 +579,10 @@
     state.geocodingActive = true;
 
     const finish = (success) => {
+      if (!success) {
+        state.geocodeFailures = (state.geocodeFailures || 0) + 1;
+        state.geocodeLastFailure = Date.now();
+      }
       if (track && requestId != null) {
         markResolvedDistanceClub(club.id, requestId);
       }
@@ -600,8 +605,20 @@
       ensureDistanceLoadingProgress();
     };
 
+    const now = Date.now();
+    const failureCooldown = 45000;
+
     if (!navigator.onLine) {
       finish(false);
+      return;
+    }
+
+    if (state.geocodeFailures && now - (state.geocodeLastFailure || 0) < failureCooldown) {
+      finish(false);
+      state.geocodingTimer = window.setTimeout(() => {
+        state.geocodingTimer = null;
+        processGeocodingQueue();
+      }, failureCooldown);
       return;
     }
 
@@ -659,6 +676,7 @@
 
     if (state.userLocation) {
       const { latitude, longitude } = state.userLocation;
+      const clubsToProcess = state.clubs.slice();
       state.clubs.forEach((club) => {
         if (club.lat == null || club.lng == null) {
           delete club.distanceKm;
@@ -666,6 +684,11 @@
           return;
         }
         club.distanceKm = haversineKm(latitude, longitude, club.lat, club.lng);
+      });
+      clubsToProcess.forEach((club) => {
+        if (club.distanceKm == null && club.lat != null && club.lng != null) {
+          club.distanceKm = haversineKm(latitude, longitude, club.lat, club.lng);
+        }
       });
       applyFilters({ preserveVisibility });
       ensureDistanceLoadingProgress();
@@ -1073,7 +1096,9 @@
       }
     }
 
-    if (!state.filtered.length) {
+    const awaitingDistances = state.userLocation && state.distanceLoading;
+
+    if (!state.filtered.length && !awaitingDistances) {
       resultsEl.innerHTML =
         '<p class="clubs-empty">Aucun club ne correspond à votre recherche pour le moment.</p>';
       if (moreButton) {
@@ -1082,8 +1107,13 @@
       return;
     }
 
+    if (awaitingDistances) {
+      return;
+    }
+
     const fragment = document.createDocumentFragment();
-    state.filtered.slice(0, state.visibleCount).forEach((club) => {
+    const visibleCount = Math.min(state.visibleCount, state.filtered.length);
+    state.filtered.slice(0, visibleCount).forEach((club) => {
       const row = createResultRow(club);
       fragment.appendChild(row);
     });
@@ -1166,6 +1196,7 @@
       headers: {
         Accept: 'application/json',
         'Accept-Language': 'fr',
+        'User-Agent': 'echecs92-clubs/1.0 (contact@echecs92.com)',
       },
     })
       .then((response) => {
@@ -1205,6 +1236,7 @@
       headers: {
         Accept: 'application/json',
         'Accept-Language': 'fr',
+        'User-Agent': 'echecs92-clubs/1.0 (contact@echecs92.com)',
       },
     })
       .then((response) => {
@@ -1578,6 +1610,9 @@
         state.clubs = (Array.isArray(data) ? data : []).map(hydrateClub);
         const meta = applyFilters({ silentStatus: true });
         updateSearchStatus(meta);
+        if (state.userLocation) {
+          scheduleDistanceRefresh({ preserveVisibility: true, trackGeocodes: true });
+        }
       })
       .catch(() => {
         resultsEl.innerHTML =
