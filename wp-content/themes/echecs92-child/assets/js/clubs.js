@@ -43,6 +43,8 @@
     '92800': { label: 'Puteaux', lat: 48.8826865, lng: 2.2410641 },
   };
 
+  const GEOCODE_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
+
   const resultsEl = document.getElementById('clubs-results');
   if (!resultsEl) {
     return;
@@ -73,6 +75,9 @@
     distanceMode: false,
     distanceReference: '',
   };
+
+  let searchRequestId = 0;
+  const geocodeCache = new Map();
 
   const disableControl = (element) => {
     if (!element) {
@@ -228,6 +233,39 @@
     return formatted.replace(/\s+/g, ' ').trim();
   };
 
+  const formatGeocodeLabel = (place) => {
+    if (!place || typeof place !== 'object') {
+      return '';
+    }
+    const { address = {}, display_name: displayName = '' } = place;
+    const localityRaw =
+      address.city ||
+      address.town ||
+      address.village ||
+      address.municipality ||
+      address.hamlet ||
+      address.suburb ||
+      '';
+    const locality = formatCommune(localityRaw);
+    if (locality) {
+      return locality;
+    }
+    if (displayName) {
+      const [first] = displayName.split(',');
+      return formatCommune(first);
+    }
+    return '';
+  };
+
+  const toDistanceReferenceLabel = (baseLabel, postalCode) => {
+    const label = (baseLabel || '').trim();
+    const code = (postalCode || '').trim();
+    if (label && code) {
+      return label.includes(code) ? label : `${label} (${code})`;
+    }
+    return label || code;
+  };
+
   const lookupLocalCoordinates = (query) => {
     const raw = (query || '').toString().trim();
     if (!raw) {
@@ -348,6 +386,68 @@
       return `${distanceKm.toFixed(1)} km`;
     }
     return `${Math.round(distanceKm)} km`;
+  };
+
+  const geocodePlace = (query) => {
+    const key = normalise(query).replace(/\s+/g, ' ').trim();
+    if (!key) {
+      return Promise.resolve(null);
+    }
+    const cached = geocodeCache.get(key);
+    if (cached) {
+      if (typeof cached.then === 'function') {
+        return cached;
+      }
+      return Promise.resolve(cached);
+    }
+
+    const params = new URLSearchParams({
+      format: 'json',
+      addressdetails: '1',
+      limit: '1',
+      countrycodes: 'fr',
+      q: query,
+    });
+
+    const request = fetch(`${GEOCODE_ENDPOINT}?${params.toString()}`, {
+      headers: {
+        Accept: 'application/json',
+      },
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((payload) => {
+        if (!Array.isArray(payload) || !payload.length) {
+          return null;
+        }
+        const result = payload[0];
+        const latitude = Number.parseFloat(result.lat);
+        const longitude = Number.parseFloat(result.lon);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+          return null;
+        }
+        const label = formatGeocodeLabel(result);
+        const postalCodeRaw = result?.address?.postcode || '';
+        const postalCode = postalCodeRaw.split(';')[0].trim();
+        return {
+          latitude,
+          longitude,
+          label,
+          postalCode,
+        };
+      })
+      .catch(() => null)
+      .then((finalResult) => {
+        geocodeCache.set(key, finalResult);
+        return finalResult;
+      });
+
+    geocodeCache.set(key, request);
+    return request;
   };
 
   const levenshtein = (a, b) => {
@@ -563,50 +663,88 @@
     };
   };
 
-  const performSearch = () => {
+  const performSearch = async () => {
     const raw = searchInput ? searchInput.value : '';
     const trimmed = (raw || '').trim();
+    const requestId = ++searchRequestId;
+
+    const updateStatusIfCurrent = (message, tone = 'info') => {
+      if (requestId === searchRequestId) {
+        setSearchStatus(message, tone);
+      }
+    };
 
     if (!trimmed) {
       const meta = applySearch('');
+      if (requestId !== searchRequestId) {
+        return;
+      }
       if (meta.total > 0) {
-        setSearchStatus('Tous les clubs sont affichés.', 'info');
+        updateStatusIfCurrent('Tous les clubs sont affichés.', 'info');
       } else {
-        setSearchStatus('Aucun club disponible pour le moment.', 'info');
+        updateStatusIfCurrent('Aucun club disponible pour le moment.', 'info');
       }
       return;
     }
 
+    updateStatusIfCurrent('Recherche en cours…', 'info');
+
     const postalMatch = trimmed.match(/\b(\d{5})\b/);
     if (postalMatch) {
       const postalCode = postalMatch[1];
-      const coords = getPostalCoordinates(postalCode) || lookupLocalCoordinates(postalCode);
-      if (coords) {
-        const referenceLabel = (() => {
-          const baseLabel = coords.label || formatCommune(trimmed) || trimmed;
-          if (postalCode && !baseLabel.includes(postalCode)) {
-            return `${baseLabel} (${postalCode})`;
+      let coords = getPostalCoordinates(postalCode) || lookupLocalCoordinates(postalCode);
+      if (!coords) {
+        updateStatusIfCurrent(`Recherche des clubs proches de ${postalCode}…`, 'info');
+        try {
+          const geocoded = await geocodePlace(postalCode);
+          if (requestId !== searchRequestId) {
+            return;
           }
-          return baseLabel;
-        })();
+          if (geocoded) {
+            coords = geocoded;
+          }
+        } catch {
+          // ignore, handled below
+        }
+      }
+      if (coords) {
+        if (requestId !== searchRequestId) {
+          return;
+        }
+        const referenceLabel = toDistanceReferenceLabel(
+          coords.label || formatCommune(trimmed) || trimmed,
+          coords.postalCode || postalCode
+        );
         const meta = runDistanceSearch({
           latitude: coords.latitude ?? coords.lat,
           longitude: coords.longitude ?? coords.lng,
           label: referenceLabel,
           query: trimmed,
         });
+        if (requestId !== searchRequestId) {
+          return;
+        }
         if (meta.finite > 0) {
-          setSearchStatus(`Clubs triés par distance depuis ${meta.label || trimmed}.`, 'info');
+          updateStatusIfCurrent(
+            `Clubs triés par distance depuis ${meta.label || referenceLabel || trimmed}.`,
+            'info'
+          );
         } else {
-          setSearchStatus('Impossible de calculer les distances pour cette localisation.', 'error');
+          updateStatusIfCurrent('Impossible de calculer les distances pour cette localisation.', 'error');
         }
         return;
       }
+      updateStatusIfCurrent(`Localisation "${postalCode}" introuvable.`, 'error');
+      return;
     }
 
     const meta = applySearch(trimmed);
+    if (requestId !== searchRequestId) {
+      return;
+    }
+
     if (!meta.hasQuery) {
-      setSearchStatus('Tous les clubs sont affichés.', 'info');
+      updateStatusIfCurrent('Tous les clubs sont affichés.', 'info');
       return;
     }
 
@@ -615,38 +753,59 @@
         meta.total === 1
           ? `1 club correspond à "${meta.rawQuery}".`
           : `${meta.total} clubs correspondent à "${meta.rawQuery}".`;
-      setSearchStatus(label, 'info');
+      updateStatusIfCurrent(label, 'info');
       return;
     }
 
-    const location = lookupLocalCoordinates(trimmed);
+    let location = lookupLocalCoordinates(trimmed);
+
+    if (!location) {
+      updateStatusIfCurrent(`Recherche de la localisation "${trimmed}"…`, 'info');
+      try {
+        location = await geocodePlace(trimmed);
+      } catch {
+        location = null;
+      }
+      if (requestId !== searchRequestId) {
+        return;
+      }
+    }
+
     if (location) {
-      const referenceLabel = (() => {
-        const baseLabel = location.label || formatCommune(trimmed) || trimmed;
-        if (location.postalCode && !baseLabel.includes(location.postalCode)) {
-          return `${baseLabel} (${location.postalCode})`;
-        }
-        return baseLabel;
-      })();
+      if (requestId !== searchRequestId) {
+        return;
+      }
+
+      const referenceLabel = toDistanceReferenceLabel(
+        location.label || formatCommune(trimmed) || trimmed,
+        location.postalCode
+      );
       const distanceMeta = runDistanceSearch({
         latitude: location.latitude,
         longitude: location.longitude,
         label: referenceLabel,
         query: trimmed,
       });
+      if (requestId !== searchRequestId) {
+        return;
+      }
       if (distanceMeta.finite > 0) {
-        const reference = distanceMeta.label || trimmed;
-        setSearchStatus(`Aucun club nommé "${trimmed}". Classement par distance depuis ${reference}.`, 'info');
+        const reference = distanceMeta.label || referenceLabel || trimmed;
+        updateStatusIfCurrent(
+          `Aucun club nommé "${trimmed}". Classement par distance depuis ${reference}.`,
+          'info'
+        );
       } else {
-        setSearchStatus('Impossible de calculer les distances pour cette localisation.', 'error');
+        updateStatusIfCurrent('Impossible de calculer les distances pour cette localisation.', 'error');
       }
       return;
     }
 
-    setSearchStatus(`Aucun club ne correspond à "${meta.rawQuery}".`, 'error');
+    updateStatusIfCurrent(`Aucun club ne correspond à "${meta.rawQuery}".`, 'error');
   };
 
   const resetSearch = () => {
+    searchRequestId += 1;
     if (searchInput) {
       searchInput.value = '';
     }
