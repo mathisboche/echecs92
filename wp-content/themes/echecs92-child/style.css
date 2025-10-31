@@ -1571,6 +1571,8 @@ header.wp-block-template-part.is-elevated .cm-header{
   min-width:0;
   overflow:hidden;
   text-overflow:ellipsis;
+  order:-1;
+  margin-bottom:4px;
 }
 .club-row__distance[data-tone="onsite"]{
   color:#047857;
@@ -1624,8 +1626,10 @@ header.wp-block-template-part.is-elevated .cm-header{
     gap:6px;
   }
   .club-row__distance{
+    order:initial;
     align-self:center;
     margin-left:auto;
+    margin-bottom:0;
   }
 }
 @media (min-width:720px){
