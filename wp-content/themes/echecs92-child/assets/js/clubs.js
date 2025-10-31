@@ -10,7 +10,6 @@
   const GEOCODE_MIN_DELAY = 1200; // ms between requests (respect Nominatim policy)
   const SEARCH_DELAY = 420;
   const VISIBLE_RESULTS_DEFAULT = 5;
-  const POSITIVE_MATCH_THRESHOLD = 1.15;
   const POSTAL_COORDINATES = {
     '92000': { label: 'Nanterre', lat: 48.8927825, lng: 2.2073652 },
     '92100': { label: 'Boulogne-Billancourt', lat: 48.837494, lng: 2.2378546 },
@@ -128,34 +127,38 @@
 
   const updateSearchStatus = (meta) => {
     if (!meta) {
-      setSearchStatus(
-        withVisibilityNote(
-          `${state.filtered.length} club${state.filtered.length > 1 ? 's' : ''} affiché${state.filtered.length > 1 ? 's' : ''}.`
-        ),
-        'info'
-      );
+      const total = state.filtered.length;
+      const message = `${total} club${total > 1 ? 's' : ''} affiché${total > 1 ? 's' : ''}.`;
+      setSearchStatus(withVisibilityNote(message), 'info');
       return;
     }
-    if (!meta.termsCount) {
-      setSearchStatus(
-        withVisibilityNote(
-          `${meta.total} club${meta.total > 1 ? 's' : ''} dans les Hauts-de-Seine.`
-        ),
-        'info'
-      );
+
+    const rawQuery = (meta.query || '').trim();
+
+    if (!rawQuery && state.userLocation) {
+      const reference = state.distanceReference || 'votre position';
+      const baseMessage = `Clubs triés par distance depuis ${reference}.`;
+      setSearchStatus(withVisibilityNote(baseMessage), 'info');
       return;
     }
+
+    if (!rawQuery) {
+      const total = state.filtered.length;
+      const baseMessage = `${total} club${total > 1 ? 's' : ''} dans les Hauts-de-Seine.`;
+      setSearchStatus(withVisibilityNote(baseMessage), 'info');
+      return;
+    }
+
     if (meta.matches > 0) {
       const label =
-        meta.matches === 1 ? '1 club correspondant trouvé.' : `${meta.matches} clubs correspondants trouvés.`;
+        meta.matches === 1
+          ? `1 club correspond à "${rawQuery}".`
+          : `${meta.matches} clubs correspondent à "${rawQuery}".`;
       setSearchStatus(withVisibilityNote(label), 'info');
       return;
     }
-    const tone = meta.isLikelyLocation ? 'info' : 'error';
-    const message = meta.isLikelyLocation
-      ? 'Aucun club ne correspond exactement à cette localisation.'
-      : 'Aucun club ne correspond à cette recherche.';
-    setSearchStatus(withVisibilityNote(message), tone);
+
+    setSearchStatus(`Aucun club ne correspond à "${rawQuery}".`, 'error');
   };
 
   const setLoading = (isLoading, reason = 'generic') => {
@@ -318,6 +321,12 @@
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase();
+
+  const normaliseForMatch = (value) =>
+    normalise(value)
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
 
   const normaliseCommuneKey = (value) => normalise(value).replace(/[^a-z0-9]/g, '');
 
@@ -609,39 +618,6 @@
     return { label, context };
   };
 
-  const levenshtein = (a, b) => {
-    if (a === b) {
-      return 0;
-    }
-    if (!a.length) {
-      return b.length;
-    }
-    if (!b.length) {
-      return a.length;
-    }
-    const matrix = [];
-    for (let i = 0; i <= b.length; i += 1) {
-      matrix[i] = [i];
-    }
-    for (let j = 0; j <= a.length; j += 1) {
-      matrix[0][j] = j;
-    }
-    for (let i = 1; i <= b.length; i += 1) {
-      for (let j = 1; j <= a.length; j += 1) {
-        if (b.charAt(i - 1) === a.charAt(j - 1)) {
-          matrix[i][j] = matrix[i - 1][j - 1];
-        } else {
-          matrix[i][j] = Math.min(
-            matrix[i - 1][j] + 1,
-            matrix[i][j - 1] + 1,
-            matrix[i - 1][j - 1] + 1
-          );
-        }
-      }
-    }
-    return matrix[b.length][a.length];
-  };
-
   const persistClubCoordinates = (club) => {
     try {
       const key = `${STORAGE_PREFIX}${club.id}`;
@@ -881,254 +857,52 @@
     });
   }
 
-  const computeSearchScore = (club, terms) => {
-    if (!terms.length) {
-      return 0;
-    }
-    const keywords = club._keywords || [];
-    const searchString = club._search || '';
-    const nameNormalized = club._nameNormalized || '';
-    const communeNormalized = club._communeNormalized || '';
-    const tagTokens = club._tagTokens || [];
-    const combinedLabel = [nameNormalized, communeNormalized].filter(Boolean).join(' ');
-    let score = 0;
-
-    terms.forEach((term) => {
-      if (!term) {
-        return;
-      }
-      let best = 0;
-      if (nameNormalized) {
-        if (nameNormalized === term) {
-          best = Math.max(best, 8.5);
-        } else if (nameNormalized.startsWith(term)) {
-          best = Math.max(best, 6.8);
-        } else if (term.startsWith(nameNormalized)) {
-          best = Math.max(best, 6);
-        } else if (nameNormalized.includes(term)) {
-          best = Math.max(best, 5.2);
-        } else {
-          const distance = levenshtein(nameNormalized, term);
-          const similarity = 1 - distance / Math.max(nameNormalized.length, term.length);
-          if (similarity >= 0.55) {
-            best = Math.max(best, similarity * 6.5);
-          }
-        }
-      }
-      if (communeNormalized) {
-        if (communeNormalized === term) {
-          best = Math.max(best, 5.5);
-        } else if (communeNormalized.startsWith(term) || term.startsWith(communeNormalized)) {
-          best = Math.max(best, 4.6);
-        } else if (communeNormalized.includes(term)) {
-          best = Math.max(best, 3.8);
-        } else {
-          const distance = levenshtein(communeNormalized, term);
-          const similarity = 1 - distance / Math.max(communeNormalized.length, term.length);
-          if (similarity >= 0.6) {
-            best = Math.max(best, similarity * 4.8);
-          }
-        }
-      }
-      if (combinedLabel && combinedLabel.includes(term)) {
-        best = Math.max(best, 4.2);
-      }
-      if (searchString.includes(term)) {
-        best = Math.max(best, 2.5);
-      }
-      for (let i = 0; i < keywords.length; i += 1) {
-        const keyword = keywords[i];
-        if (!keyword) {
-          continue;
-        }
-        if (keyword === term) {
-          best = Math.max(best, 5);
-          continue;
-        }
-        if (keyword.startsWith(term)) {
-          best = Math.max(best, 3.5);
-          continue;
-        }
-        if (term.startsWith(keyword)) {
-          best = Math.max(best, 2.8);
-          continue;
-        }
-        if (keyword.includes(term)) {
-          best = Math.max(best, 2);
-          continue;
-        }
-        const distance = levenshtein(keyword, term);
-        const length = Math.max(keyword.length, term.length);
-        if (length) {
-          const similarity = 1 - distance / length;
-          if (similarity >= 0.6) {
-            best = Math.max(best, similarity * 3);
-          }
-        }
-      }
-      if (/^\d{2,5}$/.test(term)) {
-        const numericTerm = Number.parseInt(term, 10);
-        if (Number.isFinite(numericTerm)) {
-          (club._postalCodes || []).forEach((postal) => {
-            if (postal === term) {
-              best = Math.max(best, 5);
-            } else if (postal.startsWith(term) && term.length >= 3) {
-              best = Math.max(best, 3.6);
-            } else if (term.startsWith(postal)) {
-              best = Math.max(best, 2.6);
-            } else {
-              const numericPostal = Number.parseInt(postal, 10);
-              if (Number.isFinite(numericPostal)) {
-                const diff = Math.abs(numericPostal - numericTerm);
-                const closeness = Math.max(0, 1 - diff / 400);
-                if (closeness > 0) {
-                  best = Math.max(best, closeness * 1.2);
-                }
-              }
-            }
-          });
-        }
-      }
-      if (best === 0 && keywords.length) {
-        let minDistance = Infinity;
-        keywords.forEach((keyword) => {
-          const distance = levenshtein(keyword, term);
-          if (distance < minDistance) {
-            minDistance = distance;
-          }
-        });
-        if (minDistance !== Infinity) {
-          const closeness = Math.max(0, 1 - minDistance / Math.max(term.length, 3));
-          if (closeness > 0) {
-            best = Math.max(best, closeness * 1.8);
-          }
-        }
-      }
-      if (tagTokens.length) {
-        if (tagTokens.includes(term)) {
-          best = Math.max(best, 4.2);
-        } else {
-          for (let i = 0; i < tagTokens.length; i += 1) {
-            const tag = tagTokens[i];
-            const distance = levenshtein(tag, term);
-            const similarity = 1 - distance / Math.max(tag.length, term.length);
-            if (similarity >= 0.65) {
-              best = Math.max(best, similarity * 3.6);
-              break;
-            }
-          }
-        }
-      }
-      score += best;
-    });
-
-    return score;
-  };
 
   const applyFilters = (options = {}) => {
-    const { silentStatus = false, preserveVisibility = false } = options;
-    const rawQuery = state.query || '';
-    const query = normalise(rawQuery);
-    const terms = query ? query.split(/\s+/).filter(Boolean) : [];
-    const scoreMap = new Map();
-    let matches = 0;
-    const likelyLocation = terms.length ? isLikelyLocationQuery(rawQuery) : false;
+    const { silentStatus = false, preserveVisibility = false } = options || {};
+    const rawQuery = (state.query || '').trim();
+    const matchQuery = normaliseForMatch(rawQuery);
 
-    let orderedClubs;
-
-    const digitsQuery = rawQuery.replace(/\s/g, '');
-    const numericQuery = /^\d{2,5}$/.test(digitsQuery) ? digitsQuery : null;
-
-    if (terms.length) {
-      const scored = state.clubs.map((club, index) => {
-        const score = computeSearchScore(club, terms);
-        scoreMap.set(club.id, score);
-        return { club, score, index };
+    let filtered;
+    if (matchQuery) {
+      filtered = state.clubs.filter((club) => {
+        const haystack = club._matchHaystack || normaliseForMatch(club._search || '');
+        return haystack.includes(matchQuery);
       });
-      const positives = scored.filter((entry) => entry.score >= POSITIVE_MATCH_THRESHOLD);
-      matches = positives.length;
-      let hasNameMatch = false;
-      let hasCommuneMatch = false;
-      let hasExactPostal = false;
-      if (positives.length) {
-        positives.forEach(({ club }) => {
-          if (!hasNameMatch && club._nameNormalized) {
-            const nameMatchesAll = terms.every((term) => club._nameNormalized.includes(term));
-            if (nameMatchesAll) {
-              hasNameMatch = true;
-            }
-          }
-          if (!hasCommuneMatch && club._communeNormalized) {
-            const communeMatchesAll = terms.every((term) => club._communeNormalized.includes(term));
-            if (communeMatchesAll) {
-              hasCommuneMatch = true;
-            }
-          }
-          if (!hasExactPostal && numericQuery) {
-            const codes = Array.isArray(club._postalCodes) ? club._postalCodes : [];
-            if (codes.includes(numericQuery)) {
-              hasExactPostal = true;
-            }
-          }
-        });
-      }
-
-      const allowLocationPositives =
-        !likelyLocation || hasNameMatch || hasCommuneMatch || hasExactPostal;
-
-      if (positives.length && allowLocationPositives) {
-        positives.sort((a, b) => {
-          if (b.score !== a.score) {
-            return b.score - a.score;
-          }
-          return a.index - b.index;
-        });
-        orderedClubs = positives.map((entry) => entry.club);
-      } else {
-        orderedClubs = [];
-        if (likelyLocation && !allowLocationPositives) {
-          matches = 0;
-        }
-      }
     } else {
-      orderedClubs = state.clubs.slice();
-      state.clubs.forEach((club) => scoreMap.set(club.id, 0));
+      filtered = state.clubs.slice();
     }
 
-    orderedClubs.sort((a, b) => {
-      if (state.userLocation) {
+    if (state.userLocation && filtered.length) {
+      filtered.sort((a, b) => {
         const da = typeof a.distanceKm === 'number' ? a.distanceKm : Number.POSITIVE_INFINITY;
         const db = typeof b.distanceKm === 'number' ? b.distanceKm : Number.POSITIVE_INFINITY;
         if (da !== db) {
           return da - db;
         }
-      }
-      if (terms.length) {
-        const diff = (scoreMap.get(b.id) || 0) - (scoreMap.get(a.id) || 0);
-        if (diff !== 0) {
-          return diff;
-        }
-      }
-      return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
-    });
+        return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
+      });
+    } else {
+      filtered.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
+    }
 
-    state.filtered = orderedClubs;
+    state.filtered = filtered;
     renderResults({ resetVisible: !preserveVisibility });
-
     updateTotalCounter();
 
     const meta = {
       query: rawQuery,
-      termsCount: terms.length,
-      matches,
-      total: state.filtered.length,
-      isLikelyLocation: likelyLocation,
-      fallbackEligible: terms.length > 0 && matches === 0 && likelyLocation,
+      matches: filtered.length,
+      total: filtered.length,
+      mode: rawQuery ? 'text' : state.userLocation ? 'distance' : 'all',
     };
+
     state.lastSearchMeta = meta;
+
     if (!silentStatus) {
       updateSearchStatus(meta);
     }
+
     return meta;
   };
 
@@ -1433,35 +1207,49 @@
     refreshDistances({ preserveVisibility: true, trackGeocodes: true });
   };
 
-  const maybeTriggerLocationFallback = (meta = {}) => {
-    if (!meta || typeof meta !== 'object') {
+  const triggerLocationSearchFromQuery = (rawQuery) => {
+    const trimmed = (rawQuery || '').trim();
+    if (!trimmed) {
       return false;
     }
-    if (!meta.fallbackEligible) {
-      return false;
+
+    const localCoords = lookupLocalCoordinates(trimmed);
+    if (localCoords) {
+      const label = localCoords.label || trimmed;
+      const key = normaliseQueryKey(trimmed);
+      if (key) {
+        locationFallbackCache.set(key, {
+          status: 'success',
+          timestamp: Date.now(),
+          latitude: localCoords.lat,
+          longitude: localCoords.lng,
+          label,
+          query: trimmed,
+        });
+      }
+      applyUserLocation({
+        latitude: localCoords.lat,
+        longitude: localCoords.lng,
+        label,
+        query: trimmed,
+      });
+      return true;
     }
-    if (state.userLocation) {
-      return false;
-    }
-    const rawQuery = (meta.query || '').trim();
-    if (!rawQuery) {
-      return false;
-    }
-    const key = normaliseQueryKey(rawQuery);
+
+    const key = normaliseQueryKey(trimmed);
     if (!key) {
       return false;
     }
+
     const cached = locationFallbackCache.get(key);
     if (cached) {
       if (cached.status === 'success') {
-        if (normaliseQueryKey(state.query || '') === key) {
-          applyUserLocation({
-            latitude: cached.latitude,
-            longitude: cached.longitude,
-            label: cached.label,
-            query: rawQuery,
-          });
-        }
+        applyUserLocation({
+          latitude: cached.latitude,
+          longitude: cached.longitude,
+          label: cached.label,
+          query: trimmed,
+        });
         return true;
       }
       if (cached.status === 'pending') {
@@ -1469,39 +1257,51 @@
         return true;
       }
       const elapsed = Date.now() - (cached.timestamp || 0);
-      if (elapsed < 60000) {
+      if (cached.status === 'error' && elapsed < 60000) {
         return false;
       }
     }
 
+    setSearchStatus('Localisation détectée, recherche des clubs proches…', 'info');
+    setLoading(true, 'geocode');
+
     const entry = {
       status: 'pending',
       timestamp: Date.now(),
-      query: rawQuery,
+      query: trimmed,
     };
     locationFallbackCache.set(key, entry);
-    setSearchStatus('Localisation détectée, recherche des clubs proches…', 'info');
 
-    geocodePlace(rawQuery)
+    geocodePlace(trimmed)
       .then(({ latitude, longitude, label }) => {
         entry.status = 'success';
         entry.timestamp = Date.now();
         entry.latitude = latitude;
         entry.longitude = longitude;
-        entry.label = label || rawQuery;
-        if (normaliseQueryKey(state.query || '') === key) {
-          applyUserLocation({ latitude, longitude, label: entry.label, query: rawQuery });
-        }
+        entry.label = label || trimmed;
+        applyUserLocation({
+          latitude,
+          longitude,
+          label: entry.label,
+          query: trimmed,
+        });
       })
       .catch(() => {
         entry.status = 'error';
         entry.timestamp = Date.now();
-        if (normaliseQueryKey(state.query || '') === key) {
-          setSearchStatus(
-            'Aucun club ne correspond à cette localisation. Essayez un autre nom ou une autre localisation.',
-            'error'
-          );
+        setSearchStatus(
+          'Localisation introuvable. Essayez un autre nom de ville ou code postal.',
+          'error'
+        );
+        if (state.userLocation) {
+          handleLocationClear({ silent: true });
         }
+        state.pendingQuery = trimmed;
+        state.query = trimmed;
+        applyFilters({ silentStatus: true });
+      })
+      .finally(() => {
+        setLoading(false, 'geocode');
       });
 
     return true;
@@ -1511,22 +1311,42 @@
     if (searchInput) {
       state.pendingQuery = searchInput.value;
     }
-    state.query = (state.pendingQuery || '').trim();
+    const rawQuery = (state.pendingQuery || '').trim();
+
+    window.clearTimeout(searchTimer);
+
+    if (!rawQuery) {
+      if (state.userLocation) {
+        handleLocationClear({ silent: true });
+      }
+      state.query = '';
+      setLoading(true, 'search');
+      searchTimer = window.setTimeout(() => {
+        try {
+          applyFilters();
+        } finally {
+          setLoading(false, 'search');
+        }
+      }, SEARCH_DELAY);
+      return;
+    }
+
+    if (isLikelyLocationQuery(rawQuery) && triggerLocationSearchFromQuery(rawQuery)) {
+      return;
+    }
+
     if (state.userLocation) {
       handleLocationClear({ silent: true });
     }
-    window.clearTimeout(searchTimer);
+
+    state.query = rawQuery;
     setSearchStatus('Recherche en cours…', 'info');
     setLoading(true, 'search');
     searchTimer = window.setTimeout(() => {
-      let meta;
       try {
-        meta = applyFilters();
+        applyFilters();
       } finally {
         setLoading(false, 'search');
-      }
-      if (meta) {
-        maybeTriggerLocationFallback(meta);
       }
     }, SEARCH_DELAY);
   };
@@ -1696,6 +1516,16 @@
         .filter(Boolean)
         .join(' ')
     );
+    const matchSource = [
+      club.name,
+      club.commune,
+      club.address,
+      club.siege,
+      tagList.join(' '),
+    ]
+      .filter(Boolean)
+      .join(' ');
+    club._matchHaystack = normaliseForMatch(matchSource);
     const keywordSource = [
       club.name,
       club.commune,
