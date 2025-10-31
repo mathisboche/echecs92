@@ -265,13 +265,6 @@
       cardLink.appendChild(address);
     }
 
-    if (club.site) {
-      const siteNode = document.createElement('p');
-      siteNode.className = 'club-row__website';
-      siteNode.textContent = club.site.replace(/^https?:\/\//i, '');
-      cardLink.appendChild(siteNode);
-    }
-
     const footer = document.createElement('div');
     footer.className = 'club-row__footer';
 
@@ -366,4 +359,3 @@
 
   init();
 })();
-
