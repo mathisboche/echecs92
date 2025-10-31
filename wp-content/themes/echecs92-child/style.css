@@ -1580,7 +1580,6 @@ header.wp-block-template-part.is-elevated .cm-header{
 .club-row__card:focus-visible .club-row__distance[data-tone="onsite"]{
   text-decoration:underline;
   text-decoration-color:#047857;
-  text-decoration-thickness:2px;
 }
 .club-row__footer{
   display:flex;
