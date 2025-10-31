@@ -1575,6 +1575,9 @@ header.wp-block-template-part.is-elevated .cm-header{
 .club-row__distance[data-tone="onsite"]{
   color:#047857;
   background:#d1fae5;
+}
+.club-row__card:hover .club-row__distance[data-tone="onsite"],
+.club-row__card:focus-visible .club-row__distance[data-tone="onsite"]{
   text-decoration:underline;
   text-decoration-color:#047857;
   text-decoration-thickness:2px;
