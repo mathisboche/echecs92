@@ -762,16 +762,20 @@
     const header = document.createElement('div');
     header.className = 'club-row__top';
 
+    const heading = document.createElement('div');
+    heading.className = 'club-row__heading';
+    header.appendChild(heading);
+
     const title = document.createElement('h2');
     title.className = 'club-row__name';
     title.textContent = club.name;
-    header.appendChild(title);
+    heading.appendChild(title);
 
     if (club.commune) {
       const communeNode = document.createElement('span');
       communeNode.className = 'club-row__commune';
       communeNode.textContent = club.commune;
-      header.appendChild(communeNode);
+      heading.appendChild(communeNode);
     }
 
     if (state.distanceMode && Number.isFinite(club.distanceKm)) {
