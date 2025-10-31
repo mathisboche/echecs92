@@ -408,18 +408,18 @@
 
   const formatDistanceLabel = (distanceKm) => {
     if (!Number.isFinite(distanceKm)) {
-      return '';
+      return { text: '', tone: 'default' };
     }
     if (distanceKm < 0.05) {
-      return 'sur place';
+      return { text: 'sur place', tone: 'onsite' };
     }
     if (distanceKm < 1) {
-      return `${(distanceKm * 1000).toFixed(0)} m`;
+      return { text: `${(distanceKm * 1000).toFixed(0)} m`, tone: 'default' };
     }
     if (distanceKm < 10) {
-      return `${distanceKm.toFixed(1)} km`;
+      return { text: `${distanceKm.toFixed(1)} km`, tone: 'default' };
     }
-    return `${Math.round(distanceKm)} km`;
+    return { text: `${Math.round(distanceKm)} km`, tone: 'default' };
   };
 
   const geocodePlace = (query) => {
@@ -1184,10 +1184,16 @@
     }
 
     if (state.distanceMode && Number.isFinite(club.distanceKm)) {
-      const distanceNode = document.createElement('span');
-      distanceNode.className = 'club-row__distance';
-      distanceNode.textContent = formatDistanceLabel(club.distanceKm);
-      header.appendChild(distanceNode);
+      const distanceInfo = formatDistanceLabel(club.distanceKm);
+      if (distanceInfo.text) {
+        const distanceNode = document.createElement('span');
+        distanceNode.className = 'club-row__distance';
+        if (distanceInfo.tone && distanceInfo.tone !== 'default') {
+          distanceNode.dataset.tone = distanceInfo.tone;
+        }
+        distanceNode.textContent = distanceInfo.text;
+        header.appendChild(distanceNode);
+      }
     }
 
     cardLink.appendChild(header);

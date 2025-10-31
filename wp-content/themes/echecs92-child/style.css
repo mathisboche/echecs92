@@ -1572,6 +1572,13 @@ header.wp-block-template-part.is-elevated .cm-header{
   overflow:hidden;
   text-overflow:ellipsis;
 }
+.club-row__distance[data-tone="onsite"]{
+  color:#047857;
+  background:#d1fae5;
+  text-decoration:underline;
+  text-decoration-color:#047857;
+  text-decoration-thickness:2px;
+}
 .club-row__footer{
   display:flex;
   align-items:center;
