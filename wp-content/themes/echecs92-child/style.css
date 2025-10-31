@@ -1634,6 +1634,12 @@ header.wp-block-template-part.is-elevated .cm-header{
     margin-top:0;
   }
 }
+
+@media (max-width:599px){
+  .club-row__top .club-row__name{
+    margin:6px 0 6px !important;
+  }
+}
 @media (min-width:720px){
   .club-row__card{
     padding:26px 28px;
