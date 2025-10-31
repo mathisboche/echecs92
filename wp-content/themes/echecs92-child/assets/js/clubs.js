@@ -410,6 +410,9 @@
     if (!Number.isFinite(distanceKm)) {
       return '';
     }
+    if (distanceKm < 0.05) {
+      return 'sur place';
+    }
     if (distanceKm < 1) {
       return `${(distanceKm * 1000).toFixed(0)} m`;
     }
