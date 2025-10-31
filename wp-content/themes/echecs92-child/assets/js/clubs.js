@@ -30,6 +30,8 @@
 
   const state = {
     clubs: [],
+    filtered: [],
+    query: '',
     visibleCount: VISIBLE_RESULTS_DEFAULT,
   };
 
@@ -41,10 +43,7 @@
     element.setAttribute('aria-disabled', 'true');
   };
 
-  const disableSearchUI = () => {
-    disableControl(searchInput);
-    disableControl(searchButton);
-    disableControl(resetButton);
+  const disableAdvancedControls = () => {
     disableControl(locationInput);
     disableControl(locationApplyButton);
     disableControl(locationClearButton);
@@ -53,11 +52,6 @@
     if (optionsDetails) {
       optionsDetails.open = false;
       optionsDetails.setAttribute('aria-hidden', 'true');
-    }
-
-    if (searchStatus) {
-      searchStatus.textContent = 'La recherche est temporairement désactivée. Tous les clubs sont affichés.';
-      searchStatus.dataset.tone = 'info';
     }
 
     if (locationStatus) {
@@ -84,6 +78,12 @@
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase();
+
+  const normaliseForSearch = (value) =>
+    normalise(value)
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
 
   const slugify = (value) => {
     const base = normalise(value)
@@ -144,6 +144,176 @@
     formatted = formatted.replace(/\bD'([A-Z])/g, (match, letter) => `d'${letter}`);
     formatted = formatted.replace(/\bL'([A-Z])/g, (match, letter) => `l'${letter}`);
     return formatted.replace(/\s+/g, ' ').trim();
+  };
+
+  const levenshtein = (a, b) => {
+    if (a === b) {
+      return 0;
+    }
+    if (!a.length) {
+      return b.length;
+    }
+    if (!b.length) {
+      return a.length;
+    }
+    const matrix = [];
+    for (let i = 0; i <= b.length; i += 1) {
+      matrix[i] = [i];
+    }
+    for (let j = 0; j <= a.length; j += 1) {
+      matrix[0][j] = j;
+    }
+    for (let i = 1; i <= b.length; i += 1) {
+      for (let j = 1; j <= a.length; j += 1) {
+        if (b.charAt(i - 1) === a.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + 1);
+        }
+      }
+    }
+    return matrix[b.length][a.length];
+  };
+
+  const scoreClubMatch = (club, terms, fullQuery) => {
+    if (!terms.length) {
+      return { matched: true, score: 0 };
+    }
+    const haystack = club._search;
+    if (!haystack) {
+      return { matched: false, score: 0 };
+    }
+    let total = 0;
+    const tokens = Array.isArray(club._tokens) ? club._tokens : [];
+
+    for (let i = 0; i < terms.length; i += 1) {
+      const term = terms[i];
+      if (!term) {
+        continue;
+      }
+      if (haystack.includes(term)) {
+        total += 4 + Math.min(term.length * 0.2, 2.5);
+        continue;
+      }
+      if (!tokens.length) {
+        return { matched: false, score: 0 };
+      }
+      let bestDistance = Infinity;
+      for (let j = 0; j < tokens.length; j += 1) {
+        const token = tokens[j];
+        if (!token) {
+          continue;
+        }
+        if (token === term) {
+          bestDistance = 0;
+          break;
+        }
+        const distance = levenshtein(token, term);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+        }
+        if (bestDistance === 0) {
+          break;
+        }
+      }
+      if (!Number.isFinite(bestDistance)) {
+        return { matched: false, score: 0 };
+      }
+      const termLength = term.length;
+      let threshold = 2;
+      if (termLength <= 2) {
+        threshold = 0;
+      } else if (termLength <= 4) {
+        threshold = 1;
+      }
+      if (bestDistance > threshold) {
+        return { matched: false, score: 0 };
+      }
+      const proximityBoost = Math.max(0, termLength - bestDistance);
+      total += 1.5 + proximityBoost * 0.4;
+    }
+
+    const fullInName = fullQuery && club._nameSearch && club._nameSearch.includes(fullQuery);
+    const startsWithName = fullQuery && club._nameSearch && club._nameSearch.startsWith(fullQuery);
+    if (startsWithName) {
+      total += 3;
+    } else if (fullInName) {
+      total += 1.5;
+    }
+
+    const addressMatch = fullQuery && club._addressSearch && club._addressSearch.includes(fullQuery);
+    if (addressMatch) {
+      total += 1;
+    }
+
+    return { matched: true, score: total };
+  };
+
+  const applySearch = (rawQuery) => {
+    const trimmed = (rawQuery || '').trim();
+    state.query = trimmed;
+    const normalisedQuery = normaliseForSearch(trimmed);
+    const terms = normalisedQuery ? normalisedQuery.split(/\s+/).filter(Boolean) : [];
+
+    if (!terms.length) {
+      state.filtered = state.clubs.slice();
+    } else {
+      const matches = [];
+      for (let i = 0; i < state.clubs.length; i += 1) {
+        const club = state.clubs[i];
+        const { matched, score } = scoreClubMatch(club, terms, normalisedQuery);
+        if (matched) {
+          matches.push({ club, score });
+        }
+      }
+      matches.sort((a, b) => {
+        if (b.score !== a.score) {
+          return b.score - a.score;
+        }
+        return a.club.name.localeCompare(b.club.name, 'fr', { sensitivity: 'base' });
+      });
+      state.filtered = matches.map((entry) => entry.club);
+    }
+
+    state.visibleCount = Math.min(VISIBLE_RESULTS_DEFAULT, state.filtered.length);
+    renderResults();
+    updateTotalCounter();
+
+    return {
+      total: state.filtered.length,
+      hasQuery: terms.length > 0,
+      rawQuery: trimmed,
+    };
+  };
+
+  const performSearch = () => {
+    const raw = searchInput ? searchInput.value : '';
+    const meta = applySearch(raw);
+    if (!meta.hasQuery) {
+      setSearchStatus('Tous les clubs sont affichés.', 'info');
+      return;
+    }
+    if (meta.total > 0) {
+      const label =
+        meta.total === 1
+          ? `1 club correspond à "${meta.rawQuery}".`
+          : `${meta.total} clubs correspondent à "${meta.rawQuery}".`;
+      setSearchStatus(label, 'info');
+    } else {
+      setSearchStatus(`Aucun club ne correspond à "${meta.rawQuery}".`, 'error');
+    }
+  };
+
+  const resetSearch = () => {
+    if (searchInput) {
+      searchInput.value = '';
+    }
+    const meta = applySearch('');
+    if (meta.total > 0) {
+      setSearchStatus('Recherche réinitialisée. Tous les clubs sont affichés.', 'success');
+    } else {
+      setSearchStatus('Aucun club disponible pour le moment.', 'info');
+    }
   };
 
   const adaptClubRecord = (raw) => {
@@ -209,6 +379,12 @@
     const licenseB = Number.parseInt(club.licenses?.B, 10);
     const totalLicenses = (Number.isFinite(licenseA) ? licenseA : 0) + (Number.isFinite(licenseB) ? licenseB : 0);
     club.totalLicenses = totalLicenses > 0 ? totalLicenses : null;
+    const searchSource = [club.name, club.address].filter(Boolean).join(' ');
+    const searchIndex = normaliseForSearch(searchSource);
+    club._search = searchIndex;
+    club._tokens = searchIndex ? searchIndex.split(/\s+/) : [];
+    club._nameSearch = normaliseForSearch(club.name || '');
+    club._addressSearch = normaliseForSearch(club.address || '');
     return club;
   };
 
@@ -281,21 +457,35 @@
 
   const updateTotalCounter = () => {
     const total = state.clubs.length;
-    const visible = Math.min(state.visibleCount, total);
+    const filtered = state.filtered.length;
+    const visible = Math.min(state.visibleCount, filtered);
+
     if (!total) {
       totalCounter.textContent = 'Aucun club disponible pour le moment.';
       return;
     }
-    if (visible >= total) {
+
+    if (!filtered) {
+      totalCounter.textContent = `Aucun club trouvé · ${total} au total.`;
+      return;
+    }
+
+    if (filtered === total && visible >= filtered) {
       totalCounter.textContent = `${total} club${total > 1 ? 's' : ''} dans les Hauts-de-Seine.`;
       return;
     }
-    totalCounter.textContent = `${total} clubs dans les Hauts-de-Seine · ${visible} affichés.`;
+
+    const visibleLabel = `${visible} affiché${visible > 1 ? 's' : ''}`;
+    const filteredLabel = `${filtered} trouvé${filtered > 1 ? 's' : ''}`;
+    totalCounter.textContent = `${filteredLabel} sur ${total} · ${visibleLabel}.`;
   };
 
   const renderResults = () => {
-    if (!state.clubs.length) {
-      resultsEl.innerHTML = '<p class="clubs-empty">Aucune fiche club à afficher.</p>';
+    if (!state.filtered.length) {
+      const message = state.clubs.length
+        ? 'Aucun club ne correspond à votre recherche.'
+        : 'Aucune fiche club à afficher.';
+      resultsEl.innerHTML = `<p class="clubs-empty">${message}</p>`;
       if (moreButton) {
         moreButton.hidden = true;
       }
@@ -303,8 +493,8 @@
     }
 
     const fragment = document.createDocumentFragment();
-    const visible = Math.min(state.visibleCount, state.clubs.length);
-    state.clubs.slice(0, visible).forEach((club) => {
+    const visible = Math.min(state.visibleCount, state.filtered.length);
+    state.filtered.slice(0, visible).forEach((club) => {
       fragment.appendChild(createResultRow(club));
     });
 
@@ -312,8 +502,8 @@
     resultsEl.appendChild(fragment);
 
     if (moreButton) {
-      if (visible < state.clubs.length) {
-        const remaining = state.clubs.length - visible;
+      if (visible < state.filtered.length) {
+        const remaining = state.filtered.length - visible;
         moreButton.hidden = false;
         moreButton.textContent = `Afficher ${remaining} autre${remaining > 1 ? 's' : ''} club${remaining > 1 ? 's' : ''}`;
       } else {
@@ -323,14 +513,21 @@
   };
 
   const showAllResults = () => {
-    state.visibleCount = state.clubs.length;
+    if (!state.filtered.length) {
+      return;
+    }
+    state.visibleCount = state.filtered.length;
     renderResults();
     updateTotalCounter();
-    setSearchStatus('Tous les clubs sont affichés.', 'info');
+    if (state.query) {
+      setSearchStatus('Tous les clubs correspondants sont affichés.', 'info');
+    } else {
+      setSearchStatus('Tous les clubs sont affichés.', 'info');
+    }
   };
 
   const init = () => {
-    disableSearchUI();
+    disableAdvancedControls();
     setSearchStatus('Chargement de la liste des clubs…', 'info');
 
     fetch(DATA_URL, { headers: { Accept: 'application/json' } })
@@ -342,11 +539,15 @@
       })
       .then((payload) => {
         const data = Array.isArray(payload) ? payload : [];
-        state.clubs = data.map(hydrateClub).sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
-        state.visibleCount = Math.min(VISIBLE_RESULTS_DEFAULT, state.clubs.length);
-        renderResults();
-        updateTotalCounter();
-        setSearchStatus('Tous les clubs sont affichés.', 'info');
+        state.clubs = data
+          .map(hydrateClub)
+          .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
+        const meta = applySearch('');
+        if (meta.total > 0) {
+          setSearchStatus('Tous les clubs sont affichés.', 'info');
+        } else {
+          setSearchStatus('Aucun club disponible pour le moment.', 'info');
+        }
       })
       .catch(() => {
         resultsEl.innerHTML = '<p class="clubs-error">Impossible de charger la liste des clubs pour le moment. Veuillez réessayer plus tard.</p>';
@@ -354,6 +555,14 @@
         setSearchStatus('Erreur lors du chargement de la liste des clubs.', 'error');
       });
 
+    searchButton?.addEventListener('click', performSearch);
+    resetButton?.addEventListener('click', resetSearch);
+    searchInput?.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        performSearch();
+      }
+    });
     moreButton?.addEventListener('click', showAllResults);
   };
 
