@@ -77,30 +77,26 @@
   };
 
   let searchRequestId = 0;
+  let locationRequestId = 0;
   const geocodeCache = new Map();
+  const reverseGeocodeCache = new Map();
 
-  const disableControl = (element) => {
-    if (!element) {
-      return;
-    }
-    element.setAttribute('disabled', 'disabled');
-    element.setAttribute('aria-disabled', 'true');
-  };
-
-  const disableAdvancedControls = () => {
-    disableControl(locationInput);
-    disableControl(locationApplyButton);
-    disableControl(locationClearButton);
-    disableControl(geolocButton);
-
+  const initialiseLocationControls = () => {
+    [locationInput, locationApplyButton, locationClearButton, geolocButton].forEach((element) => {
+      if (element) {
+        element.removeAttribute('disabled');
+        element.removeAttribute('aria-disabled');
+        element.removeAttribute('aria-busy');
+        if (element.dataset && element.dataset.label) {
+          delete element.dataset.label;
+        }
+      }
+    });
     if (optionsDetails) {
-      optionsDetails.open = false;
-      optionsDetails.setAttribute('aria-hidden', 'true');
+      optionsDetails.removeAttribute('aria-hidden');
     }
-
     if (locationStatus) {
-      locationStatus.textContent = 'Tri manuel par distance indisponible pour le moment.';
-      locationStatus.dataset.tone = 'info';
+      setLocationStatus('Indiquez une ville, un code postal ou utilisez Autour de moi.', 'info');
     }
   };
 
@@ -114,6 +110,41 @@
     } else {
       delete searchStatus.dataset.tone;
     }
+  };
+
+  const setLocationStatus = (message, tone = 'info') => {
+    if (!locationStatus) {
+      return;
+    }
+    locationStatus.textContent = message || '';
+    if (message) {
+      locationStatus.dataset.tone = tone;
+    } else {
+      delete locationStatus.dataset.tone;
+    }
+  };
+
+  const beginButtonWait = (button, busyLabel) => {
+    if (!button) {
+      return () => {};
+    }
+    const originalText = button.dataset.label || button.textContent || '';
+    button.dataset.label = originalText;
+    if (busyLabel) {
+      button.textContent = busyLabel;
+    }
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    return () => {
+      if (button.dataset.label !== undefined) {
+        button.textContent = button.dataset.label;
+        delete button.dataset.label;
+      } else {
+        button.textContent = originalText;
+      }
+      button.disabled = false;
+      button.removeAttribute('aria-busy');
+    };
   };
 
   const normalise = (value) =>
@@ -412,6 +443,7 @@
     const request = fetch(`${GEOCODE_ENDPOINT}?${params.toString()}`, {
       headers: {
         Accept: 'application/json',
+        'User-Agent': 'echecs92-clubs/1.0 (contact@echecs92.com)',
       },
     })
       .then((response) => {
@@ -447,6 +479,63 @@
       });
 
     geocodeCache.set(key, request);
+    return request;
+  };
+
+  const reverseGeocode = (latitude, longitude) => {
+    const lat = Number.parseFloat(latitude);
+    const lng = Number.parseFloat(longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return Promise.resolve(null);
+    }
+    const key = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+    const cached = reverseGeocodeCache.get(key);
+    if (cached) {
+      if (typeof cached.then === 'function') {
+        return cached;
+      }
+      return Promise.resolve(cached);
+    }
+
+    const params = new URLSearchParams({
+      format: 'json',
+      addressdetails: '1',
+      zoom: '13',
+      lat: String(lat),
+      lon: String(lng),
+    });
+
+    const request = fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`, {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'echecs92-clubs/1.0 (contact@echecs92.com)',
+      },
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((payload) => {
+        if (!payload) {
+          return null;
+        }
+        const label = formatGeocodeLabel(payload) || '';
+        const postalCodeRaw = payload?.address?.postcode || '';
+        const postalCode = postalCodeRaw.split(';')[0].trim();
+        return {
+          label,
+          postalCode,
+        };
+      })
+      .catch(() => null)
+      .then((finalResult) => {
+        reverseGeocodeCache.set(key, finalResult);
+        return finalResult;
+      });
+
+    reverseGeocodeCache.set(key, request);
     return request;
   };
 
@@ -817,6 +906,160 @@
     }
   };
 
+  const handleLocationClear = (event) => {
+    if (event && typeof event.preventDefault === 'function') {
+      event.preventDefault();
+    }
+    locationRequestId += 1;
+    state.distanceMode = false;
+    state.distanceReference = '';
+    state.clubs.forEach((club) => {
+      if (Object.prototype.hasOwnProperty.call(club, 'distanceKm')) {
+        delete club.distanceKm;
+      }
+    });
+    if (locationInput) {
+      locationInput.value = '';
+    }
+    setLocationStatus('Localisation effacée.', 'info');
+    void performSearch();
+  };
+
+  const handleLocationSubmit = async (event) => {
+    if (event && typeof event.preventDefault === 'function') {
+      event.preventDefault();
+    }
+    if (!locationInput) {
+      return;
+    }
+    const raw = locationInput.value.trim();
+    if (!raw) {
+      handleLocationClear();
+      return;
+    }
+
+    const requestId = ++locationRequestId;
+    setLocationStatus(`Recherche de ${raw}…`, 'info');
+    const releaseButton = beginButtonWait(locationApplyButton, 'Recherche…');
+
+    try {
+      let coords = lookupLocalCoordinates(raw);
+      if (!coords) {
+        try {
+          coords = await geocodePlace(raw);
+        } catch {
+          coords = null;
+        }
+      }
+
+      if (requestId !== locationRequestId) {
+        return;
+      }
+
+      if (!coords) {
+        setLocationStatus('Localisation introuvable. Essayez un autre nom de ville ou code postal.', 'error');
+        return;
+      }
+
+      const label = toDistanceReferenceLabel(
+        coords.label || formatCommune(raw) || raw,
+        coords.postalCode
+      );
+
+      if (locationInput) {
+        locationInput.value = label || raw;
+      }
+
+      if (optionsDetails && !optionsDetails.open) {
+        optionsDetails.open = true;
+      }
+
+      searchRequestId += 1;
+      const meta = runDistanceSearch({
+        latitude: coords.latitude ?? coords.lat,
+        longitude: coords.longitude ?? coords.lng,
+        label,
+        query: raw,
+      });
+
+      if (meta.finite > 0) {
+        const reference = meta.label || label || raw;
+        setLocationStatus(`Distances calculées depuis ${reference}.`, 'success');
+        setSearchStatus(`Clubs triés par distance depuis ${reference}.`, 'info');
+      } else {
+        setLocationStatus('Impossible de calculer les distances pour cette localisation.', 'error');
+      }
+    } finally {
+      releaseButton();
+    }
+  };
+
+  const handleUseGeolocation = () => {
+    if (!navigator.geolocation) {
+      setLocationStatus('Géolocalisation indisponible sur cet appareil.', 'error');
+      return;
+    }
+
+    const requestId = ++locationRequestId;
+    setLocationStatus('Recherche de votre position…', 'info');
+    const releaseButton = beginButtonWait(geolocButton, 'Recherche…');
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        reverseGeocode(latitude, longitude)
+          .catch(() => null)
+          .then((place) => {
+            if (requestId !== locationRequestId) {
+              return;
+            }
+
+            const label = toDistanceReferenceLabel(
+              place?.label || 'votre position',
+              place?.postalCode
+            );
+
+            if (locationInput) {
+              locationInput.value = place?.label || '';
+            }
+
+            if (optionsDetails && !optionsDetails.open) {
+              optionsDetails.open = true;
+            }
+
+            searchRequestId += 1;
+            const meta = runDistanceSearch({
+              latitude,
+              longitude,
+              label,
+              query: place?.label || 'votre position',
+            });
+
+            if (meta.finite > 0) {
+              const reference = meta.label || label || 'votre position';
+              setLocationStatus(`Distances calculées depuis ${reference}.`, 'success');
+              setSearchStatus(`Clubs triés par distance depuis ${reference}.`, 'info');
+            } else {
+              setLocationStatus('Impossible de calculer les distances pour cette localisation.', 'error');
+            }
+          })
+          .finally(() => {
+            releaseButton();
+          });
+      },
+      () => {
+        if (requestId === locationRequestId) {
+          setLocationStatus('Impossible de récupérer votre position.', 'error');
+        }
+        releaseButton();
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 10000,
+      }
+    );
+  };
+
   const adaptClubRecord = (raw) => {
     if (!raw || typeof raw !== 'object') {
       return raw;
@@ -1048,7 +1291,7 @@
   };
 
   const init = () => {
-    disableAdvancedControls();
+    initialiseLocationControls();
     setSearchStatus('Chargement de la liste des clubs…', 'info');
 
     fetch(DATA_URL, { headers: { Accept: 'application/json' } })
@@ -1084,6 +1327,15 @@
         performSearch();
       }
     });
+    locationApplyButton?.addEventListener('click', handleLocationSubmit);
+    locationClearButton?.addEventListener('click', handleLocationClear);
+    locationInput?.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        handleLocationSubmit(event);
+      }
+    });
+    geolocButton?.addEventListener('click', handleUseGeolocation);
     moreButton?.addEventListener('click', showAllResults);
   };
 
