@@ -1,10 +1,47 @@
 /**
- * Minimal clubs list renderer for echecs92.fr.
- * Search and distance features are temporarily disabled.
+ * Clubs directory interactions for echecs92.fr.
+ * Provides fuzzy text search with automatic distance fallback.
  */
 (function () {
   const DATA_URL = '/wp-content/themes/echecs92-child/assets/data/clubs.json';
   const VISIBLE_RESULTS_DEFAULT = 12;
+  const POSTAL_COORDINATES = {
+    '92000': { label: 'Nanterre', lat: 48.8927825, lng: 2.2073652 },
+    '92100': { label: 'Boulogne-Billancourt', lat: 48.837494, lng: 2.2378546 },
+    '92110': { label: 'Clichy', lat: 48.9027893, lng: 2.3093052 },
+    '92120': { label: 'Montrouge', lat: 48.8150655, lng: 2.3163712 },
+    '92130': { label: 'Issy-les-Moulineaux', lat: 48.8233607, lng: 2.2653052 },
+    '92140': { label: 'Clamart', lat: 48.7959696, lng: 2.2549138 },
+    '92150': { label: 'Suresnes', lat: 48.8711349, lng: 2.2217833 },
+    '92160': { label: 'Antony', lat: 48.750728, lng: 2.2987872 },
+    '92170': { label: 'Vanves', lat: 48.8219675, lng: 2.2901321 },
+    '92190': { label: 'Meudon', lat: 48.8097395, lng: 2.229958 },
+    '92200': { label: 'Neuilly-sur-Seine', lat: 48.8800801, lng: 2.257544 },
+    '92210': { label: 'Saint-Cloud', lat: 48.8439913, lng: 2.2117806 },
+    '92220': { label: 'Bagneux', lat: 48.7981949, lng: 2.3110192 },
+    '92230': { label: 'Gennevilliers', lat: 48.9287242, lng: 2.2963202 },
+    '92240': { label: 'Malakoff', lat: 48.8187167, lng: 2.3008083 },
+    '92250': { label: 'La Garenne-Colombes', lat: 48.9070703, lng: 2.2445272 },
+    '92260': { label: 'Fontenay-aux-Roses', lat: 48.7908946, lng: 2.2867846 },
+    '92270': { label: 'Bois-Colombes', lat: 48.9165336, lng: 2.2690732 },
+    '92290': { label: 'Châtenay-Malabry', lat: 48.7697842, lng: 2.2650969 },
+    '92300': { label: 'Levallois-Perret', lat: 48.8935077, lng: 2.2886109 },
+    '92310': { label: 'Sèvres', lat: 48.822245, lng: 2.2117665 },
+    '92320': { label: 'Châtillon', lat: 48.8044684, lng: 2.2893633 },
+    '92330': { label: 'Sceaux', lat: 48.7784655, lng: 2.2893399 },
+    '92340': { label: 'Bourg-la-Reine', lat: 48.7794333, lng: 2.316237 },
+    '92350': { label: 'Le Plessis-Robinson', lat: 48.7797706, lng: 2.2581995 },
+    '92370': { label: 'Chaville', lat: 48.8090026, lng: 2.1924797 },
+    '92380': { label: 'Garches', lat: 48.8469069, lng: 2.1893546 },
+    '92400': { label: 'Courbevoie', lat: 48.9010419, lng: 2.266358 },
+    '92410': { label: "Ville-d'Avray", lat: 48.8214672, lng: 2.1763211 },
+    '92420': { label: 'Vaucresson', lat: 48.8364225, lng: 2.1506469 },
+    '92430': { label: 'Marnes-la-Coquette', lat: 48.8287849, lng: 2.1646468 },
+    '92500': { label: 'Rueil-Malmaison', lat: 48.8718031, lng: 2.1801931 },
+    '92600': { label: 'Asnières-sur-Seine', lat: 48.9137552, lng: 2.288062 },
+    '92700': { label: 'Colombes', lat: 48.9223905, lng: 2.2521192 },
+    '92800': { label: 'Puteaux', lat: 48.8826865, lng: 2.2410641 },
+  };
 
   const resultsEl = document.getElementById('clubs-results');
   if (!resultsEl) {
@@ -33,6 +70,8 @@
     filtered: [],
     query: '',
     visibleCount: VISIBLE_RESULTS_DEFAULT,
+    distanceMode: false,
+    distanceReference: '',
   };
 
   const disableControl = (element) => {
@@ -55,7 +94,7 @@
     }
 
     if (locationStatus) {
-      locationStatus.textContent = 'Tri par distance indisponible pour le moment.';
+      locationStatus.textContent = 'Tri manuel par distance indisponible pour le moment.';
       locationStatus.dataset.tone = 'info';
     }
   };
@@ -84,6 +123,49 @@
       .replace(/[^a-z0-9\s]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
+
+  const normaliseCommuneKey = (value) => normalise(value).replace(/[^a-z0-9]/g, '');
+
+  const COMMUNE_COORDINATES_BY_NAME = Object.entries(POSTAL_COORDINATES).reduce(
+    (acc, [postalCode, info]) => {
+      const key = normaliseCommuneKey(info.label);
+      if (key && !acc[key]) {
+        acc[key] = { postalCode, lat: info.lat, lng: info.lng, label: info.label };
+      }
+      return acc;
+    },
+    {}
+  );
+
+  const getPostalCoordinates = (postalCode) => {
+    if (!postalCode) {
+      return null;
+    }
+    const key = postalCode.toString().trim();
+    if (!key) {
+      return null;
+    }
+    const entry = POSTAL_COORDINATES[key];
+    if (!entry) {
+      return null;
+    }
+    return { postalCode: key, lat: entry.lat, lng: entry.lng, label: entry.label };
+  };
+
+  const getCommuneCoordinatesByName = (value) => {
+    if (!value) {
+      return null;
+    }
+    const key = normaliseCommuneKey(value);
+    if (!key) {
+      return null;
+    }
+    const entry = COMMUNE_COORDINATES_BY_NAME[key];
+    if (!entry) {
+      return null;
+    }
+    return { postalCode: entry.postalCode, lat: entry.lat, lng: entry.lng, label: entry.label };
+  };
 
   const slugify = (value) => {
     const base = normalise(value)
@@ -144,6 +226,128 @@
     formatted = formatted.replace(/\bD'([A-Z])/g, (match, letter) => `d'${letter}`);
     formatted = formatted.replace(/\bL'([A-Z])/g, (match, letter) => `l'${letter}`);
     return formatted.replace(/\s+/g, ' ').trim();
+  };
+
+  const lookupLocalCoordinates = (query) => {
+    const raw = (query || '').toString().trim();
+    if (!raw) {
+      return null;
+    }
+
+    const postalMatches = raw.match(/\b(\d{5})\b/g);
+    if (postalMatches) {
+      for (let i = 0; i < postalMatches.length; i += 1) {
+        const coords = getPostalCoordinates(postalMatches[i]);
+        if (coords) {
+          return { latitude: coords.lat, longitude: coords.lng, label: coords.label, postalCode: coords.postalCode };
+        }
+      }
+    }
+
+    const candidates = new Set();
+    candidates.add(raw);
+    const formatted = formatCommune(raw);
+    if (formatted) {
+      candidates.add(formatted);
+    }
+    raw
+      .split(/[;,\/\n]/)
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .forEach((part) => {
+        candidates.add(part);
+        const formattedPart = formatCommune(part);
+        if (formattedPart) {
+          candidates.add(formattedPart);
+        }
+      });
+
+    for (const candidate of candidates) {
+      const coords = getCommuneCoordinatesByName(candidate);
+      if (coords) {
+        return { latitude: coords.lat, longitude: coords.lng, label: coords.label, postalCode: coords.postalCode };
+      }
+    }
+
+    return null;
+  };
+
+  const collectPostalCodes = (club) => {
+    const codes = new Set();
+    if (club.postalCode) {
+      codes.add(club.postalCode);
+    }
+    [club.address, club.siege].forEach((value) => {
+      const matches = (value || '').match(/\b\d{5}\b/g);
+      if (matches) {
+        matches.forEach((code) => codes.add(code));
+      }
+    });
+    return Array.from(codes);
+  };
+
+  const resolveClubDistanceCoordinates = (club) => {
+    if (Object.prototype.hasOwnProperty.call(club, '_distanceCoords')) {
+      return club._distanceCoords;
+    }
+
+    if (club.commune) {
+      const coords = getCommuneCoordinatesByName(club.commune);
+      if (coords) {
+        club._distanceCoords = coords;
+        return coords;
+      }
+    }
+
+    const postalCandidates = collectPostalCodes(club);
+    for (let i = 0; i < postalCandidates.length; i += 1) {
+      const coords = getPostalCoordinates(postalCandidates[i]);
+      if (coords) {
+        club._distanceCoords = coords;
+        return coords;
+      }
+    }
+
+    if (club.commune) {
+      const fallback = lookupLocalCoordinates(club.commune);
+      if (fallback) {
+        club._distanceCoords = {
+          postalCode: fallback.postalCode || '',
+          lat: fallback.latitude,
+          lng: fallback.longitude,
+          label: fallback.label || club.commune,
+        };
+        return club._distanceCoords;
+      }
+    }
+
+    club._distanceCoords = null;
+    return null;
+  };
+
+  const haversineKm = (lat1, lon1, lat2, lon2) => {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  const formatDistanceLabel = (distanceKm) => {
+    if (!Number.isFinite(distanceKm)) {
+      return '';
+    }
+    if (distanceKm < 1) {
+      return `${(distanceKm * 1000).toFixed(0)} m`;
+    }
+    if (distanceKm < 10) {
+      return `${distanceKm.toFixed(1)} km`;
+    }
+    return `${Math.round(distanceKm)} km`;
   };
 
   const levenshtein = (a, b) => {
@@ -255,6 +459,14 @@
     const normalisedQuery = normaliseForSearch(trimmed);
     const terms = normalisedQuery ? normalisedQuery.split(/\s+/).filter(Boolean) : [];
 
+    state.distanceMode = false;
+    state.distanceReference = '';
+    state.clubs.forEach((club) => {
+      if (Object.prototype.hasOwnProperty.call(club, 'distanceKm')) {
+        delete club.distanceKm;
+      }
+    });
+
     if (!terms.length) {
       state.filtered = state.clubs.slice();
     } else {
@@ -286,22 +498,152 @@
     };
   };
 
+  const runDistanceSearch = ({ latitude, longitude, label, query }) => {
+    const lat = Number.parseFloat(latitude);
+    const lng = Number.parseFloat(longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      state.filtered = [];
+      state.visibleCount = 0;
+      state.distanceMode = true;
+      state.distanceReference = label || query || '';
+      renderResults();
+      updateTotalCounter();
+      return { total: 0, finite: 0, label: state.distanceReference };
+    }
+
+    const scored = state.clubs.map((club) => {
+      const coords = resolveClubDistanceCoordinates(club);
+      if (!coords) {
+        return { club, distance: Number.POSITIVE_INFINITY };
+      }
+      const distance = haversineKm(lat, lng, coords.lat, coords.lng);
+      return { club, distance };
+    });
+
+    scored.sort((a, b) => {
+      const aFinite = Number.isFinite(a.distance);
+      const bFinite = Number.isFinite(b.distance);
+      if (aFinite && bFinite) {
+        if (a.distance !== b.distance) {
+          return a.distance - b.distance;
+        }
+        return a.club.name.localeCompare(b.club.name, 'fr', { sensitivity: 'base' });
+      }
+      if (aFinite) {
+        return -1;
+      }
+      if (bFinite) {
+        return 1;
+      }
+      return a.club.name.localeCompare(b.club.name, 'fr', { sensitivity: 'base' });
+    });
+
+    const finiteCount = scored.filter((entry) => Number.isFinite(entry.distance)).length;
+
+    scored.forEach((entry) => {
+      if (Number.isFinite(entry.distance)) {
+        entry.club.distanceKm = entry.distance;
+      } else if (Object.prototype.hasOwnProperty.call(entry.club, 'distanceKm')) {
+        delete entry.club.distanceKm;
+      }
+    });
+
+    state.filtered = scored.map((entry) => entry.club);
+    state.distanceMode = true;
+    state.distanceReference = label || query || '';
+    state.query = query || '';
+    state.visibleCount = Math.min(VISIBLE_RESULTS_DEFAULT, state.filtered.length);
+    renderResults();
+    updateTotalCounter();
+
+    return {
+      total: state.filtered.length,
+      finite: finiteCount,
+      label: state.distanceReference,
+    };
+  };
+
   const performSearch = () => {
     const raw = searchInput ? searchInput.value : '';
-    const meta = applySearch(raw);
+    const trimmed = (raw || '').trim();
+
+    if (!trimmed) {
+      const meta = applySearch('');
+      if (meta.total > 0) {
+        setSearchStatus('Tous les clubs sont affichés.', 'info');
+      } else {
+        setSearchStatus('Aucun club disponible pour le moment.', 'info');
+      }
+      return;
+    }
+
+    const postalMatch = trimmed.match(/\b(\d{5})\b/);
+    if (postalMatch) {
+      const postalCode = postalMatch[1];
+      const coords = getPostalCoordinates(postalCode) || lookupLocalCoordinates(postalCode);
+      if (coords) {
+        const referenceLabel = (() => {
+          const baseLabel = coords.label || formatCommune(trimmed) || trimmed;
+          if (postalCode && !baseLabel.includes(postalCode)) {
+            return `${baseLabel} (${postalCode})`;
+          }
+          return baseLabel;
+        })();
+        const meta = runDistanceSearch({
+          latitude: coords.latitude ?? coords.lat,
+          longitude: coords.longitude ?? coords.lng,
+          label: referenceLabel,
+          query: trimmed,
+        });
+        if (meta.finite > 0) {
+          setSearchStatus(`Clubs triés par distance depuis ${meta.label || trimmed}.`, 'info');
+        } else {
+          setSearchStatus('Impossible de calculer les distances pour cette localisation.', 'error');
+        }
+        return;
+      }
+    }
+
+    const meta = applySearch(trimmed);
     if (!meta.hasQuery) {
       setSearchStatus('Tous les clubs sont affichés.', 'info');
       return;
     }
+
     if (meta.total > 0) {
       const label =
         meta.total === 1
           ? `1 club correspond à "${meta.rawQuery}".`
           : `${meta.total} clubs correspondent à "${meta.rawQuery}".`;
       setSearchStatus(label, 'info');
-    } else {
-      setSearchStatus(`Aucun club ne correspond à "${meta.rawQuery}".`, 'error');
+      return;
     }
+
+    const location = lookupLocalCoordinates(trimmed);
+    if (location) {
+      const referenceLabel = (() => {
+        const baseLabel = location.label || formatCommune(trimmed) || trimmed;
+        if (location.postalCode && !baseLabel.includes(location.postalCode)) {
+          return `${baseLabel} (${location.postalCode})`;
+        }
+        return baseLabel;
+      })();
+      const distanceMeta = runDistanceSearch({
+        latitude: location.latitude,
+        longitude: location.longitude,
+        label: referenceLabel,
+        query: trimmed,
+      });
+      if (distanceMeta.finite > 0) {
+        const reference = distanceMeta.label || trimmed;
+        setSearchStatus(`Aucun club nommé "${trimmed}". Classement par distance depuis ${reference}.`, 'info');
+      } else {
+        setSearchStatus('Impossible de calculer les distances pour cette localisation.', 'error');
+      }
+      return;
+    }
+
+    setSearchStatus(`Aucun club ne correspond à "${meta.rawQuery}".`, 'error');
   };
 
   const resetSearch = () => {
@@ -432,6 +774,13 @@
       header.appendChild(communeNode);
     }
 
+    if (state.distanceMode && Number.isFinite(club.distanceKm)) {
+      const distanceNode = document.createElement('span');
+      distanceNode.className = 'club-row__distance';
+      distanceNode.textContent = formatDistanceLabel(club.distanceKm);
+      header.appendChild(distanceNode);
+    }
+
     cardLink.appendChild(header);
 
     if (club.address) {
@@ -466,18 +815,27 @@
     }
 
     if (!filtered) {
-      totalCounter.textContent = `Aucun club trouvé · ${total} au total.`;
+      const parts = [`Aucun club trouvé`, `${total} au total`];
+      if (state.distanceMode && state.distanceReference) {
+        parts.splice(1, 0, `distances depuis ${state.distanceReference}`);
+      }
+      totalCounter.textContent = `${parts.join(' · ')}.`;
       return;
     }
 
+    const parts = [];
     if (filtered === total && visible >= filtered) {
-      totalCounter.textContent = `${total} club${total > 1 ? 's' : ''} dans les Hauts-de-Seine.`;
-      return;
+      parts.push(`${total} club${total > 1 ? 's' : ''} dans les Hauts-de-Seine`);
+    } else {
+      parts.push(`${filtered} trouvé${filtered > 1 ? 's' : ''} sur ${total}`);
+      if (visible < filtered) {
+        parts.push(`${visible} affiché${visible > 1 ? 's' : ''}`);
+      }
     }
-
-    const visibleLabel = `${visible} affiché${visible > 1 ? 's' : ''}`;
-    const filteredLabel = `${filtered} trouvé${filtered > 1 ? 's' : ''}`;
-    totalCounter.textContent = `${filteredLabel} sur ${total} · ${visibleLabel}.`;
+    if (state.distanceMode && state.distanceReference) {
+      parts.push(`distances depuis ${state.distanceReference}`);
+    }
+    totalCounter.textContent = `${parts.join(' · ')}.`;
   };
 
   const renderResults = () => {
