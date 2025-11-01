@@ -1796,6 +1796,47 @@ header.wp-block-template-part.is-elevated .cm-header{
 .clubs-map__status[data-tone="error"]{
   color:#b91c1c;
 }
+.club-map-section{
+  margin-top:32px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+.club-map__heading{
+  margin:0;
+  font-size:18px;
+  font-weight:600;
+  color:#0f172a;
+}
+.club-map__container{
+  border:1px solid #d6dbe7;
+  border-radius:12px;
+  overflow:hidden;
+  background:#f8fafc;
+  box-shadow:inset 0 0 0 1px rgba(15,23,42,0.02);
+}
+.club-map{
+  width:100%;
+  height:440px;
+}
+.club-map__status{
+  margin:0;
+  padding:12px 16px;
+  font-size:13px;
+  color:#334155;
+  background:#ffffff;
+  border-top:1px solid #e2e8f0;
+}
+.club-map__status[data-tone="success"]{
+  color:#166534;
+}
+.club-map__status[data-tone="error"]{
+  color:#b91c1c;
+}
+.club-map__directions{
+  display:none;
+  align-self:flex-start;
+}
 .club-detail-page{
   border:1px solid #d0d7e7;
   border-radius:12px;
@@ -2006,5 +2047,13 @@ header.wp-block-template-part.is-elevated .cm-header{
   }
   .clubs-map{
     height:360px;
+  }
+  .club-map{
+    height:320px;
+  }
+  .club-map__directions{
+    display:inline-flex;
+    width:100%;
+    justify-content:center;
   }
 }

@@ -19,7 +19,14 @@ add_action('wp_enqueue_scripts', function () {
         true // charge le script en footer
     );
 
-    if (is_page('carte-des-clubs') || is_page_template('page-carte-des-clubs.html')) {
+    $needs_leaflet = (
+        is_page('carte-des-clubs') ||
+        is_page_template('page-carte-des-clubs.html') ||
+        is_page('club') ||
+        is_page_template('page-club.html')
+    );
+
+    if ($needs_leaflet) {
         wp_enqueue_style(
             'leaflet',
             'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
