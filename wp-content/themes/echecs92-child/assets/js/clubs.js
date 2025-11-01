@@ -61,6 +61,7 @@
   const locationStatus = document.getElementById('clubs-location-status');
   const moreButton = document.getElementById('clubs-more-button');
   const optionsDetails = document.getElementById('clubs-options');
+  const sortButtons = document.querySelectorAll('[data-club-sort]');
 
   const totalCounter = document.createElement('p');
   totalCounter.className = 'clubs-total';
@@ -71,9 +72,11 @@
     clubs: [],
     filtered: [],
     query: '',
+    pendingQuery: searchInput ? searchInput.value.trim() : '',
     visibleCount: VISIBLE_RESULTS_DEFAULT,
     distanceMode: false,
     distanceReference: '',
+    sortMode: 'default',
   };
 
   let searchRequestId = 0;
@@ -122,6 +125,99 @@
     } else {
       delete locationStatus.dataset.tone;
     }
+  };
+
+  const clearSearchQuery = (options = {}) => {
+    const silent = Boolean(options.silent);
+    state.query = '';
+    state.pendingQuery = '';
+    if (searchInput) {
+      searchInput.value = '';
+    }
+    if (!silent) {
+      setSearchStatus('Tous les clubs sont affichés.', 'info');
+    }
+  };
+
+  const updateSortButtons = () => {
+    sortButtons.forEach((button) => {
+      const mode = button.dataset.clubSort || 'default';
+      const isActive = mode === state.sortMode;
+      button.classList.toggle('is-active', isActive);
+      button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+  };
+
+  const setSearchMeta = (meta) => {
+    state.lastSearchMeta = meta;
+  };
+
+  const applySortMode = () => {
+    if (state.sortMode === 'licenses') {
+      const sorted = state.clubs
+        .slice()
+        .sort((a, b) => {
+          const totalA = Number.isFinite(a.totalLicenses) ? a.totalLicenses : 0;
+          const totalB = Number.isFinite(b.totalLicenses) ? b.totalLicenses : 0;
+          if (totalB !== totalA) {
+            return totalB - totalA;
+          }
+          return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
+        });
+      state.distanceMode = false;
+      state.distanceReference = '';
+      state.filtered = sorted;
+      state.visibleCount = state.filtered.length;
+      renderResults({ resetVisible: false });
+      updateTotalCounter();
+      setSearchMeta({ sort: 'licenses', total: state.filtered.length });
+      setSearchStatus('Clubs triés par nombre de licenciés.', 'info');
+      return true;
+    }
+    if (state.sortMode === 'alpha') {
+      const sorted = state.clubs
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
+      state.distanceMode = false;
+      state.distanceReference = '';
+      state.filtered = sorted;
+      state.visibleCount = state.filtered.length;
+      renderResults({ resetVisible: false });
+      updateTotalCounter();
+      setSearchMeta({ sort: 'alpha', total: state.filtered.length });
+      setSearchStatus('Clubs classés par ordre alphabétique.', 'info');
+      return true;
+    }
+    return false;
+  };
+
+  const setSortMode = (mode) => {
+    const normalized = mode === 'licenses' || mode === 'alpha' ? mode : 'default';
+    if (state.sortMode === normalized) {
+      if (normalized !== 'default') {
+        applySortMode();
+      }
+      return;
+    }
+    state.sortMode = normalized;
+    updateSortButtons();
+
+    if (normalized === 'default') {
+      handleLocationClear({ skipSearch: true, silent: true });
+      clearSearchQuery({ silent: true });
+      state.distanceMode = false;
+      state.distanceReference = '';
+      state.filtered = state.clubs.slice();
+      state.visibleCount = Math.min(VISIBLE_RESULTS_DEFAULT, state.filtered.length);
+      void performSearch();
+      return;
+    }
+
+    clearSearchQuery({ silent: true });
+    handleLocationClear({ skipSearch: true, silent: true });
+    state.distanceMode = false;
+    state.distanceReference = '';
+    applySortMode();
   };
 
   const beginButtonWait = (button, busyLabel) => {
@@ -766,6 +862,11 @@
       }
     };
 
+    if (state.sortMode !== 'default') {
+      state.sortMode = 'default';
+      updateSortButtons();
+    }
+
     if (!trimmed) {
       const meta = applySearch('');
       if (requestId !== searchRequestId) {
@@ -904,9 +1005,11 @@
 
   const resetSearch = () => {
     searchRequestId += 1;
-    if (searchInput) {
-      searchInput.value = '';
-    }
+    state.sortMode = 'default';
+    updateSortButtons();
+    handleLocationClear({ skipSearch: true, silent: true });
+    clearSearchQuery({ silent: true });
+    setLocationStatus('', 'info');
     const meta = applySearch('');
     if (meta.total > 0) {
       setSearchStatus('Recherche réinitialisée. Tous les clubs sont affichés.', 'success');
@@ -915,11 +1018,16 @@
     }
   };
 
-const handleLocationClear = (event) => {
-  if (event && typeof event.preventDefault === 'function') {
-    event.preventDefault();
-  }
-  locationRequestId += 1;
+  const handleLocationClear = (eventOrOptions) => {
+    let options = {};
+    if (eventOrOptions && typeof eventOrOptions.preventDefault === 'function') {
+      eventOrOptions.preventDefault();
+    } else if (eventOrOptions && typeof eventOrOptions === 'object') {
+      options = eventOrOptions;
+    }
+    const silent = Boolean(options.silent);
+    const skipSearch = Boolean(options.skipSearch);
+    locationRequestId += 1;
     state.distanceMode = false;
     state.distanceReference = '';
     state.clubs.forEach((club) => {
@@ -930,8 +1038,10 @@ const handleLocationClear = (event) => {
     if (locationInput) {
       locationInput.value = '';
     }
-    setLocationStatus('Localisation effacée.', 'info');
-    void performSearch();
+    setLocationStatus(silent ? '' : 'Localisation effacée.', 'info');
+    if (!skipSearch) {
+      void performSearch();
+    }
   };
 
 const handleLocationSubmit = async (event) => {
@@ -947,13 +1057,13 @@ const handleLocationSubmit = async (event) => {
       return;
     }
 
-  const requestId = ++locationRequestId;
-  if (searchInput && searchInput.value) {
-    searchInput.value = '';
-    state.query = '';
-    state.pendingQuery = '';
-  }
-  setLocationStatus(`Recherche de ${raw}…`, 'info');
+    const requestId = ++locationRequestId;
+    if (state.sortMode !== 'default') {
+      state.sortMode = 'default';
+      updateSortButtons();
+    }
+    clearSearchQuery({ silent: true });
+    setLocationStatus(`Recherche de ${raw}…`, 'info');
     const releaseButton = beginButtonWait(locationApplyButton, 'Recherche…');
 
     try {
@@ -1015,11 +1125,11 @@ const handleLocationSubmit = async (event) => {
     }
 
     const requestId = ++locationRequestId;
-    if (searchInput && searchInput.value) {
-      searchInput.value = '';
-      state.query = '';
-      state.pendingQuery = '';
+    if (state.sortMode !== 'default') {
+      state.sortMode = 'default';
+      updateSortButtons();
     }
+    clearSearchQuery({ silent: true });
     setLocationStatus('Recherche de votre position…', 'info');
     const releaseButton = beginButtonWait(geolocButton, 'Recherche…');
 
@@ -1214,6 +1324,13 @@ const handleLocationSubmit = async (event) => {
         distanceNode.textContent = distanceInfo.text;
         header.appendChild(distanceNode);
       }
+    } else if (state.sortMode === 'licenses') {
+      const totalLicenses = Number.isFinite(club.totalLicenses) ? club.totalLicenses : 0;
+      const licenseNode = document.createElement('span');
+      licenseNode.className = 'club-row__distance';
+      licenseNode.dataset.tone = 'licenses';
+      licenseNode.textContent = `${totalLicenses} lic.`;
+      header.appendChild(licenseNode);
     }
 
     cardLink.appendChild(header);
@@ -1254,6 +1371,11 @@ const handleLocationSubmit = async (event) => {
       if (state.distanceMode && state.distanceReference) {
         parts.splice(1, 0, `distances depuis ${state.distanceReference}`);
       }
+      if (state.sortMode === 'licenses') {
+        parts.push('tri par licenciés');
+      } else if (state.sortMode === 'alpha') {
+        parts.push('ordre alphabétique');
+      }
       totalCounter.textContent = `${parts.join(' · ')}.`;
       return;
     }
@@ -1269,6 +1391,11 @@ const handleLocationSubmit = async (event) => {
     }
     if (state.distanceMode && state.distanceReference) {
       parts.push(`distances depuis ${state.distanceReference}`);
+    }
+    if (state.sortMode === 'licenses') {
+      parts.push('tri par licenciés');
+    } else if (state.sortMode === 'alpha') {
+      parts.push('ordre alphabétique');
     }
     totalCounter.textContent = `${parts.join(' · ')}.`;
   };
@@ -1335,11 +1462,16 @@ const handleLocationSubmit = async (event) => {
         state.clubs = data
           .map(hydrateClub)
           .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
-        const meta = applySearch('');
-        if (meta.total > 0) {
-          setSearchStatus('Tous les clubs sont affichés.', 'info');
+
+        if (state.sortMode === 'licenses' || state.sortMode === 'alpha') {
+          applySortMode();
         } else {
-          setSearchStatus('Aucun club disponible pour le moment.', 'info');
+          const meta = applySearch('');
+          if (meta.total > 0) {
+            setSearchStatus('Tous les clubs sont affichés.', 'info');
+          } else {
+            setSearchStatus('Aucun club disponible pour le moment.', 'info');
+          }
         }
       })
       .catch(() => {
@@ -1366,6 +1498,12 @@ const handleLocationSubmit = async (event) => {
     });
     geolocButton?.addEventListener('click', handleUseGeolocation);
     moreButton?.addEventListener('click', showAllResults);
+    sortButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        setSortMode(button.dataset.clubSort || 'default');
+      });
+    });
+    updateSortButtons();
   };
 
   init();
