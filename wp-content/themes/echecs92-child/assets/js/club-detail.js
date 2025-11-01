@@ -280,18 +280,23 @@
     const shareActions = document.createElement('div');
     shareActions.className = 'club-sheet__share-actions';
 
-    const feedback = document.createElement('p');
-    feedback.className = 'club-sheet__share-feedback';
-    feedback.setAttribute('role', 'status');
-    feedback.setAttribute('aria-live', 'polite');
-
-    const updateFeedback = (message, tone = 'success') => {
-      feedback.textContent = message || '';
-      if (message) {
-        feedback.dataset.tone = tone;
-      } else {
-        delete feedback.dataset.tone;
+    let feedbackTimer = null;
+    const showButtonFeedback = (button, message, tone = 'success') => {
+      if (!button) {
+        return;
       }
+      const originalText = button.dataset.label || button.textContent;
+      button.dataset.label = originalText;
+      button.textContent = message;
+      button.dataset.tone = tone;
+      window.clearTimeout(feedbackTimer);
+      feedbackTimer = window.setTimeout(() => {
+        if (button.dataset.label) {
+          button.textContent = button.dataset.label;
+          delete button.dataset.label;
+        }
+        delete button.dataset.tone;
+      }, 2400);
     };
 
     const copyToClipboard = async (value) => {
@@ -322,9 +327,9 @@
     copyButton.addEventListener('click', async () => {
       const ok = await copyToClipboard(shareUrl);
       if (ok) {
-        updateFeedback('Lien copié dans le presse-papiers.');
+        showButtonFeedback(copyButton, 'Lien copié !');
       } else {
-        updateFeedback('Impossible de copier le lien automatiquement.', 'error');
+        showButtonFeedback(copyButton, 'Copie impossible', 'error');
       }
     });
     shareActions.appendChild(copyButton);
@@ -341,16 +346,16 @@
             text: `Découvrez ${club.name} sur le site du Comité des Échecs des Hauts-de-Seine`,
             url: shareUrl,
           });
-          updateFeedback('Lien partagé.', 'success');
+          showButtonFeedback(shareButton, 'Lien partagé !');
         } catch (error) {
           if (error && error.name === 'AbortError') {
             return;
           }
           const ok = await copyToClipboard(shareUrl);
           if (ok) {
-            updateFeedback('Lien copié dans le presse-papiers.', 'success');
+            showButtonFeedback(copyButton, 'Lien copié !');
           } else {
-            updateFeedback('Partage impossible. Copiez le lien manuellement.', 'error');
+            showButtonFeedback(shareButton, 'Partage impossible', 'error');
           }
         }
       });
@@ -358,7 +363,6 @@
     }
 
     shareBlock.appendChild(shareActions);
-    shareBlock.appendChild(feedback);
     sheet.appendChild(shareBlock);
 
     const sections = [];

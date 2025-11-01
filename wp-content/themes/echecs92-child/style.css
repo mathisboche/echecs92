@@ -1790,6 +1790,17 @@ header.wp-block-template-part.is-elevated .cm-header{
   border-color:#bfdbfe;
   outline:none;
 }
+.club-share-button[data-tone="error"]{
+  color:#b91c1c;
+  border-color:#fecaca;
+  background:#fee2e2;
+}
+.club-share-button[data-tone="error"]:hover,
+.club-share-button[data-tone="error"]:focus-visible{
+  color:#b91c1c;
+  border-color:#fca5a5;
+  background:#fecaca;
+}
 .club-share-button--primary{
   color:#fff;
   background:#1d4ed8;
@@ -1800,15 +1811,6 @@ header.wp-block-template-part.is-elevated .cm-header{
   color:#fff;
   background:#1e40af;
   border-color:#1e3a8a;
-}
-.club-sheet__share-feedback{
-  font-size:13px;
-  margin:0;
-  min-height:18px;
-  color:#047857;
-}
-.club-sheet__share-feedback[data-tone="error"]{
-  color:#b91c1c;
 }
 .club-section{
   border-top:1px solid #e2e8f0;
