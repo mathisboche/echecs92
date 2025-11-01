@@ -1698,6 +1698,9 @@ header.wp-block-template-part.is-elevated .cm-header{
   gap:24px;
 }
 .club-detail__back{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
   margin-bottom:24px;
   align-self:flex-start;
   font-size:14px;
