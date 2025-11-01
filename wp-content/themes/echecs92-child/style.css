@@ -1748,6 +1748,68 @@ header.wp-block-template-part.is-elevated .cm-header{
   color:#475569;
   margin:0;
 }
+.club-sheet__share{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding:14px;
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+  background:#f8fafc;
+}
+.club-sheet__share-label{
+  font-weight:600;
+  color:#0f172a;
+  font-size:14px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+}
+.club-sheet__share-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.club-share-button{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:14px;
+  font-weight:600;
+  color:#1d4ed8;
+  background:#e8f1ff;
+  border:1px solid #dbeafe;
+  border-radius:999px;
+  padding:6px 16px;
+  cursor:pointer;
+  transition:background-color .2s ease, border-color .2s ease, color .2s ease;
+}
+.club-share-button:hover,
+.club-share-button:focus-visible{
+  color:#0f172a;
+  background:#dbeafe;
+  border-color:#bfdbfe;
+  outline:none;
+}
+.club-share-button--primary{
+  color:#fff;
+  background:#1d4ed8;
+  border-color:#1d4ed8;
+}
+.club-share-button--primary:hover,
+.club-share-button--primary:focus-visible{
+  color:#fff;
+  background:#1e40af;
+  border-color:#1e3a8a;
+}
+.club-sheet__share-feedback{
+  font-size:13px;
+  margin:0;
+  min-height:18px;
+  color:#047857;
+}
+.club-sheet__share-feedback[data-tone="error"]{
+  color:#b91c1c;
+}
 .club-section{
   border-top:1px solid #e2e8f0;
   padding-top:20px;

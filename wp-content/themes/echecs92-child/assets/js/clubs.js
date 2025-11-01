@@ -1166,7 +1166,7 @@ const handleLocationSubmit = async (event) => {
       return url.pathname + url.search;
     }
     const normalized = base.endsWith('/') ? base : `${base}/`;
-    return `${normalized}${encodeURIComponent(clubId)}`;
+    return `${normalized}${encodeURIComponent(clubId)}/`;
   };
 
   const createResultRow = (club) => {

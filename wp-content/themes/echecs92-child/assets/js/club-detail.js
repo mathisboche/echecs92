@@ -12,8 +12,30 @@
     return;
   }
 
+  const deriveClubIdFromPath = () => {
+    const pathMatch = window.location.pathname.match(/\/club\/([^\/?#]+)/i);
+    if (pathMatch && pathMatch[1]) {
+      try {
+        return decodeURIComponent(pathMatch[1]);
+      } catch (err) {
+        return pathMatch[1];
+      }
+    }
+    return '';
+  };
+
   const searchParams = new URLSearchParams(window.location.search);
-  const clubId = searchParams.get('id') || searchParams.get('club');
+  let clubId = deriveClubIdFromPath() || searchParams.get('id') || searchParams.get('club') || '';
+
+  if (!deriveClubIdFromPath() && clubId) {
+    const prettyUrl = `/club/${encodeURIComponent(clubId)}/`;
+    if (window.history && typeof window.history.replaceState === 'function') {
+      const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      if (current !== prettyUrl) {
+        window.history.replaceState({}, document.title, prettyUrl);
+      }
+    }
+  }
 
   const renderMessage = (message, tone = 'error') => {
     detailContainer.innerHTML = `<p class="clubs-empty" data-tone="${tone}">${message}</p>`;
@@ -255,6 +277,99 @@
     }
 
     sheet.appendChild(header);
+
+    const shareUrl = `${window.location.origin}/club/${encodeURIComponent(club.id)}/`;
+    const shareBlock = document.createElement('div');
+    shareBlock.className = 'club-sheet__share';
+
+    const shareLabel = document.createElement('span');
+    shareLabel.className = 'club-sheet__share-label';
+    shareLabel.textContent = 'Partager';
+    shareBlock.appendChild(shareLabel);
+
+    const shareActions = document.createElement('div');
+    shareActions.className = 'club-sheet__share-actions';
+
+    const feedback = document.createElement('p');
+    feedback.className = 'club-sheet__share-feedback';
+    feedback.setAttribute('role', 'status');
+    feedback.setAttribute('aria-live', 'polite');
+
+    const updateFeedback = (message, tone = 'success') => {
+      feedback.textContent = message || '';
+      if (message) {
+        feedback.dataset.tone = tone;
+      } else {
+        delete feedback.dataset.tone;
+      }
+    };
+
+    const copyToClipboard = async (value) => {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(value);
+        return true;
+      }
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = value;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'absolute';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const success = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        return success;
+      } catch (err) {
+        return false;
+      }
+    };
+
+    const copyButton = document.createElement('button');
+    copyButton.type = 'button';
+    copyButton.className = 'club-share-button';
+    copyButton.textContent = 'Copier le lien';
+    copyButton.addEventListener('click', async () => {
+      const ok = await copyToClipboard(shareUrl);
+      if (ok) {
+        updateFeedback('Lien copié dans le presse-papiers.');
+      } else {
+        updateFeedback('Impossible de copier le lien automatiquement.', 'error');
+      }
+    });
+    shareActions.appendChild(copyButton);
+
+    if (navigator.share && typeof navigator.share === 'function') {
+      const shareButton = document.createElement('button');
+      shareButton.type = 'button';
+      shareButton.className = 'club-share-button club-share-button--primary';
+      shareButton.textContent = 'Partager…';
+      shareButton.addEventListener('click', async () => {
+        try {
+          await navigator.share({
+            title: club.name,
+            text: `Découvrez ${club.name} sur le site du Comité des Échecs des Hauts-de-Seine`,
+            url: shareUrl,
+          });
+          updateFeedback('Lien partagé.', 'success');
+        } catch (error) {
+          if (error && error.name === 'AbortError') {
+            return;
+          }
+          const ok = await copyToClipboard(shareUrl);
+          if (ok) {
+            updateFeedback('Lien copié dans le presse-papiers.', 'success');
+          } else {
+            updateFeedback('Partage impossible. Copiez le lien manuellement.', 'error');
+          }
+        }
+      });
+      shareActions.appendChild(shareButton);
+    }
+
+    shareBlock.appendChild(shareActions);
+    shareBlock.appendChild(feedback);
+    sheet.appendChild(shareBlock);
 
     const sections = [];
 

@@ -20,6 +20,15 @@ add_action('wp_enqueue_scripts', function () {
     );
 });
 
+add_action('init', function () {
+    add_rewrite_rule('^club/([^/]+)/?$', 'index.php?pagename=club&club=$matches[1]', 'top');
+});
+
+add_filter('query_vars', function ($vars) {
+    $vars[] = 'club';
+    return $vars;
+});
+
 function cdje92_contact_form_truncate( $value, $length = 200 ) {
     $value = (string) $value;
     if (function_exists('mb_substr')) {
