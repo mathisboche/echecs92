@@ -12,7 +12,7 @@
     return;
   }
 
-  const deriveClubIdFromPath = () => {
+  const deriveClubSlugFromPath = () => {
     const pathMatch = window.location.pathname.match(/\/club\/([^\/?#]+)/i);
     if (pathMatch && pathMatch[1]) {
       try {
@@ -24,18 +24,7 @@
     return '';
   };
 
-  const searchParams = new URLSearchParams(window.location.search);
-  let clubId = deriveClubIdFromPath() || searchParams.get('id') || searchParams.get('club') || '';
-
-  if (!deriveClubIdFromPath() && clubId) {
-    const prettyUrl = `/club/${encodeURIComponent(clubId)}/`;
-    if (window.history && typeof window.history.replaceState === 'function') {
-      const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-      if (current !== prettyUrl) {
-        window.history.replaceState({}, document.title, prettyUrl);
-      }
-    }
-  }
+  const clubSlug = deriveClubSlugFromPath();
 
   const renderMessage = (message, tone = 'error') => {
     detailContainer.innerHTML = `<p class="clubs-empty" data-tone="${tone}">${message}</p>`;
@@ -133,8 +122,8 @@
     const communeRaw = raw.commune || raw.ville || addressParts.city || secondaryParts.city || '';
     const commune = formatCommune(communeRaw);
     const postalCode = raw.code_postal || raw.postal_code || addressParts.postalCode || secondaryParts.postalCode || '';
-    const slugSource = name || commune || postalCode || primaryAddress || secondaryAddress;
-    const id = raw.id || slugify(slugSource || `club-${generatedIdCounter + 1}`);
+    const slugSource = commune || name || postalCode || primaryAddress || secondaryAddress;
+    const id = raw.id || slugify(name || slugSource || `club-${generatedIdCounter + 1}`);
 
     const rawSite = raw.site || raw.website || '';
     let site = rawSite;
@@ -173,6 +162,7 @@
         B: toNumber(raw.licences_b ?? raw.licenses_b ?? raw.license_b),
       },
       postalCode,
+      slug: slugify(slugSource || id || name || 'club'),
     };
   };
 
@@ -278,7 +268,7 @@
 
     sheet.appendChild(header);
 
-    const shareUrl = `${window.location.origin}/club/${encodeURIComponent(club.id)}/`;
+    const shareUrl = `${window.location.origin}/club/${encodeURIComponent(club.slug || club.id || '')}/`;
     const shareBlock = document.createElement('div');
     shareBlock.className = 'club-sheet__share';
 
@@ -440,11 +430,12 @@
     const totalLicenses =
       (Number.isFinite(licenseA) ? licenseA : 0) + (Number.isFinite(licenseB) ? licenseB : 0);
     club.totalLicenses = totalLicenses > 0 ? totalLicenses : null;
+    club.slug = club.slug || slugify(club.commune || club.name || club.id || 'club');
     return club;
   };
 
   const init = () => {
-    if (!clubId) {
+    if (!clubSlug) {
       renderMessage(detailContainer.dataset.emptyMessage || 'Club introuvable.');
       return;
     }
@@ -457,7 +448,7 @@
       })
       .then((data) => {
         const clubs = (Array.isArray(data) ? data : []).map(hydrateClub);
-        const club = clubs.find((entry) => entry.id === clubId);
+        const club = clubs.find((entry) => entry.slug === clubSlug || entry.id === clubSlug);
         if (!club) {
           renderMessage(detailContainer.dataset.emptyMessage || 'Club introuvable.');
           return;

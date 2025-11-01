@@ -1148,6 +1148,9 @@ const handleLocationSubmit = async (event) => {
     club._tokens = searchIndex ? searchIndex.split(/\s+/) : [];
     club._nameSearch = normaliseForSearch(club.name || '');
     club._addressSearch = normaliseForSearch(club.address || '');
+    const communeSlugSource = club.commune || club.name || club.id;
+    club.slug = slugify(communeSlugSource || club.id || club.name || 'club');
+    club._communeSlug = club.slug;
     return club;
   };
 
@@ -1159,14 +1162,15 @@ const handleLocationSubmit = async (event) => {
     if (!base) {
       return `?club=${encodeURIComponent(clubId)}`;
     }
+    const slug = clubId.slug || clubId._communeSlug || clubId;
     if (base.includes('?')) {
       const url = new URL(base, window.location.origin);
       const firstParam = Array.from(url.searchParams.keys())[0] || 'id';
-      url.searchParams.set(firstParam, clubId);
+      url.searchParams.set(firstParam, slug);
       return url.pathname + url.search;
     }
     const normalized = base.endsWith('/') ? base : `${base}/`;
-    return `${normalized}${encodeURIComponent(clubId)}/`;
+    return `${normalized}${encodeURIComponent(slug)}/`;
   };
 
   const createResultRow = (club) => {
@@ -1177,7 +1181,7 @@ const handleLocationSubmit = async (event) => {
 
     const cardLink = document.createElement('a');
     cardLink.className = 'club-row__card';
-    cardLink.href = getClubDetailUrl(club.id);
+    cardLink.href = getClubDetailUrl(club);
     cardLink.setAttribute('aria-label', `Voir la fiche du club ${club.name}`);
 
     const header = document.createElement('div');

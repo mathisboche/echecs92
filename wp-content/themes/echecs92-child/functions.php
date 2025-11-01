@@ -21,11 +21,11 @@ add_action('wp_enqueue_scripts', function () {
 });
 
 add_action('init', function () {
-    add_rewrite_rule('^club/([^/]+)/?$', 'index.php?pagename=club&club=$matches[1]', 'top');
+    add_rewrite_rule('^club/([^/]+)/?$', 'index.php?pagename=club&club_commune=$matches[1]', 'top');
 });
 
 add_filter('query_vars', function ($vars) {
-    $vars[] = 'club';
+    $vars[] = 'club_commune';
     return $vars;
 });
 
