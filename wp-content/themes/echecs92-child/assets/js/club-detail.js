@@ -739,7 +739,7 @@
     mapSection.appendChild(mapContainerWrapper);
 
     const directionsButton = document.createElement('a');
-    directionsButton.className = 'btn club-map__directions';
+    directionsButton.className = 'btn btn-secondary club-map__directions';
     directionsButton.target = '_blank';
     directionsButton.rel = 'noopener';
     directionsButton.textContent = 'Ouvrir dans mon app de navigation';

@@ -1835,7 +1835,11 @@ header.wp-block-template-part.is-elevated .cm-header{
 }
 .club-map__directions{
   display:none;
-  align-self:flex-start;
+  align-self:stretch;
+  justify-content:center;
+  box-sizing:border-box;
+  width:100%;
+  margin:0;
 }
 .club-detail-page{
   border:1px solid #d0d7e7;
@@ -2053,7 +2057,6 @@ header.wp-block-template-part.is-elevated .cm-header{
   }
   .club-map__directions{
     display:inline-flex;
-    width:100%;
-    justify-content:center;
+    margin-top:4px;
   }
 }
