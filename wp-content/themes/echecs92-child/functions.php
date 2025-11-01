@@ -18,6 +18,29 @@ add_action('wp_enqueue_scripts', function () {
         wp_get_theme()->get('Version'),
         true // charge le script en footer
     );
+
+    if (is_page('carte-des-clubs') || is_page_template('page-carte-des-clubs.html')) {
+        wp_enqueue_style(
+            'leaflet',
+            'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+            [],
+            '1.9.4'
+        );
+        wp_enqueue_script(
+            'leaflet',
+            'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+            [],
+            '1.9.4',
+            true
+        );
+        wp_enqueue_script(
+            'echecs92-clubs-map',
+            get_stylesheet_directory_uri() . '/assets/js/clubs-map.js',
+            ['leaflet'],
+            wp_get_theme()->get('Version'),
+            true
+        );
+    }
 });
 
 add_action('init', function () {
