@@ -21,7 +21,7 @@ header.wp-block-template-part.is-elevated {
   background:#fff;
   border-bottom:1px solid rgba(0,0,0,.07);
   font-family: system-ui,-apple-system,BlinkMacSystemFont,"Inter",Roboto,"Helvetica Neue",Arial,sans-serif;
-  --logo-size: 84px;
+  --logo-size: 72px;
   --header-height: calc(var(--logo-size) + 24px);
   min-height: var(--header-height);
   display:flex;
