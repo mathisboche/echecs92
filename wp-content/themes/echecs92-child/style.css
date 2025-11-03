@@ -49,7 +49,7 @@ header.wp-block-template-part.is-elevated .cm-header{
 
 /* Logo */
 .cm-logo{display:flex; align-items:center; gap:8px; text-decoration:none;}
-.cm-logo-img{display:block; height:32px; width:auto;}
+.cm-logo-img{display:block; height:48px; width:auto;}
 .cm-logo-title{font-weight:600; font-size:16px; color:#000; text-decoration:none;}
 
 /* Nav desktop */
