@@ -1,0 +1,89 @@
+<!-- wp:template-part {"slug":"header","tagName":"header","area":"header"} /-->
+
+<!-- wp:html -->
+<div class="news-wrapper">
+  <div class="news">
+    <header class="news-hero">
+      <p class="news-hero__eyebrow">CDJE 92 · Vie fédérale</p>
+      <div class="news-hero__heading">
+        <h1>Actualités</h1>
+        <p>
+          Communiqués officiels, infos clubs, sélections ou retours de tournois : retrouvez
+          ici toutes les publications du comité. Les articles sont gérés depuis l’onglet
+          «&nbsp;Articles&nbsp;» de WordPress, sans développement supplémentaire.
+        </p>
+      </div>
+      <ul class="news-hero__meta">
+        <li>
+          <span class="news-meta__label">Fréquence</span>
+          <span class="news-meta__value">Mises à jour libres par les rédacteurs</span>
+        </li>
+        <li>
+          <span class="news-meta__label">Formats</span>
+          <span class="news-meta__value">Texte, visuel mis en avant, catégories</span>
+        </li>
+        <li>
+          <span class="news-meta__label">Mise en avant</span>
+          <span class="news-meta__value">Utilisez l’option « À la une » pour les urgences</span>
+        </li>
+      </ul>
+      <div class="news-hero__actions">
+        <a class="btn" href="/contact">Contacter le comité</a>
+        <p class="news-hero__hint">
+          Pour publier : «&nbsp;Articles&nbsp;» → «&nbsp;Ajouter&nbsp;» dans l’admin WordPress,
+          puis assignez une catégorie et une image mise en avant.
+        </p>
+      </div>
+    </header>
+
+    <section class="news-feed" aria-labelledby="news-feed-title">
+      <div class="news-feed__header">
+        <div>
+          <p class="news-feed__eyebrow">Dernières publications</p>
+          <h2 id="news-feed-title">Infos, tournois et vie des clubs</h2>
+          <p class="news-feed__description">
+            Les articles s’affichent automatiquement dès qu’ils sont publiés. Utilisez les
+            catégories pour classer vos contenus (jeunes, compétitions, vie des clubs…).
+          </p>
+        </div>
+        <div class="news-feed__tips">
+          <span aria-hidden="true">💡</span>
+          <p>Marquez une info «&nbsp;À la une&nbsp;» pour la placer en tête de liste.</p>
+        </div>
+      </div>
+
+      <!-- wp:query {"queryId":0,"query":{"perPage":9,"pages":0,"offset":0,"postType":"post","order":"desc","orderBy":"date","author":"","search":"","exclude":[],"sticky":"include","inherit":false},"displayLayout":{"type":"flex","columns":3},"className":"news-query"} -->
+        <!-- wp:post-template -->
+          <!-- wp:group {"tagName":"article","className":"news-card","layout":{"type":"constrained"}} -->
+            <!-- wp:post-featured-image {"isLink":true,"aspectRatio":"16/9","className":"news-card__image"} /-->
+            <!-- wp:group {"className":"news-card__body","layout":{"type":"constrained"}} -->
+              <!-- wp:group {"className":"news-card__meta","layout":{"type":"flex","justifyContent":"space-between","flexWrap":"wrap"}} -->
+                <!-- wp:post-terms {"term":"category","className":"news-card__topics"} /-->
+                <!-- wp:post-date {"format":"d F Y","isLink":false,"className":"news-card__date"} /-->
+              <!-- /wp:group -->
+              <!-- wp:post-title {"isLink":true,"level":3,"className":"news-card__title"} /-->
+              <!-- wp:post-excerpt {"moreText":"","excerptLength":28,"className":"news-card__excerpt"} /-->
+              <!-- wp:read-more {"content":"Lire l’article","className":"news-card__link"} /-->
+            <!-- /wp:group -->
+          <!-- /wp:group -->
+        <!-- /wp:post-template -->
+
+        <!-- wp:query-pagination {"layout":{"type":"flex","justifyContent":"space-between"},"className":"news-pagination"} -->
+          <!-- wp:query-pagination-previous {"label":"Articles précédents"} /-->
+          <!-- wp:query-pagination-next {"label":"Articles suivants"} /-->
+        <!-- /wp:query-pagination -->
+
+        <!-- wp:query-no-results -->
+          <!-- wp:group {"className":"news-empty","layout":{"type":"constrained"}} -->
+            <!-- wp:paragraph -->
+            <p>Aucune actualité publiée pour le moment. Ajoutez votre premier article depuis l’administration WordPress.</p>
+            <!-- /wp:paragraph -->
+          <!-- /wp:group -->
+        <!-- /wp:query-no-results -->
+      <!-- /wp:query -->
+    </section>
+  </div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:template-part {"slug":"footer","tagName":"footer","area":"footer"} /-->
