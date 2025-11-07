@@ -1,92 +1,35 @@
 <!-- wp:template-part {"slug":"header","tagName":"header","area":"header"} /-->
 
 <!-- wp:html -->
-<div class="news-wrapper">
-  <div class="news">
-    <header class="news-hero">
-      <p class="news-hero__eyebrow">CDJE 92 · Actualités</p>
-      <div class="news-hero__heading">
-        <h1>Actualités officielles</h1>
-        <p class="news-hero__lead">
-          L’essentiel du comité en un coup d’œil : annonces, convocations, résultats et vie
-          des clubs.
-        </p>
-      </div>
-      <div class="news-hero__stats" role="list">
-        <article class="news-stat" role="listitem">
-          <span class="news-stat__icon" aria-hidden="true">🗞️</span>
-          <div class="news-stat__content">
-            <p class="news-stat__label">Priorité</p>
-            <p class="news-stat__value">Communiqués &amp; convocations validés</p>
-          </div>
-        </article>
-        <article class="news-stat" role="listitem">
-          <span class="news-stat__icon" aria-hidden="true">🏅</span>
-          <div class="news-stat__content">
-            <p class="news-stat__label">Compétitions</p>
-            <p class="news-stat__value">Sélections jeunes, résultats, podiums</p>
-          </div>
-        </article>
-        <article class="news-stat" role="listitem">
-          <span class="news-stat__icon" aria-hidden="true">🏛️</span>
-          <div class="news-stat__content">
-            <p class="news-stat__label">Clubs</p>
-            <p class="news-stat__value">Vie locale, projets, photos et documents</p>
-          </div>
-        </article>
-      </div>
-      <div class="news-hero__actions">
-        <a class="btn" href="/contact">Contacter le comité</a>
-        <p class="news-hero__hint">
-          Courriel presse&nbsp;: <a href="mailto:contact@echecs92.com">contact@echecs92.com</a>
-        </p>
-      </div>
-    </header>
+<div class="news-simple">
+  <header class="news-simple__header">
+    <h1>Actualités</h1>
+    <p>Les dernières informations publiées par le comité des Hauts-de-Seine.</p>
+  </header>
 
-    <section class="news-feed" aria-labelledby="news-feed-title">
-      <div class="news-feed__header">
-        <div>
-          <p class="news-feed__eyebrow">Dernières publications</p>
-          <h2 id="news-feed-title">À consulter en priorité</h2>
-        </div>
-        <ul class="news-feed__legend" aria-label="Principales thématiques couvertes">
-          <li>#Jeunes</li>
-          <li>#Compétitions</li>
-          <li>#VieDesClubs</li>
-        </ul>
-      </div>
+  <!-- wp:query {"queryId":0,"query":{"perPage":10,"pages":0,"offset":0,"postType":"post","order":"desc","orderBy":"date","author":"","search":"","exclude":[],"sticky":"include","inherit":false},"className":"news-simple__list"} -->
+    <!-- wp:post-template -->
+      <!-- wp:group {"tagName":"article","className":"news-simple-card","layout":{"type":"constrained"}} -->
+        <!-- wp:post-featured-image {"isLink":true,"aspectRatio":"4/3","className":"news-simple-card__image"} /-->
+        <!-- wp:group {"className":"news-simple-card__content","layout":{"type":"constrained"}} -->
+          <!-- wp:post-date {"format":"d.m.Y","className":"news-simple-card__date"} /-->
+          <!-- wp:post-title {"isLink":true,"level":2,"className":"news-simple-card__title"} /-->
+          <!-- wp:post-excerpt {"moreText":"","excerptLength":32,"className":"news-simple-card__excerpt"} /-->
+        <!-- /wp:group -->
+      <!-- /wp:group -->
+    <!-- /wp:post-template -->
 
-      <!-- wp:query {"queryId":0,"query":{"perPage":9,"pages":0,"offset":0,"postType":"post","order":"desc","orderBy":"date","author":"","search":"","exclude":[],"sticky":"include","inherit":false},"displayLayout":{"type":"flex","columns":3},"className":"news-query"} -->
-        <!-- wp:post-template -->
-          <!-- wp:group {"tagName":"article","className":"news-card","layout":{"type":"constrained"}} -->
-            <!-- wp:post-featured-image {"isLink":true,"aspectRatio":"16/9","className":"news-card__image"} /-->
-            <!-- wp:group {"className":"news-card__body","layout":{"type":"constrained"}} -->
-              <!-- wp:group {"className":"news-card__meta","layout":{"type":"flex","justifyContent":"space-between","flexWrap":"wrap"}} -->
-                <!-- wp:post-terms {"term":"category","className":"news-card__topics"} /-->
-                <!-- wp:post-date {"format":"d F Y","isLink":false,"className":"news-card__date"} /-->
-              <!-- /wp:group -->
-              <!-- wp:post-title {"isLink":true,"level":3,"className":"news-card__title"} /-->
-              <!-- wp:post-excerpt {"moreText":"","excerptLength":28,"className":"news-card__excerpt"} /-->
-              <!-- wp:read-more {"content":"Lire l’article","className":"news-card__link"} /-->
-            <!-- /wp:group -->
-          <!-- /wp:group -->
-        <!-- /wp:post-template -->
+    <!-- wp:query-pagination {"layout":{"type":"flex","justifyContent":"space-between"},"className":"news-simple__pagination"} -->
+      <!-- wp:query-pagination-previous {"label":"Articles précédents"} /-->
+      <!-- wp:query-pagination-next {"label":"Articles suivants"} /-->
+    <!-- /wp:query-pagination -->
 
-        <!-- wp:query-pagination {"layout":{"type":"flex","justifyContent":"space-between"},"className":"news-pagination"} -->
-          <!-- wp:query-pagination-previous {"label":"Articles précédents"} /-->
-          <!-- wp:query-pagination-next {"label":"Articles suivants"} /-->
-        <!-- /wp:query-pagination -->
-
-        <!-- wp:query-no-results -->
-          <!-- wp:group {"className":"news-empty","layout":{"type":"constrained"}} -->
-            <!-- wp:paragraph -->
-            <p>Aucune actualité n’est disponible pour l’instant. Merci de revenir prochainement.</p>
-            <!-- /wp:paragraph -->
-          <!-- /wp:group -->
-        <!-- /wp:query-no-results -->
-      <!-- /wp:query -->
-    </section>
-  </div>
+    <!-- wp:query-no-results -->
+      <!-- wp:paragraph {"className":"news-simple__empty"} -->
+      <p>Aucun article n’est disponible pour le moment.</p>
+      <!-- /wp:paragraph -->
+    <!-- /wp:query-no-results -->
+  <!-- /wp:query -->
 </div>
 <!-- /wp:html -->
 
