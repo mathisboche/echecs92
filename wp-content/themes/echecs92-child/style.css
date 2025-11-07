@@ -889,21 +889,28 @@ header.wp-block-template-part.is-elevated .cm-header{
   gap:12px;
   margin-bottom:28px;
 }
+.competitions-hero__actions .btn{
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box;
+}
 .competitions-hero__meta{
   display:flex;
   flex-wrap:wrap;
-  gap:18px;
+  gap:12px;
   list-style:none;
   padding:0;
   margin:0;
 }
 .competitions-hero__meta li{
-  flex:1 1 200px;
-  min-width:200px;
+  flex:1 1 180px;
+  min-width:0;
+  max-width:100%;
   border:1px solid #e2e8f0;
   border-radius:12px;
-  padding:16px 18px;
+  padding:14px 16px;
   background:#ffffff;
+  box-sizing:border-box;
 }
 .competitions-meta__label{
   display:block;
@@ -1006,6 +1013,38 @@ header.wp-block-template-part.is-elevated .cm-header{
   color:#475569;
   line-height:1.4;
 }
+.competitions-docs__grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:14px;
+}
+.competitions-doc{
+  border:1px solid #d8e0ea;
+  border-radius:12px;
+  padding:16px 18px;
+  background:#ffffff;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.competitions-doc__tag{
+  font-size:11px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:#94a3b8;
+}
+.competitions-doc__title{
+  font-size:15px;
+  font-weight:600;
+  color:#0b2e4c;
+  text-decoration:none;
+  line-height:1.4;
+}
+.competitions-doc__title:hover,
+.competitions-doc__title:focus-visible{
+  color:#1d4ed8;
+  outline:none;
+}
 .competitions-resource__link{
   display:inline-flex;
   align-items:center;
@@ -1095,6 +1134,11 @@ header.wp-block-template-part.is-elevated .cm-header{
   }
   .competitions-hero__meta li{
     width:100%;
+    flex:none;
+  }
+  .competitions-links__grid,
+  .competitions-docs__grid{
+    grid-template-columns:1fr;
   }
   .competitions-resource{
     flex-direction:column;
