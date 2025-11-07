@@ -1291,6 +1291,9 @@ header.wp-block-template-part.is-elevated .cm-header{
   font-family: system-ui,-apple-system,BlinkMacSystemFont,"Inter","Helvetica Neue",Arial,sans-serif;
   color:#0f172a;
 }
+.news-simple.wp-block-group{
+  margin:0;
+}
 .news-simple__header{
   display:flex;
   flex-direction:column;
@@ -1405,10 +1408,19 @@ header.wp-block-template-part.is-elevated .cm-header{
   font-family: system-ui,-apple-system,BlinkMacSystemFont,"Inter","Helvetica Neue",Arial,sans-serif;
   color:#0f172a;
 }
+.article-simple.wp-block-group{
+  margin:0;
+}
 .article-simple__article{
   display:flex;
   flex-direction:column;
   gap:24px;
+}
+.article-simple__article.wp-block-group,
+.article-simple__header.wp-block-group,
+.article-simple__content.wp-block-group,
+.article-simple__nav.wp-block-group{
+  margin:0;
 }
 .article-simple__header{
   display:flex;
