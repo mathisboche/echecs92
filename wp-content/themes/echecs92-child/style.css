@@ -1182,6 +1182,9 @@ header.wp-block-template-part.is-elevated .cm-header{
   display:flex;
   flex-direction:column;
   gap:10px;
+  text-decoration:none;
+  color:inherit;
+  transition:border-color .2s ease, background-color .2s ease;
 }
 .results-card h3{
   margin:0;
@@ -1205,14 +1208,24 @@ header.wp-block-template-part.is-elevated .cm-header{
   content:"→";
   transition:transform .2s ease;
 }
+.results-card:hover .results-card__link::after,
+.results-card:focus-visible .results-card__link::after{
+  transform:translateX(3px);
+}
+.results-card:hover,
+.results-card:focus-visible{
+  border-color:#94a3b8;
+  background:#f8fafc;
+  outline:none;
+}
+.results-card:hover .results-card__link,
+.results-card:focus-visible .results-card__link{
+  color:#1d4ed8;
+}
 .results-card__link:hover,
 .results-card__link:focus-visible{
   color:#1d4ed8;
   outline:none;
-}
-.results-card__link:hover::after,
-.results-card__link:focus-visible::after{
-  transform:translateX(3px);
 }
 .results-steps__list{
   margin:0;
