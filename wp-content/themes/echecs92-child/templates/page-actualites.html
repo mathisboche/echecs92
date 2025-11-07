@@ -1,11 +1,14 @@
 <!-- wp:template-part {"slug":"header","tagName":"header","area":"header"} /-->
 
-<!-- wp:html -->
-<div class="news-simple">
-  <header class="news-simple__header">
+<!-- wp:group {"className":"news-simple","layout":{"type":"constrained","wideSize":"960px"}} -->
+  <!-- wp:group {"className":"news-simple__header","layout":{"type":"constrained"}} -->
+    <!-- wp:heading {"level":1} -->
     <h1>Actualités</h1>
+    <!-- /wp:heading -->
+    <!-- wp:paragraph -->
     <p>Les dernières informations publiées par le comité des Hauts-de-Seine.</p>
-  </header>
+    <!-- /wp:paragraph -->
+  <!-- /wp:group -->
 
   <!-- wp:query {"queryId":0,"query":{"perPage":10,"pages":0,"offset":0,"postType":"post","order":"desc","orderBy":"date","author":"","search":"","exclude":[],"sticky":"include","inherit":false},"className":"news-simple__list"} -->
     <!-- wp:post-template -->
@@ -30,7 +33,6 @@
       <!-- /wp:paragraph -->
     <!-- /wp:query-no-results -->
   <!-- /wp:query -->
-</div>
-<!-- /wp:html -->
+<!-- /wp:group -->
 
 <!-- wp:template-part {"slug":"footer","tagName":"footer","area":"footer"} /-->
