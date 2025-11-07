@@ -1107,46 +1107,6 @@ header.wp-block-template-part.is-elevated .cm-header{
   line-height:1.6;
   color:#475569;
 }
-.results-hero__actions{
-  display:flex;
-  flex-wrap:wrap;
-  gap:12px;
-}
-.results-hero__actions .btn{
-  min-width:0;
-  max-width:100%;
-}
-.results-hero__meta{
-  display:flex;
-  flex-wrap:wrap;
-  gap:12px;
-  list-style:none;
-  padding:0;
-  margin:10px 0 0;
-}
-.results-hero__meta li{
-  flex:1 1 180px;
-  min-width:0;
-  border:1px solid #dee5f0;
-  border-radius:12px;
-  padding:14px 16px;
-  background:#ffffff;
-  box-sizing:border-box;
-}
-.results-meta__label{
-  display:block;
-  font-size:12px;
-  letter-spacing:.16em;
-  text-transform:uppercase;
-  color:#94a3b8;
-  margin-bottom:4px;
-  font-weight:600;
-}
-.results-meta__value{
-  font-size:15px;
-  font-weight:650;
-  color:#0f172a;
-}
 .results-section{
   display:flex;
   flex-direction:column;
@@ -1381,19 +1341,6 @@ header.wp-block-template-part.is-elevated .cm-header{
   }
   .results-hero{
     padding:26px;
-  }
-  .results-hero__actions{
-    flex-direction:column;
-  }
-  .results-hero__actions .btn{
-    width:100%;
-  }
-  .results-hero__meta{
-    flex-direction:column;
-  }
-  .results-hero__meta li{
-    width:100%;
-    flex:none;
   }
   .results-contact__card{
     flex-direction:column;
