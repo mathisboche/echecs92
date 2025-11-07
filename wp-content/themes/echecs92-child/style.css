@@ -1016,7 +1016,7 @@ header.wp-block-template-part.is-elevated .cm-header{
 .competitions-docs__grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-  gap:14px;
+  gap:12px;
 }
 .competitions-doc{
   border:1px solid #d8e0ea;
@@ -1024,8 +1024,12 @@ header.wp-block-template-part.is-elevated .cm-header{
   padding:16px 18px;
   background:#ffffff;
   display:flex;
-  flex-direction:column;
-  gap:6px;
+  align-items:center;
+  gap:12px;
+  text-decoration:none;
+  color:inherit;
+  transition:border-color .2s ease, background-color .2s ease;
+  position:relative;
 }
 .competitions-doc__tag{
   font-size:11px;
@@ -1037,13 +1041,29 @@ header.wp-block-template-part.is-elevated .cm-header{
   font-size:15px;
   font-weight:600;
   color:#0b2e4c;
-  text-decoration:none;
   line-height:1.4;
+  flex:1;
 }
-.competitions-doc__title:hover,
-.competitions-doc__title:focus-visible{
-  color:#1d4ed8;
+.competitions-doc::after{
+  content:"↗";
+  font-size:14px;
+  color:#94a3b8;
+  transition:transform .2s ease,color .2s ease;
+}
+.competitions-doc:hover,
+.competitions-doc:focus-visible{
+  border-color:#94a3b8;
+  background:#f8fafc;
   outline:none;
+}
+.competitions-doc:hover::after,
+.competitions-doc:focus-visible::after{
+  color:#1d4ed8;
+  transform:translateX(2px);
+}
+.competitions-doc:hover .competitions-doc__title,
+.competitions-doc:focus-visible .competitions-doc__title{
+  color:#1d4ed8;
 }
 .competitions-resource__link{
   display:inline-flex;
