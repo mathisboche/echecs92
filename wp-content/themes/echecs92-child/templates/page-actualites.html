@@ -1,6 +1,6 @@
 <!-- wp:template-part {"slug":"header","tagName":"header","area":"header"} /-->
 
-<!-- wp:group {"className":"news-simple","layout":{"type":"constrained","wideSize":"960px"}} -->
+<!-- wp:group {"tagName":"main","className":"news-simple","layout":{"type":"constrained","wideSize":"960px"}} -->
   <!-- wp:group {"className":"news-simple__header","layout":{"type":"constrained"}} -->
     <!-- wp:heading {"level":1} -->
     <h1>Actualités</h1>
@@ -10,9 +10,9 @@
     <!-- /wp:paragraph -->
   <!-- /wp:group -->
 
-  <!-- wp:query {"queryId":0,"query":{"perPage":10,"pages":0,"offset":0,"postType":"post","order":"desc","orderBy":"date","author":"","search":"","exclude":[],"sticky":"include","inherit":false},"className":"news-simple__list"} -->
+  <!-- wp:query {"queryId":0,"query":{"perPage":10,"postType":"post","order":"desc","orderBy":"date","inherit":false},"className":"news-simple__list"} -->
     <!-- wp:post-template -->
-      <!-- wp:group {"tagName":"article","className":"news-simple-card","layout":{"type":"constrained"}} -->
+      <!-- wp:group {"className":"news-simple-card","layout":{"type":"constrained"}} -->
         <!-- wp:post-featured-image {"isLink":true,"aspectRatio":"4/3","className":"news-simple-card__image"} /-->
         <!-- wp:group {"className":"news-simple-card__content","layout":{"type":"constrained"}} -->
           <!-- wp:post-date {"format":"d.m.Y","className":"news-simple-card__date"} /-->
