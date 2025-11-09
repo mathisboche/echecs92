@@ -1813,50 +1813,6 @@ header.wp-block-template-part.is-elevated .cm-header{
   color:#475569;
   text-align:center;
 }
-.committee-callout{
-  border:1px solid #0b2e4c;
-  border-radius:12px;
-  background:#f2f6fa;
-  padding:24px 26px;
-}
-.committee-callout__inner{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  align-items:flex-start;
-}
-.committee-callout__inner h2{
-  margin:0;
-  font-size:21px;
-  color:#0b2e4c;
-}
-.committee-callout__inner p{
-  margin:0;
-  font-size:15px;
-  color:#2e3a4a;
-}
-.committee-callout__actions{
-  display:flex;
-  flex-wrap:wrap;
-  gap:10px;
-}
-.committee-callout__link{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:9px 18px;
-  border-radius:20px;
-  font-weight:600;
-  font-size:14px;
-  text-decoration:none;
-  background:#0b2e4c;
-  color:#ffffff;
-}
-.committee-callout__link--ghost{
-  background:transparent;
-  border:1px solid #0b2e4c;
-  color:#0b2e4c;
-}
 
 @media (max-width:1023px){
   .committee{
