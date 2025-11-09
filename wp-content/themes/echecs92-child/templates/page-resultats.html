@@ -1,66 +1,135 @@
 <!-- wp:template-part {"slug":"header","tagName":"header","area":"header"} /-->
 
 <!-- wp:html -->
-<div class="results-wrapper">
-  <div class="results">
-    <header class="results-hero">
-      <p class="results-hero__eyebrow">CDJE 92 · Résultats</p>
-      <h1 class="results-hero__title">Classements officiels</h1>
-      <p class="results-hero__description">Tous les résultats sont publiés sur ffe.fr dès l’homologation. Choisissez un lien, onglet «&nbsp;Classement&nbsp;», c’est tout.</p>
-    </header>
+<div class="committee committee--results">
+  <header class="committee-hero">
+    <p class="committee-hero__eyebrow">CDJE 92 · Résultats</p>
+    <h1 class="committee-hero__title">Classements officiels</h1>
+    <p class="committee-hero__description">Pas de bla-bla&nbsp;: cette page pointe vers les classements déjà publiés sur ffe.fr et les bases partenaires.</p>
+  </header>
 
-    <section class="results-section results-links" aria-labelledby="results-links-title">
-      <div class="results-section__header">
-        <p class="results-section__eyebrow">Raccourcis</p>
-        <h2 id="results-links-title">Accéder aux résultats</h2>
-      </div>
-      <div class="results-links__grid">
-        <a class="results-card" href="https://www.echecs.asso.fr/ListeTournois.aspx?Action=TOURNOICOMITE&amp;ComiteRef=92" target="_blank" rel="noopener">
-          <h3>Tournois Comité 92</h3>
-          <p>Liste officielle + onglet Classement.</p>
-          <span class="results-card__link">Ouvrir</span>
-        </a>
-        <a class="results-card" href="https://www.echecs.asso.fr/ListeTournois.aspx?Action=RES" target="_blank" rel="noopener">
-          <h3>Résultats France entière</h3>
-          <p>Recherche directe par mois/filtre.</p>
-          <span class="results-card__link">Consulter</span>
-        </a>
-        <a class="results-card" href="https://www.echecs.asso.fr/Tournois.aspx/Default.aspx?Cat=16" target="_blank" rel="noopener">
-          <h3>Tournois homologués</h3>
-          <p>Pages mensuelles FIDE/Rapide/Blitz.</p>
-          <span class="results-card__link">Voir</span>
-        </a>
-        <a class="results-card" href="https://www.echecs.asso.fr/Equipes.aspx" target="_blank" rel="noopener">
-          <h3>Compétitions par équipes</h3>
-          <p>Calendriers et classements Interclubs.</p>
-          <span class="results-card__link">Accéder</span>
-        </a>
-        <a class="results-card" href="https://www.echecs.asso.fr/Joueurs.aspx" target="_blank" rel="noopener">
-          <h3>Recherche joueur</h3>
-          <p>Palmarès et historique individuel.</p>
-          <span class="results-card__link">Chercher</span>
-        </a>
-        <a class="results-card" href="https://chess-results.com/TurnierDB.aspx" target="_blank" rel="noopener">
-          <h3>Chess-Results</h3>
-          <p>Base externe tournois/joueurs.</p>
-          <span class="results-card__link">Ouvrir</span>
-        </a>
-      </div>
-    </section>
+  <section class="committee-section results-access" aria-labelledby="results-access-title">
+    <div class="committee-section__header">
+      <h2 id="results-access-title">Parcours rapide</h2>
+    </div>
+    <div class="committee-governance__grid">
+      <article class="gov-card">
+        <h3 class="gov-card__title">Tournois Comité 92</h3>
+        <ul class="gov-card__list">
+          <li>FFE &gt; onglet «&nbsp;Classement&nbsp;».</li>
+          <li>Filtres par cadence ou ville.</li>
+          <li>Mises à jour automatiques.</li>
+        </ul>
+      </article>
+      <article class="gov-card">
+        <h3 class="gov-card__title">Interclubs &amp; coupes</h3>
+        <ul class="gov-card__list">
+          <li>Tableaux officiels par poule.</li>
+          <li>Feuilles d’équipes validées.</li>
+          <li>Résultats publiés sous 24&nbsp;h.</li>
+        </ul>
+      </article>
+      <article class="gov-card">
+        <h3 class="gov-card__title">Bases partenaires</h3>
+        <ul class="gov-card__list">
+          <li>Chess-Results pour les opens.</li>
+          <li>Historique joueur FFE.</li>
+          <li>Exports PGN si fournis.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
 
-    <section class="results-section results-contact" aria-labelledby="results-contact-title">
-      <div class="results-contact__card">
-        <div>
-          <p class="results-section__eyebrow">Correction</p>
-          <h2 id="results-contact-title">Signaler une erreur</h2>
-        </div>
-        <div class="results-contact__actions">
-          <a class="btn btn-secondary" href="mailto:contact@echecs92.com">contact@echecs92.com</a>
-          <a class="results-card__link" href="/contact">Formulaire</a>
-        </div>
-      </div>
-    </section>
-  </div>
+  <section class="committee-section results-figures" aria-labelledby="results-figures-title">
+    <div class="committee-section__header">
+      <h2 id="results-figures-title">Vue d’ensemble</h2>
+    </div>
+    <div class="committee-figures__grid">
+      <article class="figure-card">
+        <span class="figure-card__value">20</span>
+        <span class="figure-card__label">Clubs suivis</span>
+        <span class="figure-card__note">CDJE 92</span>
+      </article>
+      <article class="figure-card">
+        <span class="figure-card__value">6</span>
+        <span class="figure-card__label">Formats couverts</span>
+        <span class="figure-card__note">Lent, rapide, blitz, équipes…</span>
+      </article>
+      <article class="figure-card">
+        <span class="figure-card__value">24h</span>
+        <span class="figure-card__label">Rafraîchissement max</span>
+        <span class="figure-card__note">Après homologation</span>
+      </article>
+      <article class="figure-card">
+        <span class="figure-card__value">181</span>
+        <span class="figure-card__label">Joueurs suivis &lt;2200</span>
+        <span class="figure-card__note">Base Elo CDJE 92</span>
+      </article>
+    </div>
+  </section>
+
+  <section class="committee-section results-links" aria-labelledby="results-links-title">
+    <div class="committee-section__header">
+      <h2 id="results-links-title">Accès directs</h2>
+    </div>
+    <ul class="committee-docs__list">
+      <li>
+        <span class="committee-docs__title">Résultats Comité 92</span>
+        <span class="committee-docs__actions">
+          <a href="https://www.echecs.asso.fr/ListeTournois.aspx?Action=TOURNOICOMITE&amp;ComiteRef=92" target="_blank" rel="noopener" aria-label="Ouvrir les résultats du Comité 92 sur ffe.fr dans un nouvel onglet">FFE</a>
+        </span>
+      </li>
+      <li>
+        <span class="committee-docs__title">Résultats France entière</span>
+        <span class="committee-docs__actions">
+          <a href="https://www.echecs.asso.fr/ListeTournois.aspx?Action=RES" target="_blank" rel="noopener" aria-label="Lister tous les résultats homologués en France dans un nouvel onglet">Lister</a>
+        </span>
+      </li>
+      <li>
+        <span class="committee-docs__title">Recherche joueur</span>
+        <span class="committee-docs__actions">
+          <a href="https://www.echecs.asso.fr/Joueurs.aspx" target="_blank" rel="noopener" aria-label="Rechercher un joueur sur ffe.fr dans un nouvel onglet">FFE</a>
+        </span>
+      </li>
+      <li>
+        <span class="committee-docs__title">Chess-Results</span>
+        <span class="committee-docs__actions">
+          <a href="https://chess-results.com/TurnierDB.aspx" target="_blank" rel="noopener" aria-label="Ouvrir la base Chess-Results dans un nouvel onglet">Base externe</a>
+        </span>
+      </li>
+      <li>
+        <span class="committee-docs__title">Signaler une erreur</span>
+        <span class="committee-docs__actions">
+          <a href="mailto:contact@echecs92.com" aria-label="Écrire à la commission résultats">Email</a>
+          <a href="/contact" aria-label="Ouvrir le formulaire de contact">Formulaire</a>
+        </span>
+      </li>
+    </ul>
+  </section>
+
+  <section class="committee-section results-highlights" aria-labelledby="results-highlights-title">
+    <div class="committee-section__header">
+      <h2 id="results-highlights-title">Ce qu’il faut retenir</h2>
+    </div>
+    <div class="committee-governance__grid">
+      <article class="gov-card">
+        <h3 class="gov-card__title">Vérifications rapides</h3>
+        <ul class="gov-card__list">
+          <li>Nom du tournoi + ville = identifiants sûrs.</li>
+          <li>Onglet «&nbsp;Classement&nbsp;» = référence.</li>
+          <li>PDF si arbitre en publie un.</li>
+        </ul>
+      </article>
+      <article class="gov-card">
+        <h3 class="gov-card__title">Support CDJE 92</h3>
+        <ul class="gov-card__list">
+          <li>Remontées envoyées aux clubs.</li>
+          <li>Corrections relayées à la FFE.</li>
+          <li>Réponses sous 48&nbsp;h ouvrées.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
 </div>
 <!-- /wp:html -->
 
