@@ -545,12 +545,7 @@ header.wp-block-template-part.is-elevated .cm-header{
   font-weight:700;
   color:#0f172a;
 }
-.contact-subtitle{
-  margin:0;
-  font-size:16px;
-  line-height:1.6;
-  color:#3f4a5a;
-}
+
 .contact-grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
