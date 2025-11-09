@@ -1376,6 +1376,21 @@ header.wp-block-template-part.is-elevated .cm-header{
 .article-simple__nav.wp-block-group{
   margin:0;
 }
+.article-simple__back{
+  margin:0 0 4px;
+  font-size:15px;
+}
+.article-simple__back a{
+  color:#1d4ed8;
+  text-decoration:none;
+  font-weight:600;
+}
+.article-simple__back a:hover,
+.article-simple__back a:focus-visible{
+  color:#0f172a;
+  outline:none;
+  text-decoration:underline;
+}
 .article-simple__header{
   display:flex;
   flex-direction:column;

@@ -54,6 +54,62 @@ add_action('init', function () {
     add_rewrite_rule('^club/([^/]+)/?$', 'index.php?pagename=club&club_commune=$matches[1]', 'top');
 });
 
+if (! function_exists('cdje92_register_actualites_cpt')) {
+    function cdje92_register_actualites_cpt() {
+        $labels = [
+            'name'                  => __('Actualités', 'echecs92-child'),
+            'singular_name'         => __('Actualité', 'echecs92-child'),
+            'add_new'               => __('Ajouter', 'echecs92-child'),
+            'add_new_item'          => __('Ajouter une actualité', 'echecs92-child'),
+            'edit_item'             => __('Modifier l’actualité', 'echecs92-child'),
+            'new_item'              => __('Nouvelle actualité', 'echecs92-child'),
+            'view_item'             => __('Voir l’actualité', 'echecs92-child'),
+            'view_items'            => __('Voir les actualités', 'echecs92-child'),
+            'search_items'          => __('Rechercher une actualité', 'echecs92-child'),
+            'not_found'             => __('Aucune actualité trouvée', 'echecs92-child'),
+            'not_found_in_trash'    => __('Aucune actualité dans la corbeille', 'echecs92-child'),
+            'all_items'             => __('Toutes les actualités', 'echecs92-child'),
+            'archives'              => __('Archives des actualités', 'echecs92-child'),
+            'insert_into_item'      => __('Insérer dans l’actualité', 'echecs92-child'),
+            'featured_image'        => __('Image mise en avant', 'echecs92-child'),
+            'set_featured_image'    => __('Définir l’image mise en avant', 'echecs92-child'),
+            'remove_featured_image' => __('Retirer l’image mise en avant', 'echecs92-child'),
+            'use_featured_image'    => __('Utiliser comme image mise en avant', 'echecs92-child'),
+            'item_updated'          => __('Actualité mise à jour', 'echecs92-child'),
+        ];
+
+        $supports = ['title', 'editor', 'excerpt', 'thumbnail', 'author', 'revisions'];
+
+        register_post_type('actualite', [
+            'labels'             => $labels,
+            'public'             => true,
+            'has_archive'        => false,
+            'show_in_rest'       => true,
+            'rest_base'          => 'actualites',
+            'supports'           => $supports,
+            'rewrite'            => [
+                'slug'       => 'actualite',
+                'with_front' => false,
+            ],
+            'menu_icon'          => 'dashicons-megaphone',
+            'menu_position'      => 5,
+            'show_in_nav_menus'  => true,
+            'capability_type'    => 'post',
+            'map_meta_cap'       => true,
+            'template'           => [
+                ['core/paragraph', ['placeholder' => __('Contenu de votre actualité…', 'echecs92-child')]],
+            ],
+        ]);
+    }
+}
+
+add_action('init', 'cdje92_register_actualites_cpt');
+
+add_action('after_switch_theme', function () {
+    cdje92_register_actualites_cpt();
+    flush_rewrite_rules();
+});
+
 add_filter('query_vars', function ($vars) {
     $vars[] = 'club_commune';
     return $vars;
