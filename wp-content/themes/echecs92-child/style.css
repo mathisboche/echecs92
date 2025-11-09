@@ -520,24 +520,7 @@ header.wp-block-template-part.is-elevated .cm-header{
   position:relative;
   padding-bottom:18px;
 }
-.contact-header::after{
-  content:"";
-  position:absolute;
-  left:0;
-  bottom:0;
-  width:48px;
-  height:2px;
-  background:#0b2e4c;
-  border-radius:999px;
-}
-.contact-eyebrow{
-  font-size:12px;
-  font-weight:600;
-  letter-spacing:0.18em;
-  text-transform:uppercase;
-  color:#5b7187;
-  margin:0;
-}
+
 .contact-title{
   font-size:30px;
   line-height:1.3;
