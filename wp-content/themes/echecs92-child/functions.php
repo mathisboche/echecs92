@@ -139,14 +139,8 @@ function cdje92_render_contact_form() {
                 <div class="contact-form__field contact-form__field--full">
                     <label class="contact-form__label" for="cdje92-contact-message"><?php esc_html_e('Message', 'echecs92-child'); ?><span>*</span></label>
                     <textarea class="contact-form__textarea" id="cdje92-contact-message" name="cdje92_message" required><?php echo esc_textarea($prefill_map['message']); ?></textarea>
-                    <p class="contact-form__hint"><?php esc_html_e('Merci de préciser l’objet de votre demande (compétitions, clubs, communication, administration…).', 'echecs92-child'); ?></p>
                 </div>
             </div>
-
-            <p class="contact-form__legal">
-                <?php esc_html_e('Les informations saisies sont utilisées exclusivement pour répondre à votre demande. Elles ne sont ni conservées, ni transmises à des tiers.', 'echecs92-child'); ?>
-            </p>
-
             <button type="submit" class="contact-form__submit"><?php esc_html_e('Envoyer', 'echecs92-child'); ?></button>
         </form>
     </div>
