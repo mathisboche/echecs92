@@ -551,30 +551,6 @@ header.wp-block-template-part.is-elevated .cm-header{
   line-height:1.6;
   color:#3f4a5a;
 }
-.contact-assurances{
-  border:1px solid #d8e0ea;
-  border-radius:10px;
-  padding:18px 22px;
-  background:#f7fafc;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.contact-assurances__title{
-  margin:0;
-  font-size:18px;
-  font-weight:650;
-  color:#0f172a;
-}
-.contact-assurances__list{
-  margin:0;
-  padding-left:18px;
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-  color:#475569;
-  font-size:15px;
-}
 .contact-grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
