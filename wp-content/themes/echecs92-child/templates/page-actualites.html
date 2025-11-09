@@ -1,24 +1,32 @@
 <!-- wp:template-part {"slug":"header","tagName":"header","area":"header"} /-->
 
 <!-- wp:group {"tagName":"main","className":"news-simple","layout":{"type":"constrained","wideSize":"960px"}} -->
+<main class="wp-block-group news-simple">
   <!-- wp:group {"className":"news-simple__header","layout":{"type":"constrained"}} -->
+  <div class="wp-block-group news-simple__header">
     <!-- wp:heading {"level":1} -->
     <h1>Actualités</h1>
     <!-- /wp:heading -->
     <!-- wp:paragraph -->
     <p>Les dernières informations publiées par le comité des Hauts-de-Seine.</p>
     <!-- /wp:paragraph -->
+  </div>
   <!-- /wp:group -->
 
   <!-- wp:query {"queryId":0,"query":{"perPage":10,"postType":"actualite","order":"desc","orderBy":"date","inherit":false},"className":"news-simple__list"} -->
+  <div class="wp-block-query news-simple__list">
     <!-- wp:post-template -->
       <!-- wp:group {"className":"news-simple-card","layout":{"type":"constrained"}} -->
+      <div class="wp-block-group news-simple-card">
         <!-- wp:post-featured-image {"isLink":true,"aspectRatio":"4/3","className":"news-simple-card__image"} /-->
         <!-- wp:group {"className":"news-simple-card__content","layout":{"type":"constrained"}} -->
+        <div class="wp-block-group news-simple-card__content">
           <!-- wp:post-date {"format":"d.m.Y","className":"news-simple-card__date"} /-->
           <!-- wp:post-title {"isLink":true,"level":2,"className":"news-simple-card__title"} /-->
           <!-- wp:post-excerpt {"moreText":"","excerptLength":32,"className":"news-simple-card__excerpt"} /-->
+        </div>
         <!-- /wp:group -->
+      </div>
       <!-- /wp:group -->
     <!-- /wp:post-template -->
 
@@ -32,7 +40,9 @@
       <p>Aucun article n’est disponible pour le moment.</p>
       <!-- /wp:paragraph -->
     <!-- /wp:query-no-results -->
+  </div>
   <!-- /wp:query -->
+</main>
 <!-- /wp:group -->
 
 <!-- wp:template-part {"slug":"footer","tagName":"footer","area":"footer"} /-->
