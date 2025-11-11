@@ -2,19 +2,24 @@
 
 <!-- wp:template-part {"slug":"header","tagName":"header","area":"header"} /-->
 
-<!-- wp:html -->
-<div class="committee committee--competitions">
-  <header class="committee-hero">
-    <p class="committee-hero__eyebrow">CDJE 92 · Calendrier</p>
-    <h1 class="committee-hero__title">Compétitions homologuées</h1>
-  </header>
-  <section class="committee-section competitions-placeholder" aria-labelledby="competitions-links-title">
-    <div class="committee-section__header">
-      <h2 id="competitions-links-title">Informations à venir</h2>
-    </div>
-    <p class="news-simple__empty">Les informations détaillées sur les compétitions seront publiées prochainement.</p>
-  </section>
-</div>
-<!-- /wp:html -->
+<!-- wp:group {"tagName":"main","className":"news-simple","layout":{"type":"constrained","wideSize":"960px"}} -->
+<main class="wp-block-group news-simple">
+  <!-- wp:group {"className":"news-simple__header","layout":{"type":"constrained"}} -->
+  <div class="wp-block-group news-simple__header">
+    <!-- wp:heading {"level":1} -->
+    <h1>Compétitions</h1>
+    <!-- /wp:heading -->
+
+    <!-- wp:paragraph -->
+    <p>Calendrier des tournois et championnats suivis par le comité des Hauts-de-Seine.</p>
+    <!-- /wp:paragraph -->
+  </div>
+  <!-- /wp:group -->
+
+  <!-- wp:paragraph {"className":"news-simple__empty"} -->
+  <p class="news-simple__empty">Le calendrier complet des compétitions sera publié ici très bientôt.</p>
+  <!-- /wp:paragraph -->
+</main>
+<!-- /wp:group -->
 
 <!-- wp:template-part {"slug":"footer","tagName":"footer","area":"footer"} /-->
