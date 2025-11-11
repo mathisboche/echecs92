@@ -295,10 +295,17 @@
   const buildDirectionsUrl = (coords, club) => {
     const lat = Number.parseFloat(coords?.lat);
     const lng = Number.parseFloat(coords?.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      return '';
+    let destinationValue = '';
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      destinationValue = `${lat},${lng}`;
+    } else {
+      const addressCandidate = (club?.address || club?.siege || coords?.label || club?.commune || '').trim();
+      if (!addressCandidate) {
+        return '';
+      }
+      destinationValue = addressCandidate;
     }
-    const destination = `${lat},${lng}`;
+    const destination = encodeURIComponent(destinationValue);
     const label = encodeURIComponent(club?.name || coords?.label || 'Club');
     const ua = navigator.userAgent || '';
     const platform = navigator.platform || '';
