@@ -1025,169 +1025,6 @@ header.wp-block-template-part.is-elevated .cm-header{
 .competitions-doc:focus-visible .competitions-doc__title{
   color:#1d4ed8;
 }
-.results-wrapper{
-  max-width:1100px;
-  margin:0 auto;
-  padding:64px 32px 96px;
-  box-sizing:border-box;
-}
-.results{
-  display:flex;
-  flex-direction:column;
-  gap:48px;
-  font-family: system-ui,-apple-system,BlinkMacSystemFont,"Inter","Helvetica Neue",Arial,sans-serif;
-  color:#1e293b;
-}
-.results-hero{
-  background:#f8fafc;
-  border:1px solid #e2e8f0;
-  border-radius:20px;
-  padding:40px;
-  display:flex;
-  flex-direction:column;
-  gap:18px;
-}
-.results-hero__eyebrow{
-  text-transform:uppercase;
-  letter-spacing:.18em;
-  font-size:12px;
-  font-weight:600;
-  color:#64748b;
-  margin:0;
-}
-.results-hero__title{
-  margin:0;
-  font-size:34px;
-  line-height:1.2;
-  color:#0f172a;
-}
-.results-hero__description{
-  margin:0;
-  font-size:16px;
-  line-height:1.6;
-  color:#475569;
-}
-.results-section{
-  display:flex;
-  flex-direction:column;
-  gap:18px;
-}
-.results-section__header{
-  max-width:720px;
-}
-.results-section__eyebrow{
-  margin:0 0 6px;
-  font-size:11px;
-  font-weight:600;
-  letter-spacing:.18em;
-  text-transform:uppercase;
-  color:#94a3b8;
-}
-.results-section__header h2{
-  margin:0;
-  font-size:26px;
-  line-height:1.3;
-  color:#0f172a;
-}
-.results-links__grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-  gap:18px;
-}
-.results-card{
-  border:1px solid #d8e0ea;
-  border-radius:14px;
-  padding:22px 24px;
-  background:#ffffff;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-  text-decoration:none;
-  color:inherit;
-  transition:border-color .2s ease, background-color .2s ease;
-}
-.results-card h3{
-  margin:0;
-  font-size:18px;
-  color:#0f172a;
-}
-.results-card p{
-  margin:0;
-  color:#475569;
-  line-height:1.5;
-}
-.results-card__link{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  font-weight:600;
-  color:#0b2e4c;
-  text-decoration:none;
-}
-.results-card__link::after{
-  content:"→";
-  transition:transform .2s ease;
-}
-.results-card:hover .results-card__link::after,
-.results-card:focus-visible .results-card__link::after{
-  transform:translateX(3px);
-}
-.results-card:hover,
-.results-card:focus-visible{
-  border-color:#94a3b8;
-  background:#f8fafc;
-  outline:none;
-}
-.results-card:hover .results-card__link,
-.results-card:focus-visible .results-card__link{
-  color:#1d4ed8;
-}
-.results-card__link:hover,
-.results-card__link:focus-visible{
-  color:#1d4ed8;
-  outline:none;
-}
-.results-steps__list{
-  margin:0;
-  padding-left:22px;
-  color:#0f172a;
-  font-weight:600;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-.results-steps__list li{
-  line-height:1.5;
-  color:#475569;
-  font-weight:500;
-}
-.results-contact__card{
-  border:1px solid #d8e0ea;
-  border-radius:16px;
-  padding:24px 28px;
-  background:#f8fafc;
-  display:flex;
-  flex-wrap:wrap;
-  gap:20px;
-  align-items:center;
-  justify-content:space-between;
-}
-.results-contact__card h2{
-  margin:0 0 8px;
-}
-.results-contact__card p{
-  margin:0;
-  color:#475569;
-}
-.results-contact__actions{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-  align-items:flex-start;
-}
-.results-contact__actions .btn{
-  min-width:0;
-}
 .competitions-resource__link{
   display:inline-flex;
   align-items:center;
@@ -1625,19 +1462,19 @@ header.wp-block-template-part.is-elevated .cm-header{
   flex-direction:column;
   gap:16px;
 }
-.results-intro{
+.committee--results .results-intro{
   margin:0;
   font-size:16px;
   line-height:1.5;
   color:#3f4a5a;
   max-width:760px;
 }
-.results-overview__grid{
+.committee--results .results-overview__grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
   gap:18px;
 }
-.results-highlight{
+.committee--results .results-highlight{
   border:1px solid #d8e0ea;
   border-radius:14px;
   background:#f8fafc;
@@ -1647,7 +1484,7 @@ header.wp-block-template-part.is-elevated .cm-header{
   gap:4px;
   min-height:180px;
 }
-.results-highlight__eyebrow{
+.committee--results .results-highlight__eyebrow{
   margin:0;
   font-size:11px;
   font-weight:650;
@@ -1655,48 +1492,48 @@ header.wp-block-template-part.is-elevated .cm-header{
   text-transform:uppercase;
   color:#64748b;
 }
-.results-highlight__value{
+.committee--results .results-highlight__value{
   margin:0;
   font-size:40px;
   font-weight:700;
   color:#0f172a;
 }
-.results-highlight__label{
+.committee--results .results-highlight__label{
   margin:0;
   font-size:16px;
   font-weight:600;
   color:#0f172a;
 }
-.results-highlight__note{
+.committee--results .results-highlight__note{
   margin:0;
   font-size:14px;
   color:#475569;
 }
-.results-highlight--primary{
+.committee--results .results-highlight--primary{
   background:linear-gradient(130deg,#0b2e4c 0%,#1c5b8f 100%);
   border-color:transparent;
 }
-.results-highlight--primary .results-highlight__eyebrow,
-.results-highlight--primary .results-highlight__label,
-.results-highlight--primary .results-highlight__note{
+.committee--results .results-highlight--primary .results-highlight__eyebrow,
+.committee--results .results-highlight--primary .results-highlight__label,
+.committee--results .results-highlight--primary .results-highlight__note{
   color:rgba(255,255,255,0.82);
 }
-.results-highlight--primary .results-highlight__value{
+.committee--results .results-highlight--primary .results-highlight__value{
   color:#ffffff;
 }
-.results-highlight--alert{
+.committee--results .results-highlight--alert{
   background:#fff6f4;
   border-color:#ffd2c8;
 }
-.results-highlight--alert .results-highlight__value{
+.committee--results .results-highlight--alert .results-highlight__value{
   color:#c2410c;
 }
-.results-files__grid{
+.committee--results .results-files__grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
   gap:18px;
 }
-.results-download-card{
+.committee--results .results-download-card{
   border:1px solid #d8e0ea;
   border-radius:14px;
   background:#ffffff;
@@ -1706,7 +1543,7 @@ header.wp-block-template-part.is-elevated .cm-header{
   gap:10px;
   box-shadow:0 6px 18px rgba(15,23,42,0.06);
 }
-.results-download-card__badge{
+.committee--results .results-download-card__badge{
   align-self:flex-start;
   font-size:12px;
   font-weight:700;
@@ -1717,18 +1554,18 @@ header.wp-block-template-part.is-elevated .cm-header{
   background:#e2e8f0;
   color:#0b2e4c;
 }
-.results-download-card__title{
+.committee--results .results-download-card__title{
   margin:0;
   font-size:18px;
   color:#0f172a;
   font-weight:650;
 }
-.results-download-card__meta{
+.committee--results .results-download-card__meta{
   margin:0;
   font-size:14px;
   color:#475569;
 }
-.results-download-card__link{
+.committee--results .results-download-card__link{
   margin-top:auto;
   display:inline-flex;
   align-items:center;
@@ -1743,14 +1580,14 @@ header.wp-block-template-part.is-elevated .cm-header{
   text-decoration:none;
   transition:transform 0.2s ease,box-shadow 0.2s ease;
 }
-.results-download-card__link:hover{
+.committee--results .results-download-card__link:hover{
   transform:translateY(-1px);
   box-shadow:0 10px 20px rgba(11,46,76,0.25);
 }
-.results-download-card--alt{
+.committee--results .results-download-card--alt{
   background:#f5f7fb;
 }
-.results-note{
+.committee--results .results-note{
   margin:8px 0 0;
   font-size:14px;
   color:#475569;
@@ -1950,18 +1787,18 @@ header.wp-block-template-part.is-elevated .cm-header{
   .committee-callout{
     padding:20px 20px;
   }
-  .results-overview__grid{
+  .committee--results .results-overview__grid{
     grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
     gap:14px;
   }
-  .results-highlight{
+  .committee--results .results-highlight{
     min-height:auto;
     padding:18px;
   }
-  .results-highlight__value{
+  .committee--results .results-highlight__value{
     font-size:32px;
   }
-  .results-files__grid{
+  .committee--results .results-files__grid{
     grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
   }
 }
@@ -1977,10 +1814,10 @@ header.wp-block-template-part.is-elevated .cm-header{
     width:100%;
     justify-content:center;
   }
-  .results-download-card{
+  .committee--results .results-download-card{
     padding:18px;
   }
-  .results-download-card__link{
+  .committee--results .results-download-card__link{
     width:100%;
   }
 }
