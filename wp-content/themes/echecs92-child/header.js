@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btn   = document.querySelector('.cm-burger');
   const menu  = document.getElementById('cm-mobile-menu');
   const headerWrapper = document.querySelector('header.wp-block-template-part');
+  const adminBar = document.getElementById('wpadminbar');
 
   if (!btn || !menu) {
     console.warn('[header.js] bouton ou menu introuvable');
@@ -96,4 +97,43 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleElevation();
     window.addEventListener('scroll', toggleElevation, { passive: true });
   }
+
+  const getStickyOffset = () => {
+    const headerHeight = headerWrapper ? headerWrapper.offsetHeight : 0;
+    const adminBarHeight = adminBar ? adminBar.offsetHeight : 0;
+    return headerHeight + adminBarHeight + 12;
+  };
+
+  const scrollHashTargetIntoView = () => {
+    const { hash } = window.location;
+    if (!hash || hash.length <= 1) {
+      return;
+    }
+
+    let targetId;
+    try {
+      targetId = decodeURIComponent(hash.slice(1));
+    } catch (error) {
+      return;
+    }
+
+    const target = document.getElementById(targetId);
+    if (!target) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      const targetPosition = target.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({
+        top: Math.max(targetPosition - getStickyOffset(), 0),
+        behavior: 'auto',
+      });
+    });
+  };
+
+  if (window.location.hash) {
+    scrollHashTargetIntoView();
+  }
+
+  window.addEventListener('hashchange', scrollHashTargetIntoView);
 });
