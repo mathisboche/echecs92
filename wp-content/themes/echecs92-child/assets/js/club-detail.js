@@ -293,17 +293,17 @@
   };
 
   const buildDirectionsUrl = (coords, club) => {
-    const lat = Number.parseFloat(coords?.lat);
-    const lng = Number.parseFloat(coords?.lng);
+    const addressCandidate = (club?.address || club?.siege || coords?.label || club?.commune || '').trim();
     let destinationValue = '';
-    if (Number.isFinite(lat) && Number.isFinite(lng)) {
-      destinationValue = `${lat},${lng}`;
+    if (addressCandidate) {
+      destinationValue = addressCandidate;
     } else {
-      const addressCandidate = (club?.address || club?.siege || coords?.label || club?.commune || '').trim();
-      if (!addressCandidate) {
+      const lat = Number.parseFloat(coords?.lat);
+      const lng = Number.parseFloat(coords?.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
         return '';
       }
-      destinationValue = addressCandidate;
+      destinationValue = `${lat},${lng}`;
     }
     const destination = encodeURIComponent(destinationValue);
     const label = encodeURIComponent(club?.name || coords?.label || 'Club');
