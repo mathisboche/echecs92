@@ -270,20 +270,9 @@ function cdje92_render_contact_form() {
 
             <div class="contact-form__grid">
                 <div class="contact-form__field">
-                    <label class="contact-form__label" for="cdje92-contact-name"><?php esc_html_e('Nom et prénom', 'echecs92-child'); ?><span>*</span></label>
-                    <input class="contact-form__input" type="text" id="cdje92-contact-name" name="cdje92_name" required value="<?php echo esc_attr($prefill_map['name']); ?>">
-                </div>
-
-                <div class="contact-form__field">
                     <label class="contact-form__label" for="cdje92-contact-email"><?php esc_html_e('Adresse e-mail', 'echecs92-child'); ?><span>*</span></label>
                     <input class="contact-form__input" type="email" id="cdje92-contact-email" name="cdje92_email" required value="<?php echo esc_attr($prefill_map['email']); ?>">
                 </div>
-
-                <div class="contact-form__field">
-                    <label class="contact-form__label" for="cdje92-contact-phone"><?php esc_html_e('Téléphone (optionnel)', 'echecs92-child'); ?></label>
-                    <input class="contact-form__input" type="text" id="cdje92-contact-phone" name="cdje92_phone" value="<?php echo esc_attr($prefill_map['phone']); ?>">
-                </div>
-
                 <div class="contact-form__field">
                     <label class="contact-form__label" for="cdje92-contact-club"><?php esc_html_e('Club / structure (optionnel)', 'echecs92-child'); ?></label>
                     <input class="contact-form__input" type="text" id="cdje92-contact-club" name="cdje92_club" value="<?php echo esc_attr($prefill_map['club']); ?>">
