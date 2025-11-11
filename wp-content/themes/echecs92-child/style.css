@@ -1317,15 +1317,6 @@ header.wp-block-template-part.is-elevated .cm-header{
   .competitions-grid{
     grid-template-columns:1fr;
   }
-  .results-wrapper{
-    padding:52px 24px 76px;
-  }
-  .results-hero{
-    padding:32px;
-  }
-  .results-links__grid{
-    grid-template-columns:1fr;
-  }
   .news-simple{
     padding:48px 20px 80px;
   }
@@ -1370,16 +1361,6 @@ header.wp-block-template-part.is-elevated .cm-header{
     grid-template-columns:1fr;
   }
   .competitions-resource{
-    flex-direction:column;
-    align-items:flex-start;
-  }
-  .results-wrapper{
-    padding:36px 18px 60px;
-  }
-  .results-hero{
-    padding:26px;
-  }
-  .results-contact__card{
     flex-direction:column;
     align-items:flex-start;
   }
@@ -1457,6 +1438,15 @@ header.wp-block-template-part.is-elevated .cm-header{
   color:#3f4a5a;
   max-width:680px;
 }
+.committee--results .committee-hero::after{
+  background:#84C344;
+}
+.committee--results .committee-hero__eyebrow{
+  color:#00AAE0;
+}
+.committee--results .committee-hero__title{
+  color:#014263;
+}
 .committee-section{
   display:flex;
   flex-direction:column;
@@ -1466,7 +1456,7 @@ header.wp-block-template-part.is-elevated .cm-header{
   margin:0;
   font-size:16px;
   line-height:1.5;
-  color:#3f4a5a;
+  color:#2f3a4c;
   max-width:760px;
 }
 .committee--results .results-overview__grid{
@@ -1475,9 +1465,9 @@ header.wp-block-template-part.is-elevated .cm-header{
   gap:18px;
 }
 .committee--results .results-highlight{
-  border:1px solid #d8e0ea;
-  border-radius:14px;
-  background:#f8fafc;
+  border:1px solid #c9d8e5;
+  border-radius:12px;
+  background:#f6f8fb;
   padding:20px 22px;
   display:flex;
   flex-direction:column;
@@ -1490,43 +1480,44 @@ header.wp-block-template-part.is-elevated .cm-header{
   font-weight:650;
   letter-spacing:0.18em;
   text-transform:uppercase;
-  color:#64748b;
+  color:#5f7489;
 }
 .committee--results .results-highlight__value{
   margin:0;
   font-size:40px;
   font-weight:700;
-  color:#0f172a;
+  color:#014263;
 }
 .committee--results .results-highlight__label{
   margin:0;
   font-size:16px;
   font-weight:600;
-  color:#0f172a;
+  color:#014263;
 }
 .committee--results .results-highlight__note{
   margin:0;
   font-size:14px;
-  color:#475569;
+  color:#4a5c6d;
 }
 .committee--results .results-highlight--primary{
-  background:linear-gradient(130deg,#0b2e4c 0%,#1c5b8f 100%);
-  border-color:transparent;
+  background:#014263;
+  border-color:#014263;
 }
 .committee--results .results-highlight--primary .results-highlight__eyebrow,
 .committee--results .results-highlight--primary .results-highlight__label,
-.committee--results .results-highlight--primary .results-highlight__note{
-  color:rgba(255,255,255,0.82);
-}
+.committee--results .results-highlight--primary .results-highlight__note,
 .committee--results .results-highlight--primary .results-highlight__value{
   color:#ffffff;
 }
 .committee--results .results-highlight--alert{
-  background:#fff6f4;
-  border-color:#ffd2c8;
+  background:#e1f5ff;
+  border-color:#00AAE0;
 }
+.committee--results .results-highlight--alert .results-highlight__eyebrow,
+.committee--results .results-highlight--alert .results-highlight__label,
+.committee--results .results-highlight--alert .results-highlight__note,
 .committee--results .results-highlight--alert .results-highlight__value{
-  color:#c2410c;
+  color:#014263;
 }
 .committee--results .results-files__grid{
   display:grid;
@@ -1534,14 +1525,13 @@ header.wp-block-template-part.is-elevated .cm-header{
   gap:18px;
 }
 .committee--results .results-download-card{
-  border:1px solid #d8e0ea;
-  border-radius:14px;
+  border:1px solid #cfd8e3;
+  border-radius:12px;
   background:#ffffff;
   padding:20px 22px;
   display:flex;
   flex-direction:column;
   gap:10px;
-  box-shadow:0 6px 18px rgba(15,23,42,0.06);
 }
 .committee--results .results-download-card__badge{
   align-self:flex-start;
@@ -1551,19 +1541,19 @@ header.wp-block-template-part.is-elevated .cm-header{
   text-transform:uppercase;
   padding:6px 12px;
   border-radius:999px;
-  background:#e2e8f0;
-  color:#0b2e4c;
+  background:#e0f4fb;
+  color:#014263;
 }
 .committee--results .results-download-card__title{
   margin:0;
   font-size:18px;
-  color:#0f172a;
+  color:#014263;
   font-weight:650;
 }
 .committee--results .results-download-card__meta{
   margin:0;
   font-size:14px;
-  color:#475569;
+  color:#4a5c6d;
 }
 .committee--results .results-download-card__link{
   margin-top:auto;
@@ -1572,25 +1562,34 @@ header.wp-block-template-part.is-elevated .cm-header{
   justify-content:center;
   gap:8px;
   padding:10px 14px;
-  border-radius:10px;
+  border-radius:8px;
   font-weight:600;
   font-size:14px;
   color:#ffffff;
-  background:#0b2e4c;
+  background:#014263;
   text-decoration:none;
-  transition:transform 0.2s ease,box-shadow 0.2s ease;
 }
 .committee--results .results-download-card__link:hover{
-  transform:translateY(-1px);
-  box-shadow:0 10px 20px rgba(11,46,76,0.25);
+  background:#012a48;
+}
+.committee--results .results-download-card__link:focus-visible{
+  background:#012a48;
+  outline:2px solid #00AAE0;
+  outline-offset:2px;
+  box-shadow:none;
 }
 .committee--results .results-download-card--alt{
-  background:#f5f7fb;
+  background:#f4fbf2;
+  border-color:#84C344;
+}
+.committee--results .results-download-card--alt .results-download-card__badge{
+  background:#e6f6d9;
+  color:#37541a;
 }
 .committee--results .results-note{
   margin:8px 0 0;
   font-size:14px;
-  color:#475569;
+  color:#014263;
 }
 .committee-section__header{
   display:flex;
@@ -1603,6 +1602,9 @@ header.wp-block-template-part.is-elevated .cm-header{
   margin:0;
   font-size:24px;
   color:#0f172a;
+}
+.committee--results .committee-section__header h2{
+  color:#014263;
 }
 .committee-governance__grid{
   display:grid;
