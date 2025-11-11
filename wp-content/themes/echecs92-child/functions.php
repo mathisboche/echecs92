@@ -1,6 +1,39 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
+function cdje92_contact_form_get_recaptcha_keys() {
+    $keys = [
+        'site_key'   => defined('CDJE92_RECAPTCHA_SITE_KEY') ? trim(CDJE92_RECAPTCHA_SITE_KEY) : '',
+        'secret_key' => defined('CDJE92_RECAPTCHA_SECRET_KEY') ? trim(CDJE92_RECAPTCHA_SECRET_KEY) : '',
+    ];
+
+    return apply_filters('cdje92_contact_form_recaptcha_keys', $keys);
+}
+
+function cdje92_contact_form_use_recaptcha() {
+    $keys = cdje92_contact_form_get_recaptcha_keys();
+    return ! empty($keys['site_key']) && ! empty($keys['secret_key']);
+}
+
+function cdje92_contact_form_should_enqueue_recaptcha() {
+    if (! cdje92_contact_form_use_recaptcha()) {
+        return false;
+    }
+
+    if (is_page('contact') || is_page_template('page-contact.html')) {
+        return true;
+    }
+
+    if (is_singular()) {
+        $post = get_post();
+        if ($post && has_shortcode($post->post_content, 'cdje92_contact_form')) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 add_action('wp_enqueue_scripts', function () {
     // charge le CSS du child
     wp_enqueue_style(
@@ -45,6 +78,16 @@ add_action('wp_enqueue_scripts', function () {
             get_stylesheet_directory_uri() . '/assets/js/clubs-map.js',
             ['leaflet'],
             wp_get_theme()->get('Version'),
+            true
+        );
+    }
+
+    if (cdje92_contact_form_should_enqueue_recaptcha()) {
+        wp_enqueue_script(
+            'google-recaptcha',
+            'https://www.google.com/recaptcha/api.js?hl=fr',
+            [],
+            null,
             true
         );
     }
@@ -123,6 +166,47 @@ function cdje92_contact_form_truncate( $value, $length = 200 ) {
     return substr($value, 0, $length);
 }
 
+function cdje92_contact_form_get_request_ip() {
+    $keys = ['HTTP_CLIENT_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'];
+
+    foreach ($keys as $key) {
+        if (! empty($_SERVER[ $key ])) {
+            $ip_list = explode(',', wp_unslash($_SERVER[ $key ]));
+            return trim($ip_list[0]);
+        }
+    }
+
+    return '';
+}
+
+function cdje92_contact_form_verify_recaptcha_token( $token ) {
+    if (! cdje92_contact_form_use_recaptcha()) {
+        return true;
+    }
+
+    if (empty($token)) {
+        return false;
+    }
+
+    $keys     = cdje92_contact_form_get_recaptcha_keys();
+    $response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', [
+        'body' => [
+            'secret'   => $keys['secret_key'],
+            'response' => $token,
+            'remoteip' => cdje92_contact_form_get_request_ip(),
+        ],
+        'timeout' => 10,
+    ]);
+
+    if (is_wp_error($response)) {
+        return false;
+    }
+
+    $body = json_decode(wp_remote_retrieve_body($response), true);
+
+    return (is_array($body) && ! empty($body['success']));
+}
+
 function cdje92_render_contact_form() {
     $status      = isset($_GET['contact_status']) ? sanitize_key(wp_unslash($_GET['contact_status'])) : '';
     $error_code  = isset($_GET['contact_error']) ? sanitize_key(wp_unslash($_GET['contact_error'])) : '';
@@ -140,12 +224,14 @@ function cdje92_render_contact_form() {
             'invalid_nonce' => __('Une erreur est survenue. Merci de réessayer.', 'echecs92-child'),
             'incomplete'    => __('Merci de renseigner les champs obligatoires.', 'echecs92-child'),
             'invalid_email' => __('L’adresse e-mail semble invalide.', 'echecs92-child'),
+            'recaptcha_failed' => __('Merci de confirmer que vous n’êtes pas un robot.', 'echecs92-child'),
             'send_failed'   => __('L’envoi a échoué. Merci de réessayer dans quelques instants ou d’utiliser les coordonnées directes.', 'echecs92-child'),
         ],
     ];
 
     $notice       = '';
     $notice_class = '';
+    $recaptcha    = cdje92_contact_form_get_recaptcha_keys();
 
     if ($status === 'success') {
         $notice       = $messages['success'];
@@ -196,6 +282,13 @@ function cdje92_render_contact_form() {
                     <label class="contact-form__label" for="cdje92-contact-message"><?php esc_html_e('Message', 'echecs92-child'); ?><span>*</span></label>
                     <textarea class="contact-form__textarea" id="cdje92-contact-message" name="cdje92_message" required><?php echo esc_textarea($prefill_map['message']); ?></textarea>
                 </div>
+
+                <?php if (cdje92_contact_form_use_recaptcha()) : ?>
+                    <div class="contact-form__field contact-form__field--full contact-form__captcha">
+                        <span class="contact-form__label" id="cdje92-contact-captcha-label"><?php esc_html_e('Vérification anti-robot', 'echecs92-child'); ?><span>*</span></span>
+                        <div class="g-recaptcha" data-sitekey="<?php echo esc_attr($recaptcha['site_key']); ?>" aria-labelledby="cdje92-contact-captcha-label"></div>
+                    </div>
+                <?php endif; ?>
             </div>
             <button type="submit" class="contact-form__submit"><?php esc_html_e('Envoyer', 'echecs92-child'); ?></button>
         </form>
@@ -277,6 +370,21 @@ function cdje92_handle_contact_form() {
             'contact_club'   => $club,
             'contact_message'=> $message,
         ]);
+    }
+
+    if (cdje92_contact_form_use_recaptcha()) {
+        $token = isset($_POST['g-recaptcha-response']) ? sanitize_text_field(wp_unslash($_POST['g-recaptcha-response'])) : '';
+        if (! cdje92_contact_form_verify_recaptcha_token($token)) {
+            cdje92_contact_form_safe_redirect([
+                'contact_status' => 'error',
+                'contact_error'  => 'recaptcha_failed',
+                'contact_name'   => $name,
+                'contact_email'  => $email,
+                'contact_phone'  => $phone,
+                'contact_club'   => $club,
+                'contact_message'=> $message,
+            ]);
+        }
     }
 
     $default_recipients = ['contact@echecs92.com'];

@@ -643,6 +643,12 @@ header.wp-block-template-part.is-elevated .cm-header{
 .contact-form__field--full{
   grid-column:1 / -1;
 }
+.contact-form__captcha{
+  align-items:flex-start;
+}
+.contact-form__captcha .g-recaptcha{
+  transform-origin:left top;
+}
 .contact-form__label{
   font-size:14px;
   font-weight:600;
