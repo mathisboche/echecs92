@@ -1694,35 +1694,6 @@ header.wp-block-template-part.is-elevated .cm-header{
   font-weight:650;
   color:#0f172a;
 }
-.committee-figures__grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
-  gap:16px;
-}
-.figure-card{
-  background:#ffffff;
-  border:1px solid #d8e0ea;
-  border-radius:10px;
-  padding:18px 18px 20px;
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-  border-left:4px solid #0b2e4c;
-}
-.figure-card__value{
-  font-size:34px;
-  font-weight:700;
-  color:#0b2e4c;
-  line-height:1.2;
-}
-.figure-card__label{
-  font-size:15px;
-  color:#1f2937;
-}
-.figure-card__note{
-  font-size:13px;
-  color:#637187;
-}
 .committee-docs__list{
   list-style:none;
   margin:0;
