@@ -34,6 +34,17 @@ function cdje92_contact_form_should_enqueue_recaptcha() {
     return false;
 }
 
+add_filter('cdje92_contact_form_recaptcha_keys', function ( $keys ) {
+    if (! empty($keys['site_key']) && ! empty($keys['secret_key'])) {
+        return $keys;
+    }
+
+    return [
+        'site_key'   => '6LcEiAksAAAAAIv5n_PExZ7e2g2P_UEdU0bo-y2z',
+        'secret_key' => '6LcEiAksAAAAABHRrA46QvOx6pcsZISxnf2hq5sz',
+    ];
+});
+
 add_action('wp_enqueue_scripts', function () {
     // charge le CSS du child
     wp_enqueue_style(
