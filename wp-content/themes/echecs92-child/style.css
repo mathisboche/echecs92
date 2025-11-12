@@ -252,21 +252,50 @@ header.wp-block-template-part.is-elevated .cm-header{
   --home-accent:#0b2e4c;
   --home-accent-soft:#e5edf6;
   --home-dark:#081529;
+  --home-gutter:clamp(18px,4vw,48px);
+  --home-stack-gap:clamp(32px,4vw,60px);
 }
 
 body.home,
 body.blog{
   background:#f3f6fb;
 }
+body.home{
+  overflow-x:hidden;
+}
+
+body.home .wp-site-blocks{
+  padding-left:0;
+  padding-right:0;
+}
+
+body.home .wp-site-blocks > *{
+  margin-left:0;
+  margin-right:0;
+  margin-top:0;
+  margin-bottom:0;
+}
+
+body.home .wp-site-blocks > .wp-block-template-part{
+  width:100%;
+  max-width:100%;
+}
+
+body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
+  width:100%;
+  max-width:100%;
+  margin:0;
+  padding:0;
+}
 
 .home-main{
   width:100%;
-  max-width:1160px;
+  max-width:min(1200px,100%);
   margin:0 auto;
-  padding:clamp(24px,4vw,54px) clamp(18px,4vw,48px) clamp(56px,6vw,96px);
+  padding:clamp(36px,5vw,72px) var(--home-gutter) clamp(64px,6vw,110px);
   display:flex;
   flex-direction:column;
-  gap:clamp(28px,4vw,60px);
+  gap:var(--home-stack-gap);
   background:transparent;
   box-sizing:border-box;
 }
@@ -279,7 +308,7 @@ body.blog{
 .home-hero{
   position:relative;
   border-radius:32px;
-  padding:clamp(68px,8vw,128px) clamp(20px,8vw,72px);
+  padding:clamp(68px,8vw,128px) var(--home-gutter);
   color:#ffffff;
   font-family: system-ui,-apple-system,BlinkMacSystemFont,"Inter","Helvetica Neue",Arial,sans-serif;
   background-image:
@@ -541,6 +570,31 @@ body.blog{
   }
 }
 
+@media (max-width:720px){
+  .home-mission__grid,
+  .home-figures__grid,
+  .home-cta__grid{
+    grid-template-columns:minmax(0,1fr);
+  }
+  .home-figures{
+    padding:36px var(--home-gutter);
+  }
+}
+
+@media (max-width:640px){
+  .home-hero__actions{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .home-hero__actions .wp-block-button{
+    width:100%;
+  }
+  .home-hero__actions .wp-block-button__link{
+    width:100%;
+    justify-content:center;
+  }
+}
+
 @media (max-width:899px){
   .home-hero{
     border-radius:22px;
@@ -554,8 +608,8 @@ body.blog{
 
 @media (max-width:599px){
   .home-main{
-    padding:24px 16px 60px;
-    gap:32px;
+    padding:28px var(--home-gutter) 60px;
+    gap:var(--home-stack-gap);
   }
   .home-hero{
     padding:48px 22px 64px;
@@ -565,6 +619,9 @@ body.blog{
   }
   .home-section__header p{
     margin-bottom:18px;
+  }
+  .home-figures{
+    padding:28px var(--home-gutter);
   }
   .home-cta__card{
     padding:20px;
