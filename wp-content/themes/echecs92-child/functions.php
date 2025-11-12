@@ -222,9 +222,7 @@ function cdje92_render_contact_form() {
     $status      = isset($_GET['contact_status']) ? sanitize_key(wp_unslash($_GET['contact_status'])) : '';
     $error_code  = isset($_GET['contact_error']) ? sanitize_key(wp_unslash($_GET['contact_error'])) : '';
     $prefill_map = [
-        'name'    => isset($_GET['contact_name']) ? sanitize_text_field(wp_unslash($_GET['contact_name'])) : '',
         'email'   => isset($_GET['contact_email']) ? sanitize_text_field(wp_unslash($_GET['contact_email'])) : '',
-        'phone'   => isset($_GET['contact_phone']) ? sanitize_text_field(wp_unslash($_GET['contact_phone'])) : '',
         'club'    => isset($_GET['contact_club']) ? sanitize_text_field(wp_unslash($_GET['contact_club'])) : '',
         'message' => isset($_GET['contact_message']) ? sanitize_textarea_field(wp_unslash($_GET['contact_message'])) : '',
     ];
@@ -342,19 +340,15 @@ function cdje92_handle_contact_form() {
         ]);
     }
 
-    $name    = isset($_POST['cdje92_name']) ? cdje92_contact_form_truncate(sanitize_text_field(wp_unslash($_POST['cdje92_name'])), 120) : '';
     $email   = isset($_POST['cdje92_email']) ? sanitize_email(wp_unslash($_POST['cdje92_email'])) : '';
-    $phone   = isset($_POST['cdje92_phone']) ? cdje92_contact_form_truncate(sanitize_text_field(wp_unslash($_POST['cdje92_phone'])), 40) : '';
     $club    = isset($_POST['cdje92_club']) ? cdje92_contact_form_truncate(sanitize_text_field(wp_unslash($_POST['cdje92_club'])), 160) : '';
     $message = isset($_POST['cdje92_message']) ? cdje92_contact_form_truncate(sanitize_textarea_field(wp_unslash($_POST['cdje92_message'])), 1200) : '';
 
-    if (empty($name) || empty($email) || empty($message)) {
+    if (empty($email) || empty($message)) {
         cdje92_contact_form_safe_redirect([
             'contact_status' => 'error',
             'contact_error'  => 'incomplete',
-            'contact_name'   => $name,
             'contact_email'  => $email,
-            'contact_phone'  => $phone,
             'contact_club'   => $club,
             'contact_message'=> $message,
         ]);
@@ -364,9 +358,7 @@ function cdje92_handle_contact_form() {
         cdje92_contact_form_safe_redirect([
             'contact_status' => 'error',
             'contact_error'  => 'invalid_email',
-            'contact_name'   => $name,
             'contact_email'  => $email,
-            'contact_phone'  => $phone,
             'contact_club'   => $club,
             'contact_message'=> $message,
         ]);
@@ -378,9 +370,7 @@ function cdje92_handle_contact_form() {
             cdje92_contact_form_safe_redirect([
                 'contact_status' => 'error',
                 'contact_error'  => 'recaptcha_failed',
-                'contact_name'   => $name,
                 'contact_email'  => $email,
-                'contact_phone'  => $phone,
                 'contact_club'   => $club,
                 'contact_message'=> $message,
             ]);
@@ -398,11 +388,9 @@ function cdje92_handle_contact_form() {
         $recipients = [$recipients];
     }
 
-    $subject = sprintf('[CDJE 92] Message du formulaire – %s', $name);
+    $subject = sprintf('[CDJE 92] Message du formulaire – %s', $email);
     $body    = [
-        'Nom et prénom : ' . $name,
         'Email : ' . $email,
-        'Téléphone : ' . ($phone ?: __('Non renseigné', 'echecs92-child')),
         'Club / structure : ' . ($club ?: __('Non renseigné', 'echecs92-child')),
         '',
         'Message :',
@@ -411,7 +399,7 @@ function cdje92_handle_contact_form() {
 
     $headers = [
         'Content-Type: text/plain; charset=UTF-8',
-        sprintf('Reply-To: %s <%s>', $name, $email),
+        sprintf('Reply-To: %s', $email),
     ];
 
     $sent = wp_mail($recipients, $subject, implode("\n", $body), $headers);
@@ -420,9 +408,7 @@ function cdje92_handle_contact_form() {
         cdje92_contact_form_safe_redirect([
             'contact_status' => 'error',
             'contact_error'  => 'send_failed',
-            'contact_name'   => $name,
             'contact_email'  => $email,
-            'contact_phone'  => $phone,
             'contact_club'   => $club,
             'contact_message'=> $message,
         ]);
