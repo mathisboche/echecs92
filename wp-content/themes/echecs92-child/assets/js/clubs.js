@@ -1252,11 +1252,13 @@ const handleLocationSubmit = async (event) => {
     const licenseB = Number.parseInt(club.licenses?.B, 10);
     const totalLicenses = (Number.isFinite(licenseA) ? licenseA : 0) + (Number.isFinite(licenseB) ? licenseB : 0);
     club.totalLicenses = totalLicenses > 0 ? totalLicenses : null;
-    const searchSource = [club.name, club.address].filter(Boolean).join(' ');
+    const tagsText = Array.isArray(club.tags) ? club.tags.filter(Boolean).join(' ') : '';
+    const searchSource = [club.name, club.address, tagsText].filter(Boolean).join(' ');
     const searchIndex = normaliseForSearch(searchSource);
     club._search = searchIndex;
     club._tokens = searchIndex ? searchIndex.split(/\s+/) : [];
-    club._nameSearch = normaliseForSearch(club.name || '');
+    const nameAliases = [club.name].concat(Array.isArray(club.tags) ? club.tags : []);
+    club._nameSearch = normaliseForSearch(nameAliases.filter(Boolean).join(' '));
     club._addressSearch = normaliseForSearch(club.address || '');
     const communeSlugSource = club.commune || club.name || club.id;
     club.slug = slugify(communeSlugSource || club.id || club.name || 'club');
