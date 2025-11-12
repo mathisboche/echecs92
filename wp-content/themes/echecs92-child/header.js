@@ -6,6 +6,28 @@ document.addEventListener('DOMContentLoaded', () => {
   const menu  = document.getElementById('cm-mobile-menu');
   const headerWrapper = document.querySelector('header.wp-block-template-part');
   const adminBar = document.getElementById('wpadminbar');
+  const desktopNavLinks = document.querySelectorAll('.cm-nav-desktop a[href]');
+
+  const normalizePath = (value) => {
+    try {
+      const path = new URL(value, window.location.origin).pathname;
+      return path.replace(/\/+$/, '') || '/';
+    } catch (error) {
+      return '/';
+    }
+  };
+
+  if (desktopNavLinks.length) {
+    const currentPath = normalizePath(window.location.href);
+    desktopNavLinks.forEach((link) => {
+      const linkPath = normalizePath(link.href);
+      if (linkPath === currentPath) {
+        link.classList.add('is-current');
+      } else {
+        link.classList.remove('is-current');
+      }
+    });
+  }
 
   if (!btn || !menu) {
     console.warn('[header.js] bouton ou menu introuvable');
