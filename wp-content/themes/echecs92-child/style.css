@@ -463,12 +463,10 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .home-figures__grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-  column-gap:22px;
-  row-gap:clamp(18px,3vw,32px);
+  gap:22px;
 }
 
 .home-figure{
-  height:100%;
   padding:26px;
   border-radius:22px;
   border:1px solid rgba(255,255,255,0.24);
@@ -587,6 +585,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   .home-mission__grid,
   .home-figures__grid{
     grid-template-columns:minmax(0,1fr);
+  }
+  .home-figures__grid{
+    gap:clamp(18px,5vw,32px);
   }
   .home-cta__grid{
     display:flex;
