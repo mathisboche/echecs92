@@ -526,7 +526,8 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   flex-direction:column;
   gap:12px;
   background:#ffffff;
-  box-shadow:0 18px 35px rgba(15,23,42,0.07);
+  box-shadow:none;
+  width:100%;
 }
 
 .home-cta__card h2{
@@ -582,9 +583,12 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 
 @media (max-width:720px){
   .home-mission__grid,
-  .home-figures__grid,
-  .home-cta__grid{
+  .home-figures__grid{
     grid-template-columns:minmax(0,1fr);
+  }
+  .home-cta__grid{
+    display:flex;
+    flex-direction:column;
   }
   .home-figures{
     padding:36px var(--home-gutter);
