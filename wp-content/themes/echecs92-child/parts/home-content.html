@@ -9,7 +9,7 @@
           <a class="wp-block-button__link wp-element-button" href="/clubs">Trouver un club</a>
         </div>
         <div class="wp-block-button is-style-outline">
-          <a class="wp-block-button__link wp-element-button" href="/comite">Le Comité</a>
+          <a class="wp-block-button__link wp-element-button" href="/le-comite">Le Comité</a>
         </div>
       </div>
     </div>
@@ -71,7 +71,7 @@
         <p>Rejoignez un club près de chez vous : initiation, perfectionnement, loisirs ou compétition.</p>
         <div class="wp-block-buttons">
           <div class="wp-block-button is-style-fill">
-            <a class="wp-block-button__link wp-element-button" href="/carte-des-clubs">Voir la carte des clubs</a>
+            <a class="wp-block-button__link wp-element-button" href="/clubs">Voir la carte des clubs</a>
           </div>
         </div>
       </article>
@@ -80,7 +80,7 @@
         <p>Instance départementale en lien avec la FFE et la Ligue : missions, gouvernance et coordination des actions dans le 92.</p>
         <div class="wp-block-buttons">
           <div class="wp-block-button is-style-outline">
-            <a class="wp-block-button__link wp-element-button" href="/comite">Découvrir le Comité</a>
+            <a class="wp-block-button__link wp-element-button" href="/le-comite">Découvrir le Comité</a>
           </div>
         </div>
       </article>
@@ -102,6 +102,25 @@
     if (!counters.length) return;
 
     const formatNumber = (value) => value.toLocaleString('fr-FR');
+    const setFinalValue = (el) => {
+      const target = parseInt(el.dataset.value, 10);
+      if (Number.isNaN(target)) return;
+      const prefix = el.dataset.prefix || '';
+      const suffix = el.dataset.suffix || '';
+      el.textContent = `${prefix}${formatNumber(target)}${suffix}`;
+    };
+
+    let hasAnimated = false;
+    try {
+      hasAnimated = window.sessionStorage.getItem('homeMetricsAnimated') === '1';
+    } catch (e) {
+      hasAnimated = false;
+    }
+
+    if (hasAnimated) {
+      counters.forEach(setFinalValue);
+      return;
+    }
 
     const animate = (el) => {
       const target = parseInt(el.dataset.value, 10);
@@ -119,16 +138,25 @@
         if (progress < 1) {
           requestAnimationFrame(step);
         } else {
-          el.textContent = `${prefix}${formatNumber(target)}${suffix}`;
+          setFinalValue(el);
         }
       };
 
       requestAnimationFrame(step);
     };
 
+    let animationTriggered = false;
     const observer = new IntersectionObserver((entries, obs) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
+          if (!animationTriggered) {
+            animationTriggered = true;
+            try {
+              window.sessionStorage.setItem('homeMetricsAnimated', '1');
+            } catch (e) {
+              /* ignore sessionStorage issues */
+            }
+          }
           animate(entry.target);
           obs.unobserve(entry.target);
         }
