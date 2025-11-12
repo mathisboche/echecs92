@@ -399,6 +399,11 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   line-height:1.6;
 }
 
+.home-main .wp-block-button__link.wp-element-button{
+  box-sizing:border-box;
+  max-width:100%;
+}
+
 .home-mission{
   background:transparent;
 }
