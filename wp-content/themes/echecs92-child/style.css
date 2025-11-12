@@ -303,6 +303,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .home-hero,
 .home-section{
   width:100%;
+  box-sizing:border-box;
 }
 
 .home-hero{
