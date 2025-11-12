@@ -566,14 +566,14 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 
 .home-cta__card .wp-block-button__link{
   border-radius:999px;
-  padding:12px 26px;
+  padding:8px 18px;
   font-weight:600;
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  background:rgba(15,23,42,0.04);
+  background:rgba(15,23,42,0.03);
   color:#0f172a;
-  border:1px solid rgba(15,23,42,0.12);
+  border:1px solid rgba(15,23,42,0.1);
   transition:background-color .2s ease, border-color .2s ease, color .2s ease;
   max-width:fit-content;
 }
