@@ -547,21 +547,10 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   font-size:15px;
 }
 
-.home-cta__card .wp-block-buttons{
+.home-cta__actions{
   margin-top:auto;
-  gap:12px;
+  display:flex;
   justify-content:flex-start;
-}
-
-.home-cta__card .wp-block-button{
-  margin:0;
-  padding:0;
-  background:transparent;
-}
-
-.home-cta__card .wp-block-button.is-style-fill,
-.home-cta__card .wp-block-button.is-style-outline{
-  background:none;
 }
 
 .home-cta__link{
@@ -671,7 +660,6 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   }
   .home-cta__link{
     width:auto;
-    align-self:flex-start;
   }
 }
 
