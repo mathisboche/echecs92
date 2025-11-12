@@ -606,6 +606,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   .home-hero__actions .wp-block-button + .wp-block-button{
     margin-top:12px;
   }
+  .home-hero__secondary-button{
+    display:none;
+  }
   .home-hero__actions .wp-block-button{
     width:100%;
   }
