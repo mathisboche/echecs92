@@ -639,7 +639,7 @@
         try {
           await navigator.share({
             title: club.name,
-            text: `Découvrez ${club.name} sur le site du Comité des Échecs des Hauts-de-Seine`,
+            text: `Découvrez ${club.name} sur le site du Comité d'Échecs des Hauts-de-Seine`,
             url: shareUrl,
           });
           showButtonFeedback(shareButton, 'Lien partagé !');
