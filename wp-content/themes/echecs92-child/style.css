@@ -550,6 +550,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .home-cta__card .wp-block-buttons{
   margin-top:auto;
   gap:12px;
+  justify-content:flex-start;
 }
 
 .home-cta__card .wp-block-button{
@@ -570,6 +571,15 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   display:inline-flex;
   align-items:center;
   justify-content:center;
+  background:rgba(15,23,42,0.04);
+  color:#0f172a;
+  border:1px solid rgba(15,23,42,0.12);
+  transition:background-color .2s ease, border-color .2s ease, color .2s ease;
+  max-width:fit-content;
+}
+.home-cta__card .wp-block-button__link:hover{
+  background:rgba(15,23,42,0.08);
+  border-color:rgba(15,23,42,0.2);
 }
 
 @keyframes homeMetricRise{
@@ -658,7 +668,8 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
     padding:20px;
   }
   .home-cta__card .wp-block-button__link{
-    width:100%;
+    width:auto;
+    align-self:flex-start;
   }
 }
 
