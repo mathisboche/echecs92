@@ -476,6 +476,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   flex-direction:column;
   gap:8px;
   animation:homeMetricRise .9s ease forwards;
+  margin-bottom:clamp(12px,2vw,20px);
 }
 
 .home-figures__grid > .home-figure:nth-child(1){animation-delay:.05s;}
