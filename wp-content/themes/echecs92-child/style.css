@@ -176,17 +176,15 @@ header.wp-block-template-part.is-elevated .cm-header{
   z-index:1500;
   text-align:left;
 
-  /* animation state */
+  /* hidden by default */
   opacity:0;
-  transform:translateY(-10px);
-  transition:opacity .2s ease, transform .2s ease;
+  transition:none;
   pointer-events:none;
 }
 
 /* visible state */
 .cm-nav-mobile.is-open{
   opacity:1;
-  transform:translateY(0);
   pointer-events:auto;
 }
 
@@ -199,25 +197,13 @@ header.wp-block-template-part.is-elevated .cm-header{
   font-size:20px;
   font-weight:600;
   display:block;
-  opacity:0;
-  transform:translateY(12px);
-  transition:opacity .25s ease, transform .25s ease;
+  opacity:1;
+  transform:none;
+  transition:none;
 }
 .cm-nav-mobile a:last-child{
   border-bottom:0;
 }
-.cm-nav-mobile.is-open a{
-  opacity:1;
-  transform:translateY(0);
-}
-.cm-nav-mobile.is-open a:nth-child(1){transition-delay:.05s;}
-.cm-nav-mobile.is-open a:nth-child(2){transition-delay:.08s;}
-.cm-nav-mobile.is-open a:nth-child(3){transition-delay:.11s;}
-.cm-nav-mobile.is-open a:nth-child(4){transition-delay:.14s;}
-.cm-nav-mobile.is-open a:nth-child(5){transition-delay:.17s;}
-.cm-nav-mobile.is-open a:nth-child(6){transition-delay:.2s;}
-.cm-nav-mobile.is-open a:nth-child(7){transition-delay:.23s;}
-.cm-nav-mobile.is-open a:nth-child(8){transition-delay:.26s;}
 
 /* Respecte l'attribut hidden globalement */
 [hidden]{

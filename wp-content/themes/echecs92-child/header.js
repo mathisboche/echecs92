@@ -32,47 +32,27 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!btn || !menu) {
     console.warn('[header.js] bouton ou menu introuvable');
   } else {
-    const onCloseTransitionEnd = (e) => {
-      if (e.propertyName === 'opacity') {
-        menu.setAttribute('hidden', '');
-        menu.removeEventListener('transitionend', onCloseTransitionEnd);
-      }
-    };
-
-    // OUVERTURE : affiche le menu plein écran avec animation
+    // OUVERTURE : affiche le menu plein écran
     const openMenu = () => {
       btn.setAttribute('aria-expanded', 'true');
       btn.classList.add('is-active');
-      menu.removeEventListener('transitionend', onCloseTransitionEnd);
       document.body.classList.add('cm-menu-open');
 
       // 1. on enlève hidden pour que l'élément existe visuellement
       menu.removeAttribute('hidden');
 
-      // 2. forcer un reflow pour que la transition parte bien de opacity:0 / translateY(-8px)
-      void menu.offsetWidth;
-
-      // 3. on ajoute la classe qui déclenche l'état visible (opacity:1 / translateY(0))
+      // 2. on ajoute la classe qui déclenche l'état visible
       menu.classList.add('is-open');
     };
 
-    // FERMETURE : joue l'anim inverse, puis cache complètement
+    // FERMETURE : cache immédiatement
     const closeMenu = () => {
-      if (menu.hasAttribute('hidden')) {
-        btn.setAttribute('aria-expanded', 'false');
-        btn.classList.remove('is-active');
-        return;
-      }
-
       btn.setAttribute('aria-expanded', 'false');
       btn.classList.remove('is-active');
       document.body.classList.remove('cm-menu-open');
 
-      // on retire la classe "is-open" -> revient à opacity:0 / translateY(-8px)
       menu.classList.remove('is-open');
-
-      // quand la transition est finie (sur l'opacité), on remet hidden
-      menu.addEventListener('transitionend', onCloseTransitionEnd);
+      menu.setAttribute('hidden', '');
     };
 
     // Toggle au clic sur le burger
