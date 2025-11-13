@@ -99,8 +99,16 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('scroll', toggleElevation, { passive: true });
   }
 
+  const isHeaderPinned = () => {
+    if (!headerWrapper) {
+      return false;
+    }
+    const position = window.getComputedStyle(headerWrapper).position;
+    return position === 'fixed' || position === 'sticky';
+  };
+
   const getStickyOffset = () => {
-    const headerHeight = headerWrapper ? headerWrapper.offsetHeight : 0;
+    const headerHeight = headerWrapper && isHeaderPinned() ? headerWrapper.offsetHeight : 0;
     const adminBarHeight = adminBar ? adminBar.offsetHeight : 0;
     return headerHeight + adminBarHeight + 12;
   };

@@ -4,13 +4,9 @@
  Version: 1.1
 */
 
-/* Fixed wrapper for WordPress template part */
+/* Wrapper for WordPress template part */
 header.wp-block-template-part {
-  position: fixed;
-  top: var(--cm-admin-bar-offset,0px);
-  left: 0;
-  right: 0;
-  width:100%;
+  position: relative;
   z-index: 2000;
   background:#ffffff;
   transition: box-shadow .3s ease, background-color .3s ease;
@@ -18,18 +14,8 @@ header.wp-block-template-part {
 header.wp-block-template-part.is-elevated {
   background:#ffffff;
 }
-
-body.admin-bar{
-  --cm-admin-bar-offset:32px;
-}
-@media (max-width:782px){
-  body.admin-bar{
-    --cm-admin-bar-offset:46px;
-  }
-}
-
 .wp-site-blocks{
-  padding-top:var(--cm-header-height,96px);
+  padding-top:0;
 }
 
 /* ---------- HEADER ---------- */
@@ -181,7 +167,7 @@ header.wp-block-template-part.is-elevated .cm-header{
 /* Menu mobile (fullscreen) */
 .cm-nav-mobile{
   position:fixed;
-  top:calc(var(--header-height,64px) + var(--cm-admin-bar-offset,0px));
+  top:0;
   left:0;
   right:0;
   bottom:0;
@@ -255,7 +241,6 @@ header.wp-block-template-part.is-elevated .cm-header{
 
 :root{
   --cm-header-height:96px;
-  --cm-admin-bar-offset:0px;
   --home-accent:#0b2e4c;
   --home-accent-soft:#e5edf6;
   --home-dark:#081529;
