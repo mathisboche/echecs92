@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const headerWrapper = document.querySelector('header.wp-block-template-part');
   const adminBar = document.getElementById('wpadminbar');
   const desktopNavLinks = document.querySelectorAll('.cm-nav-desktop a[href]');
+  const desktopSubmenus = document.querySelectorAll('.cm-nav-item.has-submenu');
 
   const normalizePath = (value) => {
     try {
@@ -29,6 +30,71 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  if (desktopSubmenus.length) {
+    desktopSubmenus.forEach((item) => {
+      const trigger = item.querySelector('.cm-nav-link');
+      if (!trigger) {
+        return;
+      }
+
+      const setExpanded = (state) => {
+        trigger.setAttribute('aria-expanded', state ? 'true' : 'false');
+        item.classList.toggle('submenu-open', state);
+      };
+
+      item.addEventListener('mouseenter', () => setExpanded(true));
+      item.addEventListener('mouseleave', () => setExpanded(false));
+      item.addEventListener('focusin', () => setExpanded(true));
+      item.addEventListener('focusout', (event) => {
+        const next = event.relatedTarget;
+        if (!next || !item.contains(next)) {
+          setExpanded(false);
+        }
+      });
+      item.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          event.stopPropagation();
+          setExpanded(false);
+          trigger.focus();
+        }
+      });
+    });
+  }
+
+  const mobilePanels = menu ? Array.from(menu.querySelectorAll('.cm-mobile-panel')) : [];
+  let activeMobilePanel = 'root';
+
+  const updateDrillTriggerState = (panelName, expanded) => {
+    if (!menu) {
+      return;
+    }
+    menu.querySelectorAll(`[data-panel-target="${panelName}"].has-children`).forEach((trigger) => {
+      trigger.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    });
+  };
+
+  const activateMobilePanel = (panelName = 'root') => {
+    if (!menu || !mobilePanels.length) {
+      return;
+    }
+    const targetPanel = menu.querySelector(`.cm-mobile-panel[data-panel="${panelName}"]`);
+    if (!targetPanel) {
+      return;
+    }
+    const previousPanel = activeMobilePanel;
+    mobilePanels.forEach((panel) => {
+      panel.classList.toggle('is-active', panel === targetPanel);
+    });
+    if (previousPanel && previousPanel !== panelName) {
+      updateDrillTriggerState(previousPanel, false);
+    }
+    if (panelName !== 'root') {
+      updateDrillTriggerState(panelName, true);
+    }
+    activeMobilePanel = panelName;
+    menu.scrollTop = 0;
+  };
+
   const getHeaderMenuOffset = () => {
     if (!headerWrapper) {
       return 0;
@@ -45,8 +111,20 @@ document.addEventListener('DOMContentLoaded', () => {
       menu.style.top = `${offsetTop}px`;
     };
 
+    menu.querySelectorAll('[data-panel-target]').forEach((trigger) => {
+      trigger.addEventListener('click', (event) => {
+        const targetPanel = trigger.getAttribute('data-panel-target');
+        if (!targetPanel) {
+          return;
+        }
+        event.preventDefault();
+        activateMobilePanel(targetPanel);
+      });
+    });
+
     // OUVERTURE : affiche le menu plein écran
     const openMenu = () => {
+      activateMobilePanel('root');
       updateMenuOffset();
       btn.setAttribute('aria-expanded', 'true');
       btn.classList.add('is-active');
@@ -70,6 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
       menu.classList.remove('is-open');
       menu.setAttribute('hidden', '');
       menu.style.top = '';
+      activateMobilePanel('root');
     };
 
     // Toggle au clic sur le burger
@@ -83,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Fermer au clic sur un lien du menu mobile
-    document.querySelectorAll('.cm-nav-mobile a').forEach(a => {
+    menu.querySelectorAll('a[href]').forEach(a => {
       a.addEventListener('click', closeMenu);
     });
 

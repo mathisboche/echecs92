@@ -30,6 +30,7 @@ header.wp-block-template-part.is-elevated {
   transition: border-color .3s ease;
   width:100%;
   box-shadow:0 0 0 rgba(15,23,42,0);
+  position:relative;
 }
 .cm-header-inner{
   max-width:1200px;
@@ -53,24 +54,35 @@ header.wp-block-template-part.is-elevated {
 .cm-logo-title{font-weight:600; font-size:16px; color:#000; text-decoration:none;}
 
 /* Nav desktop */
-.cm-nav-desktop{display:none; gap:32px; align-items:center; margin-left:auto;}
-.cm-nav-desktop a{
+.cm-nav-desktop{
+  display:none;
+  align-items:center;
+  margin-left:auto;
+  gap:4px;
+}
+.cm-nav-item{
+  position:static;
+  display:flex;
+  align-items:center;
+}
+.cm-nav-link{
   position:relative;
   color:#0a0a0a;
   text-decoration:none;
   font-size:16px;
   font-weight:600;
-  letter-spacing:.02em;
+  letter-spacing:.04em;
   text-transform:uppercase;
-  padding:6px 0;
+  padding:10px 14px;
   transition:color .2s ease;
+  border-radius:999px;
 }
-.cm-nav-desktop a::after{
+.cm-nav-link::after{
   content:'';
   position:absolute;
-  left:0;
-  right:0;
-  bottom:0;
+  left:14px;
+  right:14px;
+  bottom:4px;
   height:2px;
   background:#0a0a0a;
   transform:scaleX(0);
@@ -78,20 +90,106 @@ header.wp-block-template-part.is-elevated {
   transition:transform .25s ease, opacity .25s ease;
   opacity:0;
 }
-.cm-nav-desktop a:hover,
-.cm-nav-desktop a:focus-visible{
+.cm-nav-link:hover,
+.cm-nav-link:focus-visible{
   color:#111827;
 }
-.cm-nav-desktop a:focus-visible{
+.cm-nav-link:focus-visible{
   outline:2px solid rgba(15,23,42,0.4);
   outline-offset:4px;
 }
-.cm-nav-desktop a:hover::after,
-.cm-nav-desktop a:focus-visible::after,
-.cm-nav-desktop a.is-active::after,
-.cm-nav-desktop a.is-current::after{
+.cm-nav-link:hover::after,
+.cm-nav-link:focus-visible::after,
+.cm-nav-link.is-active::after,
+.cm-nav-link.is-current::after{
   transform:scaleX(1);
   opacity:1;
+}
+.cm-nav-item.has-submenu{
+  gap:6px;
+}
+.cm-nav-caret{
+  width:10px;
+  height:10px;
+  border-right:2px solid currentColor;
+  border-bottom:2px solid currentColor;
+  transform:rotate(45deg);
+  transition:transform .2s ease;
+  pointer-events:none;
+}
+.cm-nav-item.has-submenu.submenu-open .cm-nav-caret,
+.cm-nav-item.has-submenu:hover .cm-nav-caret{
+  transform:rotate(-135deg);
+}
+
+.cm-mega-panel{
+  position:absolute;
+  left:0;
+  right:0;
+  top:100%;
+  background:#ffffff;
+  border-top:1px solid rgba(15,23,42,0.08);
+  border-bottom:1px solid rgba(15,23,42,0.08);
+  box-shadow:0 24px 40px rgba(12,18,38,0.12);
+  padding:32px clamp(20px,5vw,72px) 40px;
+  display:flex;
+  justify-content:center;
+  opacity:0;
+  pointer-events:none;
+  transform:translateY(-8px);
+  transition:opacity .25s ease, transform .25s ease;
+  z-index:1500;
+}
+.cm-nav-item.has-submenu:hover .cm-mega-panel,
+.cm-nav-item.has-submenu:focus-within .cm-mega-panel,
+.cm-nav-item.has-submenu.submenu-open .cm-mega-panel{
+  opacity:1;
+  pointer-events:auto;
+  transform:translateY(0);
+}
+.cm-mega-panel-inner{
+  width:100%;
+  max-width:1200px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:32px;
+}
+.cm-mega-column{
+  min-width:220px;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.cm-mega-title{
+  font-size:13px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  font-weight:600;
+  color:#64748b;
+  margin-bottom:6px;
+}
+.cm-mega-link{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px 0;
+  text-decoration:none;
+  color:#0a0a0a;
+  font-size:17px;
+  font-weight:600;
+  border-bottom:1px solid rgba(15,23,42,0.1);
+}
+.cm-mega-link:last-child{
+  border-bottom:0;
+}
+.cm-mega-link:hover,
+.cm-mega-link:focus-visible{
+  color:#0f172a;
+}
+.cm-mega-link:focus-visible{
+  outline:2px solid rgba(15,23,42,0.4);
+  outline-offset:4px;
 }
 
 /* Burger */
@@ -170,11 +268,9 @@ header.wp-block-template-part.is-elevated {
   background:#ffffff;
   display:flex;
   flex-direction:column;
-  align-items:flex-start;
-  padding:32px 20px 40px;
-  gap:20px;
   z-index:1500;
   text-align:left;
+  overflow:hidden;
 
   /* hidden by default */
   opacity:0;
@@ -188,21 +284,94 @@ header.wp-block-template-part.is-elevated {
   pointer-events:auto;
 }
 
-.cm-nav-mobile a{
+.cm-mobile-panel{
+  display:none;
+  flex-direction:column;
+  gap:18px;
   width:100%;
-  padding:16px 4px;
+  height:100%;
+  padding:32px 20px 40px;
+  overflow:auto;
+}
+.cm-mobile-panel.is-active{
+  display:flex;
+}
+.cm-mobile-panel-header{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  width:100%;
+  border-bottom:1px solid #e5e7eb;
+  padding-bottom:12px;
+}
+.cm-mobile-panel-title{
+  font-size:18px;
+  font-weight:600;
+  margin:0;
+}
+.cm-mobile-crumb{
+  font-size:13px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:#6b7280;
+  margin:0;
+}
+.cm-mobile-list{
+  display:flex;
+  flex-direction:column;
+  width:100%;
+}
+.cm-mobile-link{
+  width:100%;
+  padding:18px 4px;
   border-bottom:1px solid #eee;
   color:#0a0a0a;
   text-decoration:none;
-  font-size:20px;
+  font-size:17px;
   font-weight:600;
-  display:block;
-  opacity:1;
-  transform:none;
-  transition:none;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  line-height:1.3;
+  background:none;
+  border:none;
+  cursor:pointer;
+  font-family:inherit;
 }
-.cm-nav-mobile a:last-child{
+.cm-mobile-link:last-child{
   border-bottom:0;
+}
+.cm-mobile-link.has-children{
+  text-align:left;
+}
+.cm-mobile-link-arrow{
+  font-size:20px;
+  color:#94a3b8;
+  line-height:1;
+}
+.cm-mobile-back{
+  align-self:flex-start;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  font-size:14px;
+  font-weight:600;
+  background:none;
+  border:none;
+  padding:0;
+  color:#0f172a;
+  cursor:pointer;
+}
+.cm-mobile-back-icon{
+  font-size:18px;
+  line-height:1;
+  color:#94a3b8;
+}
+.cm-mobile-link:focus-visible,
+.cm-mobile-back:focus-visible{
+  outline:2px solid rgba(15,23,42,0.35);
+  outline-offset:4px;
 }
 
 /* Respecte l'attribut hidden globalement */
@@ -215,6 +384,12 @@ header.wp-block-template-part.is-elevated {
   .cm-nav-desktop{display:flex;}
   .cm-burger{display:none;}
   #cm-mobile-menu{display:none !important;}
+}
+
+@media (max-width:899px){
+  .cm-mega-panel{
+    display:none;
+  }
 }
 
 /* Optionnel : wrapper contenu principal */
