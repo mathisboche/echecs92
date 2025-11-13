@@ -31,10 +31,6 @@ header.wp-block-template-part.is-elevated {
   width:100%;
   box-shadow:0 0 0 rgba(15,23,42,0);
 }
-header.wp-block-template-part.is-elevated .cm-header{
-  border-bottom-color:rgba(15,23,42,0.12);
-  box-shadow:0 18px 40px rgba(15,23,42,0.08);
-}
 .cm-header-inner{
   max-width:1200px;
   width:100%;
@@ -167,7 +163,7 @@ header.wp-block-template-part.is-elevated .cm-header{
 /* Menu mobile (fullscreen) */
 .cm-nav-mobile{
   position:fixed;
-  top:0;
+  top:var(--cm-header-height,96px);
   left:0;
   right:0;
   bottom:0;

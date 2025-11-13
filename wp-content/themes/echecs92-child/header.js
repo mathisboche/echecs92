@@ -29,11 +29,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const getHeaderMenuOffset = () => {
+    if (!headerWrapper) {
+      return 0;
+    }
+    const rect = headerWrapper.getBoundingClientRect();
+    return Math.max(rect.bottom, 0);
+  };
+
   if (!btn || !menu) {
     console.warn('[header.js] bouton ou menu introuvable');
   } else {
+    const updateMenuOffset = () => {
+      const offsetTop = getHeaderMenuOffset();
+      menu.style.top = `${offsetTop}px`;
+    };
+
     // OUVERTURE : affiche le menu plein écran
     const openMenu = () => {
+      updateMenuOffset();
       btn.setAttribute('aria-expanded', 'true');
       btn.classList.add('is-active');
       document.body.classList.add('cm-menu-open');
@@ -53,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       menu.classList.remove('is-open');
       menu.setAttribute('hidden', '');
+      menu.style.top = '';
     };
 
     // Toggle au clic sur le burger
@@ -83,20 +98,12 @@ document.addEventListener('DOMContentLoaded', () => {
         closeMenu();
       }
     });
-  }
 
-  // Effet sticky : élévation légère après quelques pixels de scroll
-  if (headerWrapper) {
-    const toggleElevation = () => {
-      if (window.scrollY > 8) {
-        headerWrapper.classList.add('is-elevated');
-      } else {
-        headerWrapper.classList.remove('is-elevated');
+    window.addEventListener('resize', () => {
+      if (menu.classList.contains('is-open')) {
+        updateMenuOffset();
       }
-    };
-
-    toggleElevation();
-    window.addEventListener('scroll', toggleElevation, { passive: true });
+    });
   }
 
   const isHeaderPinned = () => {
