@@ -221,7 +221,8 @@ header.wp-block-template-part.is-elevated {
 .site-main{max-width:1100px; margin:0 auto; padding:24px 16px 64px;}
 
 /* Lock scroll when menu open */
-.cm-menu-open{
+html.cm-menu-open,
+body.cm-menu-open{
   overflow:hidden;
   height:100%;
 }
