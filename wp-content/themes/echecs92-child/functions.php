@@ -283,7 +283,6 @@ function cdje92_render_contact_form() {
 
                 <?php if (cdje92_contact_form_use_recaptcha()) : ?>
                     <div class="contact-form__field contact-form__field--full contact-form__captcha">
-                        <span class="contact-form__label" id="cdje92-contact-captcha-label"><?php esc_html_e('Vérification anti-robot', 'echecs92-child'); ?><span>*</span></span>
                         <div class="g-recaptcha" data-sitekey="<?php echo esc_attr($recaptcha['site_key']); ?>" aria-labelledby="cdje92-contact-captcha-label"></div>
                     </div>
                 <?php endif; ?>
