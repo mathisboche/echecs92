@@ -213,11 +213,6 @@ header.wp-block-template-part.is-elevated .cm-header{
   .cm-nav-desktop{display:flex;}
   .cm-burger{display:none;}
   #cm-mobile-menu{display:none !important;}
-  .cm-nav-desktop a.is-current:hover::after,
-  .cm-nav-desktop a.is-current:focus-visible::after{
-    transform:scaleX(0);
-    opacity:0;
-  }
 }
 
 /* Optionnel : wrapper contenu principal */
