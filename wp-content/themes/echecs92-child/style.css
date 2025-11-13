@@ -4,10 +4,13 @@
  Version: 1.1
 */
 
-/* Sticky wrapper for WordPress template part */
+/* Fixed wrapper for WordPress template part */
 header.wp-block-template-part {
-  position: sticky;
-  top: 0;
+  position: fixed;
+  top: var(--cm-admin-bar-offset,0px);
+  left: 0;
+  right: 0;
+  width:100%;
   z-index: 2000;
   background:#ffffff;
   transition: box-shadow .3s ease, background-color .3s ease;
@@ -16,30 +19,45 @@ header.wp-block-template-part.is-elevated {
   background:#ffffff;
 }
 
+body.admin-bar{
+  --cm-admin-bar-offset:32px;
+}
+@media (max-width:782px){
+  body.admin-bar{
+    --cm-admin-bar-offset:46px;
+  }
+}
+
+.wp-site-blocks{
+  padding-top:var(--cm-header-height,96px);
+}
+
 /* ---------- HEADER ---------- */
 .cm-header{
   background:#fff;
   border-bottom:1px solid rgba(0,0,0,.07);
   font-family: system-ui,-apple-system,BlinkMacSystemFont,"Inter",Roboto,"Helvetica Neue",Arial,sans-serif;
-  --header-height: 64px;
+  --header-height: var(--cm-header-height,96px);
   min-height: var(--header-height);
   display:flex;
   align-items:center;
   transition: border-color .3s ease;
   width:100%;
+  box-shadow:0 0 0 rgba(15,23,42,0);
 }
 header.wp-block-template-part.is-elevated .cm-header{
   border-bottom-color:rgba(15,23,42,0.12);
+  box-shadow:0 18px 40px rgba(15,23,42,0.08);
 }
 .cm-header-inner{
-  max-width:1100px;
+  max-width:1200px;
   width:100%;
   margin:0 auto;
-  padding:12px 20px;
+  padding:18px 32px;
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap:24px;
+  gap:32px;
 }
 .cm-header-left{
   display:flex;
@@ -48,19 +66,21 @@ header.wp-block-template-part.is-elevated .cm-header{
 }
 
 /* Logo */
-.cm-logo{display:flex; align-items:center; gap:8px; text-decoration:none;}
-.cm-logo-img{display:block; height:32px; width:auto;}
+.cm-logo{display:flex; align-items:center; gap:12px; text-decoration:none;}
+.cm-logo-img{display:block; height:48px; width:auto;}
 .cm-logo-title{font-weight:600; font-size:16px; color:#000; text-decoration:none;}
 
 /* Nav desktop */
-.cm-nav-desktop{display:none; gap:24px; align-items:center; margin-left:auto;}
+.cm-nav-desktop{display:none; gap:32px; align-items:center; margin-left:auto;}
 .cm-nav-desktop a{
   position:relative;
   color:#0a0a0a;
   text-decoration:none;
-  font-size:15px;
-  font-weight:500;
-  padding:4px 0;
+  font-size:16px;
+  font-weight:600;
+  letter-spacing:.02em;
+  text-transform:uppercase;
+  padding:6px 0;
   transition:color .2s ease;
 }
 .cm-nav-desktop a::after{
@@ -98,13 +118,13 @@ header.wp-block-template-part.is-elevated .cm-header{
   align-items:center;
   justify-content:center;
   gap:12px;
-  padding:10px 18px;
-  min-height:44px;
+  padding:12px 24px;
+  min-height:48px;
   border-radius:999px;
   border:1px solid rgba(15,23,42,0.18);
   background:rgba(15,23,42,0.04);
   cursor:pointer;
-  font-size:11px;
+  font-size:12px;
   font-weight:600;
   letter-spacing:.18em;
   text-transform:uppercase;
@@ -161,7 +181,7 @@ header.wp-block-template-part.is-elevated .cm-header{
 /* Menu mobile (fullscreen) */
 .cm-nav-mobile{
   position:fixed;
-  top:var(--header-height,64px);
+  top:calc(var(--header-height,64px) + var(--cm-admin-bar-offset,0px));
   left:0;
   right:0;
   bottom:0;
@@ -234,6 +254,8 @@ header.wp-block-template-part.is-elevated .cm-header{
 }
 
 :root{
+  --cm-header-height:96px;
+  --cm-admin-bar-offset:0px;
   --home-accent:#0b2e4c;
   --home-accent-soft:#e5edf6;
   --home-dark:#081529;
