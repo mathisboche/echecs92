@@ -464,13 +464,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   display:flex;
   flex-direction:column;
   gap:8px;
-  animation:homeMetricRise .9s ease forwards;
 }
-
-.home-figures__grid > .home-figure:nth-child(1){animation-delay:.05s;}
-.home-figures__grid > .home-figure:nth-child(2){animation-delay:.15s;}
-.home-figures__grid > .home-figure:nth-child(3){animation-delay:.25s;}
-.home-figures__grid > .home-figure:nth-child(4){animation-delay:.35s;}
 
 .home-figure__title{
   margin:0;
@@ -555,23 +549,6 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .home-cta__link:hover{
   background:rgba(15,23,42,0.08);
   border-color:rgba(15,23,42,0.2);
-}
-
-@keyframes homeMetricRise{
-  from{
-    opacity:0;
-    transform:translateY(16px);
-  }
-  to{
-    opacity:1;
-    transform:translateY(0);
-  }
-}
-
-@media (prefers-reduced-motion:reduce){
-  .home-figure{
-    animation:none;
-  }
 }
 
 @media (max-width:720px){
