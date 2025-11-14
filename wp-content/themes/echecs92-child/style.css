@@ -371,8 +371,12 @@ header.wp-block-template-part.is-elevated {
 
 /* Desktop breakpoint */
 @media (min-width:900px){
+  .cm-header{
+    align-items:flex-end;
+  }
   .cm-header-inner{
     align-items:flex-end;
+    align-self:flex-end;
   }
   .cm-header-left{
     flex:0 0 auto;
