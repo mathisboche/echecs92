@@ -106,8 +106,8 @@ header.wp-block-template-part.is-elevated {
   opacity:1;
 }
 .cm-nav-item.has-submenu{
-  padding-bottom:20px;
-  margin-bottom:-20px;
+  padding-bottom:32px;
+  margin-bottom:-32px;
 }
 
 .cm-mega-panel{
