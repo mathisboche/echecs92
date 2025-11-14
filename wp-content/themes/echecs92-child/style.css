@@ -58,12 +58,14 @@ header.wp-block-template-part.is-elevated {
   display:none;
   align-items:center;
   margin-left:auto;
-  gap:4px;
+  gap:0;
 }
 .cm-nav-item{
   position:static;
   display:flex;
   align-items:center;
+  padding-bottom:32px;
+  margin-bottom:-32px;
 }
 .cm-nav-link{
   position:relative;
@@ -73,15 +75,15 @@ header.wp-block-template-part.is-elevated {
   font-weight:600;
   letter-spacing:.04em;
   text-transform:uppercase;
-  padding:10px 14px;
+  padding:10px 18px;
   transition:color .2s ease;
   border-radius:999px;
 }
 .cm-nav-link::after{
   content:'';
   position:absolute;
-  left:14px;
-  right:14px;
+  left:18px;
+  right:18px;
   bottom:4px;
   height:2px;
   background:#0a0a0a;
@@ -105,11 +107,6 @@ header.wp-block-template-part.is-elevated {
   transform:scaleX(1);
   opacity:1;
 }
-.cm-nav-item.has-submenu{
-  padding-bottom:32px;
-  margin-bottom:-32px;
-}
-
 .cm-mega-panel{
   position:absolute;
   left:0;
