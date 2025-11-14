@@ -380,6 +380,7 @@ header.wp-block-template-part.is-elevated {
   }
   .cm-header-left{
     flex:0 0 auto;
+    padding-bottom:8px;
   }
   .cm-nav-desktop{
     display:flex;
