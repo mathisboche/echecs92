@@ -1095,13 +1095,12 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .club-create{
   max-width:780px;
   margin:0 auto;
-  padding:clamp(32px,8vw,96px) 20px 72px;
-  display:flex;
-  flex-direction:column;
-  gap:32px;
+  padding:clamp(32px,8vw,96px) 20px 64px;
 }
 .club-create__intro{
-  text-align:center;
+  border-bottom:1px solid rgba(15,23,42,0.12);
+  padding-bottom:28px;
+  text-align:left;
 }
 .club-create__eyebrow{
   font-size:12px;
@@ -1114,15 +1113,20 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   margin:0 0 8px;
 }
 .club-create__summary{
-  margin:0 auto 20px;
+  margin:0 0 20px;
   color:#475569;
-  max-width:540px;
 }
 .club-create__actions{
   display:flex;
   flex-wrap:wrap;
-  justify-content:center;
+  justify-content:flex-start;
   gap:12px;
+}
+.club-create__sections{
+  display:flex;
+  flex-direction:column;
+  gap:24px;
+  padding-top:24px;
 }
 .club-create__button{
   display:inline-flex;
@@ -1209,6 +1213,11 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
     height:48px;
     border-radius:14px;
   }
+}
+.club-create{
+  display:flex;
+  flex-direction:column;
+  gap:24px;
 }
 
 @media (max-width:899px){
