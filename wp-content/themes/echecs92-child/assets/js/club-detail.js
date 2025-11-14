@@ -4,6 +4,7 @@
  */
 (function () {
   const DATA_URL = '/wp-content/themes/echecs92-child/assets/data/clubs.json';
+  const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs:last-listing';
   const detailContainer = document.getElementById('club-detail');
   const backLink = document.querySelector('[data-club-back]');
   let generatedIdCounter = 0;
@@ -12,7 +13,40 @@
     return;
   }
 
+  const consumeStoredClubsNavigation = () => {
+    try {
+      const storage = window.localStorage;
+      if (!storage) {
+        return false;
+      }
+      const raw = storage.getItem(CLUBS_NAV_STORAGE_KEY);
+      if (!raw) {
+        return false;
+      }
+      storage.removeItem(CLUBS_NAV_STORAGE_KEY);
+      let payload;
+      try {
+        payload = JSON.parse(raw);
+      } catch (error) {
+        payload = null;
+      }
+      const timestamp = payload && typeof payload.ts === 'number' ? payload.ts : null;
+      if (!timestamp) {
+        return false;
+      }
+      if (Date.now() - timestamp > 10 * 60 * 1000) {
+        return false;
+      }
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
   const cameFromClubsSearch = () => {
+    if (consumeStoredClubsNavigation()) {
+      return true;
+    }
     const referrer = document.referrer;
     if (!referrer) {
       return false;

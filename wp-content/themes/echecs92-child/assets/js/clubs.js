@@ -4,6 +4,7 @@
  */
 (function () {
   const DATA_URL = '/wp-content/themes/echecs92-child/assets/data/clubs.json';
+  const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs:last-listing';
   const VISIBLE_RESULTS_DEFAULT = 12;
   const POSTAL_COORDINATES = {
     '92000': { label: 'Nanterre', lat: 48.8927825, lng: 2.2073652 },
@@ -67,6 +68,19 @@
   totalCounter.className = 'clubs-total';
   totalCounter.setAttribute('aria-live', 'polite');
   resultsEl.before(totalCounter);
+
+  const rememberClubsNavigation = () => {
+    try {
+      const storage = window.localStorage;
+      if (!storage) {
+        return;
+      }
+      const payload = { ts: Date.now() };
+      storage.setItem(CLUBS_NAV_STORAGE_KEY, JSON.stringify(payload));
+    } catch (error) {
+      // ignore storage failures
+    }
+  };
 
   const state = {
     clubs: [],
@@ -1295,6 +1309,15 @@ const handleLocationSubmit = async (event) => {
     cardLink.className = 'club-row__card';
     cardLink.href = getClubDetailUrl(club);
     cardLink.setAttribute('aria-label', `Voir la fiche du club ${club.name}`);
+
+    const handleNavigationIntent = (event) => {
+      if (event.type === 'auxclick' && event.button !== 1) {
+        return;
+      }
+      rememberClubsNavigation();
+    };
+    cardLink.addEventListener('click', handleNavigationIntent);
+    cardLink.addEventListener('auxclick', handleNavigationIntent);
 
     const header = document.createElement('div');
     header.className = 'club-row__top';
