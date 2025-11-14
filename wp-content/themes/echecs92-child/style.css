@@ -147,6 +147,7 @@ header.wp-block-template-part.is-elevated {
   display:flex;
   flex-wrap:wrap;
   gap:32px;
+  justify-content:flex-start;
 }
 .cm-mega-column{
   min-width:220px;
