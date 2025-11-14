@@ -78,7 +78,7 @@ header.wp-block-template-part.is-elevated {
   font-weight:600;
   letter-spacing:.04em;
   text-transform:uppercase;
-  padding:18px 18px;
+  padding:14px 18px;
   transition:color .2s ease;
   border-radius:999px;
 }
@@ -87,7 +87,7 @@ header.wp-block-template-part.is-elevated {
   position:absolute;
   left:18px;
   right:18px;
-  bottom:16px;
+  bottom:12px;
   height:2px;
   background:#0a0a0a;
   transform:scaleX(0);
