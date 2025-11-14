@@ -34,13 +34,13 @@ header.wp-block-template-part.is-elevated {
 }
 .cm-header-inner{
   --cm-header-inner-padding-top:18px;
-  --cm-header-inner-padding-bottom:18px;
+  --cm-header-inner-padding-bottom:2px;
   max-width:1200px;
   width:100%;
   margin:0 auto;
   padding:var(--cm-header-inner-padding-top,18px) 32px var(--cm-header-inner-padding-bottom,18px);
   display:flex;
-  align-items:center;
+  align-items:flex-end;
   justify-content:space-between;
   gap:32px;
 }
@@ -373,7 +373,6 @@ header.wp-block-template-part.is-elevated {
 @media (min-width:900px){
   .cm-header-inner{
     align-items:flex-end;
-    --cm-header-inner-padding-bottom:0;
   }
   .cm-header-left{
     flex:0 0 auto;
