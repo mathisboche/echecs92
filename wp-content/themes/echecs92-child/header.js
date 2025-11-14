@@ -18,15 +18,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  const isClubsSectionPath = (path) => {
+    if (!path) {
+      return false;
+    }
+    if (path === '/clubs' || path === '/carte-des-clubs' || path === '/creer-un-club') {
+      return true;
+    }
+    return path.startsWith('/club/');
+  };
+
   if (desktopNavLinks.length) {
     const currentPath = normalizePath(window.location.href);
     desktopNavLinks.forEach((link) => {
       const linkPath = normalizePath(link.href);
-      if (linkPath === currentPath) {
-        link.classList.add('is-current');
-      } else {
-        link.classList.remove('is-current');
+      const matchGroup = link.dataset.currentGroup || '';
+      let isCurrent = linkPath === currentPath;
+      if (!isCurrent && matchGroup === 'clubs' && isClubsSectionPath(currentPath)) {
+        isCurrent = true;
       }
+      link.classList.toggle('is-current', isCurrent);
     });
   }
 
