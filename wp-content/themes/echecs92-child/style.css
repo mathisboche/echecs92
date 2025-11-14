@@ -383,7 +383,18 @@ header.wp-block-template-part.is-elevated {
 
 /* Desktop breakpoint */
 @media (min-width:900px){
-  .cm-nav-desktop{display:flex;}
+  .cm-header-inner{
+    align-items:flex-end;
+  }
+  .cm-header-left{
+    flex:0 0 auto;
+  }
+  .cm-nav-desktop{
+    display:flex;
+    flex:1 1 auto;
+    justify-content:center;
+    margin-left:0;
+  }
   .cm-burger{display:none;}
   #cm-mobile-menu{display:none !important;}
 }
