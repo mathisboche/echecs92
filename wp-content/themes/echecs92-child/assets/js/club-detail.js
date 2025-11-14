@@ -12,6 +12,36 @@
     return;
   }
 
+  const cameFromClubsSearch = () => {
+    const referrer = document.referrer;
+    if (!referrer) {
+      return false;
+    }
+    try {
+      const refUrl = new URL(referrer, window.location.origin);
+      if (refUrl.origin !== window.location.origin) {
+        return false;
+      }
+      const normalized = refUrl.pathname.replace(/\/+$/u, '') || '/';
+      return normalized === '/clubs';
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const updateBackLinkVisibility = () => {
+    if (!backLink) {
+      return;
+    }
+    if (cameFromClubsSearch()) {
+      backLink.removeAttribute('hidden');
+    } else {
+      backLink.setAttribute('hidden', '');
+    }
+  };
+
+  updateBackLinkVisibility();
+
   const deriveClubSlugFromPath = () => {
     const pathMatch = window.location.pathname.match(/\/club\/([^\/?#]+)/i);
     if (pathMatch && pathMatch[1]) {
