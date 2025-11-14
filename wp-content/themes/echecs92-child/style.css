@@ -1146,13 +1146,6 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   background:#0b2e4c;
   color:#ffffff;
   border:1px solid rgba(11,46,76,0.9);
-  box-shadow:0 8px 20px rgba(11,46,76,0.16);
-  transition:transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease;
-}
-.club-create__button:hover,
-.club-create__button:focus-visible{
-  transform:translateY(-1px);
-  box-shadow:0 12px 26px rgba(11,46,76,0.22);
 }
 .club-create__button--light{
   background:transparent;
