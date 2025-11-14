@@ -98,6 +98,56 @@
     sortMode: 'default',
   };
 
+  const parseLicenseValue = (value) => {
+    if (value == null || value === '') {
+      return 0;
+    }
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const getLicenseCount = (club, key) => {
+    if (!club) {
+      return 0;
+    }
+    if (key === 'total') {
+      if (Number.isFinite(club.totalLicenses)) {
+        return club.totalLicenses;
+      }
+      return getLicenseCount(club, 'A') + getLicenseCount(club, 'B');
+    }
+    if (!club.licenses) {
+      return 0;
+    }
+    return parseLicenseValue(club.licenses[key]);
+  };
+
+  const LICENSE_SORT_CONFIGS = {
+    licenses: {
+      valueKey: 'total',
+      status: 'Clubs triés par nombre de licenciés.',
+      counterLabel: 'tri par licenciés',
+      metaKey: 'licenses',
+      formatBadge: (value) => `${value} lic.`,
+    },
+    licenseA: {
+      valueKey: 'A',
+      status: 'Clubs triés par nombre de licences A.',
+      counterLabel: 'tri par licences A',
+      metaKey: 'licenses_a',
+      formatBadge: (value) => `${value} lic. A`,
+    },
+    licenseB: {
+      valueKey: 'B',
+      status: 'Clubs triés par nombre de licences B.',
+      counterLabel: 'tri par licences B',
+      metaKey: 'licenses_b',
+      formatBadge: (value) => `${value} lic. B`,
+    },
+  };
+
+  const getActiveLicenseSort = () => LICENSE_SORT_CONFIGS[state.sortMode] || null;
+
   let searchRequestId = 0;
   let locationRequestId = 0;
   const geocodeCache = new Map();
@@ -186,14 +236,15 @@
   };
 
   const applySortMode = () => {
-    if (state.sortMode === 'licenses') {
+    const activeLicenseSort = getActiveLicenseSort();
+    if (activeLicenseSort) {
       const sorted = state.clubs
         .slice()
         .sort((a, b) => {
-          const totalA = Number.isFinite(a.totalLicenses) ? a.totalLicenses : 0;
-          const totalB = Number.isFinite(b.totalLicenses) ? b.totalLicenses : 0;
-          if (totalB !== totalA) {
-            return totalB - totalA;
+          const countA = getLicenseCount(a, activeLicenseSort.valueKey);
+          const countB = getLicenseCount(b, activeLicenseSort.valueKey);
+          if (countB !== countA) {
+            return countB - countA;
           }
           return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
         });
@@ -203,8 +254,8 @@
       state.visibleCount = state.filtered.length;
       renderResults({ resetVisible: false });
       updateTotalCounter();
-      setSearchMeta({ sort: 'licenses', total: state.filtered.length });
-      setSearchStatus('Clubs triés par nombre de licenciés.', 'info');
+      setSearchMeta({ sort: activeLicenseSort.metaKey || state.sortMode, total: state.filtered.length });
+      setSearchStatus(activeLicenseSort.status, 'info');
       return true;
     }
     if (state.sortMode === 'alpha') {
@@ -225,7 +276,7 @@
   };
 
   const setSortMode = (mode) => {
-    const normalized = mode === 'licenses' || mode === 'alpha' ? mode : 'default';
+    const normalized = LICENSE_SORT_CONFIGS[mode] ? mode : mode === 'alpha' ? 'alpha' : 'default';
     if (state.sortMode === normalized) {
       if (normalized !== 'default') {
         applySortMode();
@@ -1368,13 +1419,19 @@ const handleLocationSubmit = async (event) => {
         distanceNode.textContent = distanceInfo.text;
         header.appendChild(distanceNode);
       }
-    } else if (state.sortMode === 'licenses') {
-      const totalLicenses = Number.isFinite(club.totalLicenses) ? club.totalLicenses : 0;
-      const licenseNode = document.createElement('span');
-      licenseNode.className = 'club-row__distance';
-      licenseNode.dataset.tone = 'licenses';
-      licenseNode.textContent = `${totalLicenses} lic.`;
-      header.appendChild(licenseNode);
+    } else {
+      const licenseSort = getActiveLicenseSort();
+      if (licenseSort) {
+        const count = getLicenseCount(club, licenseSort.valueKey);
+        const badgeText = typeof licenseSort.formatBadge === 'function' ? licenseSort.formatBadge(count, club) : `${count} lic.`;
+        if (badgeText) {
+          const licenseNode = document.createElement('span');
+          licenseNode.className = 'club-row__distance';
+          licenseNode.dataset.tone = 'licenses';
+          licenseNode.textContent = badgeText;
+          header.appendChild(licenseNode);
+        }
+      }
     }
 
     cardLink.appendChild(header);
@@ -1404,6 +1461,7 @@ const handleLocationSubmit = async (event) => {
     const total = state.clubs.length;
     const filtered = state.filtered.length;
     const visible = Math.min(state.visibleCount, filtered);
+    const activeLicenseSort = getActiveLicenseSort();
 
     if (!total) {
       totalCounter.textContent = 'Aucun club disponible pour le moment.';
@@ -1415,8 +1473,8 @@ const handleLocationSubmit = async (event) => {
       if (state.distanceMode && state.distanceReference) {
         parts.splice(1, 0, `distances depuis ${state.distanceReference}`);
       }
-      if (state.sortMode === 'licenses') {
-        parts.push('tri par licenciés');
+      if (activeLicenseSort) {
+        parts.push(activeLicenseSort.counterLabel);
       } else if (state.sortMode === 'alpha') {
         parts.push('ordre alphabétique');
       }
@@ -1436,8 +1494,8 @@ const handleLocationSubmit = async (event) => {
     if (state.distanceMode && state.distanceReference) {
       parts.push(`distances depuis ${state.distanceReference}`);
     }
-    if (state.sortMode === 'licenses') {
-      parts.push('tri par licenciés');
+    if (activeLicenseSort) {
+      parts.push(activeLicenseSort.counterLabel);
     } else if (state.sortMode === 'alpha') {
       parts.push('ordre alphabétique');
     }
@@ -1508,7 +1566,7 @@ const handleLocationSubmit = async (event) => {
           .map(hydrateClub)
           .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
 
-        if (state.sortMode === 'licenses' || state.sortMode === 'alpha') {
+        if (getActiveLicenseSort() || state.sortMode === 'alpha') {
           applySortMode();
         } else {
           const meta = applySearch('');
