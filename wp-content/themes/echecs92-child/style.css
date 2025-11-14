@@ -152,6 +152,9 @@ header.wp-block-template-part.is-elevated {
   flex-direction:column;
   gap:4px;
 }
+.cm-mega-column--featured{
+  min-width:260px;
+}
 .cm-mega-title{
   font-size:13px;
   letter-spacing:.18em;
