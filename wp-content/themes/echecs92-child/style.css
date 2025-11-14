@@ -1096,25 +1096,28 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   max-width:780px;
   margin:0 auto;
   padding:clamp(32px,8vw,96px) 20px 64px;
+  display:flex;
+  flex-direction:column;
 }
 .club-create__intro{
   border-bottom:1px solid rgba(15,23,42,0.12);
   padding-bottom:28px;
+  margin-bottom:32px;
   text-align:left;
 }
 .club-create__eyebrow{
-  font-size:12px;
+  font-size:13px;
   letter-spacing:.18em;
   text-transform:uppercase;
   color:#64748b;
   margin-bottom:8px;
 }
 .club-create__intro h1{
-  margin:0 0 8px;
-  font-size:clamp(30px,4vw,42px);
+  margin:0 0 10px;
+  font-size:clamp(32px,4.2vw,44px);
 }
 .club-create__summary{
-  margin:0 0 20px;
+  margin:0 0 22px;
   color:#475569;
 }
 .club-create__actions{
@@ -1127,7 +1130,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   display:flex;
   flex-direction:column;
   gap:24px;
-  padding-top:24px;
+  padding-top:0;
 }
 .club-create__button{
   display:inline-flex;
