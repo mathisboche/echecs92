@@ -34,7 +34,7 @@ header.wp-block-template-part.is-elevated {
 }
 .cm-header-inner{
   --cm-header-inner-padding-top:18px;
-  --cm-header-inner-padding-bottom:2px;
+  --cm-header-inner-padding-bottom:0px;
   max-width:1200px;
   width:100%;
   margin:0 auto;
@@ -79,7 +79,7 @@ header.wp-block-template-part.is-elevated {
   font-weight:600;
   letter-spacing:.04em;
   text-transform:uppercase;
-  padding:14px 18px;
+  padding:5px 18px;
   transition:color .2s ease;
   border-radius:999px;
 }
@@ -88,7 +88,7 @@ header.wp-block-template-part.is-elevated {
   position:absolute;
   left:18px;
   right:18px;
-  bottom:12px;
+  bottom:0px;
   height:2px;
   background:#0a0a0a;
   transform:scaleX(0);
