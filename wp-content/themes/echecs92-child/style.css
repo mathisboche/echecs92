@@ -1192,9 +1192,8 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   text-decoration:underline;
 }
 .club-create__contact-links{
-  display:flex;
-  flex-wrap:wrap;
-  gap:12px;
+  margin:0;
+  color:#1f2937;
 }
 
 @media (max-width:640px){
