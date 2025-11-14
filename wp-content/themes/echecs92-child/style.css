@@ -774,14 +774,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   background:rgba(15,23,42,0.03);
   color:#0f172a;
   border:1px solid rgba(15,23,42,0.1);
-  transition:background-color .2s ease, border-color .2s ease, color .2s ease;
   max-width:fit-content;
   box-sizing:border-box;
   text-decoration:none;
-}
-.home-cta__link:hover{
-  background:rgba(15,23,42,0.08);
-  border-color:rgba(15,23,42,0.2);
 }
 
 @media (max-width:720px){
@@ -1151,11 +1146,6 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   background:transparent;
   color:#0b2e4c;
   border-color:rgba(11,46,76,0.35);
-  box-shadow:none;
-}
-.club-create__button--light:hover,
-.club-create__button--light:focus-visible{
-  background:rgba(11,46,76,0.08);
   box-shadow:none;
 }
 .club-create__section{
