@@ -33,12 +33,12 @@ header.wp-block-template-part.is-elevated {
   position:relative;
 }
 .cm-header-inner{
-  --cm-header-inner-padding-y:18px;
-  --cm-header-inner-bottom-gap:var(--cm-header-inner-padding-y,18px);
+  --cm-header-inner-padding-top:18px;
+  --cm-header-inner-padding-bottom:18px;
   max-width:1200px;
   width:100%;
   margin:0 auto;
-  padding:var(--cm-header-inner-padding-y,18px) 32px;
+  padding:var(--cm-header-inner-padding-top,18px) 32px var(--cm-header-inner-padding-bottom,18px);
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -61,26 +61,14 @@ header.wp-block-template-part.is-elevated {
   align-items:center;
   margin-left:auto;
   gap:0;
-  --cm-nav-hit-extra:var(--cm-header-inner-bottom-gap,18px);
 }
 .cm-nav-item{
   position:relative;
   display:flex;
-  align-items:center;
-  padding-bottom:var(--cm-nav-hit-extra,18px);
-  margin-bottom:calc(var(--cm-nav-hit-extra,18px)*-1);
+  align-items:flex-end;
 }
-.cm-nav-item.has-submenu{
+.cm-nav-item[data-submenu]{
   position:static;
-}
-.cm-nav-link::before{
-  content:'';
-  position:absolute;
-  left:0;
-  right:0;
-  top:100%;
-  height:calc(var(--cm-nav-hit-extra,18px) + 1px);
-  pointer-events:none;
 }
 .cm-nav-link{
   position:relative;
@@ -118,7 +106,7 @@ header.wp-block-template-part.is-elevated {
 .cm-nav-link:focus-visible::after,
 .cm-nav-link.is-active::after,
 .cm-nav-link.is-current::after,
-.cm-nav-item.has-submenu.submenu-open .cm-nav-link::after{
+.cm-nav-item[data-submenu].submenu-open .cm-nav-link::after{
   transform:scaleX(1);
   opacity:1;
 }
@@ -140,9 +128,9 @@ header.wp-block-template-part.is-elevated {
   transition:none;
   z-index:1500;
 }
-.cm-nav-item.has-submenu:hover .cm-mega-panel,
-.cm-nav-item.has-submenu:focus-within .cm-mega-panel,
-.cm-nav-item.has-submenu.submenu-open .cm-mega-panel{
+.cm-nav-item[data-submenu]:hover .cm-mega-panel,
+.cm-nav-item[data-submenu]:focus-within .cm-mega-panel,
+.cm-nav-item[data-submenu].submenu-open .cm-mega-panel{
   opacity:1;
   pointer-events:auto;
   transform:none;
@@ -385,6 +373,7 @@ header.wp-block-template-part.is-elevated {
 @media (min-width:900px){
   .cm-header-inner{
     align-items:flex-end;
+    --cm-header-inner-padding-bottom:0;
   }
   .cm-header-left{
     flex:0 0 auto;
@@ -393,6 +382,7 @@ header.wp-block-template-part.is-elevated {
     display:flex;
     flex:1 1 auto;
     justify-content:center;
+    align-items:flex-end;
     margin-left:0;
   }
   .cm-burger{display:none;}

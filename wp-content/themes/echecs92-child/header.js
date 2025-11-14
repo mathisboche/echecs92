@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const headerWrapper = document.querySelector('header.wp-block-template-part');
   const adminBar = document.getElementById('wpadminbar');
   const desktopNavLinks = document.querySelectorAll('.cm-nav-desktop a[href]');
-  const desktopSubmenus = document.querySelectorAll('.cm-nav-item.has-submenu');
+  const desktopSubmenus = document.querySelectorAll('.cm-nav-item[data-submenu]');
 
   const normalizePath = (value) => {
     try {
