@@ -61,7 +61,7 @@ header.wp-block-template-part.is-elevated {
   gap:4px;
 }
 .cm-nav-item{
-  position:relative;
+  position:static;
   display:flex;
   align-items:center;
 }
@@ -114,6 +114,7 @@ header.wp-block-template-part.is-elevated {
   position:absolute;
   left:0;
   right:0;
+  width:100%;
   top:100%;
   background:#ffffff;
   border-top:1px solid rgba(15,23,42,0.08);
