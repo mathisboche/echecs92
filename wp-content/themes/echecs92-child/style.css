@@ -1124,7 +1124,8 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   display:flex;
   flex-wrap:wrap;
   justify-content:flex-start;
-  gap:12px;
+  align-items:center;
+  gap:16px;
 }
 .club-create__sections{
   display:flex;
@@ -1136,18 +1137,33 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  padding:12px 24px;
+  padding:10px 22px;
   border-radius:999px;
   font-weight:600;
-  font-size:15px;
+  font-size:14px;
+  letter-spacing:.01em;
   text-decoration:none;
   background:#0b2e4c;
   color:#ffffff;
-  border:1px solid #0b2e4c;
+  border:1px solid rgba(11,46,76,0.9);
+  box-shadow:0 8px 20px rgba(11,46,76,0.16);
+  transition:transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+.club-create__button:hover,
+.club-create__button:focus-visible{
+  transform:translateY(-1px);
+  box-shadow:0 12px 26px rgba(11,46,76,0.22);
 }
 .club-create__button--light{
   background:transparent;
   color:#0b2e4c;
+  border-color:rgba(11,46,76,0.35);
+  box-shadow:none;
+}
+.club-create__button--light:hover,
+.club-create__button--light:focus-visible{
+  background:rgba(11,46,76,0.08);
+  box-shadow:none;
 }
 .club-create__section{
   display:flex;
