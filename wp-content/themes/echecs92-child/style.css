@@ -61,11 +61,19 @@ header.wp-block-template-part.is-elevated {
   gap:0;
 }
 .cm-nav-item{
-  position:static;
+  position:relative;
   display:flex;
   align-items:center;
   padding-bottom:32px;
   margin-bottom:-32px;
+}
+.cm-nav-link::before{
+  content:'';
+  position:absolute;
+  left:0;
+  right:0;
+  top:100%;
+  height:32px;
 }
 .cm-nav-link{
   position:relative;
