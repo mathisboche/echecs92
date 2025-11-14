@@ -34,7 +34,7 @@ header.wp-block-template-part.is-elevated {
 }
 .cm-header-inner{
   --cm-header-inner-padding-top:18px;
-  --cm-header-inner-padding-bottom:0px;
+  --cm-header-inner-padding-bottom:2px;
   max-width:1200px;
   width:100%;
   margin:0 auto;
@@ -43,6 +43,7 @@ header.wp-block-template-part.is-elevated {
   align-items:flex-end;
   justify-content:space-between;
   gap:32px;
+  position:relative;
 }
 .cm-header-left{
   display:flex;
@@ -384,10 +385,14 @@ header.wp-block-template-part.is-elevated {
   }
   .cm-nav-desktop{
     display:flex;
-    flex:1 1 auto;
     justify-content:center;
     align-items:flex-end;
     margin-left:0;
+    position:absolute;
+    left:50%;
+    bottom:var(--cm-header-inner-padding-bottom,2px);
+    transform:translateX(-50%);
+    width:auto;
   }
   .cm-burger{display:none;}
   #cm-mobile-menu{display:none !important;}
