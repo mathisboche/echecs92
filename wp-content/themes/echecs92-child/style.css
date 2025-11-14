@@ -1093,164 +1093,85 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 
 /* Page créer un club */
 .club-create{
-  max-width:960px;
+  max-width:820px;
   margin:0 auto;
-  padding:clamp(40px,8vw,96px) 20px 120px;
+  padding:clamp(32px,8vw,96px) 20px 80px;
   display:flex;
   flex-direction:column;
-  gap:48px;
+  gap:32px;
 }
-.club-create__hero{
-  background:linear-gradient(135deg,#eef2ff,#f8fafc);
-  border:1px solid rgba(15,23,42,0.08);
-  border-radius:32px;
-  padding:48px clamp(24px,5vw,56px);
+.club-create__intro{
   text-align:center;
-  box-shadow:0 30px 60px rgba(15,23,42,0.08);
 }
 .club-create__eyebrow{
-  font-size:13px;
+  font-size:12px;
   letter-spacing:.18em;
   text-transform:uppercase;
+  color:#64748b;
+  margin-bottom:8px;
+}
+.club-create__intro h1{
+  margin:0 0 10px;
+}
+.club-create__summary{
+  margin:0;
   color:#475569;
-  margin-bottom:12px;
 }
-.club-create__hero h1{
-  font-size:clamp(32px,5vw,48px);
-  margin:0 0 16px;
-}
-.club-create__lead{
-  font-size:18px;
-  color:#475569;
-  margin:0 auto 28px;
-  max-width:640px;
-}
-.club-create__cta{
-  display:flex;
-  flex-wrap:wrap;
-  justify-content:center;
+.club-create__sections{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
   gap:16px;
 }
-.club-create__button{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:14px 28px;
-  border-radius:999px;
-  font-weight:600;
-  font-size:16px;
-  text-decoration:none;
-  color:#fff;
-  background:#0b2e4c;
-  border:1px solid #0b2e4c;
-  transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
-}
-.club-create__button:hover,
-.club-create__button:focus-visible{
-  box-shadow:0 12px 30px rgba(11,46,76,0.25);
-  transform:translateY(-2px);
-}
-.club-create__button--ghost{
-  background:transparent;
-  color:#0b2e4c;
-}
-.club-create__grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
-  gap:24px;
-}
-.club-create-card{
-  background:#ffffff;
-  border:1px solid rgba(15,23,42,0.08);
-  border-radius:24px;
-  padding:28px;
+.club-create-block{
+  border:1px solid rgba(15,23,42,0.12);
+  border-radius:18px;
+  padding:20px;
+  background:#fff;
   display:flex;
   flex-direction:column;
-  gap:12px;
-  box-shadow:0 20px 40px rgba(15,23,42,0.06);
+  gap:10px;
 }
-.club-create-card__badge{
-  width:44px;
-  height:44px;
-  border-radius:12px;
-  background:#f1f5f9;
-  color:#0b2e4c;
-  font-weight:700;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:15px;
-}
-.club-create-card h2{
+.club-create-block h2{
   margin:0;
-  font-size:22px;
+  font-size:17px;
 }
-.club-create-card p{
+.club-create-block p{
   margin:0;
-  color:#475569;
+  color:#1f2937;
 }
-.club-create-card ul{
+.club-create-block ul{
   margin:0;
   padding-left:18px;
-  color:#1e293b;
+  color:#1f2937;
   display:flex;
   flex-direction:column;
-  gap:6px;
+  gap:4px;
 }
-.club-create-card__link{
-  margin-top:auto;
-  align-self:flex-start;
+.club-create-link{
   font-weight:600;
+  text-decoration:none;
+  color:#0b2e4c;
+}
+.club-create-link:hover,
+.club-create-link:focus-visible{
+  text-decoration:underline;
+}
+.club-create-contact a{
   color:#0b2e4c;
   text-decoration:none;
 }
-.club-create-card__link:hover,
-.club-create-card__link:focus-visible{
+.club-create-contact a:hover,
+.club-create-contact a:focus-visible{
   text-decoration:underline;
 }
-.club-create-card__note{
-  font-weight:600;
-  color:#0b2e4c;
-}
-.club-create__cta-block{
-  border:1px solid rgba(15,23,42,0.08);
-  border-radius:28px;
-  padding:32px clamp(20px,5vw,48px);
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  justify-content:space-between;
-  gap:20px;
-  background:#0b2e4c;
-  color:#fff;
-}
-.club-create__cta-block h2{
-  margin:0 0 8px;
-  font-size:26px;
-}
-.club-create__cta-block p{
-  margin:0;
-  max-width:460px;
-  color:rgba(255,255,255,0.85);
-}
-.club-create__cta-block .club-create__button{
-  background:#fff;
-  color:#0b2e4c;
-  border-color:#fff;
-}
 
-@media (max-width:700px){
+@media (max-width:600px){
   .club-create{
-    padding:32px 16px 80px;
+    padding:32px 16px 60px;
   }
-  .club-create-card{
-    padding:24px;
-  }
-  .club-create__cta-block{
-    text-align:center;
-  }
-  .club-create__cta-block .club-create__button{
-    width:100%;
+  .club-create-block{
+    border-radius:14px;
+    padding:18px;
   }
 }
 
