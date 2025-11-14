@@ -87,7 +87,6 @@ header.wp-block-template-part.is-elevated {
   background:#0a0a0a;
   transform:scaleX(0);
   transform-origin:left;
-  transition:transform .25s ease, opacity .25s ease;
   opacity:0;
 }
 .cm-nav-link:hover,
@@ -101,7 +100,8 @@ header.wp-block-template-part.is-elevated {
 .cm-nav-link:hover::after,
 .cm-nav-link:focus-visible::after,
 .cm-nav-link.is-active::after,
-.cm-nav-link.is-current::after{
+.cm-nav-link.is-current::after,
+.cm-nav-item.has-submenu.submenu-open .cm-nav-link::after{
   transform:scaleX(1);
   opacity:1;
 }
@@ -125,8 +125,8 @@ header.wp-block-template-part.is-elevated {
   justify-content:center;
   opacity:0;
   pointer-events:none;
-  transform:translateY(-8px);
-  transition:opacity .25s ease, transform .25s ease;
+  transform:none;
+  transition:none;
   z-index:1500;
 }
 .cm-nav-item.has-submenu:hover .cm-mega-panel,
@@ -134,7 +134,7 @@ header.wp-block-template-part.is-elevated {
 .cm-nav-item.has-submenu.submenu-open .cm-mega-panel{
   opacity:1;
   pointer-events:auto;
-  transform:translateY(0);
+  transform:none;
 }
 .cm-mega-panel-inner{
   width:100%;

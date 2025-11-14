@@ -43,7 +43,13 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       item.addEventListener('mouseenter', () => setExpanded(true));
-      item.addEventListener('mouseleave', () => setExpanded(false));
+      item.addEventListener('mouseleave', (event) => {
+        const next = event.relatedTarget;
+        if (next && item.contains(next)) {
+          return;
+        }
+        setExpanded(false);
+      });
       item.addEventListener('focusin', () => setExpanded(true));
       item.addEventListener('focusout', (event) => {
         const next = event.relatedTarget;
