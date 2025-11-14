@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const adminBar = document.getElementById('wpadminbar');
   const desktopNavLinks = document.querySelectorAll('.cm-nav-desktop a[href]');
   const desktopSubmenus = document.querySelectorAll('.cm-nav-item.has-submenu');
+  const desktopMediaQuery = window.matchMedia('(min-width: 900px)');
 
   const normalizePath = (value) => {
     try {
@@ -65,6 +66,62 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
     });
+
+    let megaAlignFrame = null;
+
+    const alignDesktopMegaPanels = () => {
+      const isDesktop = desktopMediaQuery.matches;
+      desktopSubmenus.forEach((item) => {
+        const trigger = item.querySelector('.cm-nav-link');
+        const panel = item.querySelector('.cm-mega-panel');
+        const inner = panel ? panel.querySelector('.cm-mega-panel-inner') : null;
+        if (!trigger || !panel || !inner) {
+          return;
+        }
+        if (!isDesktop) {
+          inner.style.removeProperty('--mega-align-offset');
+          return;
+        }
+        inner.style.setProperty('--mega-align-offset', '0px');
+        const triggerRect = trigger.getBoundingClientRect();
+        const innerRect = inner.getBoundingClientRect();
+        if (!innerRect.width) {
+          inner.style.removeProperty('--mega-align-offset');
+          return;
+        }
+        let offset = triggerRect.left - innerRect.left;
+        if (!Number.isFinite(offset)) {
+          inner.style.removeProperty('--mega-align-offset');
+          return;
+        }
+        const columns = inner.querySelectorAll('.cm-mega-column').length || 1;
+        const computed = window.getComputedStyle(inner);
+        const gapValue = parseFloat(computed.columnGap || computed.gap) || 0;
+        const minWidthPerColumn = 220;
+        const minContentWidth = Math.min(
+          innerRect.width,
+          columns * minWidthPerColumn + (columns - 1) * gapValue
+        );
+        const maxOffset = Math.max(innerRect.width - minContentWidth, 0);
+        offset = Math.max(0, Math.min(offset, maxOffset));
+        inner.style.setProperty('--mega-align-offset', `${offset}px`);
+      });
+    };
+
+    const scheduleMegaPanelAlignment = () => {
+      if (megaAlignFrame) {
+        cancelAnimationFrame(megaAlignFrame);
+      }
+      megaAlignFrame = window.requestAnimationFrame(() => {
+        megaAlignFrame = null;
+        alignDesktopMegaPanels();
+      });
+    };
+
+    scheduleMegaPanelAlignment();
+    window.addEventListener('resize', scheduleMegaPanelAlignment);
+    desktopMediaQuery.addEventListener('change', scheduleMegaPanelAlignment);
+    window.addEventListener('load', scheduleMegaPanelAlignment);
   }
 
   const mobilePanels = menu ? Array.from(menu.querySelectorAll('.cm-mobile-panel')) : [];
@@ -180,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Si on passe en desktop (>900px), on force fermé
-    window.matchMedia('(min-width: 900px)').addEventListener('change', (e) => {
+    desktopMediaQuery.addEventListener('change', (e) => {
       if (e.matches) {
         closeMenu();
       }
