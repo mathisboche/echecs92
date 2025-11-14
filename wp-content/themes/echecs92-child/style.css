@@ -67,6 +67,9 @@ header.wp-block-template-part.is-elevated {
   padding-bottom:25px;
   margin-bottom:-25px;
 }
+.cm-nav-item.has-submenu{
+  position:static;
+}
 .cm-nav-link::before{
   content:'';
   position:absolute;
@@ -115,11 +118,11 @@ header.wp-block-template-part.is-elevated {
   transform:scaleX(1);
   opacity:1;
 }
+/* Full-bleed desktop submenu anchored to the header */
 .cm-mega-panel{
   position:absolute;
-  left:0;
-  right:0;
-  width:100%;
+  left:calc((100% - 100vw)/2);
+  right:calc((100% - 100vw)/2);
   top:100%;
   background:#ffffff;
   border-top:1px solid rgba(15,23,42,0.08);
@@ -143,6 +146,7 @@ header.wp-block-template-part.is-elevated {
 .cm-mega-panel-inner{
   width:100%;
   max-width:1200px;
+  margin:0 auto;
   display:flex;
   flex-wrap:wrap;
   gap:32px;
