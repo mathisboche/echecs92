@@ -63,19 +63,24 @@
   const moreButton = document.getElementById('clubs-more-button');
   const optionsDetails = document.getElementById('clubs-options');
   const sortButtons = document.querySelectorAll('[data-club-sort]');
+  const mapCtaLink = document.querySelector('.clubs-map-box__cta');
 
   const totalCounter = document.createElement('p');
   totalCounter.className = 'clubs-total';
   totalCounter.setAttribute('aria-live', 'polite');
   resultsEl.before(totalCounter);
 
-  const rememberClubsNavigation = () => {
+  const rememberClubsNavigation = (context, backPath) => {
     try {
       const storage = window.localStorage;
       if (!storage) {
         return;
       }
-      const payload = { ts: Date.now() };
+      const payload = {
+        ts: Date.now(),
+        context: context || 'detail:list',
+        back: backPath || '/clubs',
+      };
       storage.setItem(CLUBS_NAV_STORAGE_KEY, JSON.stringify(payload));
     } catch (error) {
       // ignore storage failures
@@ -115,6 +120,20 @@
     if (locationStatus) {
       setLocationStatus('Indiquez une ville, un code postal ou utilisez Autour de moi.', 'info');
     }
+  };
+
+  const bindMapCtaNavigation = () => {
+    if (!mapCtaLink) {
+      return;
+    }
+    const handleIntent = (event) => {
+      if (event.type === 'auxclick' && event.button !== 1) {
+        return;
+      }
+      rememberClubsNavigation('map:from-list', '/clubs');
+    };
+    mapCtaLink.addEventListener('click', handleIntent);
+    mapCtaLink.addEventListener('auxclick', handleIntent);
   };
 
   const setSearchStatus = (message, tone = 'info') => {
@@ -1314,7 +1333,7 @@ const handleLocationSubmit = async (event) => {
       if (event.type === 'auxclick' && event.button !== 1) {
         return;
       }
-      rememberClubsNavigation();
+      rememberClubsNavigation('detail:list', '/clubs');
     };
     cardLink.addEventListener('click', handleNavigationIntent);
     cardLink.addEventListener('auxclick', handleNavigationIntent);
@@ -1473,6 +1492,7 @@ const handleLocationSubmit = async (event) => {
 
   const init = () => {
     initialiseLocationControls();
+    bindMapCtaNavigation();
     setSearchStatus('Chargement de la liste des clubs…', 'info');
 
     fetch(DATA_URL, { headers: { Accept: 'application/json' } })

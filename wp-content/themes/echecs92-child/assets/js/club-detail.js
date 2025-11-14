@@ -7,6 +7,7 @@
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs:last-listing';
   const detailContainer = document.getElementById('club-detail');
   const backLink = document.querySelector('[data-club-back]');
+  const backLinkMap = document.querySelector('[data-club-back-map]');
   let generatedIdCounter = 0;
 
   if (!detailContainer) {
@@ -17,11 +18,11 @@
     try {
       const storage = window.localStorage;
       if (!storage) {
-        return false;
+        return null;
       }
       const raw = storage.getItem(CLUBS_NAV_STORAGE_KEY);
       if (!raw) {
-        return false;
+        return null;
       }
       storage.removeItem(CLUBS_NAV_STORAGE_KEY);
       let payload;
@@ -32,19 +33,21 @@
       }
       const timestamp = payload && typeof payload.ts === 'number' ? payload.ts : null;
       if (!timestamp) {
-        return false;
+        return null;
       }
       if (Date.now() - timestamp > 10 * 60 * 1000) {
-        return false;
+        return null;
       }
-      return true;
+      return payload;
     } catch (error) {
-      return false;
+      return null;
     }
   };
 
+  const storedNavigation = consumeStoredClubsNavigation();
+
   const cameFromClubsSearch = () => {
-    if (consumeStoredClubsNavigation()) {
+    if (storedNavigation && storedNavigation.context === 'detail:list') {
       return true;
     }
     const referrer = document.referrer;
@@ -63,14 +66,40 @@
     }
   };
 
-  const updateBackLinkVisibility = () => {
-    if (!backLink) {
-      return;
+  const cameFromClubsMap = () => {
+    if (storedNavigation && storedNavigation.context === 'detail:map') {
+      return true;
     }
-    if (cameFromClubsSearch()) {
-      backLink.removeAttribute('hidden');
-    } else {
-      backLink.setAttribute('hidden', '');
+    const referrer = document.referrer;
+    if (!referrer) {
+      return false;
+    }
+    try {
+      const refUrl = new URL(referrer, window.location.origin);
+      if (refUrl.origin !== window.location.origin) {
+        return false;
+      }
+      const normalized = refUrl.pathname.replace(/\/+$/u, '') || '/';
+      return normalized === '/carte-des-clubs';
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const updateBackLinkVisibility = () => {
+    if (backLink) {
+      if (cameFromClubsSearch()) {
+        backLink.removeAttribute('hidden');
+      } else {
+        backLink.setAttribute('hidden', '');
+      }
+    }
+    if (backLinkMap) {
+      if (cameFromClubsMap()) {
+        backLinkMap.removeAttribute('hidden');
+      } else {
+        backLinkMap.setAttribute('hidden', '');
+      }
     }
   };
 

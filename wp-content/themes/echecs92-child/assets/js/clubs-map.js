@@ -1,12 +1,85 @@
 (function () {
   const DATA_URL = '/wp-content/themes/echecs92-child/assets/data/clubs.json';
+  const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs:last-listing';
   const mapElement = document.getElementById('clubs-map');
+  const mapBackLink = document.querySelector('[data-clubs-map-back]');
   if (!mapElement || typeof L === 'undefined') {
     return;
   }
 
   const statusElement = document.getElementById('clubs-map-status');
   const detailBase = mapElement.dataset.detailBase || '/club/';
+  const navigationContext = (() => {
+    try {
+      const storage = window.localStorage;
+      if (!storage) {
+        return null;
+      }
+      const raw = storage.getItem(CLUBS_NAV_STORAGE_KEY);
+      if (!raw) {
+        return null;
+      }
+      storage.removeItem(CLUBS_NAV_STORAGE_KEY);
+      let payload;
+      try {
+        payload = JSON.parse(raw);
+      } catch (error) {
+        payload = null;
+      }
+      if (!payload || typeof payload.ts !== 'number') {
+        return null;
+      }
+      if (Date.now() - payload.ts > 10 * 60 * 1000) {
+        return null;
+      }
+      return payload;
+    } catch (error) {
+      return null;
+    }
+  })();
+
+  const rememberNavigation = (context, backPath) => {
+    try {
+      const storage = window.localStorage;
+      if (!storage) {
+        return;
+      }
+      storage.setItem(
+        CLUBS_NAV_STORAGE_KEY,
+        JSON.stringify({ ts: Date.now(), context, back: backPath || '/clubs' })
+      );
+    } catch (error) {
+      // ignore
+    }
+  };
+
+  const cameFromClubsPage = () => {
+    if (navigationContext && navigationContext.context === 'map:from-list') {
+      return true;
+    }
+    const referrer = document.referrer;
+    if (!referrer) {
+      return false;
+    }
+    try {
+      const refUrl = new URL(referrer, window.location.origin);
+      if (refUrl.origin !== window.location.origin) {
+        return false;
+      }
+      const normalized = refUrl.pathname.replace(/\/+$/u, '') || '/';
+      return normalized === '/clubs';
+    } catch (error) {
+      return false;
+    }
+  };
+
+  if (mapBackLink) {
+    if (cameFromClubsPage()) {
+      mapBackLink.removeAttribute('hidden');
+    } else {
+      mapBackLink.setAttribute('hidden', '');
+    }
+  }
 
   const updateStatus = (message, tone = 'info') => {
     if (!statusElement) {
@@ -322,9 +395,26 @@
       lines.push(club.address);
     }
     const detailUrl = getClubDetailUrl(club);
-    lines.push(`<a href="${detailUrl}">Voir la fiche</a>`);
+    lines.push(`<a class="clubs-map__detail-link" href="${detailUrl}">Voir la fiche</a>`);
     return lines.join('<br>');
   };
+
+  const handleMapLinkInteraction = (event) => {
+    const target = event.target;
+    if (!target || !(target instanceof Element)) {
+      return;
+    }
+    if (!target.classList.contains('clubs-map__detail-link')) {
+      return;
+    }
+    if (event.type === 'auxclick' && event.button !== 1) {
+      return;
+    }
+    rememberNavigation('detail:map', '/carte-des-clubs');
+  };
+
+  mapElement.addEventListener('click', handleMapLinkInteraction);
+  mapElement.addEventListener('auxclick', handleMapLinkInteraction);
 
   updateStatus('Chargement de la carte…', 'info');
 
