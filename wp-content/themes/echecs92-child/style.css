@@ -117,9 +117,9 @@ header.wp-block-template-part.is-elevated {
 }
 .cm-mega-panel{
   position:absolute;
-  left:0;
-  right:0;
-  width:100%;
+  left:50%;
+  width:100vw;
+  transform:translateX(-50%);
   top:100%;
   background:#ffffff;
   border-top:1px solid rgba(15,23,42,0.08);
@@ -127,10 +127,8 @@ header.wp-block-template-part.is-elevated {
   box-shadow:none;
   padding:32px clamp(20px,5vw,72px) 40px;
   display:flex;
-  justify-content:center;
   opacity:0;
   pointer-events:none;
-  transform:none;
   transition:none;
   z-index:1500;
 }
@@ -144,6 +142,7 @@ header.wp-block-template-part.is-elevated {
 .cm-mega-panel-inner{
   width:100%;
   max-width:1200px;
+  margin:0 auto;
   display:flex;
   flex-wrap:wrap;
   gap:32px;
