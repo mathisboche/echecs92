@@ -340,9 +340,16 @@ header.wp-block-template-part.is-elevated {
   text-align:left;
 }
 .cm-mobile-link-arrow{
-  font-size:20px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
   color:#94a3b8;
+  flex-shrink:0;
   line-height:1;
+}
+.cm-mobile-link-arrow svg{
+  width:14px;
+  height:14px;
 }
 .cm-mobile-back{
   align-self:flex-start;
@@ -356,6 +363,9 @@ header.wp-block-template-part.is-elevated {
   padding:0;
   color:#0f172a;
   cursor:pointer;
+}
+.cm-mobile-panel-header.has-back .cm-mobile-back{
+  margin-bottom:12px;
 }
 .cm-mobile-back-icon{
   font-size:18px;
