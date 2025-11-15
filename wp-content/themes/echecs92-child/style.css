@@ -1219,7 +1219,11 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 
 @media (max-width:640px){
   .club-create{
-    padding:32px 16px 56px;
+    padding:32px 24px 56px;
+  }
+  .club-create__intro{
+    padding-bottom:32px;
+    margin-bottom:20px;
   }
   .club-create__section{
     flex-direction:column;
