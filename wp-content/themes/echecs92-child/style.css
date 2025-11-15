@@ -338,16 +338,19 @@ header.wp-block-template-part.is-elevated {
 }
 .cm-mobile-link.has-children{
   text-align:left;
+  position:relative;
+  padding-right:32px;
 }
-.cm-mobile-link-arrow{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  color:#94a3b8;
-  flex-shrink:0;
-  line-height:1;
-  font-size:22px;
-  min-width:18px;
+.cm-mobile-link.has-children::after{
+  content:'';
+  position:absolute;
+  top:50%;
+  right:2px;
+  width:10px;
+  height:10px;
+  border-right:2px solid #0f172a;
+  border-bottom:2px solid #0f172a;
+  transform:translateY(-50%) rotate(-45deg);
 }
 .cm-mobile-back{
   align-self:flex-start;
