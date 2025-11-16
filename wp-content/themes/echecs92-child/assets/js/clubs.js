@@ -95,6 +95,9 @@
     visibleCount: VISIBLE_RESULTS_DEFAULT,
     distanceMode: false,
     distanceReference: '',
+    distanceReferencePostal: '',
+    distanceReferenceCommune: '',
+    distanceReferenceType: '',
     sortMode: 'default',
   };
 
@@ -516,6 +519,9 @@
         });
       state.distanceMode = false;
       state.distanceReference = '';
+      state.distanceReferencePostal = '';
+      state.distanceReferenceCommune = '';
+      state.distanceReferenceType = '';
       state.filtered = sorted;
       state.visibleCount = state.filtered.length;
       renderResults({ resetVisible: false });
@@ -530,6 +536,9 @@
         .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
       state.distanceMode = false;
       state.distanceReference = '';
+      state.distanceReferencePostal = '';
+      state.distanceReferenceCommune = '';
+      state.distanceReferenceType = '';
       state.filtered = sorted;
       state.visibleCount = state.filtered.length;
       renderResults({ resetVisible: false });
@@ -557,6 +566,9 @@
       clearSearchQuery({ silent: true });
       state.distanceMode = false;
       state.distanceReference = '';
+      state.distanceReferencePostal = '';
+      state.distanceReferenceCommune = '';
+      state.distanceReferenceType = '';
       state.filtered = state.clubs.slice();
       state.visibleCount = Math.min(VISIBLE_RESULTS_DEFAULT, state.filtered.length);
       void performSearch();
@@ -567,6 +579,9 @@
     handleLocationClear({ skipSearch: true, silent: true });
     state.distanceMode = false;
     state.distanceReference = '';
+    state.distanceReferencePostal = '';
+    state.distanceReferenceCommune = '';
+    state.distanceReferenceType = '';
     applySortMode();
   };
 
@@ -741,6 +756,64 @@
       components.push(localityParts.join(' ').trim());
     }
     return components.join(', ').trim();
+  };
+
+  const normalisePostalCodeValue = (value) => (value ? value.toString().trim() : '');
+
+  const normaliseCommuneForCompare = (value) => {
+    const formatted = formatCommune(value || '');
+    return formatted ? formatted.toLowerCase() : '';
+  };
+
+  const deriveReferenceContext = (rawInput, coords = {}, type = '') => {
+    const addressParts = extractAddressParts(rawInput || '');
+    const postal = coords.postalCode || addressParts.postalCode || '';
+    const communeCandidate =
+      coords.label ||
+      addressParts.city ||
+      rawInput ||
+      '';
+    return {
+      postalCode: normalisePostalCodeValue(postal),
+      commune: normaliseCommuneForCompare(communeCandidate),
+      type,
+    };
+  };
+
+  const decorateReferenceLabel = (baseLabel, type) => {
+    if (!baseLabel) {
+      return baseLabel;
+    }
+    if (type === 'geoloc') {
+      return `${baseLabel} (ma position)`;
+    }
+    if (type === 'address') {
+      return `${baseLabel} (loc. précise)`;
+    }
+    if (type === 'location') {
+      return `${baseLabel} (localisation)`;
+    }
+    if (type === 'postal') {
+      return `${baseLabel} (code postal)`;
+    }
+    return baseLabel;
+  };
+
+  const isClubOnsite = (club) => {
+    if (!state.distanceMode) {
+      return false;
+    }
+    const refPostal = state.distanceReferencePostal;
+    const refCommune = state.distanceReferenceCommune;
+    const clubPostal = normalisePostalCodeValue(club.postalCode);
+    const clubCommune = normaliseCommuneForCompare(club.commune);
+    if (refPostal && clubPostal && clubPostal === refPostal) {
+      return true;
+    }
+    if (refCommune && clubCommune && clubCommune === refCommune) {
+      return true;
+    }
+    return false;
   };
 
   const looksLikeDetailedAddress = (value) => {
@@ -999,7 +1072,11 @@
     return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
-  const formatDistanceLabel = (distanceKm) => {
+  const formatDistanceLabel = (distanceKm, options = {}) => {
+    const onsite = Boolean(options.onsite);
+    if (onsite) {
+      return { text: 'sur place', tone: 'onsite' };
+    }
     if (!Number.isFinite(distanceKm)) {
       return { text: '', tone: 'default' };
     }
@@ -1246,6 +1323,9 @@
 
     state.distanceMode = false;
     state.distanceReference = '';
+    state.distanceReferencePostal = '';
+    state.distanceReferenceCommune = '';
+    state.distanceReferenceType = '';
     state.clubs.forEach((club) => {
       if (Object.prototype.hasOwnProperty.call(club, 'distanceKm')) {
         delete club.distanceKm;
@@ -1283,7 +1363,15 @@
     };
   };
 
-  const runDistanceSearch = ({ latitude, longitude, label, query }) => {
+  const runDistanceSearch = ({
+    latitude,
+    longitude,
+    label,
+    query,
+    referencePostalCode,
+    referenceCommune,
+    referenceType,
+  }) => {
     const lat = Number.parseFloat(latitude);
     const lng = Number.parseFloat(longitude);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
@@ -1291,6 +1379,9 @@
       state.visibleCount = 0;
       state.distanceMode = true;
       state.distanceReference = label || query || '';
+      state.distanceReferencePostal = normalisePostalCodeValue(referencePostalCode);
+      state.distanceReferenceCommune = normaliseCommuneForCompare(referenceCommune);
+      state.distanceReferenceType = referenceType || '';
       renderResults();
       updateTotalCounter();
       return { total: 0, finite: 0, label: state.distanceReference };
@@ -1336,6 +1427,9 @@
     state.filtered = scored.map((entry) => entry.club);
     state.distanceMode = true;
     state.distanceReference = label || query || '';
+    state.distanceReferencePostal = normalisePostalCodeValue(referencePostalCode);
+    state.distanceReferenceCommune = normaliseCommuneForCompare(referenceCommune);
+    state.distanceReferenceType = referenceType || '';
     state.query = query || '';
     state.visibleCount = Math.min(VISIBLE_RESULTS_DEFAULT, state.filtered.length);
     renderResults();
@@ -1345,6 +1439,7 @@
       total: state.filtered.length,
       finite: finiteCount,
       label: state.distanceReference,
+      kind: state.distanceReferenceType,
     };
   };
 
@@ -1408,18 +1503,23 @@
           coords.label || formatCommune(trimmed) || trimmed,
           coords.postalCode || postalCode
         );
+        const referenceContext = deriveReferenceContext(trimmed, coords, 'postal');
+        const decoratedLabel = decorateReferenceLabel(referenceLabel, referenceContext.type);
         const meta = runDistanceSearch({
           latitude: coords.latitude ?? coords.lat,
           longitude: coords.longitude ?? coords.lng,
-          label: referenceLabel,
+          label: decoratedLabel,
           query: trimmed,
+          referencePostalCode: referenceContext.postalCode,
+          referenceCommune: referenceContext.commune,
+          referenceType: referenceContext.type,
         });
         if (requestId !== searchRequestId) {
           return;
         }
         if (meta.finite > 0) {
           updateStatusIfCurrent(
-            `Clubs triés par distance depuis ${meta.label || referenceLabel || trimmed}.`,
+            `Clubs triés par distance depuis ${meta.label || decoratedLabel || trimmed}.`,
             'info'
           );
         } else {
@@ -1479,17 +1579,22 @@
         location.label || formatCommune(trimmed) || trimmed,
         location.postalCode
       );
+      const referenceContext = deriveReferenceContext(trimmed, location, 'location');
+      const decoratedLabel = decorateReferenceLabel(referenceLabel, referenceContext.type);
       const distanceMeta = runDistanceSearch({
         latitude: location.latitude,
         longitude: location.longitude,
-        label: referenceLabel,
+        label: decoratedLabel,
         query: trimmed,
+        referencePostalCode: referenceContext.postalCode,
+        referenceCommune: referenceContext.commune,
+        referenceType: referenceContext.type,
       });
       if (requestId !== searchRequestId) {
         return;
       }
       if (distanceMeta.finite > 0) {
-        const reference = distanceMeta.label || referenceLabel || trimmed;
+        const reference = distanceMeta.label || decoratedLabel || trimmed;
         updateStatusIfCurrent(
           `Aucun club nommé "${trimmed}". Classement par distance depuis ${reference}.`,
           'info'
@@ -1530,6 +1635,9 @@
     locationRequestId += 1;
     state.distanceMode = false;
     state.distanceReference = '';
+    state.distanceReferencePostal = '';
+    state.distanceReferenceCommune = '';
+    state.distanceReferenceType = '';
     state.clubs.forEach((club) => {
       if (Object.prototype.hasOwnProperty.call(club, 'distanceKm')) {
         delete club.distanceKm;
@@ -1596,13 +1704,16 @@ const handleLocationSubmit = async (event) => {
         return;
       }
 
-      const label = toDistanceReferenceLabel(
+      const baseLabel = toDistanceReferenceLabel(
         coords.label || formatCommune(raw) || raw,
         coords.postalCode
       );
+      const referenceType = looksLikeAddress ? 'address' : 'location';
+      const referenceContext = deriveReferenceContext(raw, coords, referenceType);
+      const decoratedLabel = decorateReferenceLabel(baseLabel, referenceContext.type);
 
       if (locationInput) {
-        locationInput.value = label || raw;
+        locationInput.value = decoratedLabel || raw;
       }
 
       if (optionsDetails && !optionsDetails.open) {
@@ -1613,12 +1724,15 @@ const handleLocationSubmit = async (event) => {
       const meta = runDistanceSearch({
         latitude: coords.latitude ?? coords.lat,
         longitude: coords.longitude ?? coords.lng,
-        label,
+        label: decoratedLabel,
         query: raw,
+        referencePostalCode: referenceContext.postalCode,
+        referenceCommune: referenceContext.commune,
+        referenceType: referenceContext.type,
       });
 
       if (meta.finite > 0) {
-        const reference = meta.label || label || raw;
+        const reference = meta.label || decoratedLabel || raw;
         setLocationStatus(`Distances calculées depuis ${reference}.`, 'success');
         setSearchStatus(`Clubs triés par distance depuis ${reference}.`, 'info');
       } else {
@@ -1654,13 +1768,15 @@ const handleLocationSubmit = async (event) => {
               return;
             }
 
-            const label = toDistanceReferenceLabel(
+            const baseLabel = toDistanceReferenceLabel(
               place?.label || 'votre position',
               place?.postalCode
             );
+            const referenceContext = deriveReferenceContext(place?.label || '', place || {}, 'geoloc');
+            const decoratedLabel = decorateReferenceLabel(baseLabel, referenceContext.type);
 
             if (locationInput) {
-              locationInput.value = place?.label || '';
+              locationInput.value = decoratedLabel || place?.label || '';
             }
 
             if (optionsDetails && !optionsDetails.open) {
@@ -1671,12 +1787,15 @@ const handleLocationSubmit = async (event) => {
             const meta = runDistanceSearch({
               latitude,
               longitude,
-              label,
+              label: decoratedLabel,
               query: place?.label || 'votre position',
+              referencePostalCode: referenceContext.postalCode,
+              referenceCommune: referenceContext.commune,
+              referenceType: referenceContext.type,
             });
 
             if (meta.finite > 0) {
-              const reference = meta.label || label || 'votre position';
+              const reference = meta.label || decoratedLabel || 'votre position';
               setLocationStatus(`Distances calculées depuis ${reference}.`, 'success');
               setSearchStatus(`Clubs triés par distance depuis ${reference}.`, 'info');
             } else {
@@ -1871,8 +1990,9 @@ const handleLocationSubmit = async (event) => {
       heading.appendChild(communeNode);
     }
 
-    if (state.distanceMode && Number.isFinite(club.distanceKm)) {
-      const distanceInfo = formatDistanceLabel(club.distanceKm);
+    const onsite = isClubOnsite(club);
+    if (state.distanceMode && (Number.isFinite(club.distanceKm) || onsite)) {
+      const distanceInfo = formatDistanceLabel(club.distanceKm, { onsite });
       if (distanceInfo.text) {
         const distanceNode = document.createElement('span');
         distanceNode.className = 'club-row__distance';
