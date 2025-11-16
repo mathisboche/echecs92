@@ -2878,10 +2878,11 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   padding:28px;
   border-radius:18px;
   background:linear-gradient(135deg,#1d4ed8 0%,#7c3aed 60%,#ec4899 100%);
-  color:#ffffff;
+  color:#fdfcff;
   overflow:hidden;
   box-shadow:0 25px 60px rgba(15,23,42,0.35);
   border:1px solid rgba(255,255,255,0.35);
+  text-shadow:0 10px 35px rgba(15,23,42,0.35);
 }
 .clubs-easter-egg__glow{
   position:absolute;
@@ -2923,13 +2924,14 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   margin:0 0 10px;
   font-size:26px;
   color:#ffffff;
-  text-shadow:0 2px 12px rgba(15,23,42,0.3);
+  text-shadow:0 4px 20px rgba(15,23,42,0.45);
 }
 .clubs-easter-egg__text{
   margin:0 0 22px;
   font-size:15px;
   line-height:1.6;
-  color:rgba(255,255,255,0.92);
+  color:rgba(255,255,255,0.96);
+  text-shadow:0 2px 16px rgba(15,23,42,0.35);
 }
 .clubs-easter-egg__actions{
   display:flex;
@@ -2937,14 +2939,15 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   gap:12px;
 }
 .clubs-easter-egg__link{
-  background:#ffffff;
-  color:#0f172a;
-  border-color:#ffffff;
+  background:rgba(255,255,255,0.18);
+  color:#ffffff;
+  border-color:rgba(255,255,255,0.55);
+  text-shadow:none;
 }
 .clubs-easter-egg__link:hover,
 .clubs-easter-egg__link:focus-visible{
-  background:#fef3c7;
-  border-color:#fde68a;
+  background:rgba(255,255,255,0.32);
+  border-color:#ffffff;
 }
 .clubs-easter-egg__reset{
   border-color:rgba(255,255,255,0.6);
