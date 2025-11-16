@@ -540,6 +540,19 @@
       return club._distanceCoords;
     }
 
+    const directLat = Number.parseFloat(club.latitude ?? club.lat);
+    const directLng = Number.parseFloat(club.longitude ?? club.lng ?? club.lon);
+    if (Number.isFinite(directLat) && Number.isFinite(directLng)) {
+      const coords = {
+        postalCode: club.postalCode || '',
+        lat: directLat,
+        lng: directLng,
+        label: club.commune || club.address || club.name || '',
+      };
+      club._distanceCoords = coords;
+      return coords;
+    }
+
     if (club.commune) {
       const coords = getCommuneCoordinatesByName(club.commune);
       if (coords) {
@@ -1306,6 +1319,20 @@ const handleLocationSubmit = async (event) => {
       return Number.isFinite(parsed) ? parsed : null;
     };
 
+    const toFloat = (value) => {
+      if (value == null || value === '') {
+        return null;
+      }
+      const parsed = Number.parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const latitude =
+      toFloat(raw.latitude ?? raw.lat ?? raw.location?.latitude ?? raw.location?.lat) ?? null;
+    const longitude =
+      toFloat(raw.longitude ?? raw.lng ?? raw.lon ?? raw.location?.longitude ?? raw.location?.lng) ??
+      null;
+
     return {
       id,
       name: name || commune || 'Club sans nom',
@@ -1322,6 +1349,8 @@ const handleLocationSubmit = async (event) => {
       notes: raw.notes || '',
       fiche_ffe: raw.fiche_ffe || '',
       tags: Array.isArray(raw.tags) ? raw.tags : [],
+      latitude,
+      longitude,
       licenses: {
         A: toNumber(raw.licences_a ?? raw.licenses_a ?? raw.license_a),
         B: toNumber(raw.licences_b ?? raw.licenses_b ?? raw.license_b),

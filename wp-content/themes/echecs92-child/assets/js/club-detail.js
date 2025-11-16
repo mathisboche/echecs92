@@ -344,8 +344,8 @@
       return null;
     }
 
-    const lat = Number.parseFloat(club.lat);
-    const lng = Number.parseFloat(club.lng);
+    const lat = Number.parseFloat(club.latitude ?? club.lat);
+    const lng = Number.parseFloat(club.longitude ?? club.lng ?? club.lon);
     if (Number.isFinite(lat) && Number.isFinite(lng)) {
       return {
         lat,
@@ -528,6 +528,20 @@
       return Number.isFinite(parsed) ? parsed : null;
     };
 
+    const toFloat = (value) => {
+      if (value == null || value === '') {
+        return null;
+      }
+      const parsed = Number.parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const latitude =
+      toFloat(raw.latitude ?? raw.lat ?? raw.location?.latitude ?? raw.location?.lat) ?? null;
+    const longitude =
+      toFloat(raw.longitude ?? raw.lng ?? raw.lon ?? raw.location?.longitude ?? raw.location?.lng) ??
+      null;
+
     return {
       id,
       name: name || commune || 'Club sans nom',
@@ -544,8 +558,8 @@
       notes: raw.notes || '',
       fiche_ffe: raw.fiche_ffe || '',
       tags: Array.isArray(raw.tags) ? raw.tags : [],
-      lat: raw.lat != null ? Number.parseFloat(raw.lat) : null,
-      lng: raw.lng != null ? Number.parseFloat(raw.lng) : null,
+      latitude,
+      longitude,
       licenses: {
         A: toNumber(raw.licences_a ?? raw.licenses_a ?? raw.license_a),
         B: toNumber(raw.licences_b ?? raw.licenses_b ?? raw.license_b),

@@ -318,6 +318,20 @@
     const slugSource = commune || name || postalCode || primaryAddress || secondaryAddress;
     const id = raw.id || slugify(name || slugSource || `club-${Date.now()}`);
 
+    const toFloat = (value) => {
+      if (value == null || value === '') {
+        return null;
+      }
+      const parsed = Number.parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const latitude =
+      toFloat(raw.latitude ?? raw.lat ?? raw.location?.latitude ?? raw.location?.lat) ?? null;
+    const longitude =
+      toFloat(raw.longitude ?? raw.lng ?? raw.lon ?? raw.location?.longitude ?? raw.location?.lng) ??
+      null;
+
     return {
       id,
       name: name || commune || 'Club sans nom',
@@ -328,6 +342,8 @@
       email: raw.email || '',
       site: raw.site || raw.website || '',
       postalCode,
+      latitude,
+      longitude,
       slug: slugify(slugSource || id || name || 'club'),
     };
   };
@@ -335,6 +351,17 @@
   const resolveClubCoordinates = (club) => {
     if (!club) {
       return null;
+    }
+
+    const directLat = Number.parseFloat(club.latitude ?? club.lat);
+    const directLng = Number.parseFloat(club.longitude ?? club.lng ?? club.lon);
+    if (Number.isFinite(directLat) && Number.isFinite(directLng)) {
+      return {
+        lat: directLat,
+        lng: directLng,
+        label: club.commune || club.address || club.name || '',
+        postalCode: club.postalCode || '',
+      };
     }
 
     if (club.commune) {
