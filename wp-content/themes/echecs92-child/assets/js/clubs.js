@@ -210,6 +210,46 @@
     return true;
   };
 
+  const showMathisBocheEasterEgg = () => {
+    if (!resultsEl) {
+      return null;
+    }
+    const article = document.createElement('article');
+    article.className = 'clubs-easter-egg';
+    article.setAttribute('role', 'listitem');
+    article.innerHTML = `
+      <div class="clubs-easter-egg__glow" aria-hidden="true"></div>
+      <p class="clubs-easter-egg__badge">Easter egg</p>
+      <h2 class="clubs-easter-egg__title">mathisboche.com</h2>
+      <p class="clubs-easter-egg__text">
+        Ce nom n'est pas un club du 92, mais un clin d'oeil aux coulisses numériques du site.
+        Continuez à explorer pour découvrir d'autres surprises&nbsp;!
+      </p>
+      <div class="clubs-easter-egg__actions">
+        <a class="btn clubs-easter-egg__link" href="https://mathisboche.com" target="_blank" rel="noopener noreferrer">
+          Ouvrir mathisboche.com
+        </a>
+        <button type="button" class="btn btn-secondary clubs-easter-egg__reset">Revenir aux clubs</button>
+      </div>
+    `;
+
+    const resetButtonNode = article.querySelector('.clubs-easter-egg__reset');
+    resetButtonNode?.addEventListener('click', () => {
+      clearSearchQuery({ silent: true });
+      setSearchStatus('Tous les clubs sont affichés.', 'info');
+      applySearch('');
+    });
+
+    resultsEl.innerHTML = '';
+    resultsEl.appendChild(article);
+    totalCounter.textContent = '1 résultat secret débloqué';
+
+    return {
+      message: 'Easter egg débloqué pour mathisboche.com !',
+      tone: 'success',
+    };
+  };
+
   const SECRET_DEBUG_COMMANDS = new Map([
     [':debug', () => toggleDebugMode()],
     [':debug+', () => setDebugMode(true)],
@@ -217,6 +257,7 @@
     ['debug92', () => toggleDebugMode()],
     [':sansdebug', () => setDebugMode(false)],
     [':debugmode', () => setDebugMode(true)],
+    ['mathisboche.com', () => showMathisBocheEasterEgg()],
   ]);
 
   const debugApi = {
@@ -1036,26 +1077,67 @@
     }
   }
 
+  const findSecretCommandHandler = (value) => {
+    if (!value) {
+      return null;
+    }
+    const addCandidate = (candidate, list) => {
+      if (!candidate) {
+        return;
+      }
+      const normalizedCandidate = candidate.replace(/\/+$/, '');
+      const key = normalizedCandidate || candidate;
+      if (key && !list.includes(key)) {
+        list.push(key);
+      }
+    };
+    const normalized = value.toLowerCase();
+    const candidates = [];
+    addCandidate(normalized, candidates);
+    const noProtocol = normalized.replace(/^https?:\/\//, '');
+    addCandidate(noProtocol, candidates);
+    const noWww = noProtocol.replace(/^www\./, '');
+    addCandidate(noWww, candidates);
+    const noHash = noWww.split('#')[0];
+    addCandidate(noHash, candidates);
+    const noQuery = noHash.split('?')[0];
+    addCandidate(noQuery, candidates);
+    const hostOnly = noQuery.split('/')[0];
+    addCandidate(hostOnly, candidates);
+    for (const candidate of candidates) {
+      const handler = SECRET_DEBUG_COMMANDS.get(candidate);
+      if (handler) {
+        return handler;
+      }
+    }
+    return null;
+  };
+
   const tryHandleSecretCommand = (rawValue, options = {}) => {
     const raw = rawValue != null ? String(rawValue) : '';
     const trimmed = raw.trim();
     if (!trimmed) {
       return false;
     }
-    const normalized = trimmed.toLowerCase();
-    const handler = SECRET_DEBUG_COMMANDS.get(normalized);
+    const handler = findSecretCommandHandler(trimmed);
     if (!handler) {
       return false;
     }
-    handler({ immediate: Boolean(options.immediate) });
+    const result = handler({ immediate: Boolean(options.immediate), query: trimmed }) || null;
     if (searchInput) {
       searchInput.value = '';
     }
     if (typeof setSearchStatus === 'function') {
-      const message = isDebugMode()
-        ? 'Mode debug activé via commande discrète.'
-        : 'Mode debug désactivé.';
-      setSearchStatus(message, 'info');
+      if (result && typeof result === 'object' && result.message) {
+        setSearchStatus(result.message, result.tone || 'info');
+      } else if (typeof result === 'string') {
+        setSearchStatus(result, 'info');
+      } else {
+        const message = isDebugMode()
+          ? 'Mode debug activé via commande discrète.'
+          : 'Mode debug désactivé.';
+        setSearchStatus(message, 'info');
+      }
     }
     return true;
   };
