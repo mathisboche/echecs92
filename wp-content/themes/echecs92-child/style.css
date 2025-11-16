@@ -1122,18 +1122,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   margin:0;
   font-size:clamp(32px,4.4vw,46px);
 }
-.club-create__steps{
-  border:1px solid #d8e0ea;
-  border-radius:16px;
-  background:#ffffff;
-  padding:30px 32px;
+.club-create__sections{
   display:flex;
   flex-direction:column;
-  gap:24px;
-}
-.club-create__grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
   gap:18px;
 }
 .club-create-card{
@@ -1179,9 +1170,6 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   .club-create{
     padding:48px 24px 72px;
   }
-  .club-create__steps{
-    padding:26px;
-  }
 }
 
 @media (max-width:599px){
@@ -1191,9 +1179,6 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   }
   .club-create__intro{
     padding-bottom:24px;
-  }
-  .club-create__steps{
-    padding:22px 20px;
   }
   .club-create-card{
     padding:20px;
