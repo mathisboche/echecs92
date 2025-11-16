@@ -540,8 +540,8 @@
           maxZoom: 18,
         }).addTo(map);
         const popupLines = [`<strong>${club.name}</strong>`];
-        if (club.address) {
-          popupLines.push(club.address);
+        if (club.addressDisplay) {
+          popupLines.push(club.addressDisplay);
         } else if (coords.label) {
           popupLines.push(coords.label);
         }
@@ -634,6 +634,8 @@
       notes: raw.notes || '',
       fiche_ffe: raw.fiche_ffe || '',
       tags: Array.isArray(raw.tags) ? raw.tags : [],
+      addressStandard: standardAddress,
+      addressDisplay: standardAddress || primaryAddress || secondaryAddress || '',
       latitude,
       longitude,
       licenses: {

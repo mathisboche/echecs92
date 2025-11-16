@@ -177,7 +177,7 @@
       commune: club.commune,
       latitude: Number.isFinite(lat) ? lat : null,
       longitude: Number.isFinite(lng) ? lng : null,
-      source: club.address || club.commune || '',
+      source: club.addressStandard || club.address || club.commune || '',
     };
   };
 
@@ -1787,13 +1787,15 @@ const handleLocationSubmit = async (event) => {
     const totalLicenses = (Number.isFinite(licenseA) ? licenseA : 0) + (Number.isFinite(licenseB) ? licenseB : 0);
     club.totalLicenses = totalLicenses > 0 ? totalLicenses : null;
     const tagsText = Array.isArray(club.tags) ? club.tags.filter(Boolean).join(' ') : '';
-    const searchSource = [club.name, club.address, tagsText].filter(Boolean).join(' ');
+    const displayAddress = club.addressStandard || club.address || club.siege || '';
+    club.addressDisplay = displayAddress;
+    const searchSource = [club.name, displayAddress, tagsText].filter(Boolean).join(' ');
     const searchIndex = normaliseForSearch(searchSource);
     club._search = searchIndex;
     club._tokens = searchIndex ? searchIndex.split(/\s+/) : [];
     const nameAliases = [club.name].concat(Array.isArray(club.tags) ? club.tags : []);
     club._nameSearch = normaliseForSearch(nameAliases.filter(Boolean).join(' '));
-    club._addressSearch = normaliseForSearch(club.address || '');
+    club._addressSearch = normaliseForSearch(displayAddress || '');
     const communeSlugSource = club.commune || club.name || club.id;
     club.slug = slugify(communeSlugSource || club.id || club.name || 'club');
     club._communeSlug = club.slug;
@@ -1897,10 +1899,11 @@ const handleLocationSubmit = async (event) => {
 
     cardLink.appendChild(header);
 
-    if (club.address) {
+    const displayAddress = club.addressDisplay || club.address || club.siege || '';
+    if (displayAddress) {
       const address = document.createElement('p');
       address.className = 'club-row__address';
-      address.textContent = club.address;
+      address.textContent = displayAddress;
       cardLink.appendChild(address);
     }
 
@@ -1940,6 +1943,13 @@ const handleLocationSubmit = async (event) => {
       coordsLabel.style.fontSize = '13px';
       coordsLabel.style.fontWeight = '600';
       debugBar.appendChild(coordsLabel);
+
+      if (displayAddress) {
+        const addressLabel = document.createElement('span');
+        addressLabel.textContent = `Adresse: ${displayAddress}`;
+        addressLabel.style.fontSize = '13px';
+        debugBar.appendChild(addressLabel);
+      }
 
       const debugButton = document.createElement('button');
       debugButton.type = 'button';

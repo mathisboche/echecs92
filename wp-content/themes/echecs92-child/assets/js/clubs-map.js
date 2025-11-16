@@ -399,6 +399,7 @@
       site: raw.site || raw.website || '',
       postalCode,
       addressStandard: standardAddress,
+      addressDisplay: standardAddress || primaryAddress || secondaryAddress || '',
       latitude,
       longitude,
       slug: slugify(slugSource || id || name || 'club'),
@@ -416,9 +417,21 @@
       return {
         lat: directLat,
         lng: directLng,
-        label: club.commune || club.address || club.name || '',
+        label: club.commune || club.addressStandard || club.address || club.name || '',
         postalCode: club.postalCode || '',
       };
+    }
+
+    if (club.addressStandard) {
+      const addressFallback = lookupLocalCoordinates(club.addressStandard);
+      if (addressFallback) {
+        return {
+          lat: addressFallback.latitude,
+          lng: addressFallback.longitude,
+          label: addressFallback.label || club.addressStandard,
+          postalCode: addressFallback.postalCode || '',
+        };
+      }
     }
 
     if (club.commune) {
@@ -487,8 +500,8 @@
     if (club.commune) {
       lines.push(club.commune);
     }
-    if (club.address) {
-      lines.push(club.address);
+    if (club.addressDisplay) {
+      lines.push(club.addressDisplay);
     }
     const detailUrl = getClubDetailUrl(club);
     lines.push(`<a class="clubs-map__detail-link" href="${detailUrl}">Voir la fiche</a>`);
