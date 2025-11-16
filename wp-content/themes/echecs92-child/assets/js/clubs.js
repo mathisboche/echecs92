@@ -486,7 +486,9 @@
   const MATHIS_TAKEOVER_DURATION = 14000;
   const MATHIS_LINK_TEXT = 'mathisboche.com';
   const MATHIS_REVEAL_DELAY = 650;
+  const MATHIS_LINK_DISPLAY = 2000;
   let mathisTakeoverTimer = null;
+  let mathisReturnTimer = null;
   let mathisEscapeHandler = null;
   let mathisSequenceActive = false;
   let mathisCollapsedTargets = [];
@@ -520,11 +522,44 @@
     mathisCollapsedTargets = [];
   };
 
+  const restoreMathisTargetsSequential = () => {
+    if (!mathisCollapsedTargets.length) {
+      return Promise.resolve();
+    }
+    const order = shuffleArray(mathisCollapsedTargets);
+    return new Promise((resolve) => {
+      order.forEach((element, index) => {
+        const delay = index * 120 + Math.random() * 80;
+        window.setTimeout(() => {
+          const previousVisibility = element.dataset.mathisPrevVisibility;
+          if (typeof previousVisibility !== 'undefined') {
+            element.style.visibility = previousVisibility;
+            delete element.dataset.mathisPrevVisibility;
+          } else if (element.style.visibility === 'hidden') {
+            element.style.visibility = '';
+          }
+          element.removeAttribute('data-mathis-hidden');
+          element.classList.remove('is-mathis-collapsing', 'mathis-collapse-target');
+          element.style.removeProperty('--mathis-dx');
+          element.style.removeProperty('--mathis-dy');
+          if (index === order.length - 1) {
+            mathisCollapsedTargets = [];
+            resolve();
+          }
+        }, delay);
+      });
+    });
+  };
+
   const endMathisTakeover = (options = {}) => {
     mathisSequenceActive = false;
     if (mathisTakeoverTimer) {
       window.clearTimeout(mathisTakeoverTimer);
       mathisTakeoverTimer = null;
+    }
+    if (mathisReturnTimer) {
+      window.clearTimeout(mathisReturnTimer);
+      mathisReturnTimer = null;
     }
     if (mathisEscapeHandler) {
       window.removeEventListener('keydown', mathisEscapeHandler);
@@ -533,7 +568,9 @@
     const overlay = document.getElementById(MATHIS_TAKEOVER_ID);
     const finish = () => {
       overlay?.remove();
-      restoreMathisTargets();
+      if (!options.skipRestore) {
+        restoreMathisTargets();
+      }
       document.body?.classList.remove('mathis-mode');
       if (!options.silent) {
         setSearchStatus('Retour à la réalité des clubs du 92.', 'info');
@@ -649,6 +686,28 @@
     });
   };
 
+  const collapseMathisLink = (overlay) => {
+    const letters = Array.from(overlay.querySelectorAll('.mathis-clean__letter'));
+    if (!letters.length) {
+      return Promise.resolve();
+    }
+    const order = shuffleArray(letters);
+    overlay.classList.remove('is-link-ready');
+    overlay.classList.add('is-link-exiting');
+    return new Promise((resolve) => {
+      order.forEach((letter, index) => {
+        const delay = index * 110 + Math.random() * 70;
+        window.setTimeout(() => {
+          letter.classList.remove('is-visible');
+          letter.classList.add('is-exiting');
+          if (index === order.length - 1) {
+            window.setTimeout(resolve, 500);
+          }
+        }, delay);
+      });
+    });
+  };
+
   const revealMathisLink = (overlay) => {
     if (!mathisSequenceActive) {
       return;
@@ -684,6 +743,11 @@
               return;
             }
             overlay.classList.add('is-link-ready');
+            mathisReturnTimer = window.setTimeout(() => {
+              collapseMathisLink(overlay)
+                .then(() => restoreMathisTargetsSequential())
+                .then(() => endMathisTakeover({ silent: true, skipRestore: true }));
+            }, MATHIS_LINK_DISPLAY);
           }, 400);
         }
       }, delay);

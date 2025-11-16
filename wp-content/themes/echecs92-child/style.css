@@ -2947,6 +2947,11 @@ body.mathis-mode [data-mathis-hidden="true"]{
   transform:translateY(0);
   filter:blur(0);
 }
+.mathis-clean__letter.is-exiting{
+  opacity:0;
+  transform:translateY(-18px);
+  filter:blur(6px);
+}
 .mathis-clean__sr{
   position:absolute;
   width:1px;
