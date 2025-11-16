@@ -100,6 +100,7 @@
 
   const DEBUG_FLAG_KEY = 'echecs92:clubs:debug';
   const DEBUG_CONSOLE_PREFIX = '[clubs-debug]';
+  const DEBUG_INDICATOR_ID = 'clubs-debug-indicator';
   const debugState = {
     active: false,
   };
@@ -136,6 +137,7 @@
     }
     debugState.active = desired;
     persistDebugFlag(desired);
+    updateDebugIndicator();
     if (!options.silent) {
       const message = desired ? 'mode debug discret activé.' : 'mode debug discret désactivé.';
       console.info(`${DEBUG_CONSOLE_PREFIX} ${message}`);
@@ -219,6 +221,40 @@
     }
   };
 
+  const updateDebugIndicator = () => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    let indicator = document.getElementById(DEBUG_INDICATOR_ID);
+    if (!debugState.active) {
+      if (indicator) {
+        indicator.remove();
+      }
+      document.documentElement?.removeAttribute('data-clubs-debug');
+      return;
+    }
+    document.documentElement?.setAttribute('data-clubs-debug', 'active');
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.id = DEBUG_INDICATOR_ID;
+      indicator.setAttribute('role', 'status');
+      indicator.style.position = 'fixed';
+      indicator.style.zIndex = '9999';
+      indicator.style.top = '12px';
+      indicator.style.right = '12px';
+      indicator.style.padding = '6px 12px';
+      indicator.style.background = 'rgba(220, 53, 69, 0.9)';
+      indicator.style.color = '#fff';
+      indicator.style.fontSize = '13px';
+      indicator.style.fontWeight = '600';
+      indicator.style.borderRadius = '999px';
+      indicator.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.25)';
+      indicator.style.pointerEvents = 'none';
+    }
+    indicator.textContent = 'Mode debug clubs actif';
+    document.body?.appendChild(indicator);
+  };
+
   const handleDebugHotkey = (event) => {
     if (!event || event.defaultPrevented) {
       return;
@@ -236,6 +272,13 @@
   debugState.active = loadDebugFlag();
   if (debugState.active) {
     console.info(`${DEBUG_CONSOLE_PREFIX} mode debug discret actif (session).`);
+  }
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => updateDebugIndicator());
+    } else {
+      updateDebugIndicator();
+    }
   }
   registerDebugApi();
   if (typeof window !== 'undefined') {
@@ -1610,8 +1653,15 @@ const handleLocationSubmit = async (event) => {
     cardLink.href = getClubDetailUrl(club);
     cardLink.setAttribute('aria-label', `Voir la fiche du club ${club.name}`);
 
-    const handleDebugIntent = (event) => {
-      if (!isDebugMode() || !event.altKey) {
+    const handleNavigationIntent = (event) => {
+      if (event.type === 'auxclick' && event.button !== 1) {
+        return;
+      }
+      rememberClubsNavigation('detail:list', '/clubs');
+    };
+
+    const handleDebugDoubleClick = (event) => {
+      if (!isDebugMode()) {
         return;
       }
       event.preventDefault();
@@ -1619,20 +1669,9 @@ const handleLocationSubmit = async (event) => {
       openClubDebugView(club);
     };
 
-    const handleNavigationIntent = (event) => {
-      if (event.type === 'auxclick' && event.button !== 1) {
-        return;
-      }
-      if (isDebugMode() && event.altKey) {
-        return;
-      }
-      rememberClubsNavigation('detail:list', '/clubs');
-    };
-
-    cardLink.addEventListener('click', handleDebugIntent, true);
-    cardLink.addEventListener('auxclick', handleDebugIntent, true);
     cardLink.addEventListener('click', handleNavigationIntent);
     cardLink.addEventListener('auxclick', handleNavigationIntent);
+    cardLink.addEventListener('dblclick', handleDebugDoubleClick);
 
     const header = document.createElement('div');
     header.className = 'club-row__top';
