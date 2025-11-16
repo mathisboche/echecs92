@@ -183,6 +183,56 @@
     return result;
   };
 
+  const STREET_KEYWORDS =
+    /\b(rue|avenue|av\.?|boulevard|bd|place|route|chemin|impasse|all[ée]e|voie|quai|cours|passage|square|sentier|mail|esplanade|terrasse|pont|faubourg|clos|cité|cite|hameau|lotissement|residence|résidence|allee)\b/i;
+
+  const simplifyStreetSegment = (value) => {
+    if (!value) {
+      return '';
+    }
+    const cleaned = value.replace(/\([^)]*\)/g, ' ');
+    const parts = cleaned
+      .split(/[,;/]+/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (!parts.length) {
+      return cleaned.replace(/\s+/g, ' ').trim();
+    }
+    const tests = [
+      (part) => /\b\d+[\p{L}]?\b/iu.test(part) && STREET_KEYWORDS.test(part),
+      (part) => STREET_KEYWORDS.test(part),
+      (part) => /\b\d+[\p{L}]?\b/iu.test(part),
+    ];
+    for (const test of tests) {
+      const match = parts.find((part) => test(part));
+      if (match) {
+        return match.replace(/\s+/g, ' ').trim();
+      }
+    }
+    return parts[0];
+  };
+
+  const buildStandardAddress = (primaryAddress, secondaryAddress, postalCode, city) => {
+    const street =
+      simplifyStreetSegment(primaryAddress) || simplifyStreetSegment(secondaryAddress) || '';
+    const formattedCity = formatCommune(city);
+    const components = [];
+    if (street) {
+      components.push(street);
+    }
+    const localityParts = [];
+    if (postalCode) {
+      localityParts.push(postalCode);
+    }
+    if (formattedCity) {
+      localityParts.push(formattedCity);
+    }
+    if (localityParts.length) {
+      components.push(localityParts.join(' ').trim());
+    }
+    return components.join(', ').trim();
+  };
+
   const formatCommune = (value) => {
     if (!value) {
       return '';
@@ -330,7 +380,7 @@
     if (club.postalCode) {
       codes.add(club.postalCode);
     }
-    [club.address, club.siege].forEach((value) => {
+    [club.address, club.siege, club.addressStandard].forEach((value) => {
       const matches = (value || '').match(/\b\d{5}\b/g);
       if (matches) {
         matches.forEach((code) => codes.add(code));
@@ -353,6 +403,18 @@
         label: club.commune || club.name || '',
         postalCode: club.postalCode || '',
       };
+    }
+
+    if (club.addressStandard) {
+      const addressFallback = lookupLocalCoordinates(club.addressStandard);
+      if (addressFallback) {
+        return {
+          lat: addressFallback.latitude,
+          lng: addressFallback.longitude,
+          label: addressFallback.label || club.addressStandard,
+          postalCode: addressFallback.postalCode || '',
+        };
+      }
     }
 
     if (club.commune) {
@@ -386,7 +448,14 @@
   };
 
   const buildDirectionsUrl = (coords, club) => {
-    const addressCandidate = (club?.address || club?.siege || coords?.label || club?.commune || '').trim();
+    const addressCandidate = (
+      club?.addressStandard ||
+      club?.address ||
+      club?.siege ||
+      coords?.label ||
+      club?.commune ||
+      ''
+    ).trim();
     let destinationValue = '';
     if (addressCandidate) {
       destinationValue = addressCandidate;
@@ -512,6 +581,12 @@
     const commune = formatCommune(communeRaw);
     const postalCode = raw.code_postal || raw.postal_code || addressParts.postalCode || secondaryParts.postalCode || '';
     const slugSource = commune || name || postalCode || primaryAddress || secondaryAddress;
+    const standardAddress = buildStandardAddress(
+      primaryAddress,
+      secondaryAddress,
+      postalCode,
+      commune || addressParts.city || secondaryParts.city || ''
+    );
     const id = raw.id || slugify(name || slugSource || `club-${generatedIdCounter + 1}`);
 
     const rawSite = raw.site || raw.website || '';
@@ -548,6 +623,7 @@
       commune,
       address: primaryAddress || secondaryAddress || '',
       siege: secondaryAddress || '',
+      addressStandard: standardAddress,
       phone: raw.telephone || raw.phone || '',
       email: raw.email || '',
       site,
