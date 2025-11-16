@@ -483,7 +483,9 @@
   };
 
   const MATHIS_TAKEOVER_ID = 'mathis-takeover';
-  const MATHIS_TAKEOVER_DURATION = 10000;
+  const MATHIS_TAKEOVER_DURATION = 14000;
+  const MATHIS_LINK_TEXT = 'mathisboche.com';
+  const MATHIS_REVEAL_DELAY = 2400;
   let mathisTakeoverTimer = null;
   let mathisEscapeHandler = null;
 
@@ -525,34 +527,87 @@
     overlay.setAttribute('aria-modal', 'true');
     overlay.setAttribute('tabindex', '-1');
     overlay.innerHTML = `
-      <div class="mathis-takeover__nebula" aria-hidden="true"></div>
-      <div class="mathis-takeover__grid" aria-hidden="true"></div>
-      <div class="mathis-takeover__pulse" aria-hidden="true"></div>
-      <div class="mathis-takeover__orbs" aria-hidden="true">
-        <span class="mathis-orb mathis-orb--one"></span>
-        <span class="mathis-orb mathis-orb--two"></span>
-        <span class="mathis-orb mathis-orb--three"></span>
+      <div class="mathis-static" aria-hidden="true"></div>
+      <div class="mathis-waves" aria-hidden="true"></div>
+      <div class="mathis-fragments" aria-hidden="true"></div>
+      <div class="mathis-rings" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
       </div>
-      <div class="mathis-takeover__content">
-        <p class="mathis-takeover__tag">Signature secrète de Mathis</p>
-        <h2 class="mathis-takeover__title">Mathis Boche prend le contrôle du site</h2>
-        <p class="mathis-takeover__text">
-          Ce clin d'œil vient directement du concepteur du site. Pendant quelques secondes,
-          tout l'univers des clubs s'habille des couleurs de <strong>mathisboche.com</strong>.
-          Respirez, regardez le spectacle et cliquez si vous voulez prolonger cette parenthèse.
-        </p>
-        <div class="mathis-takeover__actions">
-          <a class="btn mathis-takeover__cta" href="https://mathisboche.com" target="_blank" rel="noopener noreferrer">
-            Explorer mathisboche.com
-          </a>
-          <button type="button" class="btn btn-secondary mathis-takeover__skip">
-            Terminer le show
-          </button>
-        </div>
-        <p class="mathis-takeover__note">Message perso de Mathis&nbsp;: merci de visiter le site du Comité, on se retrouve bientôt sur ma console&nbsp;!</p>
+      <div class="mathis-link">
+        <div class="mathis-link__beam" aria-hidden="true"></div>
+        <a class="mathis-link__anchor" target="_blank" rel="noopener noreferrer">
+          <span class="mathis-link__letters" aria-hidden="true"></span>
+          <span class="mathis-link__sr">${MATHIS_LINK_TEXT}</span>
+        </a>
       </div>
     `;
     return overlay;
+  };
+
+  const seedMathisFragments = (overlay) => {
+    const container = overlay.querySelector('.mathis-fragments');
+    if (!container) {
+      return;
+    }
+    container.innerHTML = '';
+    const total = 28;
+    for (let i = 0; i < total; i += 1) {
+      const shard = document.createElement('span');
+      shard.style.setProperty('--index', i);
+      shard.style.setProperty('--pos-x', `${Math.random() * 100}%`);
+      shard.style.setProperty('--pos-y', `${Math.random() * 100}%`);
+      shard.style.setProperty('--angle', `${Math.random() * 200 - 100}deg`);
+      shard.style.setProperty('--delay', `${Math.random() * 4}s`);
+      container.appendChild(shard);
+    }
+  };
+
+  const animateMathisLetters = (overlay) => {
+    const lettersHost = overlay.querySelector('.mathis-link__letters');
+    const anchor = overlay.querySelector('.mathis-link__anchor');
+    if (!lettersHost || !anchor) {
+      return;
+    }
+    anchor.setAttribute('href', 'https://mathisboche.com');
+    anchor.setAttribute('target', '_blank');
+    anchor.setAttribute('rel', 'noopener noreferrer');
+    lettersHost.innerHTML = '';
+    const letters = MATHIS_LINK_TEXT.split('');
+    const spans = letters.map((char, index) => {
+      const span = document.createElement('span');
+      span.className = 'mathis-letter';
+      span.textContent = char;
+      span.style.setProperty('--char-index', index);
+      lettersHost.appendChild(span);
+      return span;
+    });
+    overlay.classList.add('is-link-seeded');
+    const revealBaseline = MATHIS_REVEAL_DELAY;
+    spans.forEach((span, index) => {
+      const delay = revealBaseline + index * 130 + Math.random() * 90;
+      window.setTimeout(() => {
+        span.classList.add('is-visible');
+      }, delay);
+    });
+    const finishDelay = revealBaseline + spans.length * 140 + 800;
+    window.setTimeout(() => {
+      overlay.classList.add('is-link-ready');
+      anchor.classList.add('is-armed');
+    }, finishDelay);
+  };
+
+  const startMathisSequence = (overlay) => {
+    seedMathisFragments(overlay);
+    overlay.classList.add('is-chaos');
+    window.setTimeout(() => overlay.classList.add('is-rift'), 600);
+    const linkBlock = overlay.querySelector('.mathis-link');
+    window.setTimeout(() => {
+      overlay.classList.add('is-link-phase');
+      linkBlock?.classList.add('is-visible');
+    }, 1700);
+    animateMathisLetters(overlay);
   };
 
   const showMathisBocheSpectacle = () => {
@@ -564,21 +619,13 @@
     }
     if (document.getElementById(MATHIS_TAKEOVER_ID)) {
       return {
-        message: 'Le show de Mathis est déjà lancé, profitez-en !',
-        tone: 'info',
+        suppressStatus: true,
       };
     }
     const overlay = buildMathisTakeoverOverlay();
     if (!overlay) {
       return null;
     }
-    const skipButton = overlay.querySelector('.mathis-takeover__skip');
-    skipButton?.addEventListener('click', () => endMathisTakeover());
-    overlay.addEventListener('click', (event) => {
-      if (event.target === overlay) {
-        endMathisTakeover();
-      }
-    });
     mathisEscapeHandler = (event) => {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -590,10 +637,10 @@
     document.body?.classList.add('mathis-mode');
     document.documentElement?.classList.add('mathis-mode');
     overlay.focus();
+    startMathisSequence(overlay);
     mathisTakeoverTimer = window.setTimeout(() => endMathisTakeover(), MATHIS_TAKEOVER_DURATION);
     return {
-      message: 'Mathis Boche prend le contrôle pendant quelques secondes. Profitez du spectacle !',
-      tone: 'success',
+      suppressStatus: true,
     };
   };
 
@@ -1203,8 +1250,17 @@
       searchInput.value = '';
     }
     if (typeof setSearchStatus === 'function') {
-      if (result && typeof result === 'object' && result.message) {
-        setSearchStatus(result.message, result.tone || 'info');
+      if (result && typeof result === 'object') {
+        if (result.suppressStatus) {
+          setSearchStatus('', 'info');
+        } else if (result.message) {
+          setSearchStatus(result.message, result.tone || 'info');
+        } else {
+          const message = isDebugMode()
+            ? 'Mode debug activé via commande discrète.'
+            : 'Mode debug désactivé.';
+          setSearchStatus(message, 'info');
+        }
       } else if (typeof result === 'string') {
         setSearchStatus(result, 'info');
       } else {
