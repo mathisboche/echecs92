@@ -743,6 +743,17 @@
     return components.join(', ').trim();
   };
 
+  const looksLikeDetailedAddress = (value) => {
+    const raw = (value || '').toString().trim();
+    if (!raw) {
+      return false;
+    }
+    if (!/\d/.test(raw)) {
+      return false;
+    }
+    return STREET_KEYWORDS.test(raw);
+  };
+
   const formatCommune = (value) => {
     if (!value) {
       return '';
@@ -1556,8 +1567,19 @@ const handleLocationSubmit = async (event) => {
     const releaseButton = beginButtonWait(locationApplyButton, 'Recherche…');
 
     try {
-      let coords = lookupLocalCoordinates(raw);
+      const looksLikeAddress = looksLikeDetailedAddress(raw);
+      let coords = null;
+      if (looksLikeAddress) {
+        try {
+          coords = await geocodePlace(raw);
+        } catch {
+          coords = null;
+        }
+      }
       if (!coords) {
+        coords = lookupLocalCoordinates(raw);
+      }
+      if (!coords && !looksLikeAddress) {
         try {
           coords = await geocodePlace(raw);
         } catch {
