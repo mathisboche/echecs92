@@ -486,7 +486,7 @@
   const MATHIS_TAKEOVER_DURATION = 14000;
   const MATHIS_LINK_TEXT = 'mathisboche.com';
   const MATHIS_REVEAL_DELAY = 650;
-  const MATHIS_LINK_DISPLAY = 2000;
+  const MATHIS_LINK_DISPLAY = 5000;
   let mathisTakeoverTimer = null;
   let mathisReturnTimer = null;
   let mathisEscapeHandler = null;
@@ -746,7 +746,7 @@
             mathisReturnTimer = window.setTimeout(() => {
               collapseMathisLink(overlay)
                 .then(() => restoreMathisTargetsSequential())
-                .then(() => endMathisTakeover({ silent: true, skipRestore: true }));
+                .then(() => endMathisTakeover({ silent: true }));
             }, MATHIS_LINK_DISPLAY);
           }, 400);
         }
