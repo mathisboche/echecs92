@@ -2397,6 +2397,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   font-weight:650;
   color:#0f172a;
 }
+.gov-card__name--mathis{
+  cursor:pointer;
+}
 .committee-docs__list{
   list-style:none;
   margin:0;
