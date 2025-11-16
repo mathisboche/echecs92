@@ -69,22 +69,6 @@
   totalCounter.className = 'clubs-total';
   totalCounter.setAttribute('aria-live', 'polite');
   resultsEl.before(totalCounter);
-  const debugToggleButton = document.createElement('button');
-  debugToggleButton.type = 'button';
-  debugToggleButton.className = 'clubs-debug-toggle';
-  debugToggleButton.style.margin = '0 0 24px';
-  debugToggleButton.style.padding = '6px 14px';
-  debugToggleButton.style.borderRadius = '999px';
-  debugToggleButton.style.border = '1px solid #dc3545';
-  debugToggleButton.style.background = '#fff';
-  debugToggleButton.style.color = '#dc3545';
-  debugToggleButton.style.fontSize = '13px';
-  debugToggleButton.style.cursor = 'pointer';
-  debugToggleButton.style.alignSelf = 'flex-start';
-  debugToggleButton.addEventListener('click', () => {
-    setDebugMode(!isDebugMode());
-  });
-  totalCounter.after(debugToggleButton);
 
   const rememberClubsNavigation = (context, backPath) => {
     try {
@@ -279,18 +263,6 @@
     document.body?.appendChild(indicator);
   };
 
-  const updateDebugToggleButton = () => {
-    if (!debugToggleButton) {
-      return;
-    }
-    if (debugState.active) {
-      debugToggleButton.textContent = 'Désactiver le mode debug';
-      debugToggleButton.setAttribute('aria-pressed', 'true');
-    } else {
-      debugToggleButton.textContent = 'Activer le mode debug';
-      debugToggleButton.setAttribute('aria-pressed', 'false');
-    }
-  };
 
   const updateDebugPanel = () => {
     if (typeof document === 'undefined') {
@@ -368,7 +340,6 @@
   };
 
   debugState.active = loadDebugFlag();
-  updateDebugToggleButton();
   if (debugState.active) {
     console.info(`${DEBUG_CONSOLE_PREFIX} mode debug discret actif (session).`);
   }
