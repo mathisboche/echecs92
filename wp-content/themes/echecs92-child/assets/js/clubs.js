@@ -98,6 +98,141 @@
     sortMode: 'default',
   };
 
+  const DEBUG_FLAG_KEY = 'echecs92:clubs:debug';
+  const DEBUG_CONSOLE_PREFIX = '[clubs-debug]';
+  const debugState = {
+    active: false,
+  };
+
+  const loadDebugFlag = () => {
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        return window.sessionStorage.getItem(DEBUG_FLAG_KEY) === '1';
+      }
+    } catch {
+      // ignore storage issues
+    }
+    return false;
+  };
+
+  const persistDebugFlag = (value) => {
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        if (value) {
+          window.sessionStorage.setItem(DEBUG_FLAG_KEY, '1');
+        } else {
+          window.sessionStorage.removeItem(DEBUG_FLAG_KEY);
+        }
+      }
+    } catch {
+      // ignore storage issues
+    }
+  };
+
+  const setDebugMode = (nextActive, options = {}) => {
+    const desired = Boolean(nextActive);
+    if (debugState.active === desired) {
+      return;
+    }
+    debugState.active = desired;
+    persistDebugFlag(desired);
+    if (!options.silent) {
+      const message = desired ? 'mode debug discret activé.' : 'mode debug discret désactivé.';
+      console.info(`${DEBUG_CONSOLE_PREFIX} ${message}`);
+    }
+  };
+
+  const toggleDebugMode = () => {
+    setDebugMode(!debugState.active);
+  };
+
+  const isDebugMode = () => debugState.active;
+
+  const describeClubForDebug = (club) => {
+    if (!club) {
+      return null;
+    }
+    const lat = Number.parseFloat(club.latitude ?? club.lat);
+    const lng = Number.parseFloat(club.longitude ?? club.lng ?? club.lon);
+    return {
+      id: club.id,
+      slug: club.slug,
+      name: club.name,
+      commune: club.commune,
+      latitude: Number.isFinite(lat) ? lat : null,
+      longitude: Number.isFinite(lng) ? lng : null,
+      source: club.address || club.commune || '',
+    };
+  };
+
+  const findClubByIdentifier = (identifier) => {
+    if (!identifier) {
+      return null;
+    }
+    const value = identifier.toString().trim();
+    if (!value) {
+      return null;
+    }
+    const lowerValue = value.toLowerCase();
+    return (
+      state.clubs.find((club) => club.id === value || club.slug === value) ||
+      state.clubs.find((club) => club.name && club.name.toLowerCase() === lowerValue) ||
+      state.clubs.find((club) => club.slug && club.slug.toLowerCase() === lowerValue)
+    );
+  };
+
+  const openClubFromDebug = (identifier) => {
+    const target = findClubByIdentifier(identifier);
+    if (!target) {
+      console.warn(`${DEBUG_CONSOLE_PREFIX} Aucun club trouvé pour "${identifier}".`);
+      return false;
+    }
+    openClubDebugView(target);
+    return true;
+  };
+
+  const debugApi = {
+    isActive: () => debugState.active,
+    toggle: () => toggleDebugMode(),
+    list: () => state.clubs.map((club) => describeClubForDebug(club)),
+    open: (identifier) => openClubFromDebug(identifier),
+  };
+
+  const registerDebugApi = () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (!window.__e92ClubsDebug) {
+      Object.defineProperty(window, '__e92ClubsDebug', {
+        value: debugApi,
+        configurable: false,
+        enumerable: false,
+        writable: false,
+      });
+    }
+  };
+
+  const handleDebugHotkey = (event) => {
+    if (!event || event.defaultPrevented) {
+      return;
+    }
+    const key = event.key || '';
+    if (event.ctrlKey && event.altKey && event.shiftKey && (key === 'd' || key === 'D')) {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleDebugMode();
+    }
+  };
+
+  debugState.active = loadDebugFlag();
+  if (debugState.active) {
+    console.info(`${DEBUG_CONSOLE_PREFIX} mode debug discret actif (session).`);
+  }
+  registerDebugApi();
+  if (typeof window !== 'undefined') {
+    window.addEventListener('keydown', handleDebugHotkey, true);
+  }
+
   const parseLicenseValue = (value) => {
     if (value == null || value === '') {
       return 0;
@@ -586,6 +721,42 @@
     club._distanceCoords = null;
     return null;
   };
+
+  function openClubDebugView(club) {
+    if (!club) {
+      return;
+    }
+    const coords = resolveClubDistanceCoordinates(club);
+    const openExternal = (url) => {
+      if (typeof window !== 'undefined' && url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    };
+    if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
+      const lat = Number.parseFloat(coords.lat);
+      const lng = Number.parseFloat(coords.lng);
+      const preciseLat = Number.isFinite(lat) ? lat : coords.lat;
+      const preciseLng = Number.isFinite(lng) ? lng : coords.lng;
+      if (isDebugMode()) {
+        console.info(
+          `${DEBUG_CONSOLE_PREFIX} ${club.name || club.id}: ${preciseLat}, ${preciseLng} (${coords.label || 'sans libellé'})`
+        );
+      }
+      const url = `https://www.openstreetmap.org/?mlat=${preciseLat}&mlon=${preciseLng}#map=18/${preciseLat}/${preciseLng}`;
+      openExternal(url);
+      return;
+    }
+    const fallbackQuery = club.address || club.commune || club.name || '';
+    if (fallbackQuery) {
+      const encoded = encodeURIComponent(fallbackQuery);
+      if (isDebugMode()) {
+        console.warn(`${DEBUG_CONSOLE_PREFIX} Coordonnées absentes, ouverture de la recherche "${fallbackQuery}".`);
+      }
+      openExternal(`https://www.google.com/maps/search/?api=1&query=${encoded}`);
+    } else if (isDebugMode()) {
+      console.warn(`${DEBUG_CONSOLE_PREFIX} Impossible d'ouvrir le club ${club.id || club.name || 'inconnu'}.`);
+    }
+  }
 
   const haversineKm = (lat1, lon1, lat2, lon2) => {
     const R = 6371;
@@ -1409,12 +1580,27 @@ const handleLocationSubmit = async (event) => {
     cardLink.href = getClubDetailUrl(club);
     cardLink.setAttribute('aria-label', `Voir la fiche du club ${club.name}`);
 
+    const handleDebugIntent = (event) => {
+      if (!isDebugMode() || !event.altKey) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      openClubDebugView(club);
+    };
+
     const handleNavigationIntent = (event) => {
       if (event.type === 'auxclick' && event.button !== 1) {
         return;
       }
+      if (isDebugMode() && event.altKey) {
+        return;
+      }
       rememberClubsNavigation('detail:list', '/clubs');
     };
+
+    cardLink.addEventListener('click', handleDebugIntent, true);
+    cardLink.addEventListener('auxclick', handleDebugIntent, true);
     cardLink.addEventListener('click', handleNavigationIntent);
     cardLink.addEventListener('auxclick', handleNavigationIntent);
 
