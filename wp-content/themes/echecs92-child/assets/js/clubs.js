@@ -138,9 +138,15 @@
     }
     debugState.active = desired;
     persistDebugFlag(desired);
-    updateDebugToggleButton();
     updateDebugIndicator();
     updateDebugPanel();
+    if (typeof document !== 'undefined') {
+      if (debugState.active) {
+        document.documentElement?.setAttribute('data-clubs-debug', 'active');
+      } else {
+        document.documentElement?.removeAttribute('data-clubs-debug');
+      }
+    }
     if (desired && (state.clubs.length || state.filtered.length)) {
       renderResults();
     } else if (!desired && (state.clubs.length || state.filtered.length)) {
@@ -206,6 +212,8 @@
     [':debug+', () => setDebugMode(true)],
     [':debug-', () => setDebugMode(false)],
     ['debug92', () => toggleDebugMode()],
+    [':sansdebug', () => setDebugMode(false)],
+    [':debugmode', () => setDebugMode(true)],
   ]);
 
   const debugApi = {
@@ -881,7 +889,7 @@
     }
   }
 
-  const tryHandleSecretCommand = (rawValue) => {
+  const tryHandleSecretCommand = (rawValue, options = {}) => {
     const raw = rawValue != null ? String(rawValue) : '';
     const trimmed = raw.trim();
     if (!trimmed) {
@@ -892,7 +900,7 @@
     if (!handler) {
       return false;
     }
-    handler();
+    handler({ immediate: Boolean(options.immediate) });
     if (searchInput) {
       searchInput.value = '';
     }
@@ -1998,11 +2006,11 @@ const handleLocationSubmit = async (event) => {
       searchInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
           event.preventDefault();
+          if (tryHandleSecretCommand(searchInput.value)) {
+            return;
+          }
           performSearch();
         }
-      });
-      searchInput.addEventListener('input', () => {
-        tryHandleSecretCommand(searchInput.value);
       });
     }
     locationApplyButton?.addEventListener('click', handleLocationSubmit);
