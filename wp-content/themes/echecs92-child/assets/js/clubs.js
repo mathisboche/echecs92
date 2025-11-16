@@ -588,11 +588,11 @@
     overlay.setAttribute('role', 'presentation');
     overlay.setAttribute('tabindex', '-1');
     overlay.innerHTML = `
+      <button class="mathis-clean__close" type="button" aria-label="Fermer l'effet visuel">
+        <span></span>
+        <span></span>
+      </button>
       <div class="mathis-clean__link">
-        <button class="mathis-clean__close" type="button" aria-label="Fermer l'effet visuel">
-          <span></span>
-          <span></span>
-        </button>
         <a class="mathis-clean__anchor" rel="noopener noreferrer" target="_blank">
           <span class="mathis-clean__letters" aria-hidden="true"></span>
           <span class="mathis-clean__sr">${MATHIS_LINK_TEXT}</span>

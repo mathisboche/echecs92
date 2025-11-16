@@ -2969,8 +2969,8 @@ body.mathis-mode [data-mathis-hidden="true"]{
   color:#111827;
   outline:none;
 }
-.mathis-clean__anchor:hover::after,
-.mathis-clean__anchor:focus-visible::after{
+.mathis-clean.is-link-ready .mathis-clean__anchor:hover::after,
+.mathis-clean.is-link-ready .mathis-clean__anchor:focus-visible::after{
   transform:scaleX(1);
 }
 .mathis-clean__letters{
