@@ -2397,6 +2397,29 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   font-weight:650;
   color:#0f172a;
 }
+.gov-card__name--mathis{
+  cursor:pointer;
+  color:#1d4ed8;
+  position:relative;
+}
+.gov-card__name--mathis::after{
+  content:"";
+  position:absolute;
+  left:0;
+  bottom:-3px;
+  width:0;
+  height:2px;
+  background:#1d4ed8;
+  transition:width .3s ease;
+}
+.gov-card__name--mathis:hover::after,
+.gov-card__name--mathis:focus-visible::after{
+  width:100%;
+}
+.gov-card__name--mathis:focus-visible{
+  outline:2px solid rgba(29,78,216,0.65);
+  outline-offset:2px;
+}
 .committee-docs__list{
   list-style:none;
   margin:0;

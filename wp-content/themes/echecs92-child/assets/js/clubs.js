@@ -47,9 +47,7 @@
   const GEOCODE_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
 
   const resultsEl = document.getElementById('clubs-results');
-  if (!resultsEl) {
-    return;
-  }
+  const detailBase = resultsEl?.dataset?.detailBase || '';
 
   const searchInput = document.getElementById('clubs-search');
   const searchButton = document.getElementById('clubs-search-btn');
@@ -65,10 +63,13 @@
   const sortButtons = document.querySelectorAll('[data-club-sort]');
   const mapCtaLink = document.querySelector('.clubs-map-box__cta');
 
-  const totalCounter = document.createElement('p');
-  totalCounter.className = 'clubs-total';
-  totalCounter.setAttribute('aria-live', 'polite');
-  resultsEl.before(totalCounter);
+  let totalCounter = null;
+  if (resultsEl) {
+    totalCounter = document.createElement('p');
+    totalCounter.className = 'clubs-total';
+    totalCounter.setAttribute('aria-live', 'polite');
+    resultsEl.before(totalCounter);
+  }
 
   const rememberClubsNavigation = (context, backPath) => {
     try {
@@ -2332,7 +2333,7 @@ const handleLocationSubmit = async (event) => {
     if (!clubId) {
       return '#';
     }
-    const base = resultsEl.dataset.detailBase || '';
+    const base = detailBase || '';
     if (!base) {
       return `?club=${encodeURIComponent(clubId)}`;
     }
@@ -2504,6 +2505,10 @@ const handleLocationSubmit = async (event) => {
   };
 
   const updateTotalCounter = () => {
+    if (!totalCounter) {
+      return;
+    }
+
     const total = state.clubs.length;
     const filtered = state.filtered.length;
     const visible = Math.min(state.visibleCount, filtered);
@@ -2549,6 +2554,10 @@ const handleLocationSubmit = async (event) => {
   };
 
   const renderResults = () => {
+    if (!resultsEl) {
+      return;
+    }
+
     if (!state.filtered.length) {
       const message = state.clubs.length
         ? 'Aucun club ne correspond à votre recherche.'
@@ -2624,8 +2633,12 @@ const handleLocationSubmit = async (event) => {
         }
       })
       .catch(() => {
-        resultsEl.innerHTML = '<p class="clubs-error">Impossible de charger la liste des clubs pour le moment. Veuillez réessayer plus tard.</p>';
-        totalCounter.textContent = '';
+        if (resultsEl) {
+          resultsEl.innerHTML = '<p class="clubs-error">Impossible de charger la liste des clubs pour le moment. Veuillez réessayer plus tard.</p>';
+        }
+        if (totalCounter) {
+          totalCounter.textContent = '';
+        }
         setSearchStatus('Erreur lors du chargement de la liste des clubs.', 'error');
       });
 
@@ -2660,5 +2673,11 @@ const handleLocationSubmit = async (event) => {
     updateSortButtons();
   };
 
-  init();
+  if (typeof window !== 'undefined') {
+    window.cdje92ShowMathisSpectacle = showMathisBocheSpectacle;
+  }
+
+  if (resultsEl) {
+    init();
+  }
 })();

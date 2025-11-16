@@ -115,12 +115,10 @@
     </div>
   </section>
 </div>
+<script src="/wp-content/themes/echecs92-child/assets/js/clubs.js" defer></script>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     var valueElements = document.querySelectorAll('.figure-card__value[data-fig-value]');
-    if (!valueElements.length) {
-      return;
-    }
 
     var format = function (value) {
       try {
@@ -134,11 +132,39 @@
       var targetValue = Number(el.dataset.figValue || 0);
       var suffix = el.dataset.figSuffix || '';
 
-      if (!Number.isFinite(targetValue)) {
-        return;
+      if (Number.isFinite(targetValue)) {
+        el.textContent = format(targetValue) + suffix;
       }
+    });
 
-      el.textContent = format(targetValue) + suffix;
+    var mathisTrigger = Array.from(document.querySelectorAll('.gov-card__name')).find(function (node) {
+      return (node.textContent || '').trim().toLowerCase() === 'mathis boche';
+    });
+
+    if (!mathisTrigger) {
+      return;
+    }
+
+    mathisTrigger.classList.add('gov-card__name--mathis');
+    mathisTrigger.setAttribute('role', 'button');
+    mathisTrigger.setAttribute('tabindex', '0');
+    mathisTrigger.setAttribute('aria-label', 'Découvrir le clin d’œil Mathis Boche');
+
+    var launchMathis = function (event) {
+      if (event) {
+        event.preventDefault();
+      }
+      if (typeof window.cdje92ShowMathisSpectacle === 'function') {
+        window.cdje92ShowMathisSpectacle();
+      }
+    };
+
+    mathisTrigger.addEventListener('click', launchMathis);
+    mathisTrigger.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        launchMathis();
+      }
     });
   });
 </script>
