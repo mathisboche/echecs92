@@ -486,9 +486,7 @@
   const MATHIS_TAKEOVER_DURATION = 14000;
   const MATHIS_LINK_TEXT = 'mathisboche.com';
   const MATHIS_REVEAL_DELAY = 650;
-  const MATHIS_LINK_DISPLAY = 5000;
   let mathisTakeoverTimer = null;
-  let mathisReturnTimer = null;
   let mathisEscapeHandler = null;
   let mathisSequenceActive = false;
   let mathisCollapsedTargets = [];
@@ -531,7 +529,7 @@
     return new Promise((resolve) => {
       let restoredCount = 0;
       order.forEach((element, index) => {
-        const delay = index * 120 + Math.random() * 80;
+        const delay = index * 130 + Math.random() * 90;
         window.setTimeout(() => {
           const previousVisibility = element.dataset.mathisPrevVisibility;
           if (typeof previousVisibility !== 'undefined') {
@@ -542,7 +540,11 @@
           }
           element.removeAttribute('data-mathis-hidden');
           element.classList.remove('is-mathis-collapsing');
-          const finalize = () => {
+          element.classList.add('is-mathis-restoring');
+          requestAnimationFrame(() => {
+            element.classList.remove('is-mathis-restoring');
+          });
+          window.setTimeout(() => {
             element.classList.remove('mathis-collapse-target');
             element.style.removeProperty('--mathis-dx');
             element.style.removeProperty('--mathis-dy');
@@ -551,8 +553,7 @@
               mathisCollapsedTargets = [];
               resolve();
             }
-          };
-          window.setTimeout(finalize, 480);
+          }, 520);
         }, delay);
       });
     });
@@ -560,13 +561,10 @@
 
   const endMathisTakeover = (options = {}) => {
     mathisSequenceActive = false;
+    mathisExitStarted = false;
     if (mathisTakeoverTimer) {
       window.clearTimeout(mathisTakeoverTimer);
       mathisTakeoverTimer = null;
-    }
-    if (mathisReturnTimer) {
-      window.clearTimeout(mathisReturnTimer);
-      mathisReturnTimer = null;
     }
     if (mathisEscapeHandler) {
       window.removeEventListener('keydown', mathisEscapeHandler);
@@ -602,6 +600,10 @@
     overlay.setAttribute('tabindex', '-1');
     overlay.innerHTML = `
       <div class="mathis-clean__link">
+        <button class="mathis-clean__close" type="button" aria-label="Fermer l'effet visuel">
+          <span></span>
+          <span></span>
+        </button>
         <a class="mathis-clean__anchor" rel="noopener noreferrer" target="_blank">
           <span class="mathis-clean__letters" aria-hidden="true"></span>
           <span class="mathis-clean__sr">${MATHIS_LINK_TEXT}</span>
@@ -636,9 +638,12 @@
         collection.add(node);
       });
     });
-    const targets = Array.from(collection).filter((element) => element && element !== document.body && element !== document.documentElement);
-    return targets.length
-      ? targets
+    const rawTargets = Array.from(collection).filter((element) => element && element !== document.body && element !== document.documentElement);
+    const filteredTargets = rawTargets.filter(
+      (element, index, array) => !array.some((other, otherIndex) => otherIndex !== index && other.contains(element))
+    );
+    return filteredTargets.length
+      ? filteredTargets
       : Array.from(document.body.children).filter((element) => element.tagName !== 'SCRIPT' && element.tagName !== 'STYLE' && element.id !== MATHIS_TAKEOVER_ID);
   };
 
@@ -648,18 +653,11 @@
       return Promise.resolve();
     }
     const order = shuffleArray(valid);
+    mathisCollapsedTargets = order.slice();
     return new Promise((resolve) => {
       let completed = 0;
       order.forEach((element, index) => {
-        element.classList.add('mathis-collapse-target');
-        const dx = (Math.random() * 40 - 20).toFixed(2);
-        const dy = (Math.random() * 50 + 20).toFixed(2);
-        element.style.setProperty('--mathis-dx', `${dx}px`);
-        element.style.setProperty('--mathis-dy', `${dy}px`);
-        if (!mathisCollapsedTargets.includes(element)) {
-          mathisCollapsedTargets.push(element);
-        }
-        const startDelay = 160 + index * 90 + Math.random() * 80;
+        const startDelay = index * 140 + Math.random() * 110;
         window.setTimeout(() => {
           if (!mathisSequenceActive) {
             completed += 1;
@@ -668,8 +666,15 @@
             }
             return;
           }
-          element.classList.add('is-mathis-collapsing');
-          const hideDelay = 520;
+          element.classList.add('mathis-collapse-target');
+          const dx = (Math.random() * 40 - 20).toFixed(2);
+          const dy = (Math.random() * 50 + 20).toFixed(2);
+          element.style.setProperty('--mathis-dx', `${dx}px`);
+          element.style.setProperty('--mathis-dy', `${dy}px`);
+          requestAnimationFrame(() => {
+            element.classList.add('is-mathis-collapsing');
+          });
+          const hideDelay = 280 + Math.random() * 160;
           window.setTimeout(() => {
             if (!mathisSequenceActive) {
               completed += 1;
@@ -720,14 +725,17 @@
       return;
     }
     mathisExitStarted = true;
-    if (mathisReturnTimer) {
-      window.clearTimeout(mathisReturnTimer);
-      mathisReturnTimer = null;
+    if (mathisTakeoverTimer) {
+      window.clearTimeout(mathisTakeoverTimer);
+      mathisTakeoverTimer = null;
     }
-    overlay.classList.remove('is-blank', 'is-link-phase');
-    overlay.classList.add('is-returning');
+    overlay.classList.remove('is-link-phase');
     collapseMathisLink(overlay)
-      .then(() => restoreMathisTargetsSequential())
+      .then(() => {
+        overlay.classList.remove('is-blank');
+        overlay.classList.add('is-returning');
+        return restoreMathisTargetsSequential();
+      })
       .then(() => endMathisTakeover({ silent: true, skipRestore: true }));
   };
 
@@ -773,7 +781,6 @@
               return;
             }
             overlay.classList.add('is-link-ready');
-            mathisReturnTimer = window.setTimeout(() => startMathisReturn(overlay), MATHIS_LINK_DISPLAY);
           }, 400);
         }
       }, delay);
@@ -818,9 +825,14 @@
     window.addEventListener('keydown', mathisEscapeHandler);
     document.body?.appendChild(overlay);
     document.body?.classList.add('mathis-mode');
+    const closeButton = overlay.querySelector('.mathis-clean__close');
+    closeButton?.addEventListener('click', (event) => {
+      event.preventDefault();
+      startMathisReturn(overlay);
+    });
     overlay.focus();
     startMathisSequence(overlay);
-    mathisTakeoverTimer = window.setTimeout(() => endMathisTakeover(), MATHIS_TAKEOVER_DURATION);
+    mathisTakeoverTimer = window.setTimeout(() => startMathisReturn(overlay), MATHIS_TAKEOVER_DURATION);
     return {
       suppressStatus: true,
     };
