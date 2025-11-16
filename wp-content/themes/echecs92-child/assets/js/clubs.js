@@ -69,6 +69,22 @@
   totalCounter.className = 'clubs-total';
   totalCounter.setAttribute('aria-live', 'polite');
   resultsEl.before(totalCounter);
+  const debugToggleButton = document.createElement('button');
+  debugToggleButton.type = 'button';
+  debugToggleButton.className = 'clubs-debug-toggle';
+  debugToggleButton.style.margin = '0 0 24px';
+  debugToggleButton.style.padding = '6px 14px';
+  debugToggleButton.style.borderRadius = '999px';
+  debugToggleButton.style.border = '1px solid #dc3545';
+  debugToggleButton.style.background = '#fff';
+  debugToggleButton.style.color = '#dc3545';
+  debugToggleButton.style.fontSize = '13px';
+  debugToggleButton.style.cursor = 'pointer';
+  debugToggleButton.style.alignSelf = 'flex-start';
+  debugToggleButton.addEventListener('click', () => {
+    setDebugMode(!isDebugMode());
+  });
+  totalCounter.after(debugToggleButton);
 
   const rememberClubsNavigation = (context, backPath) => {
     try {
@@ -138,6 +154,7 @@
     }
     debugState.active = desired;
     persistDebugFlag(desired);
+    updateDebugToggleButton();
     updateDebugIndicator();
     updateDebugPanel();
     if (desired && (state.clubs.length || state.filtered.length)) {
@@ -262,6 +279,19 @@
     document.body?.appendChild(indicator);
   };
 
+  const updateDebugToggleButton = () => {
+    if (!debugToggleButton) {
+      return;
+    }
+    if (debugState.active) {
+      debugToggleButton.textContent = 'Désactiver le mode debug';
+      debugToggleButton.setAttribute('aria-pressed', 'true');
+    } else {
+      debugToggleButton.textContent = 'Activer le mode debug';
+      debugToggleButton.setAttribute('aria-pressed', 'false');
+    }
+  };
+
   const updateDebugPanel = () => {
     if (typeof document === 'undefined') {
       return;
@@ -326,9 +356,9 @@
     instructions.style.paddingLeft = '20px';
     instructions.style.margin = '8px 0 0';
     [
-      'Raccourci: Cmd + Option + G sur Mac, Ctrl + Alt + G sur PC pour activer/désactiver.',
-      'Commandes dans la recherche: :debug, :debug+, :debug-, debug92.',
-      'Bouton "Carte & coords" dans chaque bloc club pour vérifier la position dans un nouvel onglet.',
+      'Commandes dans la barre de recherche: :debug, :debug+, :debug-, debug92.',
+      'Utilise le bouton "Carte & coords" présent dans chaque bloc club pour vérifier la position.',
+      'Boutons de ce panneau pour activer/désactiver le mode sans raccourcis clavier.',
     ].forEach((text) => {
       const item = document.createElement('li');
       item.textContent = text;
@@ -337,21 +367,8 @@
     panel.appendChild(instructions);
   };
 
-  const handleDebugHotkey = (event) => {
-    if (!event || event.defaultPrevented) {
-      return;
-    }
-    const key = event.key || '';
-    const macCombo = event.metaKey && event.altKey && !event.ctrlKey;
-    const winCombo = event.ctrlKey && event.altKey && !event.metaKey;
-    if ((macCombo || winCombo) && (key === 'd' || key === 'D')) {
-      event.preventDefault();
-      event.stopPropagation();
-      toggleDebugMode();
-    }
-  };
-
   debugState.active = loadDebugFlag();
+  updateDebugToggleButton();
   if (debugState.active) {
     console.info(`${DEBUG_CONSOLE_PREFIX} mode debug discret actif (session).`);
   }
@@ -367,9 +384,6 @@
     }
   }
   registerDebugApi();
-  if (typeof window !== 'undefined') {
-    window.addEventListener('keydown', handleDebugHotkey, true);
-  }
 
   const parseLicenseValue = (value) => {
     if (value == null || value === '') {
