@@ -2902,6 +2902,11 @@ body.mathis-mode [data-mathis-hidden="true"]{
 .mathis-clean.is-blank{
   opacity:1;
 }
+.mathis-clean.is-returning{
+  opacity:0;
+  pointer-events:none;
+  background:transparent;
+}
 .mathis-clean.is-link-ready{
   pointer-events:auto;
 }
