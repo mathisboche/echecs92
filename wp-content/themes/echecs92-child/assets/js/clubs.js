@@ -217,7 +217,9 @@
       return;
     }
     const key = event.key || '';
-    if (event.ctrlKey && event.altKey && event.shiftKey && (key === 'd' || key === 'D')) {
+    const comboWindows = event.ctrlKey && event.altKey && event.shiftKey;
+    const comboMac = event.metaKey && event.altKey && event.shiftKey;
+    if ((comboWindows || comboMac) && (key === 'd' || key === 'D')) {
       event.preventDefault();
       event.stopPropagation();
       toggleDebugMode();
