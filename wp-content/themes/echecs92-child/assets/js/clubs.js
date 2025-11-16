@@ -483,11 +483,8 @@
   };
 
   const MATHIS_TAKEOVER_ID = 'mathis-takeover';
-  const MATHIS_TAKEOVER_DURATION = 14000;
   const MATHIS_LINK_TEXT = 'mathisboche.com';
   const MATHIS_REVEAL_DELAY = 650;
-  let mathisTakeoverTimer = null;
-  let mathisEscapeHandler = null;
   let mathisSequenceActive = false;
   let mathisCollapsedTargets = [];
   let mathisExitStarted = false;
@@ -562,14 +559,6 @@
   const endMathisTakeover = (options = {}) => {
     mathisSequenceActive = false;
     mathisExitStarted = false;
-    if (mathisTakeoverTimer) {
-      window.clearTimeout(mathisTakeoverTimer);
-      mathisTakeoverTimer = null;
-    }
-    if (mathisEscapeHandler) {
-      window.removeEventListener('keydown', mathisEscapeHandler);
-      mathisEscapeHandler = null;
-    }
     const overlay = document.getElementById(MATHIS_TAKEOVER_ID);
     const finish = () => {
       overlay?.remove();
@@ -725,10 +714,6 @@
       return;
     }
     mathisExitStarted = true;
-    if (mathisTakeoverTimer) {
-      window.clearTimeout(mathisTakeoverTimer);
-      mathisTakeoverTimer = null;
-    }
     overlay.classList.remove('is-link-phase');
     collapseMathisLink(overlay)
       .then(() => {
@@ -749,14 +734,6 @@
       return;
     }
     anchor.setAttribute('href', 'https://mathisboche.com');
-    const handleAnchorClick = (event) => {
-      if (!mathisSequenceActive) {
-        return;
-      }
-      startMathisReturn(overlay);
-      anchor.removeEventListener('click', handleAnchorClick);
-    };
-    anchor.addEventListener('click', handleAnchorClick);
     lettersHost.innerHTML = '';
     const letters = MATHIS_LINK_TEXT.split('');
     const spans = letters.map((char) => {
@@ -816,13 +793,6 @@
     if (!overlay) {
       return null;
     }
-    mathisEscapeHandler = (event) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        endMathisTakeover();
-      }
-    };
-    window.addEventListener('keydown', mathisEscapeHandler);
     document.body?.appendChild(overlay);
     document.body?.classList.add('mathis-mode');
     const closeButton = overlay.querySelector('.mathis-clean__close');
@@ -832,7 +802,6 @@
     });
     overlay.focus();
     startMathisSequence(overlay);
-    mathisTakeoverTimer = window.setTimeout(() => startMathisReturn(overlay), MATHIS_TAKEOVER_DURATION);
     return {
       suppressStatus: true,
     };
