@@ -1115,49 +1115,12 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   padding-bottom:30px;
   display:flex;
   flex-direction:column;
-  gap:12px;
+  gap:8px;
   max-width:720px;
-}
-.club-create__eyebrow{
-  font-size:13px;
-  letter-spacing:.18em;
-  text-transform:uppercase;
-  color:#64748b;
-  margin:0;
 }
 .club-create__intro h1{
   margin:0;
   font-size:clamp(32px,4.4vw,46px);
-}
-.club-create__summary{
-  margin:0;
-  color:#475569;
-  line-height:1.6;
-}
-.club-create__actions{
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  gap:16px;
-}
-.club-create__button{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:10px 22px;
-  border-radius:999px;
-  font-weight:600;
-  font-size:14px;
-  letter-spacing:.01em;
-  text-decoration:none;
-  background:#0b2e4c;
-  color:#ffffff;
-  border:1px solid rgba(11,46,76,0.9);
-}
-.club-create__button--light{
-  background:transparent;
-  color:#0b2e4c;
-  border-color:rgba(11,46,76,0.35);
 }
 .club-create__steps{
   border:1px solid #d8e0ea;
@@ -1167,22 +1130,6 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   display:flex;
   flex-direction:column;
   gap:24px;
-}
-.club-create__section-header{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-  max-width:640px;
-}
-.club-create__section-header h2{
-  margin:0;
-  font-size:26px;
-  color:#0f172a;
-}
-.club-create__section-header p{
-  margin:0;
-  color:#475569;
-  line-height:1.55;
 }
 .club-create__grid{
   display:grid;
@@ -1198,16 +1145,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   flex-direction:column;
   gap:10px;
 }
-.club-create-card__eyebrow{
-  font-size:12px;
-  letter-spacing:.2em;
-  text-transform:uppercase;
-  color:#6b7280;
+.club-create-card h2{
   margin:0;
-}
-.club-create-card h3{
-  margin:0;
-  font-size:21px;
+  font-size:22px;
   color:#0f172a;
 }
 .club-create-card p{
@@ -1234,56 +1174,6 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .club-create-card__link:focus-visible{
   text-decoration:underline;
 }
-.club-create__support{
-  border-radius:18px;
-  padding:36px 40px;
-  background:#0b2e4c;
-  color:#ffffff;
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:32px;
-}
-.club-create__support-text{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  max-width:560px;
-}
-.club-create__support h2{
-  margin:0;
-  font-size:28px;
-  color:#ffffff;
-}
-.club-create__support p{
-  margin:0;
-  color:rgba(255,255,255,0.85);
-  line-height:1.6;
-}
-.club-create__support-actions{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.club-create-support__link{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:12px 22px;
-  border-radius:999px;
-  border:1px solid rgba(255,255,255,0.65);
-  color:#ffffff;
-  text-decoration:none;
-  font-weight:600;
-  transition:background-color .2s ease, color .2s ease;
-}
-.club-create-support__link:hover,
-.club-create-support__link:focus-visible{
-  background:rgba(255,255,255,0.14);
-}
-.club-create-support__link--ghost{
-  background:rgba(255,255,255,0.08);
-}
 
 @media (max-width:899px){
   .club-create{
@@ -1291,14 +1181,6 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   }
   .club-create__steps{
     padding:26px;
-  }
-  .club-create__support{
-    flex-direction:column;
-    padding:32px;
-  }
-  .club-create__support-actions{
-    flex-direction:row;
-    flex-wrap:wrap;
   }
 }
 
@@ -1315,16 +1197,6 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   }
   .club-create-card{
     padding:20px;
-  }
-  .club-create__support{
-    padding:26px 22px;
-  }
-  .club-create__support-actions{
-    width:100%;
-    flex-direction:column;
-  }
-  .club-create-support__link{
-    width:100%;
   }
 }
 
