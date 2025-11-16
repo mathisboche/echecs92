@@ -488,6 +488,37 @@
   let mathisSequenceActive = false;
   let mathisCollapsedTargets = [];
   let mathisExitStarted = false;
+  let mathisScrollPosition = 0;
+
+  const lockMathisScroll = () => {
+    if (typeof window === 'undefined' || typeof document === 'undefined' || !document.body) {
+      return;
+    }
+    mathisScrollPosition = window.scrollY || document.documentElement.scrollTop || 0;
+    document.documentElement.classList.add('mathis-scroll-lock');
+    document.body.classList.add('mathis-mode');
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    document.body.style.top = `-${mathisScrollPosition}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+  };
+
+  const unlockMathisScroll = () => {
+    if (typeof document === 'undefined' || !document.body) {
+      return;
+    }
+    document.documentElement.classList.remove('mathis-scroll-lock');
+    document.body.classList.remove('mathis-mode');
+    document.body.style.removeProperty('position');
+    document.body.style.removeProperty('width');
+    document.body.style.removeProperty('top');
+    document.body.style.removeProperty('left');
+    document.body.style.removeProperty('right');
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, mathisScrollPosition || 0);
+    }
+  };
 
   const shuffleArray = (input) => {
     const array = input.slice();
@@ -565,7 +596,7 @@
       if (!options.skipRestore) {
         restoreMathisTargets();
       }
-      document.body?.classList.remove('mathis-mode');
+      unlockMathisScroll();
       if (!options.silent) {
         setSearchStatus('Retour à la réalité des clubs du 92.', 'info');
       }
@@ -794,7 +825,7 @@
       return null;
     }
     document.body?.appendChild(overlay);
-    document.body?.classList.add('mathis-mode');
+    lockMathisScroll();
     const closeButton = overlay.querySelector('.mathis-clean__close');
     closeButton?.addEventListener('click', (event) => {
       event.preventDefault();
