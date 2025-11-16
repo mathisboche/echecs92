@@ -2950,13 +2950,18 @@ body.mathis-mode [data-mathis-hidden="true"]{
   content:'';
   position:absolute;
   left:0;
-  bottom:-0.15em;
+  bottom:-0.2em;
   width:100%;
   height:2px;
   background:#0f172a;
-  transform:scaleX(0.2);
   transform-origin:left center;
-  transition:transform .4s ease;
+  transform:scaleX(0);
+  opacity:0;
+  transition:transform .45s ease, opacity .45s ease;
+}
+.mathis-clean.is-link-ready .mathis-clean__anchor::after{
+  transform:scaleX(0.25);
+  opacity:1;
 }
 .mathis-clean__anchor:hover,
 .mathis-clean__anchor:focus-visible{
@@ -2989,29 +2994,31 @@ body.mathis-mode [data-mathis-hidden="true"]{
   filter:blur(6px);
 }
 .mathis-clean__close{
-  position:absolute;
-  top:-64px;
-  right:0;
-  width:48px;
-  height:48px;
+  position:fixed;
+  top:32px;
+  right:32px;
+  width:50px;
+  height:50px;
   border-radius:999px;
-  border:1px solid #0f172a;
-  background:rgba(15,23,42,0.02);
+  border:1px solid rgba(15,23,42,0.4);
+  background:rgba(15,23,42,0.04);
   display:flex;
   align-items:center;
   justify-content:center;
   cursor:pointer;
   opacity:0;
-  transform:translateY(-8px) scale(0.86);
+  transform:translate(6px,-12px) scale(0.85);
   transition:opacity .4s ease, transform .4s ease, background-color .3s ease, border-color .3s ease;
+  pointer-events:none;
 }
-.mathis-clean.is-link-phase .mathis-clean__close{
+.mathis-clean.is-link-ready .mathis-clean__close{
   opacity:1;
-  transform:translateY(0) scale(1);
+  transform:translate(0,0) scale(1);
+  pointer-events:auto;
 }
 .mathis-clean__close span{
   position:absolute;
-  width:20px;
+  width:22px;
   height:2px;
   border-radius:999px;
   background:#0f172a;
@@ -3060,7 +3067,8 @@ body.mathis-mode [data-mathis-hidden="true"]{
     text-align:center;
   }
   .mathis-clean__close{
-    top:-48px;
+    top:20px;
+    right:12px;
     right:8px;
   }
 }
