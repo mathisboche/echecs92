@@ -3075,6 +3075,10 @@ body.mathis-mode [data-mathis-hidden="true"]{
   .mathis-clean__anchor{
     text-align:center;
   }
+  .mathis-clean__link{
+    margin-top:auto;
+    margin-bottom:auto;
+  }
   .mathis-clean__close{
     position:static;
     margin-top:auto;
