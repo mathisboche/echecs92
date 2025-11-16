@@ -210,56 +210,6 @@
     return true;
   };
 
-  const showMathisBocheEasterEgg = () => {
-    if (!resultsEl) {
-      return null;
-    }
-    const article = document.createElement('article');
-    article.className = 'clubs-easter-egg';
-    article.setAttribute('role', 'listitem');
-    article.innerHTML = `
-      <div class="clubs-easter-egg__glow" aria-hidden="true"></div>
-      <p class="clubs-easter-egg__badge">Easter egg</p>
-      <h2 class="clubs-easter-egg__title">mathisboche.com</h2>
-      <p class="clubs-easter-egg__text">
-        Ce nom n'est pas un club du 92, mais un clin d'oeil aux coulisses numériques du site.
-        Continuez à explorer pour découvrir d'autres surprises&nbsp;!
-      </p>
-      <div class="clubs-easter-egg__actions">
-        <a class="btn clubs-easter-egg__link" href="https://mathisboche.com" target="_blank" rel="noopener noreferrer">
-          Ouvrir mathisboche.com
-        </a>
-        <button type="button" class="btn btn-secondary clubs-easter-egg__reset">Revenir aux clubs</button>
-      </div>
-    `;
-
-    const resetButtonNode = article.querySelector('.clubs-easter-egg__reset');
-    resetButtonNode?.addEventListener('click', () => {
-      clearSearchQuery({ silent: true });
-      setSearchStatus('Tous les clubs sont affichés.', 'info');
-      applySearch('');
-    });
-
-    resultsEl.innerHTML = '';
-    resultsEl.appendChild(article);
-    totalCounter.textContent = '1 résultat secret débloqué';
-
-    return {
-      message: 'Easter egg débloqué pour mathisboche.com !',
-      tone: 'success',
-    };
-  };
-
-  const SECRET_DEBUG_COMMANDS = new Map([
-    [':debug', () => toggleDebugMode()],
-    [':debug+', () => setDebugMode(true)],
-    [':debug-', () => setDebugMode(false)],
-    ['debug92', () => toggleDebugMode()],
-    [':sansdebug', () => setDebugMode(false)],
-    [':debugmode', () => setDebugMode(true)],
-    ['mathisboche.com', () => showMathisBocheEasterEgg()],
-  ]);
-
   const debugApi = {
     isActive: () => debugState.active,
     toggle: () => toggleDebugMode(),
@@ -531,6 +481,131 @@
       setSearchStatus('Tous les clubs sont affichés.', 'info');
     }
   };
+
+  const MATHIS_TAKEOVER_ID = 'mathis-takeover';
+  const MATHIS_TAKEOVER_DURATION = 10000;
+  let mathisTakeoverTimer = null;
+  let mathisEscapeHandler = null;
+
+  const endMathisTakeover = (options = {}) => {
+    if (mathisTakeoverTimer) {
+      window.clearTimeout(mathisTakeoverTimer);
+      mathisTakeoverTimer = null;
+    }
+    if (mathisEscapeHandler) {
+      window.removeEventListener('keydown', mathisEscapeHandler);
+      mathisEscapeHandler = null;
+    }
+    const overlay = document.getElementById(MATHIS_TAKEOVER_ID);
+    const finish = () => {
+      overlay?.remove();
+      document.body?.classList.remove('mathis-mode');
+      document.documentElement?.classList.remove('mathis-mode');
+      if (!options.silent) {
+        setSearchStatus('Retour à la réalité des clubs du 92.', 'info');
+      }
+    };
+    if (overlay) {
+      overlay.classList.add('is-ending');
+      window.setTimeout(finish, 900);
+    } else {
+      finish();
+    }
+  };
+
+  const buildMathisTakeoverOverlay = () => {
+    if (typeof document === 'undefined') {
+      return null;
+    }
+    const overlay = document.createElement('div');
+    overlay.id = MATHIS_TAKEOVER_ID;
+    overlay.className = 'mathis-takeover';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-label', 'Interlude signé Mathis Boche');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('tabindex', '-1');
+    overlay.innerHTML = `
+      <div class="mathis-takeover__nebula" aria-hidden="true"></div>
+      <div class="mathis-takeover__grid" aria-hidden="true"></div>
+      <div class="mathis-takeover__pulse" aria-hidden="true"></div>
+      <div class="mathis-takeover__orbs" aria-hidden="true">
+        <span class="mathis-orb mathis-orb--one"></span>
+        <span class="mathis-orb mathis-orb--two"></span>
+        <span class="mathis-orb mathis-orb--three"></span>
+      </div>
+      <div class="mathis-takeover__content">
+        <p class="mathis-takeover__tag">Signature secrète de Mathis</p>
+        <h2 class="mathis-takeover__title">Mathis Boche prend le contrôle du site</h2>
+        <p class="mathis-takeover__text">
+          Ce clin d'œil vient directement du concepteur du site. Pendant quelques secondes,
+          tout l'univers des clubs s'habille des couleurs de <strong>mathisboche.com</strong>.
+          Respirez, regardez le spectacle et cliquez si vous voulez prolonger cette parenthèse.
+        </p>
+        <div class="mathis-takeover__actions">
+          <a class="btn mathis-takeover__cta" href="https://mathisboche.com" target="_blank" rel="noopener noreferrer">
+            Explorer mathisboche.com
+          </a>
+          <button type="button" class="btn btn-secondary mathis-takeover__skip">
+            Terminer le show
+          </button>
+        </div>
+        <p class="mathis-takeover__note">Message perso de Mathis&nbsp;: merci de visiter le site du Comité, on se retrouve bientôt sur ma console&nbsp;!</p>
+      </div>
+    `;
+    return overlay;
+  };
+
+  const showMathisBocheSpectacle = () => {
+    if (typeof document === 'undefined') {
+      return {
+        message: 'Impossible d’afficher l’effet spécial sans navigateur.',
+        tone: 'error',
+      };
+    }
+    if (document.getElementById(MATHIS_TAKEOVER_ID)) {
+      return {
+        message: 'Le show de Mathis est déjà lancé, profitez-en !',
+        tone: 'info',
+      };
+    }
+    const overlay = buildMathisTakeoverOverlay();
+    if (!overlay) {
+      return null;
+    }
+    const skipButton = overlay.querySelector('.mathis-takeover__skip');
+    skipButton?.addEventListener('click', () => endMathisTakeover());
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) {
+        endMathisTakeover();
+      }
+    });
+    mathisEscapeHandler = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        endMathisTakeover();
+      }
+    };
+    window.addEventListener('keydown', mathisEscapeHandler);
+    document.body?.appendChild(overlay);
+    document.body?.classList.add('mathis-mode');
+    document.documentElement?.classList.add('mathis-mode');
+    overlay.focus();
+    mathisTakeoverTimer = window.setTimeout(() => endMathisTakeover(), MATHIS_TAKEOVER_DURATION);
+    return {
+      message: 'Mathis Boche prend le contrôle pendant quelques secondes. Profitez du spectacle !',
+      tone: 'success',
+    };
+  };
+
+  const SECRET_DEBUG_COMMANDS = new Map([
+    [':debug', () => toggleDebugMode()],
+    [':debug+', () => setDebugMode(true)],
+    [':debug-', () => setDebugMode(false)],
+    ['debug92', () => toggleDebugMode()],
+    [':sansdebug', () => setDebugMode(false)],
+    [':debugmode', () => setDebugMode(true)],
+    ['mathisboche.com', () => showMathisBocheSpectacle()],
+  ]);
 
   const updateSortButtons = () => {
     sortButtons.forEach((button) => {
