@@ -100,6 +100,7 @@
 
   const DEBUG_FLAG_KEY = 'echecs92:clubs:debug';
   const DEBUG_CONSOLE_PREFIX = '[clubs-debug]';
+  const DEBUG_PANEL_ID = 'clubs-debug-panel';
   const DEBUG_INDICATOR_ID = 'clubs-debug-indicator';
   const debugState = {
     active: false,
@@ -138,6 +139,12 @@
     debugState.active = desired;
     persistDebugFlag(desired);
     updateDebugIndicator();
+    updateDebugPanel();
+    if (desired && (state.clubs.length || state.filtered.length)) {
+      renderResults();
+    } else if (!desired && (state.clubs.length || state.filtered.length)) {
+      renderResults();
+    }
     if (!options.silent) {
       const message = desired ? 'mode debug discret activé.' : 'mode debug discret désactivé.';
       console.info(`${DEBUG_CONSOLE_PREFIX} ${message}`);
@@ -255,6 +262,81 @@
     document.body?.appendChild(indicator);
   };
 
+  const updateDebugPanel = () => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    let panel = document.getElementById(DEBUG_PANEL_ID);
+    if (!debugState.active) {
+      if (panel) {
+        panel.remove();
+      }
+      return;
+    }
+    if (!panel) {
+      panel = document.createElement('aside');
+      panel.id = DEBUG_PANEL_ID;
+      panel.style.margin = '16px auto';
+      panel.style.padding = '12px 16px';
+      panel.style.border = '2px dashed #dc3545';
+      panel.style.borderRadius = '12px';
+      panel.style.maxWidth = '900px';
+      panel.style.background = 'rgba(255, 245, 245, 0.92)';
+      panel.style.color = '#1f1f1f';
+      panel.style.fontSize = '14px';
+      panel.style.lineHeight = '1.5';
+      panel.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.08)';
+      panel.style.position = 'relative';
+      const anchor = resultsEl?.parentNode;
+      if (anchor) {
+        anchor.insertBefore(panel, anchor.firstChild);
+      } else {
+        document.body?.insertBefore(panel, document.body.firstChild || null);
+      }
+    } else {
+      panel.innerHTML = '';
+    }
+    const title = document.createElement('div');
+    title.style.display = 'flex';
+    title.style.justifyContent = 'space-between';
+    title.style.alignItems = 'center';
+    const label = document.createElement('strong');
+    label.textContent = 'Mode debug clubs activé';
+    title.appendChild(label);
+    const exitButton = document.createElement('button');
+    exitButton.type = 'button';
+    exitButton.textContent = 'Quitter le mode debug';
+    exitButton.style.border = '1px solid #dc3545';
+    exitButton.style.background = '#fff';
+    exitButton.style.color = '#dc3545';
+    exitButton.style.borderRadius = '999px';
+    exitButton.style.padding = '4px 12px';
+    exitButton.style.fontSize = '13px';
+    exitButton.style.cursor = 'pointer';
+    exitButton.addEventListener('click', () => setDebugMode(false));
+    title.appendChild(exitButton);
+    panel.appendChild(title);
+
+    const description = document.createElement('p');
+    description.textContent =
+      'Chaque club affiche maintenant ses coordonnées exactes et un bouton pour ouvrir la carte de contrôle.';
+    panel.appendChild(description);
+
+    const instructions = document.createElement('ul');
+    instructions.style.paddingLeft = '20px';
+    instructions.style.margin = '8px 0 0';
+    [
+      'Raccourci: Cmd + Option + G sur Mac, Ctrl + Alt + G sur PC pour activer/désactiver.',
+      'Commandes dans la recherche: :debug, :debug+, :debug-, debug92.',
+      'Bouton "Carte & coords" dans chaque bloc club pour vérifier la position dans un nouvel onglet.',
+    ].forEach((text) => {
+      const item = document.createElement('li');
+      item.textContent = text;
+      instructions.appendChild(item);
+    });
+    panel.appendChild(instructions);
+  };
+
   const handleDebugHotkey = (event) => {
     if (!event || event.defaultPrevented) {
       return;
@@ -275,9 +357,13 @@
   }
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => updateDebugIndicator());
+      document.addEventListener('DOMContentLoaded', () => {
+        updateDebugIndicator();
+        updateDebugPanel();
+      });
     } else {
       updateDebugIndicator();
+      updateDebugPanel();
     }
   }
   registerDebugApi();
@@ -1736,6 +1822,54 @@ const handleLocationSubmit = async (event) => {
     footer.appendChild(cta);
 
     cardLink.appendChild(footer);
+
+    if (isDebugMode()) {
+      const debugBar = document.createElement('div');
+      debugBar.className = 'club-row__debug';
+      debugBar.style.marginTop = '8px';
+      debugBar.style.padding = '8px';
+      debugBar.style.border = '1px dashed #dc3545';
+      debugBar.style.borderRadius = '8px';
+      debugBar.style.background = 'rgba(220, 53, 69, 0.05)';
+      debugBar.style.display = 'flex';
+      debugBar.style.flexWrap = 'wrap';
+      debugBar.style.gap = '8px';
+      debugBar.style.alignItems = 'center';
+
+      const lat = Number.isFinite(club.latitude) ? club.latitude : Number.parseFloat(club.lat);
+      const lng =
+        Number.isFinite(club.longitude) ? club.longitude : Number.parseFloat(club.lng ?? club.lon);
+      const coordsText =
+        Number.isFinite(lat) && Number.isFinite(lng)
+          ? `${lat.toFixed(5)}, ${lng.toFixed(5)}`
+          : 'Coordonnées indisponibles';
+
+      const coordsLabel = document.createElement('span');
+      coordsLabel.textContent = `Coords: ${coordsText}`;
+      coordsLabel.style.fontSize = '13px';
+      coordsLabel.style.fontWeight = '600';
+      debugBar.appendChild(coordsLabel);
+
+      const debugButton = document.createElement('button');
+      debugButton.type = 'button';
+      debugButton.textContent = 'Carte & coords';
+      debugButton.style.border = '1px solid #dc3545';
+      debugButton.style.background = '#fff';
+      debugButton.style.color = '#dc3545';
+      debugButton.style.borderRadius = '999px';
+      debugButton.style.padding = '4px 12px';
+      debugButton.style.fontSize = '13px';
+      debugButton.style.cursor = 'pointer';
+      debugButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openClubDebugView(club);
+      });
+      debugBar.appendChild(debugButton);
+
+      cardLink.appendChild(debugBar);
+    }
+
     article.appendChild(cardLink);
 
     return article;
