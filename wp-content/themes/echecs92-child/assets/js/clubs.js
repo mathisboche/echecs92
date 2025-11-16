@@ -485,11 +485,43 @@
   const MATHIS_TAKEOVER_ID = 'mathis-takeover';
   const MATHIS_TAKEOVER_DURATION = 14000;
   const MATHIS_LINK_TEXT = 'mathisboche.com';
-  const MATHIS_REVEAL_DELAY = 2400;
+  const MATHIS_REVEAL_DELAY = 650;
   let mathisTakeoverTimer = null;
   let mathisEscapeHandler = null;
+  let mathisSequenceActive = false;
+  let mathisCollapsedTargets = [];
+
+  const shuffleArray = (input) => {
+    const array = input.slice();
+    for (let i = array.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  };
+
+  const restoreMathisTargets = () => {
+    if (!mathisCollapsedTargets.length) {
+      return;
+    }
+    mathisCollapsedTargets.forEach((element) => {
+      element.classList.remove('mathis-collapse-target', 'is-mathis-collapsing');
+      const previousVisibility = element.dataset.mathisPrevVisibility;
+      if (typeof previousVisibility !== 'undefined') {
+        element.style.visibility = previousVisibility;
+        delete element.dataset.mathisPrevVisibility;
+      } else if (element.style.visibility === 'hidden') {
+        element.style.visibility = '';
+      }
+      element.removeAttribute('data-mathis-hidden');
+      element.style.removeProperty('--mathis-dx');
+      element.style.removeProperty('--mathis-dy');
+    });
+    mathisCollapsedTargets = [];
+  };
 
   const endMathisTakeover = (options = {}) => {
+    mathisSequenceActive = false;
     if (mathisTakeoverTimer) {
       window.clearTimeout(mathisTakeoverTimer);
       mathisTakeoverTimer = null;
@@ -501,15 +533,15 @@
     const overlay = document.getElementById(MATHIS_TAKEOVER_ID);
     const finish = () => {
       overlay?.remove();
+      restoreMathisTargets();
       document.body?.classList.remove('mathis-mode');
-      document.documentElement?.classList.remove('mathis-mode');
       if (!options.silent) {
         setSearchStatus('Retour à la réalité des clubs du 92.', 'info');
       }
     };
     if (overlay) {
       overlay.classList.add('is-ending');
-      window.setTimeout(finish, 900);
+      window.setTimeout(finish, 600);
     } else {
       finish();
     }
@@ -521,93 +553,153 @@
     }
     const overlay = document.createElement('div');
     overlay.id = MATHIS_TAKEOVER_ID;
-    overlay.className = 'mathis-takeover';
-    overlay.setAttribute('role', 'dialog');
-    overlay.setAttribute('aria-label', 'Interlude signé Mathis Boche');
-    overlay.setAttribute('aria-modal', 'true');
+    overlay.className = 'mathis-clean';
+    overlay.setAttribute('role', 'presentation');
     overlay.setAttribute('tabindex', '-1');
     overlay.innerHTML = `
-      <div class="mathis-static" aria-hidden="true"></div>
-      <div class="mathis-waves" aria-hidden="true"></div>
-      <div class="mathis-fragments" aria-hidden="true"></div>
-      <div class="mathis-rings" aria-hidden="true">
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
-      <div class="mathis-link">
-        <div class="mathis-link__beam" aria-hidden="true"></div>
-        <a class="mathis-link__anchor" target="_blank" rel="noopener noreferrer">
-          <span class="mathis-link__letters" aria-hidden="true"></span>
-          <span class="mathis-link__sr">${MATHIS_LINK_TEXT}</span>
+      <div class="mathis-clean__link">
+        <a class="mathis-clean__anchor" rel="noopener noreferrer" target="_blank">
+          <span class="mathis-clean__letters" aria-hidden="true"></span>
+          <span class="mathis-clean__sr">${MATHIS_LINK_TEXT}</span>
         </a>
       </div>
     `;
     return overlay;
   };
 
-  const seedMathisFragments = (overlay) => {
-    const container = overlay.querySelector('.mathis-fragments');
-    if (!container) {
-      return;
-    }
-    container.innerHTML = '';
-    const total = 28;
-    for (let i = 0; i < total; i += 1) {
-      const shard = document.createElement('span');
-      shard.style.setProperty('--index', i);
-      shard.style.setProperty('--pos-x', `${Math.random() * 100}%`);
-      shard.style.setProperty('--pos-y', `${Math.random() * 100}%`);
-      shard.style.setProperty('--angle', `${Math.random() * 200 - 100}deg`);
-      shard.style.setProperty('--delay', `${Math.random() * 4}s`);
-      container.appendChild(shard);
-    }
+  const gatherMathisTargets = () => {
+    const selectors = [
+      'body > *:not(script):not(style):not(noscript)',
+      '.cm-header',
+      '.cm-nav-desktop',
+      '.cm-nav-mobile',
+      '.clubs-page > *',
+      '.clubs-results-wrapper > *',
+      '.clubs-list > *',
+      '.clubs-options',
+      '.clubs-search-block',
+      '.club-row',
+    ];
+    const collection = new Set();
+    selectors.forEach((selector) => {
+      document.querySelectorAll(selector).forEach((node) => {
+        if (!node || node.id === MATHIS_TAKEOVER_ID) {
+          return;
+        }
+        if (node.closest(`#${MATHIS_TAKEOVER_ID}`)) {
+          return;
+        }
+        collection.add(node);
+      });
+    });
+    const targets = Array.from(collection).filter((element) => element && element !== document.body && element !== document.documentElement);
+    return targets.length
+      ? targets
+      : Array.from(document.body.children).filter((element) => element.tagName !== 'SCRIPT' && element.tagName !== 'STYLE' && element.id !== MATHIS_TAKEOVER_ID);
   };
 
-  const animateMathisLetters = (overlay) => {
-    const lettersHost = overlay.querySelector('.mathis-link__letters');
-    const anchor = overlay.querySelector('.mathis-link__anchor');
+  const collapseMathisTargets = (targets) => {
+    const valid = targets.filter(Boolean);
+    if (!valid.length) {
+      return Promise.resolve();
+    }
+    const order = shuffleArray(valid);
+    return new Promise((resolve) => {
+      let completed = 0;
+      order.forEach((element, index) => {
+        element.classList.add('mathis-collapse-target');
+        const dx = (Math.random() * 40 - 20).toFixed(2);
+        const dy = (Math.random() * 50 + 20).toFixed(2);
+        element.style.setProperty('--mathis-dx', `${dx}px`);
+        element.style.setProperty('--mathis-dy', `${dy}px`);
+        if (!mathisCollapsedTargets.includes(element)) {
+          mathisCollapsedTargets.push(element);
+        }
+        const startDelay = 160 + index * 90 + Math.random() * 80;
+        window.setTimeout(() => {
+          if (!mathisSequenceActive) {
+            completed += 1;
+            if (completed === order.length) {
+              resolve();
+            }
+            return;
+          }
+          element.classList.add('is-mathis-collapsing');
+          const hideDelay = 520;
+          window.setTimeout(() => {
+            if (!mathisSequenceActive) {
+              completed += 1;
+              if (completed === order.length) {
+                resolve();
+              }
+              return;
+            }
+            if (typeof element.dataset.mathisPrevVisibility === 'undefined') {
+              element.dataset.mathisPrevVisibility = element.style.visibility || '';
+            }
+            element.style.visibility = 'hidden';
+            element.setAttribute('data-mathis-hidden', 'true');
+            completed += 1;
+            if (completed === order.length) {
+              resolve();
+            }
+          }, hideDelay);
+        }, startDelay);
+      });
+    });
+  };
+
+  const revealMathisLink = (overlay) => {
+    if (!mathisSequenceActive) {
+      return;
+    }
+    const lettersHost = overlay.querySelector('.mathis-clean__letters');
+    const anchor = overlay.querySelector('.mathis-clean__anchor');
     if (!lettersHost || !anchor) {
       return;
     }
     anchor.setAttribute('href', 'https://mathisboche.com');
-    anchor.setAttribute('target', '_blank');
-    anchor.setAttribute('rel', 'noopener noreferrer');
+    anchor.addEventListener('click', () => endMathisTakeover({ silent: true }), { once: true });
     lettersHost.innerHTML = '';
     const letters = MATHIS_LINK_TEXT.split('');
-    const spans = letters.map((char, index) => {
+    const spans = letters.map((char) => {
       const span = document.createElement('span');
-      span.className = 'mathis-letter';
+      span.className = 'mathis-clean__letter';
       span.textContent = char;
-      span.style.setProperty('--char-index', index);
       lettersHost.appendChild(span);
       return span;
     });
-    overlay.classList.add('is-link-seeded');
-    const revealBaseline = MATHIS_REVEAL_DELAY;
-    spans.forEach((span, index) => {
-      const delay = revealBaseline + index * 130 + Math.random() * 90;
+    overlay.classList.add('is-link-phase');
+    const indexes = shuffleArray(spans.map((_, idx) => idx));
+    indexes.forEach((letterIndex, orderIndex) => {
+      const delay = MATHIS_REVEAL_DELAY + orderIndex * 140;
       window.setTimeout(() => {
-        span.classList.add('is-visible');
+        if (!mathisSequenceActive) {
+          return;
+        }
+        spans[letterIndex].classList.add('is-visible');
+        if (orderIndex === indexes.length - 1) {
+          window.setTimeout(() => {
+            if (!mathisSequenceActive) {
+              return;
+            }
+            overlay.classList.add('is-link-ready');
+          }, 400);
+        }
       }, delay);
     });
-    const finishDelay = revealBaseline + spans.length * 140 + 800;
-    window.setTimeout(() => {
-      overlay.classList.add('is-link-ready');
-      anchor.classList.add('is-armed');
-    }, finishDelay);
   };
 
   const startMathisSequence = (overlay) => {
-    seedMathisFragments(overlay);
-    overlay.classList.add('is-chaos');
-    window.setTimeout(() => overlay.classList.add('is-rift'), 600);
-    const linkBlock = overlay.querySelector('.mathis-link');
-    window.setTimeout(() => {
-      overlay.classList.add('is-link-phase');
-      linkBlock?.classList.add('is-visible');
-    }, 1700);
-    animateMathisLetters(overlay);
+    mathisSequenceActive = true;
+    const targets = gatherMathisTargets();
+    collapseMathisTargets(targets).then(() => {
+      if (!mathisSequenceActive) {
+        return;
+      }
+      overlay.classList.add('is-blank');
+      revealMathisLink(overlay);
+    });
   };
 
   const showMathisBocheSpectacle = () => {
@@ -635,7 +727,6 @@
     window.addEventListener('keydown', mathisEscapeHandler);
     document.body?.appendChild(overlay);
     document.body?.classList.add('mathis-mode');
-    document.documentElement?.classList.add('mathis-mode');
     overlay.focus();
     startMathisSequence(overlay);
     mathisTakeoverTimer = window.setTimeout(() => endMathisTakeover(), MATHIS_TAKEOVER_DURATION);
