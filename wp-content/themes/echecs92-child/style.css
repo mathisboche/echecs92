@@ -3077,7 +3077,8 @@ body.mathis-mode [data-mathis-hidden="true"]{
   }
   .mathis-clean__close{
     position:static;
-    margin-top:28px;
+    margin-top:auto;
+    margin-bottom:70px;
     transform:none;
     opacity:0;
     align-self:center;
