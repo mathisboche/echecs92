@@ -191,6 +191,13 @@
     return true;
   };
 
+  const SECRET_DEBUG_COMMANDS = new Map([
+    [':debug', () => toggleDebugMode()],
+    [':debug+', () => setDebugMode(true)],
+    [':debug-', () => setDebugMode(false)],
+    ['debug92', () => toggleDebugMode()],
+  ]);
+
   const debugApi = {
     isActive: () => debugState.active,
     toggle: () => toggleDebugMode(),
@@ -217,9 +224,9 @@
       return;
     }
     const key = event.key || '';
-    const comboWindows = event.ctrlKey && event.altKey && event.shiftKey;
-    const comboMac = event.metaKey && event.altKey && event.shiftKey;
-    if ((comboWindows || comboMac) && (key === 'd' || key === 'D')) {
+    const macCombo = event.metaKey && event.altKey && !event.ctrlKey;
+    const winCombo = event.ctrlKey && event.altKey && !event.metaKey;
+    if ((macCombo || winCombo) && (key === 'd' || key === 'D')) {
       event.preventDefault();
       event.stopPropagation();
       toggleDebugMode();
@@ -760,6 +767,24 @@
     }
   }
 
+  const tryHandleSecretCommand = (rawValue) => {
+    const raw = rawValue != null ? String(rawValue) : '';
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      return false;
+    }
+    const normalized = trimmed.toLowerCase();
+    const handler = SECRET_DEBUG_COMMANDS.get(normalized);
+    if (!handler) {
+      return false;
+    }
+    handler();
+    if (searchInput) {
+      searchInput.value = '';
+    }
+    return true;
+  };
+
   const haversineKm = (lat1, lon1, lat2, lon2) => {
     const R = 6371;
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -1123,6 +1148,9 @@
 
   const performSearch = async () => {
     const raw = searchInput ? searchInput.value : '';
+    if (tryHandleSecretCommand(raw)) {
+      return;
+    }
     const trimmed = (raw || '').trim();
     const requestId = ++searchRequestId;
 
