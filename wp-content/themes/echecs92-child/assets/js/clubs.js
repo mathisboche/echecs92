@@ -896,6 +896,12 @@
     if (searchInput) {
       searchInput.value = '';
     }
+    if (typeof setSearchStatus === 'function') {
+      const message = isDebugMode()
+        ? 'Mode debug activé via commande discrète.'
+        : 'Mode debug désactivé.';
+      setSearchStatus(message, 'info');
+    }
     return true;
   };
 
@@ -1988,12 +1994,17 @@ const handleLocationSubmit = async (event) => {
 
     searchButton?.addEventListener('click', performSearch);
     resetButton?.addEventListener('click', resetSearch);
-    searchInput?.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        performSearch();
-      }
-    });
+    if (searchInput) {
+      searchInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          performSearch();
+        }
+      });
+      searchInput.addEventListener('input', () => {
+        tryHandleSecretCommand(searchInput.value);
+      });
+    }
     locationApplyButton?.addEventListener('click', handleLocationSubmit);
     locationClearButton?.addEventListener('click', handleLocationClear);
     locationInput?.addEventListener('keydown', (event) => {
