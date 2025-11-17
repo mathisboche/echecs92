@@ -2700,11 +2700,10 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   gap:10px;
   margin-top:6px;
 }
-.clubs-search-panel__actions--distance{
-  gap:8px;
-}
-.clubs-search-panel__actions--distance .clubs-search-panel__btn{
-  min-width:120px;
+.clubs-page--france .clubs-search-panel #clubs-location-apply,
+.clubs-page--france .clubs-search-panel #clubs-location-clear{
+  margin:0;
+  width:auto;
 }
 .clubs-search-panel .btn{
   border-radius:999px;
@@ -2858,9 +2857,6 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   .clubs-geoloc-banner__btn{
     width:100%;
     min-width:0;
-  }
-  .clubs-search-panel__actions--distance .clubs-search-panel__btn{
-    flex:1 1 calc(50% - 8px);
   }
 }
 .clubs-location-highlight{
