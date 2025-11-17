@@ -3,12 +3,84 @@
  * Loads the clubs dataset and displays the selected club based on ?id= query param.
  */
 (function () {
-  const DATA_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france.json';
+  const DATA_MANIFEST_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france.json';
+  const DATA_FALLBACK_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france/';
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
   const detailContainer = document.getElementById('club-detail');
   const backLink = document.querySelector('[data-club-back]');
   const backLinkMap = document.querySelector('[data-club-back-map]');
   let generatedIdCounter = 0;
+  let manifestPromise = null;
+  let datasetPromise = null;
+
+  const fetchJson = (url) =>
+    fetch(url, { headers: { Accept: 'application/json' } }).then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return response.json();
+    });
+
+  const loadManifest = () => {
+    if (!manifestPromise) {
+      manifestPromise = fetchJson(DATA_MANIFEST_URL)
+        .then((payload) => {
+          const basePath = payload?.basePath || DATA_FALLBACK_BASE_PATH;
+          const departments = Array.isArray(payload?.departments) ? payload.departments : [];
+          return { basePath, departments };
+        })
+        .catch(() => ({ basePath: DATA_FALLBACK_BASE_PATH, departments: [] }));
+    }
+    return manifestPromise;
+  };
+
+  const buildDeptUrl = (entry, basePath) => {
+    if (!entry || !entry.file) {
+      return null;
+    }
+    if (/^https?:/i.test(entry.file)) {
+      return entry.file;
+    }
+    const base = (entry.basePath || basePath || DATA_FALLBACK_BASE_PATH || '').replace(/\/+$/u, '');
+    const file = entry.file.replace(/^\/+/u, '');
+    return `${base}/${file}`;
+  };
+
+  const annotateClub = (club, entry) => ({
+    ...club,
+    departement: club.departement || entry.code || '',
+    departement_nom: club.departement_nom || entry.name || '',
+    departement_slug: club.departement_slug || entry.slug || '',
+  });
+
+  const fetchDepartmentClubs = async (entry, manifestMeta) => {
+    const url = buildDeptUrl(entry, manifestMeta.basePath);
+    if (!url) {
+      return [];
+    }
+    try {
+      const payload = await fetchJson(url);
+      const records = Array.isArray(payload) ? payload : [];
+      return records.map((club) => annotateClub(club, entry));
+    } catch (error) {
+      console.warn(`[club-detail-fr] Département ${entry.code || '?'} indisponible (${url}).`, error);
+      return [];
+    }
+  };
+
+  const loadFranceClubsDataset = () => {
+    if (!datasetPromise) {
+      datasetPromise = loadManifest().then(async (manifestMeta) => {
+        const departments = manifestMeta.departments || [];
+        if (!departments.length) {
+          return [];
+        }
+        const chunks = await Promise.all(departments.map((entry) => fetchDepartmentClubs(entry, manifestMeta)));
+        return chunks.flat();
+      });
+    }
+    return datasetPromise;
+  };
 
   if (!detailContainer) {
     return;
@@ -644,6 +716,15 @@
       },
       postalCode,
       slug: slugify(slugSource || id || name || 'club'),
+      departmentCode:
+        raw.departmentCode ||
+        raw.department_code ||
+        raw.department ||
+        raw.departement ||
+        raw.dept ||
+        '',
+      departmentName: raw.departmentName || raw.department_name || raw.departement_nom || raw.departmentLabel || '',
+      departmentSlug: raw.departmentSlug || raw.department_slug || raw.departement_slug || '',
     };
   };
 
@@ -963,13 +1044,7 @@
       renderMessage(detailContainer.dataset.emptyMessage || 'Club introuvable.');
       return;
     }
-    fetch(DATA_URL, { headers: { Accept: 'application/json' } })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        return response.json();
-      })
+    loadFranceClubsDataset()
       .then((data) => {
         const clubs = (Array.isArray(data) ? data : []).map(hydrateClub);
         const club = clubs.find((entry) => entry.slug === clubSlug || entry.id === clubSlug);

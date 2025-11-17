@@ -1,11 +1,84 @@
 (function () {
-  const DATA_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france.json';
+  const DATA_MANIFEST_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france.json';
+  const DATA_FALLBACK_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france/';
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
   const mapElement = document.getElementById('clubs-map');
   const mapBackLink = document.querySelector('[data-clubs-map-back]');
   if (!mapElement || typeof L === 'undefined') {
     return;
   }
+
+  let manifestPromise = null;
+  let datasetPromise = null;
+
+  const fetchJson = (url) =>
+    fetch(url, { headers: { Accept: 'application/json' } }).then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return response.json();
+    });
+
+  const loadManifest = () => {
+    if (!manifestPromise) {
+      manifestPromise = fetchJson(DATA_MANIFEST_URL)
+        .then((payload) => {
+          const basePath = payload?.basePath || DATA_FALLBACK_BASE_PATH;
+          const departments = Array.isArray(payload?.departments) ? payload.departments : [];
+          return { basePath, departments };
+        })
+        .catch(() => ({ basePath: DATA_FALLBACK_BASE_PATH, departments: [] }));
+    }
+    return manifestPromise;
+  };
+
+  const buildDeptUrl = (entry, basePath) => {
+    if (!entry || !entry.file) {
+      return null;
+    }
+    if (/^https?:/i.test(entry.file)) {
+      return entry.file;
+    }
+    const base = (entry.basePath || basePath || DATA_FALLBACK_BASE_PATH || '').replace(/\/+$/u, '');
+    const file = entry.file.replace(/^\/+/u, '');
+    return `${base}/${file}`;
+  };
+
+  const annotateClub = (club, entry) => ({
+    ...club,
+    departement: club.departement || entry.code || '',
+    departement_nom: club.departement_nom || entry.name || '',
+    departement_slug: club.departement_slug || entry.slug || '',
+  });
+
+  const fetchDepartmentClubs = async (entry, manifestMeta) => {
+    const url = buildDeptUrl(entry, manifestMeta.basePath);
+    if (!url) {
+      return [];
+    }
+    try {
+      const payload = await fetchJson(url);
+      const records = Array.isArray(payload) ? payload : [];
+      return records.map((club) => annotateClub(club, entry));
+    } catch (error) {
+      console.warn(`[clubs-fr-map] Département ${entry.code || '?'} indisponible (${url}).`, error);
+      return [];
+    }
+  };
+
+  const loadFranceClubsDataset = () => {
+    if (!datasetPromise) {
+      datasetPromise = loadManifest().then(async (manifestMeta) => {
+        const departments = manifestMeta.departments || [];
+        if (!departments.length) {
+          return [];
+        }
+        const chunks = await Promise.all(departments.map((entry) => fetchDepartmentClubs(entry, manifestMeta)));
+        return chunks.flat();
+      });
+    }
+    return datasetPromise;
+  };
 
   const statusElement = document.getElementById('clubs-map-status');
   const detailBase = mapElement.dataset.detailBase || '/club/';
@@ -403,6 +476,15 @@
       latitude,
       longitude,
       slug: slugify(slugSource || id || name || 'club'),
+      departmentCode:
+        raw.departmentCode ||
+        raw.department_code ||
+        raw.department ||
+        raw.departement ||
+        raw.dept ||
+        '',
+      departmentName: raw.departmentName || raw.department_name || raw.departement_nom || raw.departmentLabel || '',
+      departmentSlug: raw.departmentSlug || raw.department_slug || raw.departement_slug || '',
     };
   };
 
@@ -527,13 +609,7 @@
 
   updateStatus('Chargement de la carte…', 'info');
 
-  fetch(DATA_URL, { headers: { Accept: 'application/json' } })
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return response.json();
-    })
+  loadFranceClubsDataset()
     .then((payload) => {
       const data = Array.isArray(payload) ? payload : [];
       if (!data.length) {

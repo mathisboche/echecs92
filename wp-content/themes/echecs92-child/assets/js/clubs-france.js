@@ -3,9 +3,87 @@
  * Provides fuzzy text search with automatic distance fallback.
  */
 (function () {
-  const DATA_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france.json';
+  const DATA_MANIFEST_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france.json';
+  const DATA_FALLBACK_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france/';
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
   const VISIBLE_RESULTS_DEFAULT = 12;
+
+  let manifestPromise = null;
+  let datasetPromise = null;
+
+  const fetchJson = (url) =>
+    fetch(url, { headers: { Accept: 'application/json' } }).then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return response.json();
+    });
+
+  const normaliseDepartments = (payload) => {
+    if (!payload || typeof payload !== 'object') {
+      return { basePath: DATA_FALLBACK_BASE_PATH, departments: [] };
+    }
+    const basePath = payload.basePath || DATA_FALLBACK_BASE_PATH;
+    const departments = Array.isArray(payload.departments) ? payload.departments : [];
+    return { basePath, departments };
+  };
+
+  const loadFranceDataManifest = () => {
+    if (!manifestPromise) {
+      manifestPromise = fetchJson(DATA_MANIFEST_URL)
+        .then(normaliseDepartments)
+        .catch(() => ({ basePath: DATA_FALLBACK_BASE_PATH, departments: [] }));
+    }
+    return manifestPromise;
+  };
+
+  const buildDepartmentFileUrl = (entry, basePath) => {
+    if (!entry || !entry.file) {
+      return null;
+    }
+    if (/^https?:/i.test(entry.file)) {
+      return entry.file;
+    }
+    const base = (entry.basePath || basePath || DATA_FALLBACK_BASE_PATH || '').replace(/\/+$/u, '');
+    const file = entry.file.replace(/^\/+/u, '');
+    return `${base}/${file}`;
+  };
+
+  const annotateDepartmentClub = (club, entry) => ({
+    ...club,
+    departement: club.departement || entry.code || '',
+    departement_nom: club.departement_nom || entry.name || '',
+    departement_slug: club.departement_slug || entry.slug || '',
+  });
+
+  const fetchDepartmentClubs = async (entry, manifestMeta) => {
+    const url = buildDepartmentFileUrl(entry, manifestMeta.basePath);
+    if (!url) {
+      return [];
+    }
+    try {
+      const payload = await fetchJson(url);
+      const records = Array.isArray(payload) ? payload : [];
+      return records.map((club) => annotateDepartmentClub(club, entry));
+    } catch (error) {
+      console.warn(`[clubs-fr-debug] Impossible de charger le département ${entry.code || '?'} (${url}).`, error);
+      return [];
+    }
+  };
+
+  const loadFranceClubsDataset = () => {
+    if (!datasetPromise) {
+      datasetPromise = loadFranceDataManifest().then(async (manifestMeta) => {
+        const departments = manifestMeta.departments || [];
+        if (!departments.length) {
+          return [];
+        }
+        const chunks = await Promise.all(departments.map((entry) => fetchDepartmentClubs(entry, manifestMeta)));
+        return chunks.flat();
+      });
+    }
+    return datasetPromise;
+  };
   const POSTAL_COORDINATES = {
     '92000': { label: 'Nanterre', lat: 48.8927825, lng: 2.2073652 },
     '92100': { label: 'Boulogne-Billancourt', lat: 48.837494, lng: 2.2378546 },
@@ -2365,6 +2443,15 @@ const handleLocationSubmit = async (event) => {
         B: toNumber(raw.licences_b ?? raw.licenses_b ?? raw.license_b),
       },
       postalCode,
+      departmentCode:
+        raw.departmentCode ||
+        raw.department_code ||
+        raw.department ||
+        raw.departement ||
+        raw.dept ||
+        '',
+      departmentName: raw.departmentName || raw.department_name || raw.departement_nom || raw.departmentLabel || '',
+      departmentSlug: raw.departmentSlug || raw.department_slug || raw.departement_slug || '',
     };
   };
 
@@ -2669,13 +2756,7 @@ const handleLocationSubmit = async (event) => {
     bindMapCtaNavigation();
     setSearchStatus('Chargement de la liste des clubs…', 'info');
 
-    fetch(DATA_URL, { headers: { Accept: 'application/json' } })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        return response.json();
-      })
+    loadFranceClubsDataset()
       .then((payload) => {
         const data = Array.isArray(payload) ? payload : [];
         state.clubs = data
