@@ -224,6 +224,42 @@
     return `club-${generatedIdCounter}`;
   };
 
+  const buildClubSlugBase = (club) => {
+    const provided = slugify(club.slug || '');
+    if (provided && provided !== 'club') {
+      return provided;
+    }
+    const communePart = slugify(club.commune || '');
+    const deptPart = slugify(club.departmentCode || club.departmentSlug || club.departmentName || '');
+    const namePart = slugify(club.name || '');
+    const parts = [];
+    if (communePart) {
+      parts.push(communePart);
+    } else if (deptPart) {
+      parts.push(deptPart);
+    }
+    if (namePart && !parts.includes(namePart)) {
+      parts.push(namePart);
+    }
+    const joined = parts.filter(Boolean).join('-');
+    return joined || slugify(club.id || `club-${Date.now()}`);
+  };
+
+  const ensureUniqueSlugs = (clubs) => {
+    const seen = new Set();
+    clubs.forEach((club) => {
+      const base = buildClubSlugBase(club);
+      let candidate = base || 'club';
+      let suffix = 2;
+      while (seen.has(candidate)) {
+        candidate = `${base}-${suffix}`;
+        suffix += 1;
+      }
+      club.slug = candidate;
+      seen.add(candidate);
+    });
+  };
+
   const extractAddressParts = (value) => {
     const result = {
       full: value ? String(value).trim() : '',
@@ -1047,6 +1083,7 @@
     loadFranceClubsDataset()
       .then((data) => {
         const clubs = (Array.isArray(data) ? data : []).map(hydrateClub);
+        ensureUniqueSlugs(clubs);
         const club = clubs.find((entry) => entry.slug === clubSlug || entry.id === clubSlug);
         if (!club) {
           renderMessage(detailContainer.dataset.emptyMessage || 'Club introuvable.');
