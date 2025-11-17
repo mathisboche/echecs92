@@ -9,91 +9,52 @@
 
   <!-- Barre de recherche unifiée -->
   <section class="clubs-search-block clubs-search-panel" role="search" aria-label="Rechercher un club">
-    <div class="clubs-search-panel__inputs">
-      <div class="clubs-search-panel__pill clubs-search-panel__pill--primary">
-        <label for="clubs-search" class="clubs-search-panel__field">
-          <span class="sr-only">Nom du club, ville ou établissement</span>
-          <span class="clubs-search-panel__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-              <path d="M11 2.5a8.5 8.5 0 016.629 13.547l3.662 3.662-1.414 1.414-3.662-3.662A8.5 8.5 0 1111 2.5zm0 2a6.5 6.5 0 100 13 6.5 6.5 0 000-13z" fill="currentColor"/>
-            </svg>
-          </span>
-          <input
-            id="clubs-search"
-            class="clubs-input"
-            type="search"
-            placeholder="Ex. Lyon, Brest…"
-            aria-label="Tapez le nom d’un club ou d’une ville"
-            autocomplete="off"
-          >
-        </label>
+    <div class="clubs-search-panel__layout">
+      <div class="clubs-search-panel__group clubs-search-panel__group--primary">
+        <p class="clubs-search-panel__title">Recherche</p>
+        <label for="clubs-search" class="clubs-search-panel__label">Nom du club, ville ou établissement</label>
+        <input
+          id="clubs-search"
+          class="clubs-input clubs-search-panel__input"
+          type="search"
+          placeholder="Ex. Lyon, Brest…"
+          aria-label="Tapez le nom d’un club ou d’une ville"
+          autocomplete="off"
+        >
         <div class="clubs-search-panel__actions">
-          <button id="clubs-search-btn" class="btn-icon" type="button">
-            <span class="sr-only">Lancer la recherche</span>
-            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-              <path d="M11 2.5a8.5 8.5 0 016.629 13.547l3.662 3.662-1.414 1.414-3.662-3.662A8.5 8.5 0 1111 2.5zm0 2a6.5 6.5 0 100 13 6.5 6.5 0 000-13z" fill="currentColor"/>
-            </svg>
-          </button>
-          <button id="clubs-reset-btn" class="btn-icon btn-icon--ghost" type="button">
-            <span class="sr-only">Effacer la recherche</span>
-            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-              <path d="M6.343 5.929L5.93 6.343 10.586 11 5.93 15.657l.414.414L11 11.414l4.657 4.657.414-.414L11.414 11l4.657-4.657-.414-.414L11 10.586z" fill="currentColor"/>
-            </svg>
-          </button>
+          <button id="clubs-search-btn" class="btn clubs-search-panel__btn" type="button">Rechercher</button>
+          <button id="clubs-reset-btn" class="btn btn-secondary clubs-search-panel__btn" type="button">Effacer</button>
         </div>
       </div>
 
-      <div class="clubs-search-panel__distance">
-        <div class="clubs-search-panel__pill clubs-search-panel__pill--distance">
-          <label for="clubs-location" class="clubs-search-panel__field">
-            <span class="sr-only">Rechercher par distance</span>
-            <span class="clubs-search-panel__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                <path d="M12 2a7 7 0 00-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 00-7-7zm0 9.5a2.5 2.5 0 112.5-2.5 2.5 2.5 0 01-2.5 2.5z" fill="currentColor"/>
-              </svg>
-            </span>
-            <input
-              id="clubs-location"
-              type="text"
-              inputmode="search"
-              autocomplete="postal-code"
-              placeholder="Autour de Toulouse, 31000…"
-            >
-          </label>
-          <div class="clubs-search-panel__actions">
-            <button id="clubs-location-apply" class="btn-icon" type="button">
-              <span class="sr-only">Valider cette localisation</span>
-              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                <path d="M9.173 16.414l-4.95-4.95 1.414-1.414 3.536 3.535 7.071-7.07 1.414 1.414z" fill="currentColor"/>
-              </svg>
-            </button>
-            <button id="clubs-use-geoloc" class="btn-icon btn-icon--ghost" type="button">
-              <span class="sr-only">Autour de moi</span>
-              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                <path d="M13 3.05V1h-2v2.05A7.002 7.002 0 005.05 11H3v2h2.05A7.002 7.002 0 0011 18.95V21h2v-2.05A7.002 7.002 0 0018.95 13H21v-2h-2.05A7.002 7.002 0 0013 3.05zM12 17a5 5 0 115-5 5.006 5.006 0 01-5 5zm0-2a3 3 0 10-3-3 3 3 0 003 3z" fill="currentColor"/>
-              </svg>
-            </button>
-            <button id="clubs-location-clear" class="btn-icon btn-icon--ghost" type="button">
-              <span class="sr-only">Effacer la localisation</span>
-              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                <path d="M6.343 5.929L5.93 6.343 10.586 11 5.93 15.657l.414.414L11 11.414l4.657 4.657.414-.414L11.414 11l4.657-4.657-.414-.414L11 10.586z" fill="currentColor"/>
-              </svg>
-            </button>
-          </div>
+      <div class="clubs-search-panel__group clubs-search-panel__group--distance">
+        <p class="clubs-search-panel__title">Distance</p>
+        <label for="clubs-location" class="clubs-search-panel__label">Ville ou code postal</label>
+        <input
+          id="clubs-location"
+          class="clubs-search-panel__input"
+          type="text"
+          inputmode="search"
+          autocomplete="postal-code"
+          placeholder="Autour de Toulouse, 31000…"
+        >
+        <div class="clubs-search-panel__actions clubs-search-panel__actions--distance">
+          <button id="clubs-location-apply" class="btn clubs-search-panel__btn" type="button">Valider</button>
+          <button id="clubs-use-geoloc" class="btn btn-secondary clubs-search-panel__btn" type="button">Autour de moi</button>
+          <button id="clubs-location-clear" class="btn btn-secondary clubs-search-panel__btn clubs-search-panel__btn--quiet" type="button">Effacer</button>
         </div>
-        <p id="clubs-location-status" class="clubs-search-panel__status" role="status" aria-live="polite"></p>
+        <p id="clubs-location-status" class="clubs-search-panel__status clubs-location__status" role="status" aria-live="polite"></p>
       </div>
 
-      <a class="clubs-map-button btn-icon btn-icon--ghost" href="/carte-des-clubs-france" aria-label="Voir la carte des clubs">
-        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M9 3.32L3 5.32V21l6-2 6 2 6-2V3l-6 2zm0 15.36l-4 1.333V6.68l4-1.334zm6 1.333l-4-1.333V5.346l4 1.334zm2-1.333V6.68l2-.666v12.334z" fill="currentColor"/>
-        </svg>
-        <span class="sr-only">Voir la carte</span>
-      </a>
+      <div class="clubs-search-panel__group clubs-search-panel__group--map">
+        <p class="clubs-search-panel__title">Carte</p>
+        <p class="clubs-search-panel__hint">Visualisez tous les clubs sur la carte.</p>
+        <a class="clubs-map-button" href="/carte-des-clubs-france">Ouvrir la carte</a>
+      </div>
     </div>
 
     <div class="clubs-search-panel__refinements" aria-label="Outils complémentaires">
-      <span class="clubs-search-panel__refinements-label" aria-hidden="true">Affiner</span>
+      <p class="clubs-search-panel__refinements-label">Tri</p>
       <div class="clubs-sort__buttons" role="group" aria-label="Options de tri">
         <button type="button" class="clubs-sort__button is-active" data-club-sort="default" aria-pressed="true">Par défaut</button>
         <button type="button" class="clubs-sort__button" data-club-sort="licenses" aria-pressed="false">Licenciés</button>

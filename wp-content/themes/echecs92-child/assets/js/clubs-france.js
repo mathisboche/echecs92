@@ -1079,14 +1079,12 @@
     const previousHtml = button.innerHTML;
     const previousMinWidth = button.style.minWidth;
     const hadExplicitMinWidth = typeof previousMinWidth === 'string' && previousMinWidth.length > 0;
-    const previousAriaLabel = button.getAttribute('aria-label');
     const rect = typeof button.getBoundingClientRect === 'function' ? button.getBoundingClientRect() : null;
     if (rect && Number.isFinite(rect.width) && rect.width > 0) {
       button.style.minWidth = `${rect.width}px`;
     }
     if (busyLabel) {
-      button.innerHTML = `<span class="btn-icon__busy">${busyLabel}</span>`;
-      button.setAttribute('aria-label', busyLabel);
+      button.textContent = busyLabel;
     }
     button.disabled = true;
     button.setAttribute('aria-busy', 'true');
@@ -1099,13 +1097,6 @@
       }
       button.disabled = false;
       button.removeAttribute('aria-busy');
-      if (busyLabel) {
-        if (previousAriaLabel) {
-          button.setAttribute('aria-label', previousAriaLabel);
-        } else {
-          button.removeAttribute('aria-label');
-        }
-      }
     };
   };
 
