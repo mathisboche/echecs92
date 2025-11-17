@@ -153,6 +153,18 @@
   const highlightLocationButton = document.getElementById('clubs-highlight-location');
   const highlightGeolocButton = document.getElementById('clubs-highlight-geoloc');
 
+  const expandOptionsPanel = () => {
+    if (!optionsDetails) {
+      return;
+    }
+    const isDetailsElement = optionsDetails.tagName && optionsDetails.tagName.toLowerCase() === 'details';
+    if (isDetailsElement) {
+      optionsDetails.open = true;
+      return;
+    }
+    optionsDetails.classList.add('is-expanded');
+  };
+
   let totalCounter = null;
   if (resultsEl) {
     totalCounter = document.createElement('p');
@@ -2298,9 +2310,7 @@ const handleLocationSubmit = async (event) => {
         locationInput.value = decoratedLabel || raw;
       }
 
-      if (optionsDetails && !optionsDetails.open) {
-        optionsDetails.open = true;
-      }
+      expandOptionsPanel();
 
       searchRequestId += 1;
       const meta = runDistanceSearch({
@@ -2362,9 +2372,7 @@ const handleLocationSubmit = async (event) => {
               locationInput.value = decoratedLabel || place?.label || '';
             }
 
-            if (optionsDetails && !optionsDetails.open) {
-              optionsDetails.open = true;
-            }
+            expandOptionsPanel();
 
             searchRequestId += 1;
             const meta = runDistanceSearch({
@@ -2844,17 +2852,13 @@ const handleLocationSubmit = async (event) => {
     });
     geolocButton?.addEventListener('click', handleUseGeolocation);
     highlightLocationButton?.addEventListener('click', () => {
-      if (optionsDetails && !optionsDetails.open) {
-        optionsDetails.open = true;
-      }
+      expandOptionsPanel();
       if (locationInput) {
         locationInput.focus();
       }
     });
     highlightGeolocButton?.addEventListener('click', () => {
-      if (optionsDetails && !optionsDetails.open) {
-        optionsDetails.open = true;
-      }
+      expandOptionsPanel();
       if (geolocButton) {
         geolocButton.focus();
         geolocButton.click();

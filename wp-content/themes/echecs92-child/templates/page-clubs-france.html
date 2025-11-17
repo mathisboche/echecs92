@@ -37,40 +37,52 @@
     </div>
   </section>
 
-  <!-- Options supplémentaires (distances & tri) -->
-  <details class="clubs-options" id="clubs-options">
-    <summary>Options supplémentaires</summary>
-    <div class="clubs-options__inner">
-      <div class="clubs-location-box" aria-label="Localisation personnelle">
-        <div class="clubs-location-box__header">
-          <h2>Votre localisation</h2>
-          <button id="clubs-location-clear" type="button" class="link-button">Effacer</button>
+  <!-- Options avancées toujours visibles -->
+  <section class="clubs-options clubs-options--expanded" id="clubs-options" aria-label="Options avancées de recherche">
+    <div class="clubs-options__intro">
+      <div>
+        <p class="clubs-options__eyebrow">Affiner la recherche</p>
+        <h2>Localisation, carte et tri accessibles en un coup d’œil</h2>
+        <p>Activez un point de départ précis, explorez la carte nationale et classez les clubs avec les mêmes outils qu’avant, mais visibles en permanence.</p>
+      </div>
+    </div>
+    <div class="clubs-options__inner" role="group" aria-label="Filtres disponibles">
+      <div class="clubs-options__column">
+        <div class="clubs-location-box" aria-label="Localisation personnelle">
+          <div class="clubs-location-box__header">
+            <h3>Votre localisation</h3>
+            <button id="clubs-location-clear" type="button" class="link-button">Effacer</button>
+          </div>
+          <label for="clubs-location" class="clubs-location__label">Ville ou code postal</label>
+          <div class="clubs-location__control">
+            <input id="clubs-location" type="text" inputmode="search" autocomplete="postal-code" placeholder="Ex. Toulouse ou 31000">
+            <button id="clubs-location-apply" class="btn" type="button">Valider</button>
+            <button id="clubs-use-geoloc" class="btn btn-secondary" type="button">Autour de moi</button>
+          </div>
+          <p id="clubs-location-status" class="clubs-location__status" role="status" aria-live="polite"></p>
         </div>
-        <label for="clubs-location" class="clubs-location__label">Ville ou code postal</label>
-        <div class="clubs-location__control">
-          <input id="clubs-location" type="text" inputmode="search" autocomplete="postal-code" placeholder="Ex. Toulouse ou 31000">
-          <button id="clubs-location-apply" class="btn" type="button">Valider</button>
-          <button id="clubs-use-geoloc" class="btn btn-secondary" type="button">Autour de moi</button>
-        </div>
-        <p id="clubs-location-status" class="clubs-location__status" role="status" aria-live="polite"></p>
       </div>
 
-      <div class="clubs-map-box" aria-label="Carte des clubs">
-        <h2>Afficher la carte</h2>
-        <a class="btn btn-secondary clubs-map-box__cta" href="/carte-des-clubs-france">Ouvrir la carte</a>
-      </div>
+      <div class="clubs-options__column">
+        <div class="clubs-map-box" aria-label="Carte des clubs">
+          <h3>Afficher la carte nationale</h3>
+          <p>Visualisez tous les clubs de France sur une carte interactive.</p>
+          <a class="btn btn-secondary clubs-map-box__cta" href="/carte-des-clubs-france">Ouvrir la carte</a>
+        </div>
 
-      <div class="clubs-sort-box" aria-label="Tri des clubs">
-        <h2>Trier les clubs</h2>
-        <div class="clubs-sort__buttons">
-          <button type="button" class="clubs-sort__button is-active" data-club-sort="default" aria-pressed="true">Par défaut</button>
-          <button type="button" class="clubs-sort__button" data-club-sort="licenses" aria-pressed="false">Nombre de licenciés</button>
-          <button type="button" class="clubs-sort__button" data-club-sort="licenseA" aria-pressed="false">Licences A</button>
-          <button type="button" class="clubs-sort__button" data-club-sort="licenseB" aria-pressed="false">Licences B</button>
+        <div class="clubs-sort-box" aria-label="Tri des clubs">
+          <h3>Trier les clubs</h3>
+          <p>Choisissez un ordre de tri pour prioriser les clubs qui vous intéressent.</p>
+          <div class="clubs-sort__buttons" role="group" aria-label="Options de tri">
+            <button type="button" class="clubs-sort__button is-active" data-club-sort="default" aria-pressed="true">Par défaut</button>
+            <button type="button" class="clubs-sort__button" data-club-sort="licenses" aria-pressed="false">Nombre de licenciés</button>
+            <button type="button" class="clubs-sort__button" data-club-sort="licenseA" aria-pressed="false">Licences A</button>
+            <button type="button" class="clubs-sort__button" data-club-sort="licenseB" aria-pressed="false">Licences B</button>
+          </div>
         </div>
       </div>
     </div>
-  </details>
+  </section>
 
   <!-- Résultats -->
   <div class="clubs-results-wrapper" role="region" aria-live="polite">
