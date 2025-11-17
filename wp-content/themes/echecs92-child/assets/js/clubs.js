@@ -74,26 +74,19 @@
   }
 
   const jumpToResults = (options = {}) => {
-    if (!resultsEl) {
+    if (!resultsEl || typeof window === 'undefined') {
       return;
     }
     const target = totalCounter || resultsEl;
     const behavior = options.behavior === 'instant' ? 'auto' : options.behavior || 'smooth';
-    const scrollIntoView = () => {
-      try {
-        target.scrollIntoView({ behavior, block: 'start', inline: 'nearest' });
-      } catch {
-        target.scrollIntoView({ block: 'start' });
-      }
-    };
-    scrollIntoView();
-    const offset = Number.isFinite(options.offset) ? options.offset : -20;
-    if (offset && typeof window !== 'undefined' && typeof window.scrollBy === 'function') {
-      try {
-        window.scrollBy({ top: offset, behavior });
-      } catch {
-        window.scrollBy(0, offset);
-      }
+    const margin = Number.isFinite(options.margin) ? options.margin : 20;
+    const rect = target.getBoundingClientRect();
+    const absoluteTop = rect.top + window.pageYOffset;
+    const destination = Math.max(0, absoluteTop - margin);
+    try {
+      window.scrollTo({ top: destination, behavior });
+    } catch {
+      window.scrollTo(0, destination);
     }
     if (typeof resultsEl.focus === 'function') {
       resultsEl.focus({ preventScroll: true });
