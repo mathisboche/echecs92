@@ -48,6 +48,16 @@
 
   const resultsEl = document.getElementById('clubs-results');
   const detailBase = resultsEl?.dataset?.detailBase || '';
+  const DEFAULT_RESULTS_SCROLL_MARGIN = 24;
+  const parseScrollMargin = (value) => {
+    if (value == null || value === '') {
+      return null;
+    }
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  const configuredScrollMargin = parseScrollMargin(resultsEl?.dataset?.scrollMargin);
+  const resultsScrollMargin = configuredScrollMargin ?? DEFAULT_RESULTS_SCROLL_MARGIN;
 
   const searchInput = document.getElementById('clubs-search');
   const searchButton = document.getElementById('clubs-search-btn');
@@ -70,6 +80,9 @@
     totalCounter = document.createElement('p');
     totalCounter.className = 'clubs-total';
     totalCounter.setAttribute('aria-live', 'polite');
+    if (Number.isFinite(resultsScrollMargin)) {
+      totalCounter.style.setProperty('--clubs-results-scroll-margin', `${resultsScrollMargin}px`);
+    }
     resultsEl.before(totalCounter);
   }
 
@@ -79,6 +92,10 @@
     }
     const target = totalCounter || resultsEl;
     const behavior = options.behavior === 'instant' ? 'auto' : options.behavior || 'smooth';
+    const marginOverride = Number.isFinite(options.margin) ? options.margin : null;
+    if (marginOverride != null && totalCounter) {
+      totalCounter.style.setProperty('--clubs-results-scroll-margin', `${marginOverride}px`);
+    }
     try {
       target.scrollIntoView({ behavior, block: 'start', inline: 'nearest' });
     } catch {
