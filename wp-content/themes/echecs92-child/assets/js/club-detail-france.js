@@ -1071,7 +1071,6 @@
     const totalLicenses =
       (Number.isFinite(licenseA) ? licenseA : 0) + (Number.isFinite(licenseB) ? licenseB : 0);
     club.totalLicenses = totalLicenses > 0 ? totalLicenses : null;
-    club.slug = club.slug || slugify(club.commune || club.name || club.id || 'club');
     return club;
   };
 
