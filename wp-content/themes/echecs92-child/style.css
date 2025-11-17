@@ -2825,6 +2825,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .clubs-page--france .clubs-sort__button.is-active{
   background:#e6ecf7;
   border-color:#0f172a;
+  color:#0f172a;
 }
 .clubs-page--france .clubs-sort__button:hover,
 .clubs-page--france .clubs-sort__button:focus-visible{
@@ -2842,6 +2843,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 @media (max-width:640px){
   .clubs-page--france .clubs-search-block{
     padding:20px 0;
+    margin:12px 0 20px;
   }
   .clubs-search-panel__layout{
     grid-template-columns:1fr;
