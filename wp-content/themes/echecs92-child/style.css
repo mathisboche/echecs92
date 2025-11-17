@@ -2857,6 +2857,10 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
     align-items:flex-start;
     gap:8px;
   }
+  .clubs-page--france .clubs-geoloc-banner__text{
+    flex:0 0 auto;
+    width:100%;
+  }
   .clubs-geoloc-banner__btn{
     width:100%;
     min-width:0;
