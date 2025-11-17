@@ -77,11 +77,23 @@
     if (!resultsEl) {
       return;
     }
+    const target = totalCounter || resultsEl;
     const behavior = options.behavior === 'instant' ? 'auto' : options.behavior || 'smooth';
-    try {
-      resultsEl.scrollIntoView({ behavior, block: 'start', inline: 'nearest' });
-    } catch {
-      resultsEl.scrollIntoView({ block: 'start' });
+    const scrollIntoView = () => {
+      try {
+        target.scrollIntoView({ behavior, block: 'start', inline: 'nearest' });
+      } catch {
+        target.scrollIntoView({ block: 'start' });
+      }
+    };
+    scrollIntoView();
+    const offset = Number.isFinite(options.offset) ? options.offset : -20;
+    if (offset && typeof window !== 'undefined' && typeof window.scrollBy === 'function') {
+      try {
+        window.scrollBy({ top: offset, behavior });
+      } catch {
+        window.scrollBy(0, offset);
+      }
     }
     if (typeof resultsEl.focus === 'function') {
       resultsEl.focus({ preventScroll: true });
