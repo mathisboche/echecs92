@@ -3221,6 +3221,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   margin:0;
   scroll-margin-top:var(--clubs-results-scroll-margin,24px);
 }
+.clubs-total.is-deferred{
+  visibility:hidden;
+}
 .clubs-results-wrapper{
   display:flex;
   flex-direction:column;

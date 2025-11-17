@@ -180,21 +180,34 @@
   let renderUpdatesDeferred = false;
   let pendingRenderOptions = null;
   let pendingRenderUpdate = false;
+  let totalCounterHiddenByDefer = false;
 
   const deferResultsRendering = () => {
     renderUpdatesDeferred = true;
+    if (totalCounter && !totalCounterHiddenByDefer) {
+      totalCounter.classList.add('is-deferred');
+      totalCounter.setAttribute('aria-hidden', 'true');
+      totalCounterHiddenByDefer = true;
+    }
   };
 
   const flushDeferredResultsRendering = () => {
-    if (!renderUpdatesDeferred) {
+    if (!renderUpdatesDeferred && !totalCounterHiddenByDefer) {
       return;
     }
-    renderUpdatesDeferred = false;
-    if (pendingRenderUpdate) {
-      const queuedOptions = pendingRenderOptions ? { ...pendingRenderOptions } : {};
-      pendingRenderOptions = null;
-      pendingRenderUpdate = false;
-      renderResults({ ...queuedOptions, force: true });
+    if (renderUpdatesDeferred) {
+      renderUpdatesDeferred = false;
+      if (pendingRenderUpdate) {
+        const queuedOptions = pendingRenderOptions ? { ...pendingRenderOptions } : {};
+        pendingRenderOptions = null;
+        pendingRenderUpdate = false;
+        renderResults({ ...queuedOptions, force: true });
+      }
+    }
+    if (totalCounter && totalCounterHiddenByDefer) {
+      totalCounter.classList.remove('is-deferred');
+      totalCounter.removeAttribute('aria-hidden');
+      totalCounterHiddenByDefer = false;
     }
   };
 
