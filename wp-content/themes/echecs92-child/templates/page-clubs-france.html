@@ -1,0 +1,103 @@
+<!-- wp:template-part {"slug":"header","tagName":"header","theme":"echecs92-child"} /-->
+
+<!-- wp:html -->
+<div class="clubs-page legal">
+  <h1>Clubs en France</h1>
+  <p>
+    Trouvez un club d’échecs près de chez vous, partout en France.
+  </p>
+
+  <!-- Recherche principale -->
+  <section class="clubs-search-block" role="search" aria-label="Rechercher un club">
+    <label for="clubs-search" class="clubs-field">
+      <span>Nom du club, ville ou établissement</span>
+      <input
+        id="clubs-search"
+        class="clubs-input"
+        type="search"
+        placeholder="Ex. Lyon, Brest…"
+        aria-label="Tapez le nom d’un club ou d’une ville"
+        autocomplete="off"
+      >
+    </label>
+    <div class="clubs-search__actions">
+      <button id="clubs-search-btn" class="btn" type="button">Rechercher</button>
+      <button id="clubs-reset-btn" class="btn btn-secondary" type="button">Effacer</button>
+    </div>
+    <p id="clubs-search-status" class="clubs-search__status" role="status" aria-live="polite"></p>
+  </section>
+
+  <section class="clubs-location-highlight" aria-label="Recherche par localisation">
+    <div class="clubs-location-highlight__text">
+      <strong>Besoin d'un club près de vous&nbsp;?</strong>
+      <span>Choisissez votre ville ou utilisez la géolocalisation pour classer automatiquement les résultats par distance.</span>
+    </div>
+    <div class="clubs-location-highlight__actions">
+      <button id="clubs-highlight-location" class="btn" type="button">Choisir une ville</button>
+      <button id="clubs-highlight-geoloc" class="btn btn-secondary" type="button">Autour de moi</button>
+    </div>
+  </section>
+
+  <!-- Options supplémentaires (distances & tri) -->
+  <details class="clubs-options" id="clubs-options">
+    <summary>Options supplémentaires</summary>
+    <div class="clubs-options__inner">
+      <p>Indiquez votre ville ou votre code postal pour classer les clubs par proximité.</p>
+      <div class="clubs-location-box" aria-label="Localisation personnelle">
+        <div class="clubs-location-box__header">
+          <h2>Votre localisation</h2>
+          <button id="clubs-location-clear" type="button" class="link-button">Effacer</button>
+        </div>
+        <label for="clubs-location" class="clubs-location__label">Ville ou code postal</label>
+        <div class="clubs-location__control">
+          <input id="clubs-location" type="text" inputmode="search" autocomplete="postal-code" placeholder="Ex. Toulouse ou 31000">
+          <button id="clubs-location-apply" class="btn" type="button">Valider</button>
+          <button id="clubs-use-geoloc" class="btn btn-secondary" type="button">Autour de moi</button>
+        </div>
+        <p id="clubs-location-status" class="clubs-location__status" role="status" aria-live="polite"></p>
+      </div>
+
+      <div class="clubs-map-box" aria-label="Carte des clubs">
+        <h2>Afficher la carte</h2>
+        <p>Voir sur une carte interactive tous les clubs référencés en France.</p>
+        <a class="btn btn-secondary clubs-map-box__cta" href="/carte-des-clubs-france">Ouvrir la carte</a>
+      </div>
+
+      <div class="clubs-sort-box" aria-label="Tri des clubs">
+        <h2>Trier les clubs</h2>
+        <div class="clubs-sort__buttons">
+          <button type="button" class="clubs-sort__button is-active" data-club-sort="default" aria-pressed="true">Par défaut</button>
+          <button type="button" class="clubs-sort__button" data-club-sort="alpha" aria-pressed="false">Ordre alphabétique</button>
+          <button type="button" class="clubs-sort__button" data-club-sort="licenses" aria-pressed="false">Nombre de licenciés</button>
+          <button type="button" class="clubs-sort__button" data-club-sort="licenseA" aria-pressed="false">Licences A</button>
+          <button type="button" class="clubs-sort__button" data-club-sort="licenseB" aria-pressed="false">Licences B</button>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <!-- Résultats -->
+  <div class="clubs-results-wrapper" role="region" aria-live="polite">
+    <div
+      id="clubs-results"
+      class="clubs-list"
+      role="list"
+      aria-label="Liste des clubs"
+      data-detail-base="/club-france/"
+      data-scroll-margin="24"
+      tabindex="-1"
+    ></div>
+    <button id="clubs-more-button" class="link-button clubs-more-button" type="button" hidden>Afficher d'autres clubs</button>
+  </div>
+
+  <p class="clubs-help">
+    Une info à corriger&nbsp;? Écrivez à
+    <a href="mailto:contact@echecs92.com">contact@echecs92.com</a>
+  </p>
+</div>
+
+<!-- Script de la recherche de clubs -->
+<script src="/wp-content/themes/echecs92-child/assets/js/clubs-france.js" defer></script>
+<!-- /wp:html -->
+
+<!-- wp:template-part {"slug":"footer","tagName":"footer","theme":"echecs92-child"} /-->
