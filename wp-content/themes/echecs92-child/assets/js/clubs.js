@@ -1890,7 +1890,8 @@
     };
   };
 
-  const performSearch = async () => {
+  const performSearch = async (options = {}) => {
+    const suppressJump = Boolean(options.suppressJump);
     const raw = searchInput ? searchInput.value : '';
     if (tryHandleSecretCommand(raw)) {
       return;
@@ -1900,7 +1901,7 @@
     let didJumpToResults = false;
 
     const ensureResultsVisible = () => {
-      if (didJumpToResults || requestId !== searchRequestId) {
+      if (suppressJump || didJumpToResults || requestId !== searchRequestId) {
         return;
       }
       jumpToResults();
@@ -2088,13 +2089,16 @@
 
   const handleLocationClear = (eventOrOptions) => {
     let options = {};
+    let triggeredByEvent = false;
     if (eventOrOptions && typeof eventOrOptions.preventDefault === 'function') {
       eventOrOptions.preventDefault();
+      triggeredByEvent = true;
     } else if (eventOrOptions && typeof eventOrOptions === 'object') {
       options = eventOrOptions;
     }
     const silent = Boolean(options.silent);
     const skipSearch = Boolean(options.skipSearch);
+    const suppressJump = Boolean(options.suppressJump) || triggeredByEvent;
     locationRequestId += 1;
     state.distanceMode = false;
     state.distanceReference = '';
@@ -2111,7 +2115,7 @@
     }
     setLocationStatus(silent ? '' : 'Localisation effacée.', 'info');
     if (!skipSearch) {
-      void performSearch();
+      void performSearch({ suppressJump });
     }
   };
 
