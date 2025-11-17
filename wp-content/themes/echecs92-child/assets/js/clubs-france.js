@@ -149,7 +149,7 @@
   const moreButton = document.getElementById('clubs-more-button');
   const optionsDetails = document.getElementById('clubs-options');
   const sortButtons = document.querySelectorAll('[data-club-sort]');
-  const mapCtaLink = document.querySelector('.clubs-map-box__cta');
+  const mapCtaLink = document.querySelector('.clubs-map-box__cta, .clubs-map-button');
   const highlightLocationButton = document.getElementById('clubs-highlight-location');
   const highlightGeolocButton = document.getElementById('clubs-highlight-geoloc');
 
@@ -1076,22 +1076,36 @@
     if (!button) {
       return () => {};
     }
-    const originalText = button.dataset.label || button.textContent || '';
-    button.dataset.label = originalText;
+    const previousHtml = button.innerHTML;
+    const previousMinWidth = button.style.minWidth;
+    const hadExplicitMinWidth = typeof previousMinWidth === 'string' && previousMinWidth.length > 0;
+    const previousAriaLabel = button.getAttribute('aria-label');
+    const rect = typeof button.getBoundingClientRect === 'function' ? button.getBoundingClientRect() : null;
+    if (rect && Number.isFinite(rect.width) && rect.width > 0) {
+      button.style.minWidth = `${rect.width}px`;
+    }
     if (busyLabel) {
-      button.textContent = busyLabel;
+      button.innerHTML = `<span class="btn-icon__busy">${busyLabel}</span>`;
+      button.setAttribute('aria-label', busyLabel);
     }
     button.disabled = true;
     button.setAttribute('aria-busy', 'true');
     return () => {
-      if (button.dataset.label !== undefined) {
-        button.textContent = button.dataset.label;
-        delete button.dataset.label;
+      button.innerHTML = previousHtml;
+      if (hadExplicitMinWidth) {
+        button.style.minWidth = previousMinWidth;
       } else {
-        button.textContent = originalText;
+        button.style.removeProperty('min-width');
       }
       button.disabled = false;
       button.removeAttribute('aria-busy');
+      if (busyLabel) {
+        if (previousAriaLabel) {
+          button.setAttribute('aria-label', previousAriaLabel);
+        } else {
+          button.removeAttribute('aria-label');
+        }
+      }
     };
   };
 
