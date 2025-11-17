@@ -3257,6 +3257,9 @@ body.mathis-mode [data-mathis-hidden="true"]{
   visibility:hidden !important;
   pointer-events:none !important;
 }
+body.mathis-mode .mathis-fragment{
+  display:inline-block;
+}
 .mathis-collapse-target.is-mathis-restoring{
   opacity:0;
   transform:translate3d(calc(var(--mathis-dx,0) * -0.35),calc(var(--mathis-dy,0) * -0.35),0) scale(1.02);
