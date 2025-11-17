@@ -140,16 +140,14 @@
   const searchInput = document.getElementById('clubs-search');
   const searchButton = document.getElementById('clubs-search-btn');
   const resetButton = document.getElementById('clubs-reset-btn');
-  const searchStatus = document.getElementById('clubs-search-status');
   const locationInput = document.getElementById('clubs-location');
   const locationApplyButton = document.getElementById('clubs-location-apply');
   const locationClearButton = document.getElementById('clubs-location-clear');
   const geolocButton = document.getElementById('clubs-use-geoloc');
-  const locationStatus = document.getElementById('clubs-location-status');
   const moreButton = document.getElementById('clubs-more-button');
   const optionsDetails = document.getElementById('clubs-options');
   const sortButtons = document.querySelectorAll('[data-club-sort]');
-  const mapCtaLink = document.querySelector('.clubs-map-box__cta, .clubs-map-button, .clubs-map-link');
+  const mapCtaLink = document.querySelector('.clubs-map-box__cta');
   const highlightLocationButton = document.getElementById('clubs-highlight-location');
   const highlightGeolocButton = document.getElementById('clubs-highlight-geoloc');
 
@@ -229,6 +227,8 @@
     distanceReferenceCommune: '',
     distanceReferenceType: '',
     sortMode: 'default',
+    statusMessage: '',
+    locationMessage: '',
   };
 
   const DEBUG_FLAG_KEY = 'echecs92:clubs-fr:debug';
@@ -557,9 +557,7 @@
     if (optionsDetails) {
       optionsDetails.removeAttribute('aria-hidden');
     }
-    if (locationStatus) {
-      setLocationStatus('Indiquez une ville, un code postal ou utilisez Autour de moi.', 'info');
-    }
+    setLocationStatus('', 'info');
   };
 
   const bindMapCtaNavigation = () => {
@@ -577,27 +575,13 @@
   };
 
   const setSearchStatus = (message, tone = 'info') => {
-    if (!searchStatus) {
-      return;
-    }
-    searchStatus.textContent = message || '';
-    if (message) {
-      searchStatus.dataset.tone = tone;
-    } else {
-      delete searchStatus.dataset.tone;
-    }
+    state.statusMessage = message || '';
+    updateTotalCounter();
   };
 
   const setLocationStatus = (message, tone = 'info') => {
-    if (!locationStatus) {
-      return;
-    }
-    locationStatus.textContent = message || '';
-    if (message) {
-      locationStatus.dataset.tone = tone;
-    } else {
-      delete locationStatus.dataset.tone;
-    }
+    state.locationMessage = message || '';
+    updateTotalCounter();
   };
 
   const clearSearchQuery = (options = {}) => {
@@ -2701,7 +2685,7 @@ const handleLocationSubmit = async (event) => {
     return article;
   };
 
-  const updateTotalCounter = () => {
+  function updateTotalCounter() {
     if (!totalCounter) {
       return;
     }
@@ -2710,9 +2694,11 @@ const handleLocationSubmit = async (event) => {
     const filtered = state.filtered.length;
     const visible = Math.min(state.visibleCount, filtered);
     const activeLicenseSort = getActiveLicenseSort();
+    const trimmedQuery = state.query ? state.query.trim() : '';
 
     if (!total) {
-      totalCounter.textContent = 'Aucun club disponible pour le moment.';
+      const fallback = state.statusMessage || state.locationMessage || 'Aucun club disponible pour le moment.';
+      totalCounter.textContent = fallback;
       return;
     }
 
@@ -2721,12 +2707,23 @@ const handleLocationSubmit = async (event) => {
       if (state.distanceMode && state.distanceReference) {
         parts.splice(1, 0, `distances depuis ${state.distanceReference}`);
       }
+      if (trimmedQuery) {
+        parts.push(`recherche «${trimmedQuery}»`);
+      }
       if (activeLicenseSort) {
         parts.push(activeLicenseSort.counterLabel);
       } else if (state.sortMode === 'alpha') {
         parts.push('ordre alphabétique');
       }
-      totalCounter.textContent = `${parts.join(' · ')}.`;
+      const meta = [];
+      if (state.statusMessage) {
+        meta.push(state.statusMessage);
+      }
+      if (state.locationMessage) {
+        meta.push(state.locationMessage);
+      }
+      const summary = `${parts.join(' · ')}.`;
+      totalCounter.textContent = meta.length ? `${summary} ${meta.join(' — ')}` : summary;
       return;
     }
 
@@ -2742,13 +2739,24 @@ const handleLocationSubmit = async (event) => {
     if (state.distanceMode && state.distanceReference) {
       parts.push(`distances depuis ${state.distanceReference}`);
     }
+    if (trimmedQuery) {
+      parts.push(`recherche «${trimmedQuery}»`);
+    }
     if (activeLicenseSort) {
       parts.push(activeLicenseSort.counterLabel);
     } else if (state.sortMode === 'alpha') {
       parts.push('ordre alphabétique');
     }
-    totalCounter.textContent = `${parts.join(' · ')}.`;
-  };
+    const meta = [];
+    if (state.statusMessage) {
+      meta.push(state.statusMessage);
+    }
+    if (state.locationMessage) {
+      meta.push(state.locationMessage);
+    }
+    const summary = `${parts.join(' · ')}.`;
+    totalCounter.textContent = meta.length ? `${summary} ${meta.join(' — ')}` : summary;
+  }
 
   const renderResults = () => {
     if (!resultsEl) {
