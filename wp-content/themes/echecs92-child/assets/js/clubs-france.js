@@ -1300,15 +1300,6 @@
     if (type === 'geoloc') {
       return `${baseLabel} (ma position)`;
     }
-    if (type === 'address') {
-      return `${baseLabel} (loc. précise)`;
-    }
-    if (type === 'location') {
-      return `${baseLabel} (localisation)`;
-    }
-    if (type === 'postal') {
-      return `${baseLabel} (code postal)`;
-    }
     return baseLabel;
   };
 

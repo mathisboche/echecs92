@@ -2703,6 +2703,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .clubs-search-panel__actions--distance{
   gap:8px;
 }
+.clubs-search-panel__actions--distance .clubs-search-panel__btn{
+  min-width:120px;
+}
 .clubs-search-panel .btn{
   border-radius:999px;
   padding:10px 18px;
@@ -2770,12 +2773,6 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   color:#0f172a;
   border-color:transparent;
   min-width:130px;
-}
-.clubs-geoloc-banner__btn:hover,
-.clubs-geoloc-banner__btn:focus-visible{
-  background:#ffffff;
-  color:#0f172a;
-  border-color:transparent;
 }
 .clubs-sort-toggle{
   margin:4px 0 0;
@@ -2856,9 +2853,14 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   .clubs-geoloc-banner{
     flex-direction:column;
     align-items:flex-start;
+    gap:8px;
   }
   .clubs-geoloc-banner__btn{
     width:100%;
+    min-width:0;
+  }
+  .clubs-search-panel__actions--distance .clubs-search-panel__btn{
+    flex:1 1 calc(50% - 8px);
   }
 }
 .clubs-location-highlight{
