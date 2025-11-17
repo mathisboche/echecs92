@@ -2634,6 +2634,37 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   font-size:13px;
   color:#334155;
 }
+.clubs-location-highlight{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:14px;
+  padding:18px 20px;
+  margin:0 0 24px;
+  border:1px solid #d6dbe7;
+  border-radius:12px;
+  background:#fffdf5;
+}
+.clubs-location-highlight__text{
+  flex:1;
+  min-width:220px;
+}
+.clubs-location-highlight__text strong{
+  display:block;
+  font-size:15px;
+  color:#0f172a;
+  margin-bottom:4px;
+}
+.clubs-location-highlight__text span{
+  font-size:14px;
+  color:#475569;
+}
+.clubs-location-highlight__actions{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:10px;
+}
 .clubs-search__status[data-tone="success"]{
   color:#166534;
 }
@@ -3627,6 +3658,15 @@ body.mathis-mode [data-mathis-hidden="true"]{
 @media (max-width:599px){
   .clubs-search-block{
     padding:16px;
+  }
+  .clubs-location-highlight{
+    flex-direction:column;
+    align-items:flex-start;
+    padding:16px;
+  }
+  .clubs-location-highlight__actions{
+    width:100%;
+    justify-content:flex-start;
   }
   .clubs-options>summary{
     padding:14px 16px;

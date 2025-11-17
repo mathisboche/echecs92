@@ -62,6 +62,8 @@
   const optionsDetails = document.getElementById('clubs-options');
   const sortButtons = document.querySelectorAll('[data-club-sort]');
   const mapCtaLink = document.querySelector('.clubs-map-box__cta');
+  const highlightLocationButton = document.getElementById('clubs-highlight-location');
+  const highlightGeolocButton = document.getElementById('clubs-highlight-geoloc');
 
   let totalCounter = null;
   if (resultsEl) {
@@ -2664,6 +2666,25 @@ const handleLocationSubmit = async (event) => {
       }
     });
     geolocButton?.addEventListener('click', handleUseGeolocation);
+    highlightLocationButton?.addEventListener('click', () => {
+      if (optionsDetails && !optionsDetails.open) {
+        optionsDetails.open = true;
+      }
+      if (locationInput) {
+        locationInput.focus();
+      }
+    });
+    highlightGeolocButton?.addEventListener('click', () => {
+      if (optionsDetails && !optionsDetails.open) {
+        optionsDetails.open = true;
+      }
+      if (geolocButton) {
+        geolocButton.focus();
+        geolocButton.click();
+      } else {
+        handleUseGeolocation();
+      }
+    });
     moreButton?.addEventListener('click', showAllResults);
     sortButtons.forEach((button) => {
       button.addEventListener('click', () => {
