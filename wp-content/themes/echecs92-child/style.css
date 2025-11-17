@@ -2893,6 +2893,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   font-weight:600;
   color:#1d4ed8;
   margin:0;
+  scroll-margin-top:24px;
 }
 .clubs-results-wrapper{
   display:flex;

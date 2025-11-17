@@ -74,22 +74,22 @@
   }
 
   const jumpToResults = (options = {}) => {
-    if (!resultsEl || typeof window === 'undefined') {
+    if (!resultsEl) {
       return;
     }
     const target = totalCounter || resultsEl;
     const behavior = options.behavior === 'instant' ? 'auto' : options.behavior || 'smooth';
-    const margin = Number.isFinite(options.margin) ? options.margin : 20;
-    const rect = target.getBoundingClientRect();
-    const absoluteTop = rect.top + window.pageYOffset;
-    const destination = Math.max(0, absoluteTop - margin);
     try {
-      window.scrollTo({ top: destination, behavior });
+      target.scrollIntoView({ behavior, block: 'start', inline: 'nearest' });
     } catch {
-      window.scrollTo(0, destination);
+      target.scrollIntoView({ block: 'start' });
     }
     if (typeof resultsEl.focus === 'function') {
-      resultsEl.focus({ preventScroll: true });
+      try {
+        resultsEl.focus({ preventScroll: true });
+      } catch {
+        resultsEl.focus();
+      }
     }
   };
 
