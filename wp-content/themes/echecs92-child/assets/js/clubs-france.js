@@ -149,7 +149,7 @@
   const moreButton = document.getElementById('clubs-more-button');
   const optionsDetails = document.getElementById('clubs-options');
   const sortButtons = document.querySelectorAll('[data-club-sort]');
-  const mapCtaLink = document.querySelector('.clubs-map-box__cta, .clubs-map-button');
+  const mapCtaLink = document.querySelector('.clubs-map-box__cta, .clubs-map-button, .clubs-map-link');
   const highlightLocationButton = document.getElementById('clubs-highlight-location');
   const highlightGeolocButton = document.getElementById('clubs-highlight-geoloc');
 

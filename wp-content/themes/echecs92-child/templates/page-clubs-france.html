@@ -11,7 +11,10 @@
   <section class="clubs-search-block clubs-search-panel" role="search" aria-label="Rechercher un club">
     <div class="clubs-search-panel__layout">
       <div class="clubs-search-panel__group clubs-search-panel__group--primary">
-        <p class="clubs-search-panel__title">Recherche</p>
+        <div class="clubs-search-panel__group-header">
+          <p class="clubs-search-panel__title">Recherche</p>
+          <a class="clubs-map-link" href="/carte-des-clubs-france">Voir la carte</a>
+        </div>
         <label for="clubs-search" class="clubs-search-panel__label">Nom du club, ville ou établissement</label>
         <input
           id="clubs-search"
@@ -28,7 +31,10 @@
       </div>
 
       <div class="clubs-search-panel__group clubs-search-panel__group--distance">
-        <p class="clubs-search-panel__title">Distance</p>
+        <div class="clubs-search-panel__group-header">
+          <p class="clubs-search-panel__title">Distance</p>
+          <button id="clubs-location-clear" class="link-button clubs-search-panel__clear" type="button">Effacer</button>
+        </div>
         <label for="clubs-location" class="clubs-search-panel__label">Ville ou code postal</label>
         <input
           id="clubs-location"
@@ -40,28 +46,23 @@
         >
         <div class="clubs-search-panel__actions clubs-search-panel__actions--distance">
           <button id="clubs-location-apply" class="btn clubs-search-panel__btn" type="button">Valider</button>
-          <button id="clubs-use-geoloc" class="btn btn-secondary clubs-search-panel__btn" type="button">Autour de moi</button>
-          <button id="clubs-location-clear" class="btn btn-secondary clubs-search-panel__btn clubs-search-panel__btn--quiet" type="button">Effacer</button>
+          <button id="clubs-use-geoloc" class="btn btn-geoloc clubs-search-panel__btn" type="button">Autour de moi</button>
         </div>
         <p id="clubs-location-status" class="clubs-search-panel__status clubs-location__status" role="status" aria-live="polite"></p>
       </div>
-
-      <div class="clubs-search-panel__group clubs-search-panel__group--map">
-        <p class="clubs-search-panel__title">Carte</p>
-        <p class="clubs-search-panel__hint">Visualisez tous les clubs sur la carte.</p>
-        <a class="clubs-map-button" href="/carte-des-clubs-france">Ouvrir la carte</a>
-      </div>
     </div>
 
-    <div class="clubs-search-panel__refinements" aria-label="Outils complémentaires">
-      <p class="clubs-search-panel__refinements-label">Tri</p>
-      <div class="clubs-sort__buttons" role="group" aria-label="Options de tri">
-        <button type="button" class="clubs-sort__button is-active" data-club-sort="default" aria-pressed="true">Par défaut</button>
-        <button type="button" class="clubs-sort__button" data-club-sort="licenses" aria-pressed="false">Licenciés</button>
-        <button type="button" class="clubs-sort__button" data-club-sort="licenseA" aria-pressed="false">Licences A</button>
-        <button type="button" class="clubs-sort__button" data-club-sort="licenseB" aria-pressed="false">Licences B</button>
+    <details class="clubs-sort-toggle" id="clubs-sort-toggle">
+      <summary>Affiner le tri</summary>
+      <div class="clubs-sort-toggle__panel">
+        <div class="clubs-sort__buttons" role="group" aria-label="Options de tri">
+          <button type="button" class="clubs-sort__button is-active" data-club-sort="default" aria-pressed="true">Par défaut</button>
+          <button type="button" class="clubs-sort__button" data-club-sort="licenses" aria-pressed="false">Licenciés</button>
+          <button type="button" class="clubs-sort__button" data-club-sort="licenseA" aria-pressed="false">Licences A</button>
+          <button type="button" class="clubs-sort__button" data-club-sort="licenseB" aria-pressed="false">Licences B</button>
+        </div>
       </div>
-    </div>
+    </details>
 
     <p id="clubs-search-status" class="clubs-search__status" role="status" aria-live="polite"></p>
   </section>
