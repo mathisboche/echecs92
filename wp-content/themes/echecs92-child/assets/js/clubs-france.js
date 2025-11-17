@@ -7,9 +7,35 @@
   const DATA_FALLBACK_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france/';
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
   const VISIBLE_RESULTS_DEFAULT = 12;
+  const MIN_RESULTS_SCROLL_DELAY_MS = 1100;
 
   let manifestPromise = null;
   let datasetPromise = null;
+
+  const scheduleAfterMinimumDelay = (startedAt, callback, minDelay = MIN_RESULTS_SCROLL_DELAY_MS) => {
+    if (typeof callback !== 'function') {
+      return;
+    }
+    const reference = Number.isFinite(startedAt) ? startedAt : Date.now();
+    const minimum = Number.isFinite(minDelay) ? minDelay : MIN_RESULTS_SCROLL_DELAY_MS;
+    const elapsed = Date.now() - reference;
+    const remaining = Math.max(0, minimum - elapsed);
+    const timerHost =
+      typeof window !== 'undefined' && typeof window.setTimeout === 'function'
+        ? window
+        : typeof globalThis !== 'undefined' && typeof globalThis.setTimeout === 'function'
+        ? globalThis
+        : null;
+    if (remaining > 0) {
+      const setTimer =
+        timerHost && typeof timerHost.setTimeout === 'function'
+          ? timerHost.setTimeout.bind(timerHost)
+          : setTimeout;
+      setTimer(callback, remaining);
+    } else {
+      callback();
+    }
+  };
 
   const fetchJson = (url) =>
     fetch(url, { headers: { Accept: 'application/json' } }).then((response) => {
@@ -975,8 +1001,26 @@
     state.lastSearchMeta = meta;
   };
 
-  const applySortMode = () => {
+  const applySortMode = (options = {}) => {
+    const actionStartedAt = Number.isFinite(options.startedAt) ? options.startedAt : Date.now();
+    const minDelay = Number.isFinite(options.minDelay) ? options.minDelay : MIN_RESULTS_SCROLL_DELAY_MS;
+    const shouldDelay = options.delay !== false;
+    const shouldScroll = options.forceScroll ? true : !options.skipScroll;
     const activeLicenseSort = getActiveLicenseSort();
+    const finalizeSort = (message, metaKey) => {
+      const run = () => {
+        setSearchMeta({ sort: metaKey, total: state.filtered.length });
+        setSearchStatus(message, 'info');
+        if (shouldScroll) {
+          jumpToResults(options.scrollOptions || {});
+        }
+      };
+      if (shouldDelay) {
+        scheduleAfterMinimumDelay(actionStartedAt, run, minDelay);
+      } else {
+        run();
+      }
+    };
     if (activeLicenseSort) {
       const sorted = state.clubs
         .slice()
@@ -997,8 +1041,7 @@
       state.visibleCount = state.filtered.length;
       renderResults({ resetVisible: false });
       updateTotalCounter();
-      setSearchMeta({ sort: activeLicenseSort.metaKey || state.sortMode, total: state.filtered.length });
-      setSearchStatus(activeLicenseSort.status, 'info');
+      finalizeSort(activeLicenseSort.status, activeLicenseSort.metaKey || state.sortMode);
       return true;
     }
     if (state.sortMode === 'alpha') {
@@ -1014,18 +1057,22 @@
       state.visibleCount = state.filtered.length;
       renderResults({ resetVisible: false });
       updateTotalCounter();
-      setSearchMeta({ sort: 'alpha', total: state.filtered.length });
-      setSearchStatus('Clubs classés par ordre alphabétique.', 'info');
+      finalizeSort('Clubs classés par ordre alphabétique.', 'alpha');
       return true;
     }
     return false;
   };
 
   const setSortMode = (mode) => {
+    const actionStartedAt = Date.now();
     const normalized = LICENSE_SORT_CONFIGS[mode] ? mode : mode === 'alpha' ? 'alpha' : 'default';
+    const announceSortUpdate = () => {
+      setSearchStatus('Mise à jour du tri…', 'info');
+    };
     if (state.sortMode === normalized) {
       if (normalized !== 'default') {
-        applySortMode();
+        announceSortUpdate();
+        applySortMode({ forceScroll: true, startedAt: actionStartedAt });
       }
       return;
     }
@@ -1042,10 +1089,11 @@
       state.distanceReferenceType = '';
       state.filtered = state.clubs.slice();
       state.visibleCount = Math.min(VISIBLE_RESULTS_DEFAULT, state.filtered.length);
-      void performSearch();
+      void performSearch({ forceJump: true });
       return;
     }
 
+    announceSortUpdate();
     clearSearchQuery({ silent: true });
     handleLocationClear({ skipSearch: true, silent: true });
     state.distanceMode = false;
@@ -1053,7 +1101,7 @@
     state.distanceReferencePostal = '';
     state.distanceReferenceCommune = '';
     state.distanceReferenceType = '';
-    applySortMode();
+    applySortMode({ forceScroll: true, startedAt: actionStartedAt });
   };
 
   const beginButtonWait = (button, busyLabel) => {
@@ -1999,26 +2047,43 @@
 
   const performSearch = async (options = {}) => {
     const suppressJump = Boolean(options.suppressJump);
+    const forceJump = Boolean(options.forceJump);
+    const actionStartedAt = Date.now();
     const raw = searchInput ? searchInput.value : '';
     if (tryHandleSecretCommand(raw)) {
       return;
     }
     const trimmed = (raw || '').trim();
     const requestId = ++searchRequestId;
-    let didJumpToResults = false;
-
-    const ensureResultsVisible = () => {
-      if (suppressJump || didJumpToResults || requestId !== searchRequestId) {
-        return;
-      }
-      jumpToResults();
-      didJumpToResults = true;
-    };
+    let actionCompleted = false;
 
     const updateStatusIfCurrent = (message, tone = 'info') => {
       if (requestId === searchRequestId) {
         setSearchStatus(message, tone);
       }
+    };
+
+    const finalizeSearch = (finalizer, extra = {}) => {
+      if (actionCompleted) {
+        return;
+      }
+      actionCompleted = true;
+      const shouldScroll = extra.skipScroll ? false : forceJump || !suppressJump;
+      const minDelay = Number.isFinite(extra.minDelay) ? extra.minDelay : MIN_RESULTS_SCROLL_DELAY_MS;
+      const behavior = extra.behavior;
+      const margin = extra.margin;
+      const run = () => {
+        if (requestId !== searchRequestId) {
+          return;
+        }
+        if (typeof finalizer === 'function') {
+          finalizer();
+        }
+        if (shouldScroll) {
+          jumpToResults({ behavior, margin });
+        }
+      };
+      scheduleAfterMinimumDelay(actionStartedAt, run, minDelay);
     };
 
     if (state.sortMode !== 'default') {
@@ -2027,16 +2092,18 @@
     }
 
     if (!trimmed) {
+      updateStatusIfCurrent('Recherche en cours…', 'info');
       const meta = applySearch('');
       if (requestId !== searchRequestId) {
         return;
       }
-      ensureResultsVisible();
-      if (meta.total > 0) {
-        updateStatusIfCurrent('Tous les clubs sont affichés.', 'info');
-      } else {
-        updateStatusIfCurrent('Aucun club disponible pour le moment.', 'info');
-      }
+      finalizeSearch(() => {
+        if (meta.total > 0) {
+          updateStatusIfCurrent('Tous les clubs sont affichés.', 'info');
+        } else {
+          updateStatusIfCurrent('Aucun club disponible pour le moment.', 'info');
+        }
+      }, { skipScroll: !forceJump });
       return;
     }
 
@@ -2082,19 +2149,21 @@
         if (requestId !== searchRequestId) {
           return;
         }
-        if (meta.finite > 0) {
-          updateStatusIfCurrent(
-            `Clubs triés par distance depuis ${meta.label || decoratedLabel || trimmed}.`,
-            'info'
-          );
-        } else {
-          updateStatusIfCurrent('Impossible de calculer les distances pour cette localisation.', 'error');
-        }
-        ensureResultsVisible();
+        finalizeSearch(() => {
+          if (meta.finite > 0) {
+            updateStatusIfCurrent(
+              `Clubs triés par distance depuis ${meta.label || decoratedLabel || trimmed}.`,
+              'info'
+            );
+          } else {
+            updateStatusIfCurrent('Impossible de calculer les distances pour cette localisation.', 'error');
+          }
+        });
         return;
       }
-      updateStatusIfCurrent(`Localisation "${postalCode}" introuvable.`, 'error');
-      ensureResultsVisible();
+      finalizeSearch(() => {
+        updateStatusIfCurrent(`Localisation "${postalCode}" introuvable.`, 'error');
+      });
       return;
     }
 
@@ -2107,8 +2176,9 @@
       if (state.distanceMode) {
         handleLocationClear();
       }
-      updateStatusIfCurrent('Tous les clubs sont affichés.', 'info');
-      ensureResultsVisible();
+      finalizeSearch(() => {
+        updateStatusIfCurrent('Tous les clubs sont affichés.', 'info');
+      });
       return;
     }
 
@@ -2120,8 +2190,9 @@
       if (state.distanceMode) {
         handleLocationClear();
       }
-      updateStatusIfCurrent(label, 'info');
-      ensureResultsVisible();
+      finalizeSearch(() => {
+        updateStatusIfCurrent(label, 'info');
+      });
       return;
     }
 
@@ -2162,22 +2233,25 @@
       if (requestId !== searchRequestId) {
         return;
       }
-      if (distanceMeta.finite > 0) {
-        const reference = distanceMeta.label || decoratedLabel || trimmed;
-        updateStatusIfCurrent(
-          `Aucun club nommé "${trimmed}". Classement par distance depuis ${reference}.`,
-          'info'
-        );
-      } else {
-        updateStatusIfCurrent('Impossible de calculer les distances pour cette localisation.', 'error');
-      }
-      ensureResultsVisible();
+      finalizeSearch(() => {
+        if (distanceMeta.finite > 0) {
+          const reference = distanceMeta.label || decoratedLabel || trimmed;
+          updateStatusIfCurrent(
+            `Aucun club nommé "${trimmed}". Classement par distance depuis ${reference}.`,
+            'info'
+          );
+        } else {
+          updateStatusIfCurrent('Impossible de calculer les distances pour cette localisation.', 'error');
+        }
+      });
       return;
     }
 
-    updateStatusIfCurrent(`Aucun club ne correspond à "${meta.rawQuery}".`, 'error');
-    ensureResultsVisible();
+    finalizeSearch(() => {
+      updateStatusIfCurrent(`Aucun club ne correspond à "${meta.rawQuery}".`, 'error');
+    });
   };
+
 
   const resetSearch = () => {
     searchRequestId += 1;
@@ -2246,7 +2320,24 @@ const handleLocationSubmit = async (event) => {
     }
     clearSearchQuery({ silent: true });
     setLocationStatus(`Recherche de ${raw}…`, 'info');
+    const actionStartedAt = Date.now();
     const releaseButton = beginButtonWait(locationApplyButton, 'Recherche…');
+    let locationActionFinalized = false;
+    const finalizeLocationSearch = (finalizer) => {
+      if (locationActionFinalized) {
+        return;
+      }
+      locationActionFinalized = true;
+      const run = () => {
+        if (requestId !== locationRequestId) {
+          return;
+        }
+        if (typeof finalizer === 'function') {
+          finalizer();
+        }
+      };
+      scheduleAfterMinimumDelay(actionStartedAt, run);
+    };
 
     try {
       const looksLikeAddress = looksLikeDetailedAddress(raw);
@@ -2274,7 +2365,9 @@ const handleLocationSubmit = async (event) => {
       }
 
       if (!coords) {
-        setLocationStatus('Localisation introuvable. Essayez un autre nom de ville ou code postal.', 'error');
+        finalizeLocationSearch(() => {
+          setLocationStatus('Localisation introuvable. Essayez un autre nom de ville ou code postal.', 'error');
+        });
         return;
       }
 
@@ -2305,14 +2398,17 @@ const handleLocationSubmit = async (event) => {
 
       if (meta.finite > 0) {
         const reference = meta.label || decoratedLabel || raw;
-        setLocationStatus(`Distances calculées depuis ${reference}.`, 'success');
-        setSearchStatus(`Clubs triés par distance depuis ${reference}.`, 'info');
+        finalizeLocationSearch(() => {
+          setLocationStatus(`Distances calculées depuis ${reference}.`, 'success');
+          setSearchStatus(`Clubs triés par distance depuis ${reference}.`, 'info');
+        });
       } else {
-        setLocationStatus('Impossible de calculer les distances pour cette localisation.', 'error');
+        finalizeLocationSearch(() => {
+          setLocationStatus('Impossible de calculer les distances pour cette localisation.', 'error');
+        });
       }
-      jumpToResults();
     } finally {
-      releaseButton();
+      scheduleAfterMinimumDelay(actionStartedAt, releaseButton);
     }
   };
 
@@ -2329,7 +2425,32 @@ const handleLocationSubmit = async (event) => {
     }
     clearSearchQuery({ silent: true });
     setLocationStatus('Recherche de votre position…', 'info');
+    const actionStartedAt = Date.now();
     const releaseButton = beginButtonWait(geolocButton, 'Recherche…');
+    let releaseScheduled = false;
+    const scheduleRelease = () => {
+      if (releaseScheduled) {
+        return;
+      }
+      releaseScheduled = true;
+      scheduleAfterMinimumDelay(actionStartedAt, releaseButton);
+    };
+    let geolocActionFinalized = false;
+    const finalizeGeolocSearch = (finalizer) => {
+      if (geolocActionFinalized) {
+        return;
+      }
+      geolocActionFinalized = true;
+      const run = () => {
+        if (requestId !== locationRequestId) {
+          return;
+        }
+        if (typeof finalizer === 'function') {
+          finalizer();
+        }
+      };
+      scheduleAfterMinimumDelay(actionStartedAt, run);
+    };
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -2338,6 +2459,7 @@ const handleLocationSubmit = async (event) => {
           .catch(() => null)
           .then((place) => {
             if (requestId !== locationRequestId) {
+              scheduleRelease();
               return;
             }
 
@@ -2367,22 +2489,25 @@ const handleLocationSubmit = async (event) => {
 
             if (meta.finite > 0) {
               const reference = meta.label || decoratedLabel || 'votre position';
-              setLocationStatus(`Distances calculées depuis ${reference}.`, 'success');
-              setSearchStatus(`Clubs triés par distance depuis ${reference}.`, 'info');
+              finalizeGeolocSearch(() => {
+                setLocationStatus(`Distances calculées depuis ${reference}.`, 'success');
+                setSearchStatus(`Clubs triés par distance depuis ${reference}.`, 'info');
+              });
             } else {
-              setLocationStatus('Impossible de calculer les distances pour cette localisation.', 'error');
+              finalizeGeolocSearch(() => {
+                setLocationStatus('Impossible de calculer les distances pour cette localisation.', 'error');
+              });
             }
-            jumpToResults();
           })
           .finally(() => {
-            releaseButton();
+            scheduleRelease();
           });
       },
       () => {
-        if (requestId === locationRequestId) {
+        finalizeGeolocSearch(() => {
           setLocationStatus('Impossible de récupérer votre position.', 'error');
-        }
-        releaseButton();
+        });
+        scheduleRelease();
       },
       {
         enableHighAccuracy: false,
@@ -2809,7 +2934,7 @@ const handleLocationSubmit = async (event) => {
         ensureUniqueSlugs(state.clubs);
 
         if (getActiveLicenseSort() || state.sortMode === 'alpha') {
-          applySortMode();
+          applySortMode({ skipScroll: true, delay: false });
         } else {
           const meta = applySearch('');
           if (meta.total > 0) {
