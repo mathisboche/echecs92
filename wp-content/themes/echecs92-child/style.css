@@ -3179,6 +3179,23 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   opacity:.6;
   cursor:progress;
 }
+.btn[aria-busy="true"]{
+  position:relative;
+  pointer-events:none;
+}
+.btn[aria-busy="true"]::after{
+  content:'';
+  display:inline-block;
+  width:.9em;
+  height:.9em;
+  margin-left:.55em;
+  border-radius:999px;
+  border:2px solid currentColor;
+  border-top-color:transparent;
+  border-right-color:transparent;
+  animation:clubs-busy-spin .8s linear infinite;
+  vertical-align:middle;
+}
 .btn-secondary{
   background:#ffffff;
   color:#0f172a;
@@ -3188,6 +3205,14 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .btn-secondary:focus-visible{
   background:#e6ebf4;
   border-color:#7b869b;
+}
+@keyframes clubs-busy-spin{
+  from{
+    transform:rotate(0deg);
+  }
+  to{
+    transform:rotate(360deg);
+  }
 }
 .clubs-total{
   font-size:15px;
