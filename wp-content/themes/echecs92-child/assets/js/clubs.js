@@ -73,6 +73,21 @@
     resultsEl.before(totalCounter);
   }
 
+  const jumpToResults = (options = {}) => {
+    if (!resultsEl) {
+      return;
+    }
+    const behavior = options.behavior === 'instant' ? 'auto' : options.behavior || 'smooth';
+    try {
+      resultsEl.scrollIntoView({ behavior, block: 'start', inline: 'nearest' });
+    } catch {
+      resultsEl.scrollIntoView({ block: 'start' });
+    }
+    if (typeof resultsEl.focus === 'function') {
+      resultsEl.focus({ preventScroll: true });
+    }
+  };
+
   const rememberClubsNavigation = (context, backPath) => {
     try {
       const storage = window.localStorage;
@@ -1860,6 +1875,15 @@
     }
     const trimmed = (raw || '').trim();
     const requestId = ++searchRequestId;
+    let didJumpToResults = false;
+
+    const ensureResultsVisible = () => {
+      if (didJumpToResults || requestId !== searchRequestId) {
+        return;
+      }
+      jumpToResults();
+      didJumpToResults = true;
+    };
 
     const updateStatusIfCurrent = (message, tone = 'info') => {
       if (requestId === searchRequestId) {
@@ -1877,6 +1901,7 @@
       if (requestId !== searchRequestId) {
         return;
       }
+      ensureResultsVisible();
       if (meta.total > 0) {
         updateStatusIfCurrent('Tous les clubs sont affichés.', 'info');
       } else {
@@ -1935,9 +1960,11 @@
         } else {
           updateStatusIfCurrent('Impossible de calculer les distances pour cette localisation.', 'error');
         }
+        ensureResultsVisible();
         return;
       }
       updateStatusIfCurrent(`Localisation "${postalCode}" introuvable.`, 'error');
+      ensureResultsVisible();
       return;
     }
 
@@ -1951,6 +1978,7 @@
         handleLocationClear();
       }
       updateStatusIfCurrent('Tous les clubs sont affichés.', 'info');
+      ensureResultsVisible();
       return;
     }
 
@@ -1963,6 +1991,7 @@
         handleLocationClear();
       }
       updateStatusIfCurrent(label, 'info');
+      ensureResultsVisible();
       return;
     }
 
@@ -2012,10 +2041,12 @@
       } else {
         updateStatusIfCurrent('Impossible de calculer les distances pour cette localisation.', 'error');
       }
+      ensureResultsVisible();
       return;
     }
 
     updateStatusIfCurrent(`Aucun club ne correspond à "${meta.rawQuery}".`, 'error');
+    ensureResultsVisible();
   };
 
   const resetSearch = () => {
@@ -2148,6 +2179,7 @@ const handleLocationSubmit = async (event) => {
       } else {
         setLocationStatus('Impossible de calculer les distances pour cette localisation.', 'error');
       }
+      jumpToResults();
     } finally {
       releaseButton();
     }
@@ -2211,6 +2243,7 @@ const handleLocationSubmit = async (event) => {
             } else {
               setLocationStatus('Impossible de calculer les distances pour cette localisation.', 'error');
             }
+            jumpToResults();
           })
           .finally(() => {
             releaseButton();
