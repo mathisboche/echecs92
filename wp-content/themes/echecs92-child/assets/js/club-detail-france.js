@@ -751,7 +751,7 @@
         B: toNumber(raw.licences_b ?? raw.licenses_b ?? raw.license_b),
       },
       postalCode,
-      slug: slugify(slugSource || id || name || 'club'),
+      slug: raw.slug ? slugify(raw.slug) : '',
       departmentCode:
         raw.departmentCode ||
         raw.department_code ||

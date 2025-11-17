@@ -2509,8 +2509,7 @@ const handleLocationSubmit = async (event) => {
     club._nameSearch = normaliseForSearch(nameAliases.filter(Boolean).join(' '));
     club._addressSearch = normaliseForSearch(displayAddress || '');
     const communeSlugSource = club.commune || club.name || club.id;
-    club.slug = slugify(communeSlugSource || club.id || club.name || 'club');
-    club._communeSlug = club.slug;
+    club._communeSlug = slugify(communeSlugSource || club.id || club.name || 'club');
     return club;
   };
 
