@@ -8,6 +8,8 @@
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
   const VISIBLE_RESULTS_DEFAULT = 12;
   const MIN_RESULTS_SCROLL_DELAY_MS = 1100;
+  const SORT_SCROLL_DELAY_MS = Math.max(300, Math.round(MIN_RESULTS_SCROLL_DELAY_MS / 2));
+  const COUNTER_LOADING_TEXT = 'Recherche en cours…';
 
   let manifestPromise = null;
   let datasetPromise = null;
@@ -180,19 +182,20 @@
   let renderUpdatesDeferred = false;
   let pendingRenderOptions = null;
   let pendingRenderUpdate = false;
-  let totalCounterHiddenByDefer = false;
+  let pendingTotalCounterText = null;
+  let totalCounterPlaceholderActive = false;
 
   const deferResultsRendering = () => {
     renderUpdatesDeferred = true;
-    if (totalCounter && !totalCounterHiddenByDefer) {
+    if (totalCounter && !totalCounterPlaceholderActive) {
+      totalCounterPlaceholderActive = true;
       totalCounter.classList.add('is-deferred');
-      totalCounter.setAttribute('aria-hidden', 'true');
-      totalCounterHiddenByDefer = true;
+      totalCounter.textContent = COUNTER_LOADING_TEXT;
     }
   };
 
   const flushDeferredResultsRendering = () => {
-    if (!renderUpdatesDeferred && !totalCounterHiddenByDefer) {
+    if (!renderUpdatesDeferred && !totalCounterPlaceholderActive) {
       return;
     }
     if (renderUpdatesDeferred) {
@@ -204,10 +207,16 @@
         renderResults({ ...queuedOptions, force: true });
       }
     }
-    if (totalCounter && totalCounterHiddenByDefer) {
+    if (totalCounter && totalCounterPlaceholderActive) {
+      totalCounterPlaceholderActive = false;
       totalCounter.classList.remove('is-deferred');
-      totalCounter.removeAttribute('aria-hidden');
-      totalCounterHiddenByDefer = false;
+      const nextText = pendingTotalCounterText;
+      pendingTotalCounterText = null;
+      if (nextText != null) {
+        totalCounter.textContent = nextText;
+      } else {
+        updateTotalCounter();
+      }
     }
   };
 
@@ -1103,6 +1112,7 @@
     const triggerButton = options.triggerButton || null;
     const busyLabel =
       typeof options.busyLabel === 'string' && options.busyLabel.trim() ? options.busyLabel.trim() : 'Recherche…';
+    const sortDelay = Number.isFinite(options.delayMs) ? options.delayMs : SORT_SCROLL_DELAY_MS;
     const releaseTriggerButton = (() => {
       if (!triggerButton) {
         return () => {};
@@ -1115,7 +1125,7 @@
           return;
         }
         released = true;
-        const minDelay = forceImmediate ? 0 : MIN_RESULTS_SCROLL_DELAY_MS;
+        const minDelay = forceImmediate ? 0 : sortDelay;
         scheduleAfterMinimumDelay(actionStartedAt, () => {
           release();
           flushDeferredResultsRendering();
@@ -1128,7 +1138,7 @@
     if (state.sortMode === normalized) {
       if (normalized !== 'default') {
         announceSortUpdate();
-        applySortMode({ forceScroll: true, startedAt: actionStartedAt });
+        applySortMode({ forceScroll: true, startedAt: actionStartedAt, minDelay: sortDelay });
         releaseTriggerButton();
       } else {
         releaseTriggerButton(true);
@@ -1148,7 +1158,7 @@
       state.distanceReferenceType = '';
       state.filtered = state.clubs.slice();
       state.visibleCount = Math.min(VISIBLE_RESULTS_DEFAULT, state.filtered.length);
-      void performSearch({ forceJump: true });
+      void performSearch({ forceJump: true, minDelay: sortDelay });
       releaseTriggerButton();
       return;
     }
@@ -1161,7 +1171,7 @@
     state.distanceReferencePostal = '';
     state.distanceReferenceCommune = '';
     state.distanceReferenceType = '';
-    applySortMode({ forceScroll: true, startedAt: actionStartedAt });
+    applySortMode({ forceScroll: true, startedAt: actionStartedAt, minDelay: sortDelay });
     releaseTriggerButton();
   };
 
@@ -2112,6 +2122,7 @@
   const performSearch = async (options = {}) => {
     const suppressJump = Boolean(options.suppressJump);
     const forceJump = Boolean(options.forceJump);
+    const requestedMinDelay = Number.isFinite(options.minDelay) ? options.minDelay : null;
     const actionStartedAt = Date.now();
     const raw = searchInput ? searchInput.value : '';
     const trimmed = (raw || '').trim();
@@ -2158,7 +2169,9 @@
       }
       actionCompleted = true;
       const shouldScroll = extra.skipScroll ? false : forceJump || !suppressJump;
-      const minDelay = Number.isFinite(extra.minDelay) ? extra.minDelay : MIN_RESULTS_SCROLL_DELAY_MS;
+      const minDelay = Number.isFinite(extra.minDelay)
+        ? extra.minDelay
+        : requestedMinDelay ?? MIN_RESULTS_SCROLL_DELAY_MS;
       const behavior = extra.behavior;
       const margin = extra.margin;
       const run = () => {
@@ -2970,7 +2983,16 @@
       appendSentence('Aucun club disponible pour le moment');
     }
 
-    totalCounter.textContent = sentences.join(' ');
+    const finalText = sentences.join(' ');
+    if (renderUpdatesDeferred || totalCounterPlaceholderActive) {
+      pendingTotalCounterText = finalText;
+      if (totalCounterPlaceholderActive) {
+        totalCounter.textContent = COUNTER_LOADING_TEXT;
+      }
+      return;
+    }
+    pendingTotalCounterText = null;
+    totalCounter.textContent = finalText;
   }
 
   const renderResults = (options = {}) => {
@@ -3120,7 +3142,10 @@
         if (button.getAttribute('aria-busy') === 'true') {
           return;
         }
-        setSortMode(button.dataset.clubSort || 'default', { triggerButton: button });
+        setSortMode(button.dataset.clubSort || 'default', {
+          triggerButton: button,
+          delayMs: SORT_SCROLL_DELAY_MS,
+        });
       });
     });
     updateSortButtons();
