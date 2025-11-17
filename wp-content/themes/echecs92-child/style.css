@@ -2841,10 +2841,13 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 }
 @media (max-width:640px){
   .clubs-page--france .clubs-search-block{
-    padding:20px 16px;
+    padding:20px 0;
   }
   .clubs-search-panel__layout{
     grid-template-columns:1fr;
+  }
+  .clubs-search-panel__group{
+    padding:16px 12px;
   }
   .clubs-search-panel__actions{
     flex-direction:row;
