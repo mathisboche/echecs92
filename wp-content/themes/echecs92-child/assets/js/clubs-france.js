@@ -177,6 +177,27 @@
   const highlightLocationButton = document.getElementById('clubs-highlight-location');
   const highlightGeolocButton = document.getElementById('clubs-highlight-geoloc');
 
+  let renderUpdatesDeferred = false;
+  let pendingRenderOptions = null;
+  let pendingRenderUpdate = false;
+
+  const deferResultsRendering = () => {
+    renderUpdatesDeferred = true;
+  };
+
+  const flushDeferredResultsRendering = () => {
+    if (!renderUpdatesDeferred) {
+      return;
+    }
+    renderUpdatesDeferred = false;
+    if (pendingRenderUpdate) {
+      const queuedOptions = pendingRenderOptions ? { ...pendingRenderOptions } : {};
+      pendingRenderOptions = null;
+      pendingRenderUpdate = false;
+      renderResults({ ...queuedOptions, force: true });
+    }
+  };
+
   const expandOptionsPanel = () => {
     if (!optionsDetails) {
       return;
@@ -1073,6 +1094,7 @@
       if (!triggerButton) {
         return () => {};
       }
+      deferResultsRendering();
       const release = beginButtonWait(triggerButton, busyLabel);
       let released = false;
       return (forceImmediate = false) => {
@@ -1081,7 +1103,10 @@
         }
         released = true;
         const minDelay = forceImmediate ? 0 : MIN_RESULTS_SCROLL_DELAY_MS;
-        scheduleAfterMinimumDelay(actionStartedAt, release, minDelay);
+        scheduleAfterMinimumDelay(actionStartedAt, () => {
+          release();
+          flushDeferredResultsRendering();
+        }, minDelay);
       };
     })();
     const announceSortUpdate = () => {
@@ -2076,13 +2101,16 @@
     const forceJump = Boolean(options.forceJump);
     const actionStartedAt = Date.now();
     const raw = searchInput ? searchInput.value : '';
+    const trimmed = (raw || '').trim();
     if (tryHandleSecretCommand(raw)) {
       return;
     }
-    const trimmed = (raw || '').trim();
     const requestId = ++searchRequestId;
     let actionCompleted = false;
-    const shouldShowBusy = options.showBusy === true && Boolean(searchButton);
+    const shouldShowBusy = options.showBusy === true && Boolean(searchButton) && trimmed.length > 0;
+    if (shouldShowBusy) {
+      deferResultsRendering();
+    }
     const releaseSearchFeedback = (() => {
       if (!shouldShowBusy) {
         return () => {};
@@ -2125,6 +2153,7 @@
           if (typeof finalizer === 'function') {
             finalizer();
           }
+          flushDeferredResultsRendering();
           if (shouldScroll) {
             jumpToResults({ behavior, margin });
           }
@@ -2314,6 +2343,7 @@
     } else {
       setSearchStatus('Aucun club disponible pour le moment.', 'info');
     }
+    flushDeferredResultsRendering();
   };
 
   const handleLocationClear = (eventOrOptions) => {
@@ -2348,7 +2378,7 @@
     }
   };
 
-const handleLocationSubmit = async (event) => {
+  const handleLocationSubmit = async (event) => {
     if (event && typeof event.preventDefault === 'function') {
       event.preventDefault();
     }
@@ -2361,6 +2391,7 @@ const handleLocationSubmit = async (event) => {
       return;
     }
 
+    deferResultsRendering();
     const requestId = ++locationRequestId;
     if (state.sortMode !== 'default') {
       state.sortMode = 'default';
@@ -2371,17 +2402,22 @@ const handleLocationSubmit = async (event) => {
     const actionStartedAt = Date.now();
     const releaseButton = beginButtonWait(locationApplyButton, 'Recherche…');
     let locationActionFinalized = false;
-    const finalizeLocationSearch = (finalizer) => {
+    const finalizeLocationSearch = (finalizer, options = {}) => {
       if (locationActionFinalized) {
         return;
       }
       locationActionFinalized = true;
+      const shouldScroll = options.scroll === true;
       const run = () => {
         if (requestId !== locationRequestId) {
           return;
         }
         if (typeof finalizer === 'function') {
           finalizer();
+        }
+        flushDeferredResultsRendering();
+        if (shouldScroll) {
+          jumpToResults();
         }
       };
       scheduleAfterMinimumDelay(actionStartedAt, run);
@@ -2449,7 +2485,7 @@ const handleLocationSubmit = async (event) => {
         finalizeLocationSearch(() => {
           setLocationStatus(`Distances calculées depuis ${reference}.`, 'success');
           setSearchStatus(`Clubs triés par distance depuis ${reference}.`, 'info');
-        });
+        }, { scroll: true });
       } else {
         finalizeLocationSearch(() => {
           setLocationStatus('Impossible de calculer les distances pour cette localisation.', 'error');
@@ -2466,6 +2502,7 @@ const handleLocationSubmit = async (event) => {
       return;
     }
 
+    deferResultsRendering();
     const requestId = ++locationRequestId;
     if (state.sortMode !== 'default') {
       state.sortMode = 'default';
@@ -2484,17 +2521,22 @@ const handleLocationSubmit = async (event) => {
       scheduleAfterMinimumDelay(actionStartedAt, releaseButton);
     };
     let geolocActionFinalized = false;
-    const finalizeGeolocSearch = (finalizer) => {
+    const finalizeGeolocSearch = (finalizer, options = {}) => {
       if (geolocActionFinalized) {
         return;
       }
       geolocActionFinalized = true;
+      const shouldScroll = options.scroll === true;
       const run = () => {
         if (requestId !== locationRequestId) {
           return;
         }
         if (typeof finalizer === 'function') {
           finalizer();
+        }
+        flushDeferredResultsRendering();
+        if (shouldScroll) {
+          jumpToResults();
         }
       };
       scheduleAfterMinimumDelay(actionStartedAt, run);
@@ -2540,7 +2582,7 @@ const handleLocationSubmit = async (event) => {
               finalizeGeolocSearch(() => {
                 setLocationStatus(`Distances calculées depuis ${reference}.`, 'success');
                 setSearchStatus(`Clubs triés par distance depuis ${reference}.`, 'info');
-              });
+              }, { scroll: true });
             } else {
               finalizeGeolocSearch(() => {
                 setLocationStatus('Impossible de calculer les distances pour cette localisation.', 'error');
@@ -2918,7 +2960,17 @@ const handleLocationSubmit = async (event) => {
     totalCounter.textContent = sentences.join(' ');
   }
 
-  const renderResults = () => {
+  const renderResults = (options = {}) => {
+    const settings = { ...(options || {}) };
+    const forceRender = Boolean(settings.force);
+    delete settings.force;
+    if (renderUpdatesDeferred && !forceRender) {
+      pendingRenderOptions = settings;
+      pendingRenderUpdate = true;
+      return;
+    }
+    pendingRenderOptions = null;
+    pendingRenderUpdate = false;
     if (!resultsEl) {
       return;
     }
