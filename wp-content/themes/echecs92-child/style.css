@@ -2739,31 +2739,43 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 }
 .clubs-geoloc-banner{
   margin:4px 0 0;
-  padding:16px 18px;
-  border-radius:14px;
-  border:1px solid #dadde7;
-  background:#fff9eb;
+  padding:18px 20px;
+  border-radius:18px;
+  border:none;
+  background:linear-gradient(130deg,#0f172a,#4057ff);
+  color:#f8fafc;
   display:flex;
   flex-wrap:wrap;
-  align-items:flex-start;
-  gap:12px;
+  align-items:center;
+  gap:16px;
+  box-shadow:0 12px 25px rgba(18,31,72,0.16);
 }
 .clubs-geoloc-banner__text{
-  flex:1 1 200px;
+  flex:1 1 240px;
   display:flex;
   flex-direction:column;
   gap:4px;
 }
 .clubs-geoloc-banner__text strong{
-  font-size:14px;
-  color:#0f172a;
+  font-size:16px;
+  color:#ffffff;
 }
 .clubs-geoloc-banner__text span{
-  font-size:13px;
-  color:#475569;
+  font-size:14px;
+  color:rgba(248,250,252,0.85);
 }
 .clubs-geoloc-banner__btn{
   flex:0 0 auto;
+  background:#f8fafc;
+  color:#0f172a;
+  border-color:transparent;
+  min-width:130px;
+}
+.clubs-geoloc-banner__btn:hover,
+.clubs-geoloc-banner__btn:focus-visible{
+  background:#ffffff;
+  color:#0f172a;
+  border-color:transparent;
 }
 .clubs-sort-toggle{
   margin:4px 0 0;
@@ -2817,6 +2829,19 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .clubs-page--france .clubs-sort__button.is-active{
   background:#e6ecf7;
   border-color:#0f172a;
+}
+.clubs-page--france .clubs-sort__button:hover,
+.clubs-page--france .clubs-sort__button:focus-visible{
+  background:transparent;
+  border-color:#e0e7f3;
+  color:#0f172a;
+  outline:none;
+}
+.clubs-page--france .clubs-sort__button.is-active:hover,
+.clubs-page--france .clubs-sort__button.is-active:focus-visible{
+  background:#e6ecf7;
+  border-color:#0f172a;
+  color:#0f172a;
 }
 @media (max-width:640px){
   .clubs-page--france .clubs-search-block{

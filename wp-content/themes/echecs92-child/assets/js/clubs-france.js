@@ -2695,67 +2695,63 @@ const handleLocationSubmit = async (event) => {
     const visible = Math.min(state.visibleCount, filtered);
     const activeLicenseSort = getActiveLicenseSort();
     const trimmedQuery = state.query ? state.query.trim() : '';
+    const shouldAppendMessage = (message) => /\b(erreur|impossible|introuvable|indisponible|échec)\b/i.test((message || '').trim());
+    const sentences = [];
+    const appendSentence = (value) => {
+      const text = (value || '').trim();
+      if (!text) {
+        return;
+      }
+      if (/[.!?]\s*$/u.test(text)) {
+        sentences.push(text);
+      } else {
+        sentences.push(`${text}.`);
+      }
+    };
 
     if (!total) {
-      const fallback = state.statusMessage || state.locationMessage || 'Aucun club disponible pour le moment.';
-      totalCounter.textContent = fallback;
-      return;
-    }
+      appendSentence(state.statusMessage || state.locationMessage || 'Aucun club disponible pour le moment');
+    } else {
+      const summaryParts = [];
+      if (!filtered) {
+        summaryParts.push('Aucun club trouvé', `${total} au total`);
+      } else if (filtered === total && visible >= filtered) {
+        summaryParts.push(`${total} club${total > 1 ? 's' : ''} affiché${total > 1 ? 's' : ''}`);
+      } else {
+        summaryParts.push(`${filtered} trouvé${filtered > 1 ? 's' : ''} sur ${total}`);
+        if (visible < filtered) {
+          summaryParts.push(`${visible} affiché${visible > 1 ? 's' : ''}`);
+        }
+      }
 
-    if (!filtered) {
-      const parts = [`Aucun club trouvé`, `${total} au total`];
+      const qualifiers = [];
       if (state.distanceMode && state.distanceReference) {
-        parts.splice(1, 0, `distances depuis ${state.distanceReference}`);
+        qualifiers.push(`distances depuis ${state.distanceReference}`);
       }
       if (trimmedQuery) {
-        parts.push(`recherche «${trimmedQuery}»`);
+        qualifiers.push(`recherche «${trimmedQuery}»`);
       }
       if (activeLicenseSort) {
-        parts.push(activeLicenseSort.counterLabel);
+        qualifiers.push(activeLicenseSort.counterLabel);
       } else if (state.sortMode === 'alpha') {
-        parts.push('ordre alphabétique');
+        qualifiers.push('ordre alphabétique');
       }
-      const meta = [];
-      if (state.statusMessage) {
-        meta.push(state.statusMessage);
-      }
-      if (state.locationMessage) {
-        meta.push(state.locationMessage);
-      }
-      const summary = `${parts.join(' · ')}.`;
-      totalCounter.textContent = meta.length ? `${summary} ${meta.join(' — ')}` : summary;
-      return;
+
+      appendSentence([...summaryParts, ...qualifiers].join(' · '));
     }
 
-    const parts = [];
-    if (filtered === total && visible >= filtered) {
-      parts.push(`${total} club${total > 1 ? 's' : ''} en France`);
-    } else {
-      parts.push(`${filtered} trouvé${filtered > 1 ? 's' : ''} sur ${total}`);
-      if (visible < filtered) {
-        parts.push(`${visible} affiché${visible > 1 ? 's' : ''}`);
-      }
+    if (shouldAppendMessage(state.statusMessage)) {
+      appendSentence(state.statusMessage);
     }
-    if (state.distanceMode && state.distanceReference) {
-      parts.push(`distances depuis ${state.distanceReference}`);
+    if (shouldAppendMessage(state.locationMessage)) {
+      appendSentence(state.locationMessage);
     }
-    if (trimmedQuery) {
-      parts.push(`recherche «${trimmedQuery}»`);
+
+    if (!sentences.length) {
+      appendSentence('Aucun club disponible pour le moment');
     }
-    if (activeLicenseSort) {
-      parts.push(activeLicenseSort.counterLabel);
-    } else if (state.sortMode === 'alpha') {
-      parts.push('ordre alphabétique');
-    }
-    const meta = [];
-    if (state.statusMessage) {
-      meta.push(state.statusMessage);
-    }
-    if (state.locationMessage) {
-      meta.push(state.locationMessage);
-    }
-    const summary = `${parts.join(' · ')}.`;
-    totalCounter.textContent = meta.length ? `${summary} ${meta.join(' — ')}` : summary;
+
+    totalCounter.textContent = sentences.join(' ');
   }
 
   const renderResults = () => {
