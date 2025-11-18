@@ -699,6 +699,33 @@
     return filteredTargets.sort((a, b) => getMathisElementDepth(b) - getMathisElementDepth(a));
   };
 
+  const getMathisRestoreOrder = () => {
+    if (!mathisCollapsedTargets.length) {
+      return [];
+    }
+    const buckets = new Map();
+    mathisCollapsedTargets.forEach((element) => {
+      if (!element) {
+        return;
+      }
+      const depth = getMathisElementDepth(element);
+      if (!buckets.has(depth)) {
+        buckets.set(depth, []);
+      }
+      buckets.get(depth).push(element);
+    });
+    const ordered = [];
+    Array.from(buckets.keys())
+      .sort((a, b) => a - b)
+      .forEach((depth) => {
+        const batch = buckets.get(depth);
+        if (batch && batch.length) {
+          shuffleArray(batch).forEach((element) => ordered.push(element));
+        }
+      });
+    return ordered;
+  };
+
   const restoreMathisTargets = () => {
     if (!mathisCollapsedTargets.length) {
       return;
@@ -723,11 +750,17 @@
     if (!mathisCollapsedTargets.length) {
       return Promise.resolve();
     }
-    const order = shuffleArray(mathisCollapsedTargets);
+    const order = getMathisRestoreOrder();
+    if (!order.length) {
+      mathisCollapsedTargets = [];
+      return Promise.resolve();
+    }
+    const timelineWindow = Math.min(3600, 1200 + order.length * 1.9);
     return new Promise((resolve) => {
       let restoredCount = 0;
       order.forEach((element, index) => {
-        const delay = index * 130 + Math.random() * 90;
+        const progress = order.length > 1 ? index / (order.length - 1) : 0;
+        const delay = progress * timelineWindow + Math.random() * 70;
         window.setTimeout(() => {
           const previousVisibility = element.dataset.mathisPrevVisibility;
           if (typeof previousVisibility !== 'undefined') {
@@ -751,7 +784,7 @@
               mathisCollapsedTargets = [];
               resolve();
             }
-          }, 520);
+          }, 420);
         }, delay);
       });
     });
