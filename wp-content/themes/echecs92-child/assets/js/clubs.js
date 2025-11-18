@@ -664,6 +664,29 @@
     mathisFragmentsPrepared = true;
   };
 
+  const cleanupMathisFragments = () => {
+    if (!mathisFragmentsPrepared || typeof document === 'undefined') {
+      return;
+    }
+    const fragments = document.querySelectorAll('.mathis-fragment');
+    fragments.forEach((fragment) => {
+      if (!fragment || fragment.closest(`#${MATHIS_TAKEOVER_ID}`)) {
+        return;
+      }
+      const parent = fragment.parentNode;
+      if (!parent) {
+        return;
+      }
+      const textContent = fragment.textContent || '';
+      const textNode = document.createTextNode(textContent);
+      parent.replaceChild(textNode, fragment);
+      if (typeof parent.normalize === 'function') {
+        parent.normalize();
+      }
+    });
+    mathisFragmentsPrepared = false;
+  };
+
   const gatherMathisFallbackContainers = () => {
     if (typeof document === 'undefined') {
       return [];
@@ -799,6 +822,7 @@
       if (!options.skipRestore) {
         restoreMathisTargets();
       }
+      cleanupMathisFragments();
       unlockMathisScroll();
       if (!options.silent) {
         setSearchStatus('Retour à la réalité des clubs du 92.', 'info');
