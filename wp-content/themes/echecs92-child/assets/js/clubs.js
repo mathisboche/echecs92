@@ -943,12 +943,14 @@
     if (!valid.length) {
       return Promise.resolve();
     }
-    const order = shuffleArray(valid);
+    const order = valid.slice();
     mathisCollapsedTargets = order.slice();
+    const timelineWindow = Math.min(4200, 1400 + order.length * 2.2);
     return new Promise((resolve) => {
       let completed = 0;
       order.forEach((element, index) => {
-        const startDelay = index * 140 + Math.random() * 110;
+        const progress = order.length > 1 ? index / (order.length - 1) : 0;
+        const startDelay = progress * timelineWindow + Math.random() * 90;
         window.setTimeout(() => {
           if (!mathisSequenceActive) {
             completed += 1;
@@ -965,7 +967,7 @@
           requestAnimationFrame(() => {
             element.classList.add('is-mathis-collapsing');
           });
-          const hideDelay = 280 + Math.random() * 160;
+          const hideDelay = 280 + Math.random() * 140;
           window.setTimeout(() => {
             if (!mathisSequenceActive) {
               completed += 1;
