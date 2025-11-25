@@ -1221,7 +1221,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   gap:12px;
   max-width:680px;
   position:relative;
-  padding-bottom:18px;
+  padding-bottom:0px;
 }
 
 .contact-title{
@@ -2564,6 +2564,326 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   box-sizing:border-box;
   font-size:16px;
   line-height:1.7;
+}
+
+/* ---------- MATHIS PROFILE PAGE ---------- */
+.mathis-page{
+  font-family: system-ui,-apple-system,BlinkMacSystemFont,"Inter","Helvetica Neue",Arial,sans-serif;
+  color:#0f172a;
+  max-width:1080px;
+  margin:0 auto;
+  padding:clamp(32px,7vw,96px) 32px 96px;
+  box-sizing:border-box;
+  display:flex;
+  flex-direction:column;
+  gap:48px;
+}
+.mathis-hero{
+  position:relative;
+  display:grid;
+  grid-template-columns:1.1fr 0.9fr;
+  gap:32px;
+  align-items:center;
+  padding:clamp(24px,5vw,48px);
+  border:1px solid #e2e8f0;
+  border-radius:20px;
+  background:radial-gradient(130% 120% at 18% 12%, #eef2ff 0%, #f8fafc 46%, #ffffff 100%);
+  box-shadow:0 18px 60px rgba(15,23,42,0.08);
+  overflow:hidden;
+}
+.mathis-hero::before{
+  content:'';
+  position:absolute;
+  right:-80px;
+  top:-120px;
+  width:320px;
+  height:320px;
+  background:radial-gradient(circle at 50% 50%, rgba(29,78,216,0.22) 0%, rgba(29,78,216,0) 68%);
+  filter:blur(6px);
+  z-index:0;
+}
+.mathis-hero::after{
+  content:'';
+  position:absolute;
+  right:-40px;
+  bottom:-140px;
+  width:260px;
+  height:260px;
+  background:radial-gradient(closest-side, rgba(14,165,233,0.12), rgba(14,165,233,0));
+  transform:rotate(-12deg);
+  z-index:0;
+}
+.mathis-hero__content{
+  position:relative;
+  z-index:1;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.mathis-hero__eyebrow{
+  margin:0;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  font-size:12px;
+  font-weight:700;
+  color:#64748b;
+}
+.mathis-hero__title{
+  margin:0;
+  font-size:clamp(32px,4.6vw,44px);
+  letter-spacing:-0.01em;
+}
+.mathis-hero__subtitle{
+  margin:0;
+  font-size:19px;
+  font-weight:700;
+  color:#1d4ed8;
+}
+.mathis-hero__lede{
+  margin:4px 0 0;
+  max-width:620px;
+  color:#475569;
+  font-size:16px;
+}
+.mathis-hero__chips{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin:4px 0 0;
+}
+.mathis-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 12px;
+  border-radius:999px;
+  border:1px solid #dbeafe;
+  background:#eef2ff;
+  color:#1e3a8a;
+  font-size:13px;
+  font-weight:650;
+}
+.mathis-chip::before{
+  content:'';
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:currentColor;
+  opacity:.3;
+}
+.mathis-hero__cta{
+  margin-top:4px;
+}
+.mathis-contact-link{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:12px 16px;
+  border-radius:999px;
+  background:#0f172a;
+  color:#fff;
+  text-decoration:none;
+  font-weight:700;
+  box-shadow:0 12px 36px rgba(15,23,42,0.18);
+  border:1px solid rgba(15,23,42,0.85);
+}
+.mathis-contact-link:hover,
+.mathis-contact-link:focus-visible{
+  background:#0b1226;
+  color:#fff;
+  outline:none;
+  box-shadow:0 14px 40px rgba(15,23,42,0.2);
+}
+.mathis-hero__portrait{
+  position:relative;
+  z-index:1;
+  margin:0;
+  justify-self:end;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:10px;
+}
+.mathis-portrait__frame{
+  width:100%;
+  max-width:280px;
+  aspect-ratio:1 / 1;
+  border-radius:18px;
+  overflow:hidden;
+  border:1px solid #e2e8f0;
+  box-shadow:0 12px 50px rgba(15,23,42,0.16);
+  background:#0f172a;
+}
+.mathis-portrait__frame img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.mathis-portrait__caption{
+  margin:0;
+  font-size:13px;
+  color:#475569;
+  text-align:right;
+}
+.mathis-section{
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+.mathis-section__header{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.mathis-section__header h2{
+  margin:0;
+  font-size:22px;
+  letter-spacing:-0.01em;
+  color:#0f172a;
+}
+.mathis-section__lede{
+  margin:0;
+  color:#475569;
+  font-size:15px;
+  max-width:720px;
+}
+.mathis-bio__grid{
+  display:grid;
+  grid-template-columns:1.15fr 0.85fr;
+  gap:20px;
+  align-items:start;
+}
+.mathis-bio__text{
+  border:1px solid #e2e8f0;
+  border-radius:16px;
+  padding:20px;
+  background:#f8fafc;
+  box-shadow:inset 0 1px 0 #fff;
+  color:#1f2937;
+  font-size:16px;
+  line-height:1.7;
+}
+.mathis-bio__text p{
+  margin:0 0 12px;
+}
+.mathis-bio__text p:last-child{
+  margin-bottom:0;
+}
+.mathis-facts{
+  list-style:none;
+  margin:0;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.mathis-fact{
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+  padding:14px 16px;
+  background:#ffffff;
+  box-shadow:0 6px 24px rgba(15,23,42,0.06);
+}
+.mathis-fact__label{
+  display:block;
+  font-size:12px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:#94a3b8;
+  margin-bottom:6px;
+  font-weight:700;
+}
+.mathis-fact__value{
+  display:block;
+  color:#0f172a;
+  font-weight:650;
+  line-height:1.5;
+}
+.mathis-contact{
+  border-radius:16px;
+  padding:22px;
+  background:#0f172a;
+  color:#e2e8f0;
+  box-shadow:0 16px 50px rgba(15,23,42,0.18);
+}
+.mathis-contact__card{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:12px 18px;
+}
+.mathis-contact__mail{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.mathis-contact__label{
+  font-size:13px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  font-weight:700;
+  color:#cbd5e1;
+}
+.mathis-contact__link{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 14px;
+  border-radius:999px;
+  text-decoration:none;
+  font-weight:700;
+  color:#0f172a;
+  background:#e2e8f0;
+  border:1px solid rgba(255,255,255,0.2);
+}
+.mathis-contact__link:hover,
+.mathis-contact__link:focus-visible{
+  background:#fff;
+  color:#0f172a;
+  outline:none;
+}
+.mathis-contact__note{
+  margin:0;
+  color:#cbd5e1;
+  font-size:14px;
+}
+@media (max-width:1023px){
+  .mathis-page{
+    padding:40px 24px 80px;
+    gap:40px;
+  }
+  .mathis-hero{
+    grid-template-columns:1fr;
+    text-align:left;
+  }
+  .mathis-hero__portrait{
+    justify-self:start;
+    align-items:flex-start;
+  }
+}
+@media (max-width:767px){
+  .mathis-page{
+    padding:32px 18px 64px;
+    gap:32px;
+  }
+  .mathis-hero{
+    padding:20px;
+    border-radius:16px;
+  }
+  .mathis-hero__title{
+    font-size:clamp(28px,7vw,36px);
+  }
+  .mathis-bio__grid{
+    grid-template-columns:1fr;
+  }
+  .mathis-facts{
+    gap:10px;
+  }
+  .mathis-contact{
+    padding:18px;
+  }
 }
 
 /* ---------- CLUBS DIRECTORY ---------- */
