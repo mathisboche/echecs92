@@ -40,7 +40,7 @@
           <li><span class="gov-card__name">Nassim AROUCHE</span></li>
           <li><span class="gov-card__name">Corinne LAIGLE</span></li>
           <li><span class="gov-card__name">Mohammed YOUSSEFF</span></li>
-          <li><span class="gov-card__name">Mathis BOCHE</span></li>
+          <li><a class="gov-card__name" href="/mathis-boche/">Mathis BOCHE</a></li>
         </ul>
       </article>
     </div>
@@ -136,27 +136,6 @@
         el.textContent = format(targetValue) + suffix;
       }
     });
-
-    var mathisTrigger = Array.from(document.querySelectorAll('.gov-card__name')).find(function (node) {
-      return (node.textContent || '').trim().toLowerCase() === 'mathis boche';
-    });
-
-    if (!mathisTrigger) {
-      return;
-    }
-
-    mathisTrigger.classList.add('gov-card__name--mathis');
-
-    var launchMathis = function (event) {
-      if (event) {
-        event.preventDefault();
-      }
-      if (typeof window.cdje92ShowMathisSpectacle === 'function') {
-        window.cdje92ShowMathisSpectacle();
-      }
-    };
-
-    mathisTrigger.addEventListener('click', launchMathis);
   });
 </script>
 <!-- /wp:html -->

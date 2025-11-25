@@ -2396,6 +2396,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   display:block;
   font-weight:650;
   color:#0f172a;
+  text-decoration:none;
 }
 .gov-card__name--mathis{
   cursor:pointer;

@@ -61,7 +61,7 @@
         </svg>
         contact@echecs92.com
       </a>
-      <small class="cm-footer__credit">© <span id="cm-footer-year"></span> Site réalisé par <a href="https://mathisboche.com" class="cm-footer__credit-link" target="_blank" rel="noopener noreferrer" data-mathis-trigger="link">Mathis Boche</a></small>
+      <small class="cm-footer__credit">© <span id="cm-footer-year"></span> Site réalisé par <a href="https://www.mathisboche.com" class="cm-footer__credit-link" target="_blank" rel="noopener noreferrer">Mathis Boche</a></small>
     </div>
   </div>
   <script>
@@ -70,102 +70,6 @@
       if (footerYear) {
         footerYear.textContent = new Date().getFullYear();
       }
-
-      const mathisLinks = document.querySelectorAll('[data-mathis-trigger="link"]');
-      if (!mathisLinks.length) {
-        return;
-      }
-
-      const SCRIPT_SRC = '/wp-content/themes/echecs92-child/assets/js/clubs.js';
-      const PROVIDER_SELECTOR = 'script[data-mathis-provider="spectacle"]';
-      const WAIT_TIMEOUT = 6000;
-      const raf = window.requestAnimationFrame
-        ? window.requestAnimationFrame.bind(window)
-        : (callback) => window.setTimeout(callback, 32);
-      let loaderPromise = null;
-
-      const waitForSpectacle = () =>
-        new Promise((resolve, reject) => {
-          const startedAt = Date.now();
-          const check = () => {
-            if (typeof window.cdje92ShowMathisSpectacle === 'function') {
-              resolve(window.cdje92ShowMathisSpectacle);
-              return;
-            }
-            if (Date.now() - startedAt > WAIT_TIMEOUT) {
-              reject(new Error('mathis spectacle unavailable'));
-              return;
-            }
-            raf(check);
-          };
-          check();
-        });
-
-      const loadSpectacleScript = () =>
-        new Promise((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = SCRIPT_SRC;
-          script.async = true;
-          script.dataset.mathisProvider = 'spectacle';
-          script.addEventListener('load', resolve, { once: true });
-          script.addEventListener('error', () => reject(new Error('mathis script load failed')), { once: true });
-          (document.head || document.body || document.documentElement).appendChild(script);
-        });
-
-      const ensureSpectacle = () => {
-        if (typeof window.cdje92ShowMathisSpectacle === 'function') {
-          return Promise.resolve(window.cdje92ShowMathisSpectacle);
-        }
-        if (loaderPromise) {
-          return loaderPromise;
-        }
-        if (document.querySelector(PROVIDER_SELECTOR)) {
-          loaderPromise = waitForSpectacle()
-            .then((fn) => {
-              loaderPromise = null;
-              return fn;
-            })
-            .catch((error) => {
-              loaderPromise = null;
-              throw error;
-            });
-          return loaderPromise;
-        }
-        loaderPromise = loadSpectacleScript()
-          .then(() => waitForSpectacle())
-          .then((fn) => {
-            loaderPromise = null;
-            return fn;
-          })
-          .catch((error) => {
-            loaderPromise = null;
-            throw error;
-          });
-        return loaderPromise;
-      };
-
-      const openFallback = () => {
-        window.open('https://mathisboche.com', '_blank', 'noopener,noreferrer');
-      };
-
-      const handleMathisClick = (event) => {
-        if (event) {
-          event.preventDefault();
-        }
-        ensureSpectacle()
-          .then((spectacle) => {
-            if (typeof spectacle === 'function') {
-              spectacle();
-            } else {
-              openFallback();
-            }
-          })
-          .catch(openFallback);
-      };
-
-      mathisLinks.forEach((link) => {
-        link.addEventListener('click', handleMathisClick);
-      });
     })();
   </script>
 </footer>
