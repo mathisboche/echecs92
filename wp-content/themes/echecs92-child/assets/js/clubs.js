@@ -585,6 +585,18 @@
       return;
     }
     const overlayHost = overlayElement || document.getElementById(MATHIS_TAKEOVER_ID);
+    // Avoid fragmenting text inside flex/grid containers (would stretch items when spaced out)
+    const isFlexibleContext = (element) => {
+      if (!element || typeof window === 'undefined' || typeof window.getComputedStyle !== 'function') {
+        return false;
+      }
+      try {
+        const display = window.getComputedStyle(element).display || '';
+        return display.includes('flex') || display.includes('grid');
+      } catch (error) {
+        return false;
+      }
+    };
     const TEXT_NODE = 3;
     const ELEMENT_NODE = 1;
     const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -609,6 +621,9 @@
             return;
           }
           if (overlayHost && (parentElement === overlayHost || parentElement.closest(`#${MATHIS_TAKEOVER_ID}`))) {
+            return;
+          }
+          if (isFlexibleContext(parentElement)) {
             return;
           }
           nodesToProcess.push(child);
