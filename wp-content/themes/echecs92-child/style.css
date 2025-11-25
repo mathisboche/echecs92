@@ -333,6 +333,9 @@ header.wp-block-template-part.is-elevated {
   cursor:pointer;
   font-family:inherit;
 }
+.cm-mobile-link.is-current{
+  color:#0b2e4c;
+}
 .cm-mobile-link:last-child{
   border-bottom:0;
 }
