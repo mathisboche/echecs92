@@ -2399,7 +2399,74 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   text-decoration:none;
 }
 .gov-card__name--mathis{
+  position:relative;
   cursor:pointer;
+  --mathis-accent:#0b2e4c;
+  --mathis-underline-height:2px;
+  animation:mathis-entry 0.9s ease-out both;
+  transition:color 0.25s ease,text-shadow 0.25s ease;
+}
+.gov-card__name--mathis::after{
+  content:"";
+  position:absolute;
+  left:0;
+  bottom:-4px;
+  width:100%;
+  height:var(--mathis-underline-height);
+  background:linear-gradient(90deg,rgba(11,46,76,0.9),rgba(11,46,76,0.2));
+  transform:scaleX(0);
+  transform-origin:left;
+  opacity:0;
+  animation:mathis-underline 0.95s ease-out 0.12s forwards;
+  transition:transform 0.25s ease,opacity 0.25s ease;
+}
+.gov-card__name--mathis:hover,
+.gov-card__name--mathis:focus-visible{
+  color:var(--mathis-accent);
+  text-shadow:0 6px 18px rgba(11,46,76,0.15);
+}
+.gov-card__name--mathis:hover::after,
+.gov-card__name--mathis:focus-visible::after{
+  opacity:1;
+  transform:scaleX(1);
+}
+@keyframes mathis-entry{
+  0%{
+    opacity:0;
+    transform:translateY(10px);
+    letter-spacing:0.02em;
+    color:var(--mathis-accent);
+  }
+  55%{
+    opacity:1;
+    transform:translateY(0);
+    color:var(--mathis-accent);
+  }
+  80%{
+    color:var(--mathis-accent);
+  }
+  100%{
+    color:#0f172a;
+    letter-spacing:0;
+  }
+}
+@keyframes mathis-underline{
+  0%{
+    opacity:0;
+    transform:scaleX(0);
+  }
+  25%{
+    opacity:1;
+    transform:scaleX(0.6);
+  }
+  70%{
+    opacity:1;
+    transform:scaleX(1);
+  }
+  100%{
+    opacity:0;
+    transform:scaleX(1);
+  }
 }
 .committee-docs__list{
   list-style:none;
@@ -2516,6 +2583,18 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 @media (prefers-reduced-motion: reduce){
   .committee-callout__link{
     transition:none;
+  }
+}
+@media (prefers-reduced-motion: reduce){
+  .gov-card__name--mathis{
+    animation:none;
+    transition:none;
+  }
+  .gov-card__name--mathis::after{
+    animation:none;
+    transition:none;
+    opacity:0;
+    transform:scaleX(0);
   }
 }
 /* Desktop layout */
