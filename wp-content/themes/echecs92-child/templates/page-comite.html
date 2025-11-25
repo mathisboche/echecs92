@@ -136,6 +136,28 @@
         el.textContent = format(targetValue) + suffix;
       }
     });
+
+    var mathisLink = document.querySelector('.gov-card__name--mathis');
+    if (mathisLink) {
+      var storageKey = 'e92-mathis-underline-played';
+      var hasPlayed = false;
+
+      try {
+        hasPlayed = localStorage.getItem(storageKey) === '1';
+      } catch (err) {
+        hasPlayed = true;
+      }
+
+      if (!hasPlayed) {
+        mathisLink.classList.add('is-mathis-intro');
+        try {
+          localStorage.setItem(storageKey, '1');
+        } catch (err) {}
+        window.setTimeout(function () {
+          mathisLink.classList.remove('is-mathis-intro');
+        }, 1400);
+      }
+    }
   });
 </script>
 <!-- /wp:html -->

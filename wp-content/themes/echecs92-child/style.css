@@ -2405,7 +2405,6 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   cursor:pointer;
   --mathis-accent:#0b2e4c;
   --mathis-underline-height:2px;
-  animation:mathis-entry 0.9s ease-out both;
   transition:color 0.25s ease,text-shadow 0.25s ease;
 }
 .gov-card__name--mathis::after{
@@ -2419,8 +2418,11 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   transform:scaleX(0);
   transform-origin:left;
   opacity:0;
-  animation:mathis-underline 0.95s ease-out 0.12s forwards;
+  animation:none;
   transition:transform 0.25s ease,opacity 0.25s ease;
+}
+.gov-card__name--mathis.is-mathis-intro::after{
+  animation:mathis-underline 0.95s ease-out 0.12s forwards;
 }
 .gov-card__name--mathis:hover,
 .gov-card__name--mathis:focus-visible{
@@ -2431,26 +2433,6 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .gov-card__name--mathis:focus-visible::after{
   opacity:1;
   transform:scaleX(1);
-}
-@keyframes mathis-entry{
-  0%{
-    opacity:0;
-    transform:translateY(10px);
-    letter-spacing:0.02em;
-    color:var(--mathis-accent);
-  }
-  55%{
-    opacity:1;
-    transform:translateY(0);
-    color:var(--mathis-accent);
-  }
-  80%{
-    color:var(--mathis-accent);
-  }
-  100%{
-    color:#0f172a;
-    letter-spacing:0;
-  }
 }
 @keyframes mathis-underline{
   0%{
@@ -2589,7 +2571,6 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 }
 @media (prefers-reduced-motion: reduce){
   .gov-card__name--mathis{
-    animation:none;
     transition:none;
   }
   .gov-card__name--mathis::after{
@@ -2597,6 +2578,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
     transition:none;
     opacity:0;
     transform:scaleX(0);
+  }
+  .gov-card__name--mathis.is-mathis-intro::after{
+    animation:none;
   }
 }
 /* Desktop layout */
