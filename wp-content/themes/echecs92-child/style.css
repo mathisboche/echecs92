@@ -2584,7 +2584,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .clubs-page p{
   font-size:15px;
   line-height:1.6;
-  margin-bottom:14px;
+  margin-bottom:0px;
 }
 .clubs-search-block{
   display:flex;
