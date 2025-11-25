@@ -2399,6 +2399,8 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   text-decoration:none;
 }
 .gov-card__name--mathis{
+  display:inline-block;
+  width:auto;
   position:relative;
   cursor:pointer;
   --mathis-accent:#0b2e4c;
