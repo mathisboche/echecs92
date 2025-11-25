@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const headerWrapper = document.querySelector('header.wp-block-template-part');
   const adminBar = document.getElementById('wpadminbar');
   const desktopNavLinks = document.querySelectorAll('.cm-nav-desktop a[href]');
+  const mobileNavLinks = document.querySelectorAll('.cm-mobile-link[href]');
   const desktopSubmenus = document.querySelectorAll('.cm-nav-item[data-submenu]');
 
   const normalizePath = (value) => {
@@ -27,19 +28,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     return path.startsWith('/club/');
   };
+  const isComiteSectionPath = (path) => {
+    if (!path) {
+      return false;
+    }
+    if (path === '/comite' || path === '/mathis-boche') {
+      return true;
+    }
+    return false;
+  };
 
-  if (desktopNavLinks.length) {
+  const markCurrentLinks = (links) => {
+    if (!links.length) {
+      return;
+    }
     const currentPath = normalizePath(window.location.href);
-    desktopNavLinks.forEach((link) => {
+    links.forEach((link) => {
       const linkPath = normalizePath(link.href);
       const matchGroup = link.dataset.currentGroup || '';
       let isCurrent = linkPath === currentPath;
       if (!isCurrent && matchGroup === 'clubs' && isClubsSectionPath(currentPath)) {
         isCurrent = true;
+      } else if (!isCurrent && matchGroup === 'comite' && isComiteSectionPath(currentPath)) {
+        isCurrent = true;
       }
       link.classList.toggle('is-current', isCurrent);
     });
-  }
+  };
+
+  markCurrentLinks(desktopNavLinks);
+  markCurrentLinks(mobileNavLinks);
 
   if (desktopSubmenus.length) {
     desktopSubmenus.forEach((item) => {
