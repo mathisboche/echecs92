@@ -117,6 +117,21 @@ add_action('wp_enqueue_scripts', function () {
     }
 });
 
+add_action('wp_head', function () {
+    $uploads_base = content_url('uploads');
+
+    $favicon_svg  = $uploads_base . '/favicon.svg';
+    $favicon_ico  = $uploads_base . '/favicon.ico';
+
+    echo "\n";
+    printf('<link rel="icon" href="%s" type="image/svg+xml">' . "\n", esc_url($favicon_svg));
+    printf('<link rel="icon" href="%s" sizes="any">' . "\n", esc_url($favicon_ico));
+    printf('<link rel="alternate icon" href="%s" sizes="48x48" type="image/png">' . "\n", esc_url($uploads_base . '/favicon-48.png'));
+    printf('<link rel="apple-touch-icon" href="%s" sizes="180x180">' . "\n", esc_url($uploads_base . '/favicon-180.png'));
+    printf('<link rel="icon" href="%s" sizes="192x192" type="image/png">' . "\n", esc_url($uploads_base . '/favicon-192.png'));
+    printf('<link rel="icon" href="%s" sizes="512x512" type="image/png">' . "\n", esc_url($uploads_base . '/favicon-512.png'));
+});
+
 add_action('init', function () {
     add_rewrite_rule('^club/([^/]+)/?$', 'index.php?pagename=club&club_commune=$matches[1]', 'top');
     add_rewrite_rule('^club-france/([^/]+)/?$', 'index.php?pagename=club-france&club_commune=$matches[1]', 'top');
