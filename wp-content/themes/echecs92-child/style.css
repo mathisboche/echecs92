@@ -686,7 +686,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 }
 
 .home-figures{
-  padding:clamp(28px,3.5vw,42px);
+  padding:clamp(24px,3vw,38px);
   border-radius:28px;
   background:linear-gradient(145deg, rgba(8,21,41,0.95), rgba(11,46,76,0.85));
   color:#e2e8f0;
@@ -707,13 +707,13 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .home-figures__grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
-  gap:clamp(14px,3vw,28px);
+  gap:clamp(12px,2.6vw,24px);
   align-items:stretch;
 }
 
 .home-figure{
-  padding:10px 0;
-  border-left:1px solid rgba(255,255,255,0.16);
+  padding:8px 0;
+  border-left:1px solid rgba(255,255,255,0.12);
   display:flex;
   align-items:flex-start;
   justify-content:center;
@@ -731,15 +731,15 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   flex-direction:column;
   gap:4px;
   align-items:flex-start;
-  font-size:15px;
+  font-size:14px;
   letter-spacing:.005em;
-  color:rgba(248,250,252,0.76);
+  color:rgba(248,250,252,0.72);
 }
 
 .home-figure__number{
   display:block;
-  font-size:36px;
-  font-weight:650;
+  font-size:34px;
+  font-weight:640;
   letter-spacing:-0.02em;
   color:rgba(255,255,255,0.88);
 }
@@ -822,13 +822,13 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
     grid-template-columns:minmax(0,1fr);
   }
   .home-figures__grid{
-    gap:clamp(18px,5vw,32px);
+    gap:clamp(14px,4vw,24px);
     justify-items:center;
   }
   .home-figure{
     border-left:none;
-    border-top:1px solid rgba(255,255,255,0.14);
-    padding-top:14px;
+    border-top:1px solid rgba(255,255,255,0.12);
+    padding-top:12px;
     padding-left:0;
     align-items:center;
     text-align:center;
@@ -849,7 +849,13 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
     flex-direction:column;
   }
   .home-figures{
-    padding:36px var(--home-gutter);
+    padding:30px var(--home-gutter);
+  }
+  .home-figure__number{
+    font-size:30px;
+  }
+  .home-figure__label{
+    font-size:11.5px;
   }
 }
 
