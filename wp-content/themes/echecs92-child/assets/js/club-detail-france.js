@@ -9,7 +9,6 @@
   const detailContainer = document.getElementById('club-detail');
   const backLink = document.querySelector('[data-club-back]');
   const backLinkMap = document.querySelector('[data-club-back-map]');
-  let generatedIdCounter = 0;
   let manifestPromise = null;
   let datasetPromise = null;
 
@@ -217,16 +216,12 @@
     const base = normalise(value)
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
-    if (base) {
-      return base;
-    }
-    generatedIdCounter += 1;
-    return `club-${generatedIdCounter}`;
+    return base;
   };
 
   const buildClubSlugBase = (club) => {
-    const provided = slugify(club.slug || '');
-    if (provided && provided !== 'club') {
+    const provided = club.slug ? slugify(club.slug) : '';
+    if (provided) {
       return provided;
     }
     const communePart = slugify(club.commune || '');
@@ -242,7 +237,8 @@
       parts.push(namePart);
     }
     const joined = parts.filter(Boolean).join('-');
-    return joined || slugify(club.id || `club-${Date.now()}`);
+    const idBased = club.id ? slugify(club.id) : '';
+    return joined || idBased || 'club';
   };
 
   const ensureUniqueSlugs = (clubs) => {
@@ -695,7 +691,7 @@
       postalCode,
       commune || addressParts.city || secondaryParts.city || ''
     );
-    const id = raw.id || slugify(name || slugSource || `club-${generatedIdCounter + 1}`);
+    const id = raw.id || slugify(name || slugSource) || slugify(raw.slug || '') || 'club';
 
     const rawSite = raw.site || raw.website || '';
     let site = rawSite;

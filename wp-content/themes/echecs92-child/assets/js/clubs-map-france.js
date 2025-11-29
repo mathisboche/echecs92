@@ -196,15 +196,12 @@
     const base = normalise(value)
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
-    if (base) {
-      return base;
-    }
-    return `club-${Math.random().toString(36).slice(2, 10)}`;
+    return base;
   };
 
   const buildClubSlugBase = (club) => {
-    const provided = slugify(club.slug || '');
-    if (provided && provided !== 'club') {
+    const provided = club.slug ? slugify(club.slug) : '';
+    if (provided) {
       return provided;
     }
     const communePart = slugify(club.commune || '');
@@ -220,7 +217,8 @@
       parts.push(namePart);
     }
     const joined = parts.filter(Boolean).join('-');
-    return joined || slugify(club.id || `club-${Math.random().toString(36).slice(2, 8)}`);
+    const idBased = club.id ? slugify(club.id) : '';
+    return joined || idBased || 'club';
   };
 
   const ensureUniqueSlugs = (clubs) => {
@@ -481,7 +479,7 @@
       postalCode,
       commune || addressParts.city || secondaryParts.city || ''
     );
-    const id = raw.id || slugify(name || slugSource || `club-${Date.now()}`);
+    const id = raw.id || slugify(name || slugSource) || slugify(raw.slug || '') || 'club';
 
     const toFloat = (value) => {
       if (value == null || value === '') {
