@@ -726,19 +726,6 @@
     title.textContent = club.name;
     header.appendChild(title);
 
-    const meta = document.createElement('div');
-    meta.className = 'club-sheet__meta';
-    if (club.commune) {
-      meta.appendChild(createChip(club.commune));
-    }
-    if (club.totalLicenses) {
-      const label = `${club.totalLicenses} licencié${club.totalLicenses > 1 ? 's' : ''}`;
-      meta.appendChild(createChip(label));
-    }
-    if (meta.childElementCount) {
-      header.appendChild(meta);
-    }
-
     const summaryText = club.publics || club.notes;
     if (summaryText) {
       const summary = document.createElement('p');
@@ -752,14 +739,6 @@
     const shareUrl = `${window.location.origin}/club/${encodeURIComponent(club.slug || club.id || '')}/`;
     const shareBlock = document.createElement('div');
     shareBlock.className = 'club-sheet__share';
-
-    const shareLabel = document.createElement('span');
-    shareLabel.className = 'club-sheet__share-label';
-    shareLabel.textContent = 'Partager';
-    shareBlock.appendChild(shareLabel);
-
-    const shareActions = document.createElement('div');
-    shareActions.className = 'club-sheet__share-actions';
 
     let feedbackTimer = null;
     const showButtonFeedback = (button, message, tone = 'success') => {
@@ -801,50 +780,42 @@
       }
     };
 
-    const copyButton = document.createElement('button');
-    copyButton.type = 'button';
-    copyButton.className = 'club-share-button';
-    copyButton.textContent = 'Copier le lien';
-    copyButton.addEventListener('click', async () => {
-      const ok = await copyToClipboard(shareUrl);
-      if (ok) {
-        showButtonFeedback(copyButton, 'Lien copié !');
-      } else {
-        showButtonFeedback(copyButton, 'Copie impossible', 'error');
-      }
-    });
-    shareActions.appendChild(copyButton);
-
-    if (navigator.share && typeof navigator.share === 'function') {
-      const shareButton = document.createElement('button');
-      shareButton.type = 'button';
-      shareButton.className = 'club-share-button club-share-button--primary';
-      shareButton.textContent = 'Partager…';
-      shareButton.addEventListener('click', async () => {
-        try {
+    const shareButton = document.createElement('button');
+    shareButton.type = 'button';
+    shareButton.className = 'club-share-button';
+    shareButton.textContent = 'Partager';
+    shareButton.addEventListener('click', async () => {
+      try {
+        if (navigator.share && typeof navigator.share === 'function') {
           await navigator.share({
             title: club.name,
             text: `Découvrez ${club.name} sur le site du Comité d'Échecs des Hauts-de-Seine`,
             url: shareUrl,
           });
           showButtonFeedback(shareButton, 'Lien partagé !');
-        } catch (error) {
-          if (error && error.name === 'AbortError') {
-            return;
-          }
-          const ok = await copyToClipboard(shareUrl);
-          if (ok) {
-            showButtonFeedback(copyButton, 'Lien copié !');
-          } else {
-            showButtonFeedback(shareButton, 'Partage impossible', 'error');
-          }
+          return;
         }
-      });
-      shareActions.appendChild(shareButton);
-    }
+        const ok = await copyToClipboard(shareUrl);
+        if (ok) {
+          showButtonFeedback(shareButton, 'Lien copié');
+        } else {
+          showButtonFeedback(shareButton, 'Partage indisponible', 'error');
+        }
+      } catch (error) {
+        if (error && error.name === 'AbortError') {
+          return;
+        }
+        const ok = await copyToClipboard(shareUrl);
+        if (ok) {
+          showButtonFeedback(shareButton, 'Lien copié');
+        } else {
+          showButtonFeedback(shareButton, 'Partage indisponible', 'error');
+        }
+      }
+    });
 
-    shareBlock.appendChild(shareActions);
-    sheet.appendChild(shareBlock);
+    shareBlock.appendChild(shareButton);
+    header.appendChild(shareBlock);
 
     const sections = [];
 

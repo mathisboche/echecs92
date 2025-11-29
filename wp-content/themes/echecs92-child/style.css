@@ -3982,11 +3982,12 @@ body.mathis-mode .mathis-fragment{
 .club-sheet__share{
   display:flex;
   flex-direction:column;
-  gap:10px;
+  gap:0;
   padding:0;
   border:none;
   border-radius:0;
   background:transparent;
+  align-self:flex-end;
 }
 .club-sheet__share-label{
   font-weight:600;
@@ -4006,19 +4007,19 @@ body.mathis-mode .mathis-fragment{
   gap:6px;
   font-size:14px;
   font-weight:600;
-  color:#1d4ed8;
-  background:#e8f1ff;
-  border:1px solid #dbeafe;
+  color:#0f172a;
+  background:transparent;
+  border:1px solid rgba(15,23,42,0.14);
   border-radius:999px;
-  padding:6px 16px;
+  padding:7px 14px;
   cursor:pointer;
   transition:background-color .2s ease, border-color .2s ease, color .2s ease;
 }
 .club-share-button:hover,
 .club-share-button:focus-visible{
-  color:#0f172a;
-  background:#dbeafe;
-  border-color:#bfdbfe;
+  color:#0b2e4c;
+  background:rgba(15,23,42,0.05);
+  border-color:rgba(15,23,42,0.2);
   outline:none;
 }
 .club-share-button[data-tone="error"]{
@@ -4033,15 +4034,15 @@ body.mathis-mode .mathis-fragment{
   background:#fecaca;
 }
 .club-share-button--primary{
-  color:#fff;
-  background:#1d4ed8;
-  border-color:#1d4ed8;
+  color:#0f172a;
+  background:rgba(15,23,42,0.05);
+  border-color:rgba(15,23,42,0.2);
 }
 .club-share-button--primary:hover,
 .club-share-button--primary:focus-visible{
-  color:#fff;
-  background:#1e40af;
-  border-color:#1e3a8a;
+  color:#0b2e4c;
+  background:rgba(15,23,42,0.08);
+  border-color:rgba(15,23,42,0.28);
 }
 .club-section{
   border-top:1px solid #e2e8f0;
@@ -4140,6 +4141,10 @@ body.mathis-mode .mathis-fragment{
   }
   .club-map__directions{
     display:inline-flex;
+    margin-top:4px;
+  }
+  .club-sheet__share{
+    align-self:flex-start;
     margin-top:4px;
   }
 }
