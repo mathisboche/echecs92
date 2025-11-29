@@ -469,6 +469,18 @@ body.error404{
   bottom:-120px;
   left:-60px;
 }
+.notfound__big{
+  position:absolute;
+  right:clamp(12px,4vw,26px);
+  bottom:clamp(6px,3vw,18px);
+  font-size:clamp(92px,18vw,160px);
+  font-weight:800;
+  letter-spacing:-0.04em;
+  color:rgba(255,255,255,0.14);
+  line-height:0.8;
+  text-shadow:0 10px 30px rgba(0,0,0,0.08);
+  pointer-events:none;
+}
 .notfound__badge{
   display:inline-flex;
   align-items:center;
@@ -540,48 +552,6 @@ body.error404{
 .notfound__cta--ghost:focus-visible{
   background:rgba(255,255,255,0.16);
   border-color:#ffffff;
-}
-.notfound__quicklinks{
-  margin-top:10px;
-  padding:18px 0 6px;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.notfound__subtitle{
-  margin:0;
-  font-size:17px;
-  letter-spacing:.12em;
-  text-transform:uppercase;
-  color:#014263;
-}
-.notfound__quicklinks-list{
-  list-style:none;
-  margin:0;
-  padding:0;
-  display:flex;
-  flex-wrap:wrap;
-  gap:10px;
-}
-.notfound__quicklinks-list a{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  padding:10px 14px;
-  border-radius:999px;
-  background:#ffffff;
-  border:1px solid #dbeafe;
-  color:#014263;
-  text-decoration:none;
-  font-weight:650;
-  box-shadow:0 6px 14px rgba(1,66,99,0.08);
-}
-.notfound__quicklinks-list a:hover,
-.notfound__quicklinks-list a:focus-visible{
-  background:#e6f6ff;
-  border-color:#00aae0;
-  color:#012a45;
-  outline:none;
 }
 @media (max-width:900px){
   .notfound{
