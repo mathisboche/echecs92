@@ -2266,8 +2266,9 @@
     updateStatusIfCurrent('Recherche en cours…', 'info');
 
     const arrondissementPostal = deriveParisArrPostal(trimmed);
-    const searchQuery = arrondissementPostal ? `${trimmed} ${arrondissementPostal}` : trimmed;
-    const meta = applySearch(searchQuery, { displayQuery: trimmed });
+    const searchQuery = arrondissementPostal || trimmed;
+    const displayQuery = arrondissementPostal || trimmed;
+    const meta = applySearch(searchQuery, { displayQuery });
     if (abortIfStale()) {
       return;
     }
