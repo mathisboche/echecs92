@@ -8,8 +8,10 @@
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
   const VISIBLE_RESULTS_DEFAULT = 12;
   const MIN_RESULTS_SCROLL_DELAY_MS = 1100;
-  const SORT_SCROLL_DELAY_MS = Math.max(300, Math.round(MIN_RESULTS_SCROLL_DELAY_MS / 2));
+  const SORT_SCROLL_DELAY_MS = Math.max(180, Math.round(MIN_RESULTS_SCROLL_DELAY_MS / 4));
   const COUNTER_LOADING_TEXT = 'Recherche en cours…';
+  const SORT_COUNTER_LOADING_TEXT = 'Tri en cours…';
+  const SORT_BUSY_LABEL = 'Tri…';
 
   let manifestPromise = null;
   let datasetPromise = null;
@@ -184,13 +186,21 @@
   let pendingRenderUpdate = false;
   let pendingTotalCounterText = null;
   let totalCounterPlaceholderActive = false;
+  let totalCounterPlaceholderText = COUNTER_LOADING_TEXT;
 
-  const deferResultsRendering = () => {
+  const deferResultsRendering = (options = {}) => {
+    const placeholder =
+      typeof options.placeholder === 'string' && options.placeholder.trim()
+        ? options.placeholder.trim()
+        : COUNTER_LOADING_TEXT;
+    totalCounterPlaceholderText = placeholder;
     renderUpdatesDeferred = true;
     if (totalCounter && !totalCounterPlaceholderActive) {
       totalCounterPlaceholderActive = true;
       totalCounter.classList.add('is-deferred');
-      totalCounter.textContent = COUNTER_LOADING_TEXT;
+    }
+    if (totalCounter && totalCounterPlaceholderActive) {
+      totalCounter.textContent = totalCounterPlaceholderText;
     }
   };
 
@@ -212,6 +222,7 @@
       totalCounter.classList.remove('is-deferred');
       const nextText = pendingTotalCounterText;
       pendingTotalCounterText = null;
+      totalCounterPlaceholderText = COUNTER_LOADING_TEXT;
       if (nextText != null) {
         totalCounter.textContent = nextText;
       } else {
@@ -1111,13 +1122,13 @@
     const normalized = LICENSE_SORT_CONFIGS[mode] ? mode : mode === 'alpha' ? 'alpha' : 'default';
     const triggerButton = options.triggerButton || null;
     const busyLabel =
-      typeof options.busyLabel === 'string' && options.busyLabel.trim() ? options.busyLabel.trim() : 'Recherche…';
+      typeof options.busyLabel === 'string' && options.busyLabel.trim() ? options.busyLabel.trim() : SORT_BUSY_LABEL;
     const sortDelay = Number.isFinite(options.delayMs) ? options.delayMs : SORT_SCROLL_DELAY_MS;
     const releaseTriggerButton = (() => {
       if (!triggerButton) {
         return () => {};
       }
-      deferResultsRendering();
+      deferResultsRendering({ placeholder: SORT_COUNTER_LOADING_TEXT });
       const release = beginButtonWait(triggerButton, busyLabel);
       let released = false;
       return (forceImmediate = false) => {
@@ -2987,7 +2998,7 @@
     if (renderUpdatesDeferred || totalCounterPlaceholderActive) {
       pendingTotalCounterText = finalText;
       if (totalCounterPlaceholderActive) {
-        totalCounter.textContent = COUNTER_LOADING_TEXT;
+        totalCounter.textContent = totalCounterPlaceholderText;
       }
       return;
     }
