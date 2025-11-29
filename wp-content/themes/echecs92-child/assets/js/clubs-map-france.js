@@ -217,33 +217,47 @@
     return Math.abs(n >>> 0).toString(36);
   };
 
-  const buildShortSlugBase = (club, index) => {
+  const buildShortSlugBase = (club) => {
     const seedParts = [
       club.id || '',
       club.name || '',
       club.commune || '',
       club.postalCode || '',
       club.departmentCode || club.departmentSlug || club.departmentName || '',
-      typeof index === 'number' ? String(index) : '',
     ];
-    const seed = seedParts.filter(Boolean).join('|') || `club-${index || 0}`;
+    const seed = seedParts.filter(Boolean).join('|') || 'club';
     const hash = hashStringToInt(seed);
     const code = toBase36(hash).padStart(6, '0').slice(0, 8);
     return `c${code}`;
   };
 
   const ensureUniqueSlugs = (clubs) => {
-    const seen = new Set();
-    clubs.forEach((club, idx) => {
-      const base = buildShortSlugBase(club, idx) || 'cclub';
-      let candidate = base;
-      let suffix = 2;
-      while (seen.has(candidate)) {
-        candidate = `${base}-${toBase36(suffix)}`;
-        suffix += 1;
+    const byBase = new Map();
+    const stableKey = (club) =>
+      `${club.id || ''}|${club.name || ''}|${club.commune || ''}|${club.postalCode || ''}|${
+        club.departmentCode || club.departmentSlug || club.departmentName || ''
+      }`;
+
+    clubs.forEach((club) => {
+      const base = buildShortSlugBase(club) || 'cclub';
+      if (!byBase.has(base)) {
+        byBase.set(base, []);
       }
-      club.slug = candidate;
-      seen.add(candidate);
+      byBase.get(base).push(club);
+    });
+
+    byBase.forEach((entries, base) => {
+      if (entries.length === 1) {
+        entries[0].slug = base;
+        return;
+      }
+      const sorted = entries
+        .map((club) => ({ club, key: stableKey(club) }))
+        .sort((a, b) => a.key.localeCompare(b.key, 'en', { sensitivity: 'base' }));
+      sorted.forEach((entry, idx) => {
+        const suffix = idx === 0 ? '' : `-${toBase36(idx + 1)}`;
+        entry.club.slug = `${base}${suffix}`;
+      });
     });
   };
 
