@@ -1529,9 +1529,13 @@
     return '';
   };
 
-  const toDistanceReferenceLabel = (baseLabel, postalCode) => {
+  const toDistanceReferenceLabel = (baseLabel, postalCode, options = {}) => {
+    const type = options.type || '';
     const label = (baseLabel || '').trim();
     const code = (postalCode || '').trim();
+    if (type === 'geoloc') {
+      return label || 'votre position';
+    }
     if (label && code) {
       return label.includes(code) ? label : `${label} (${code})`;
     }
@@ -2428,11 +2432,12 @@
         return;
       }
 
+      const referenceType = looksLikeAddress ? 'address' : 'location';
       const baseLabel = toDistanceReferenceLabel(
         coords.label || formatCommune(raw) || raw,
-        coords.postalCode
+        coords.postalCode,
+        { type: referenceType }
       );
-      const referenceType = looksLikeAddress ? 'address' : 'location';
       const referenceContext = deriveReferenceContext(raw, coords, referenceType);
       const decoratedLabel = decorateReferenceLabel(baseLabel, referenceContext.type);
 
@@ -2526,11 +2531,13 @@
               return;
             }
 
+            const referenceType = 'geoloc';
             const baseLabel = toDistanceReferenceLabel(
               place?.label || 'votre position',
-              place?.postalCode
+              place?.postalCode,
+              { type: referenceType }
             );
-            const referenceContext = deriveReferenceContext(place?.label || '', place || {}, 'geoloc');
+            const referenceContext = deriveReferenceContext(place?.label || '', place || {}, referenceType);
             const decoratedLabel = decorateReferenceLabel(baseLabel, referenceContext.type);
 
             if (locationInput) {
