@@ -1282,6 +1282,23 @@
     return { postalCode: entry.postalCode, lat: entry.lat, lng: entry.lng, label: entry.label };
   };
 
+  const buildAcronym = (value) => {
+    if (!value) {
+      return '';
+    }
+    const letters = value
+      .toString()
+      .split(/[^\p{L}0-9]+/u)
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join('');
+    if (letters.length < 2) {
+      return '';
+    }
+    return normalise(letters);
+  };
+
   const slugify = (value) => {
     const base = normalise(value)
       .replace(/[^a-z0-9]+/g, '-')
@@ -2230,64 +2247,6 @@
 
     updateStatusIfCurrent('Recherche en cours…', 'info');
 
-    const postalMatch = trimmed.match(/\b(\d{5})\b/);
-    if (postalMatch) {
-      const postalCode = postalMatch[1];
-      let coords = getPostalCoordinates(postalCode) || lookupLocalCoordinates(postalCode);
-      if (!coords) {
-        updateStatusIfCurrent(`Recherche des clubs proches de ${postalCode}…`, 'info');
-        try {
-          const geocoded = await geocodePlace(postalCode);
-          if (abortIfStale()) {
-            return;
-          }
-          if (geocoded) {
-            coords = geocoded;
-          }
-        } catch {
-          // ignore, handled below
-        }
-      }
-      if (coords) {
-        if (abortIfStale()) {
-          return;
-        }
-        const referenceLabel = toDistanceReferenceLabel(
-          coords.label || formatCommune(trimmed) || trimmed,
-          coords.postalCode || postalCode
-        );
-        const referenceContext = deriveReferenceContext(trimmed, coords, 'postal');
-        const decoratedLabel = decorateReferenceLabel(referenceLabel, referenceContext.type);
-        const meta = runDistanceSearch({
-          latitude: coords.latitude ?? coords.lat,
-          longitude: coords.longitude ?? coords.lng,
-          label: decoratedLabel,
-          query: trimmed,
-          referencePostalCode: referenceContext.postalCode,
-          referenceCommune: referenceContext.commune,
-          referenceType: referenceContext.type,
-        });
-        if (abortIfStale()) {
-          return;
-        }
-        finalizeSearch(() => {
-          if (meta.finite > 0) {
-            updateStatusIfCurrent(
-              `Clubs triés par distance depuis ${meta.label || decoratedLabel || trimmed}.`,
-              'info'
-            );
-          } else {
-            updateStatusIfCurrent('Impossible de calculer les distances pour cette localisation.', 'error');
-          }
-        });
-        return;
-      }
-      finalizeSearch(() => {
-        updateStatusIfCurrent(`Localisation "${postalCode}" introuvable.`, 'error');
-      });
-      return;
-    }
-
     const meta = applySearch(trimmed);
     if (abortIfStale()) {
       return;
@@ -2308,68 +2267,17 @@
         meta.total === 1
           ? `1 club correspond à "${meta.rawQuery}".`
           : `${meta.total} clubs correspondent à "${meta.rawQuery}".`;
-      if (state.distanceMode) {
-        handleLocationClear();
-      }
       finalizeSearch(() => {
         updateStatusIfCurrent(label, 'info');
       });
       return;
     }
 
-    let location = lookupLocalCoordinates(trimmed);
-
-    if (!location) {
-      updateStatusIfCurrent(`Recherche de la localisation "${trimmed}"…`, 'info');
-      try {
-        location = await geocodePlace(trimmed);
-      } catch {
-        location = null;
-      }
-      if (abortIfStale()) {
-        return;
-      }
-    }
-
-    if (location) {
-      if (abortIfStale()) {
-        return;
-      }
-
-      const referenceLabel = toDistanceReferenceLabel(
-        location.label || formatCommune(trimmed) || trimmed,
-        location.postalCode
-      );
-      const referenceContext = deriveReferenceContext(trimmed, location, 'location');
-      const decoratedLabel = decorateReferenceLabel(referenceLabel, referenceContext.type);
-      const distanceMeta = runDistanceSearch({
-        latitude: location.latitude,
-        longitude: location.longitude,
-        label: decoratedLabel,
-        query: trimmed,
-        referencePostalCode: referenceContext.postalCode,
-        referenceCommune: referenceContext.commune,
-        referenceType: referenceContext.type,
-      });
-      if (abortIfStale()) {
-        return;
-      }
-      finalizeSearch(() => {
-        if (distanceMeta.finite > 0) {
-          const reference = distanceMeta.label || decoratedLabel || trimmed;
-          updateStatusIfCurrent(
-            `Aucun club nommé "${trimmed}". Classement par distance depuis ${reference}.`,
-            'info'
-          );
-        } else {
-          updateStatusIfCurrent('Impossible de calculer les distances pour cette localisation.', 'error');
-        }
-      });
-      return;
-    }
-
     finalizeSearch(() => {
-      updateStatusIfCurrent(`Aucun club ne correspond à "${meta.rawQuery}".`, 'error');
+      updateStatusIfCurrent(
+        `Aucun club ne correspond à "${meta.rawQuery}". Vous pouvez essayer la recherche par distance via le bloc "Distance".`,
+        'error'
+      );
     });
   };
 
@@ -2746,13 +2654,19 @@
     const totalLicenses = (Number.isFinite(licenseA) ? licenseA : 0) + (Number.isFinite(licenseB) ? licenseB : 0);
     club.totalLicenses = totalLicenses > 0 ? totalLicenses : null;
     const tagsText = Array.isArray(club.tags) ? club.tags.filter(Boolean).join(' ') : '';
+    const nameAcronym = buildAcronym(club.name || '');
+    const slugAlias = slugify(club.slug || '');
     const displayAddress = club.addressStandard || club.address || club.siege || '';
     club.addressDisplay = displayAddress;
-    const searchSource = [club.name, displayAddress, tagsText].filter(Boolean).join(' ');
+    const searchSource = [club.name, nameAcronym, slugAlias, displayAddress, tagsText]
+      .filter(Boolean)
+      .join(' ');
     const searchIndex = normaliseForSearch(searchSource);
     club._search = searchIndex;
     club._tokens = searchIndex ? searchIndex.split(/\s+/) : [];
-    const nameAliases = [club.name].concat(Array.isArray(club.tags) ? club.tags : []);
+    const nameAliases = [club.name, nameAcronym]
+      .concat(Array.isArray(club.tags) ? club.tags : [])
+      .filter(Boolean);
     club._nameSearch = normaliseForSearch(nameAliases.filter(Boolean).join(' '));
     club._addressSearch = normaliseForSearch(displayAddress || '');
     const communeSlugSource = club.commune || club.name || club.id;
