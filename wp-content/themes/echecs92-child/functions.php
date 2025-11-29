@@ -198,6 +198,14 @@ add_filter('query_vars', function ($vars) {
     return $vars;
 });
 
+add_filter('document_title_parts', function ($title) {
+    if (is_page('mathis-boche')) {
+        $title['title'] = "M Boche - Comité d'Échecs des Hauts-de-Seine";
+    }
+
+    return $title;
+});
+
 function cdje92_contact_form_truncate( $value, $length = 200 ) {
     $value = (string) $value;
     if (function_exists('mb_substr')) {
