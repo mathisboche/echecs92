@@ -3963,6 +3963,12 @@ body.mathis-mode .mathis-fragment{
   display:flex;
   flex-direction:column;
   gap:12px;
+  position:relative;
+}
+.club-sheet__title-row{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
 }
 .club-sheet__title{
   font-size:30px;
@@ -3980,40 +3986,25 @@ body.mathis-mode .mathis-fragment{
   margin:0;
 }
 .club-sheet__share{
+  margin-left:auto;
   display:flex;
-  flex-direction:column;
-  gap:0;
-  padding:0;
-  border:none;
-  border-radius:0;
-  background:transparent;
-  align-self:flex-end;
-}
-.club-sheet__share-label{
-  font-weight:600;
-  color:#0f172a;
-  font-size:14px;
-  text-transform:uppercase;
-  letter-spacing:.06em;
-}
-.club-sheet__share-actions{
-  display:flex;
-  flex-wrap:wrap;
-  gap:10px;
+  align-items:center;
 }
 .club-share-button{
   display:inline-flex;
   align-items:center;
-  gap:6px;
-  font-size:14px;
-  font-weight:600;
-  color:#0f172a;
+  justify-content:center;
+  width:38px;
+  height:38px;
+  font-size:0;
+  color:#1f2937;
   background:transparent;
   border:1px solid rgba(15,23,42,0.14);
-  border-radius:999px;
-  padding:7px 14px;
+  border-radius:50%;
+  padding:0;
   cursor:pointer;
   transition:background-color .2s ease, border-color .2s ease, color .2s ease;
+  position:relative;
 }
 .club-share-button:hover,
 .club-share-button:focus-visible{
@@ -4033,16 +4024,13 @@ body.mathis-mode .mathis-fragment{
   border-color:#fca5a5;
   background:#fecaca;
 }
-.club-share-button--primary{
-  color:#0f172a;
-  background:rgba(15,23,42,0.05);
-  border-color:rgba(15,23,42,0.2);
-}
-.club-share-button--primary:hover,
-.club-share-button--primary:focus-visible{
-  color:#0b2e4c;
-  background:rgba(15,23,42,0.08);
-  border-color:rgba(15,23,42,0.28);
+.club-share-button::before{
+  content:'';
+  width:17px;
+  height:17px;
+  background:currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7'/%3E%3Cpolyline points='16 6 12 2 8 6'/%3E%3Cline x1='12' y1='2' x2='12' y2='15'/%3E%3C/svg%3E") center/contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7'/%3E%3Cpolyline points='16 6 12 2 8 6'/%3E%3Cline x1='12' y1='2' x2='12' y2='15'/%3E%3C/svg%3E") center/contain no-repeat;
 }
 .club-section{
   border-top:1px solid #e2e8f0;
