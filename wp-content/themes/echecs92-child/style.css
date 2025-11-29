@@ -505,34 +505,40 @@ body.error404{
 .notfound__actions .wp-block-button{
   margin:0;
 }
-.notfound__actions .wp-block-button__link{
+.notfound__cta{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
   border-radius:999px;
   padding:12px 24px;
   font-weight:650;
   font-size:15px;
   border:1px solid transparent;
   box-shadow:none;
+  text-decoration:none;
 }
-.notfound__button .wp-block-button__link{
+.notfound__cta:hover,
+.notfound__cta:focus-visible{
+  outline:none;
+}
+.notfound__cta{
   background:#ffffff;
   color:#0b2e4c;
 }
-.notfound__button .wp-block-button__link:hover,
-.notfound__button .wp-block-button__link:focus-visible{
+.notfound__cta:hover,
+.notfound__cta:focus-visible{
   background:#f8fafc;
   color:#0a1e32;
-  outline:none;
 }
-.notfound__button--ghost .wp-block-button__link{
+.notfound__cta--ghost{
   background:transparent;
   border-color:rgba(255,255,255,0.42);
   color:#ffffff;
 }
-.notfound__button--ghost .wp-block-button__link:hover,
-.notfound__button--ghost .wp-block-button__link:focus-visible{
+.notfound__cta--ghost:hover,
+.notfound__cta--ghost:focus-visible{
   background:rgba(255,255,255,0.12);
   border-color:#ffffff;
-  outline:none;
 }
 .notfound__grid{
   display:grid;
