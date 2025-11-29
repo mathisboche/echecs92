@@ -686,10 +686,10 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 }
 
 .home-figures{
-  padding:clamp(24px,3vw,38px);
-  border-radius:28px;
-  background:linear-gradient(145deg, rgba(8,21,41,0.95), rgba(11,46,76,0.85));
-  color:#e2e8f0;
+  padding:0;
+  border-radius:0;
+  background:transparent;
+  color:inherit;
 }
 
 .home-figures .home-section__header{
@@ -713,7 +713,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 
 .home-figure{
   padding:8px 0;
-  border-left:1px solid rgba(255,255,255,0.12);
+  border-left:1px solid rgba(15,23,42,0.08);
   display:flex;
   align-items:flex-start;
   justify-content:center;
@@ -733,7 +733,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   align-items:flex-start;
   font-size:14px;
   letter-spacing:.005em;
-  color:rgba(248,250,252,0.72);
+  color:#1f2937;
 }
 
 .home-figure__number{
@@ -741,19 +741,19 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   font-size:34px;
   font-weight:640;
   letter-spacing:-0.02em;
-  color:rgba(255,255,255,0.88);
+  color:#0f172a;
 }
 
 .home-figure__label{
   text-transform:uppercase;
   font-size:12px;
   letter-spacing:.08em;
-  color:rgba(226,232,240,0.66);
+  color:#475569;
 }
 
 .home-figure p{
   margin:0;
-  color:rgba(226,232,240,0.82);
+  color:#475569;
   line-height:1.5;
 }
 
@@ -822,16 +822,16 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
     grid-template-columns:minmax(0,1fr);
   }
   .home-figures__grid{
-    gap:clamp(14px,4vw,24px);
-    justify-items:center;
+    gap:clamp(12px,4vw,20px);
+    justify-items:flex-start;
   }
   .home-figure{
     border-left:none;
-    border-top:1px solid rgba(255,255,255,0.12);
+    border-top:1px solid rgba(15,23,42,0.08);
     padding-top:12px;
     padding-left:0;
-    align-items:center;
-    text-align:center;
+    align-items:flex-start;
+    text-align:left;
   }
   .home-figure:first-child{
     border-top:none;
@@ -849,7 +849,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
     flex-direction:column;
   }
   .home-figures{
-    padding:30px var(--home-gutter);
+    padding:22px var(--home-gutter);
   }
   .home-figure__number{
     font-size:30px;
