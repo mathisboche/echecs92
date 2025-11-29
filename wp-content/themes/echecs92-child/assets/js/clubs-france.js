@@ -11,7 +11,6 @@
   const SORT_SCROLL_DELAY_MS = Math.max(180, Math.round(MIN_RESULTS_SCROLL_DELAY_MS / 4));
   const COUNTER_LOADING_TEXT = 'Recherche en cours…';
   const SORT_COUNTER_LOADING_TEXT = 'Tri en cours…';
-  const SORT_BUSY_LABEL = 'Tri…';
 
   let manifestPromise = null;
   let datasetPromise = null;
@@ -1122,7 +1121,7 @@
     const normalized = LICENSE_SORT_CONFIGS[mode] ? mode : mode === 'alpha' ? 'alpha' : 'default';
     const triggerButton = options.triggerButton || null;
     const busyLabel =
-      typeof options.busyLabel === 'string' && options.busyLabel.trim() ? options.busyLabel.trim() : SORT_BUSY_LABEL;
+      typeof options.busyLabel === 'string' && options.busyLabel.trim() ? options.busyLabel.trim() : '';
     const sortDelay = Number.isFinite(options.delayMs) ? options.delayMs : SORT_SCROLL_DELAY_MS;
     const releaseTriggerButton = (() => {
       if (!triggerButton) {
