@@ -2992,27 +2992,27 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   border-color:#d7deec;
 }
 .btn-geoloc{
-  background:#0b63f5;
-  border-color:#0b63f5;
+  background:#0a8a4f;
+  border-color:#0a8a4f;
   color:#ffffff;
 }
 .btn-geoloc:hover,
 .btn-geoloc:focus-visible{
-  background:#0a57d0;
-  border-color:#0a57d0;
+  background:#087743;
+  border-color:#087743;
 }
 .clubs-geoloc-banner{
   margin:4px 0 0;
   padding:18px 20px;
   border-radius:18px;
   border:none;
-  background:linear-gradient(130deg,#0b3fa8,#0b63f5);
-  color:#f8fbff;
+  background:linear-gradient(130deg,#0b7a46,#17c976);
+  color:#f6fff9;
   display:flex;
   flex-wrap:wrap;
   align-items:center;
   gap:16px;
-  box-shadow:0 12px 25px rgba(11,99,245,0.23);
+  box-shadow:0 12px 25px rgba(9,138,79,0.23);
 }
 .clubs-geoloc-banner__text{
   flex:1 1 240px;
@@ -3026,13 +3026,13 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 }
 .clubs-geoloc-banner__text span{
   font-size:14px;
-  color:rgba(248,250,252,0.85);
+  color:rgba(245,255,249,0.85);
 }
 .clubs-geoloc-banner__btn{
   flex:0 0 auto;
-  background:#e7f2ff;
-  color:#0b3fa8;
-  border-color:#bcd8ff;
+  background:#e8f9ef;
+  color:#0a7a45;
+  border-color:#b9f0cf;
   min-width:130px;
 }
 .clubs-sort-toggle{
