@@ -692,6 +692,10 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   color:#e2e8f0;
 }
 
+.home-figures .home-section__header{
+  margin-bottom:28px;
+}
+
 .home-figures .home-section__header h2{
   color:#ffffff;
 }
@@ -726,6 +730,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   display:flex;
   flex-direction:column;
   gap:6px;
+  align-items:flex-start;
   font-size:16px;
   letter-spacing:.01em;
   color:rgba(248,250,252,0.82);
@@ -818,16 +823,26 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   }
   .home-figures__grid{
     gap:clamp(18px,5vw,32px);
+    justify-items:center;
   }
   .home-figure{
     border-left:none;
     border-top:1px solid rgba(255,255,255,0.18);
     padding-top:16px;
     padding-left:0;
+    align-items:center;
+    text-align:center;
   }
   .home-figure:first-child{
     border-top:none;
     padding-top:0;
+  }
+  .home-figure__title{
+    align-items:center;
+  }
+  .home-figures .home-section__header{
+    text-align:center;
+    margin:0 auto 22px;
   }
   .home-cta__grid{
     display:flex;
