@@ -429,22 +429,21 @@ body.error404{
   background:#f3f6fb;
 }
 .notfound{
-  max-width:1100px;
-  margin:0 auto;
-  padding:clamp(48px,6vw,96px) var(--home-gutter) clamp(80px,7vw,120px);
-  display:flex;
-  flex-direction:column;
-  gap:clamp(28px,4vw,40px);
+  width:100%;
+  max-width:none;
+  margin:0;
+  padding:0;
 }
 .notfound__hero{
   position:relative;
-  padding:clamp(32px,4vw,52px);
-  border-radius:28px;
+  padding:clamp(72px,9vw,140px) clamp(32px,7vw,120px);
+  border-radius:0;
   background:linear-gradient(135deg,#014263 0%,#00aae0 55%,#84c344 105%);
   color:#ffffff;
   overflow:hidden;
   box-shadow:0 18px 38px rgba(8,21,41,0.14);
   isolation:isolate;
+  min-height:70vh;
 }
 .notfound__hero::before,
 .notfound__hero::after{
@@ -512,59 +511,38 @@ body.error404{
   display:flex;
   flex-wrap:wrap;
   gap:12px;
-  margin:8px 0 0;
+  margin:18px 0 0;
 }
-.notfound__actions .wp-block-button{
-  margin:0;
-}
-.notfound__cta{
+.notfound__link{
   display:inline-flex;
   align-items:center;
-  justify-content:center;
-  border-radius:999px;
-  padding:12px 24px;
-  font-weight:650;
-  font-size:15px;
-  border:1px solid transparent;
-  box-shadow:none;
-  text-decoration:none;
-}
-.notfound__cta:hover,
-.notfound__cta:focus-visible{
-  outline:none;
-}
-.notfound__cta{
-  background:#84c344;
-  color:#014263;
-  border-color:rgba(12,43,76,0.06);
-}
-.notfound__cta:hover,
-.notfound__cta:focus-visible{
-  background:#76b53a;
-  color:#012a45;
-}
-.notfound__cta--ghost{
-  background:rgba(255,255,255,0.08);
-  border-color:rgba(255,255,255,0.5);
+  gap:12px;
+  padding:12px 0;
   color:#ffffff;
+  text-decoration:none;
+  font-weight:760;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  border-bottom:2px solid rgba(255,255,255,0.6);
 }
-.notfound__cta--ghost:hover,
-.notfound__cta--ghost:focus-visible{
-  background:rgba(255,255,255,0.16);
+.notfound__link::after{
+  content:'↗';
+  font-size:15px;
+  line-height:1;
+  opacity:0.8;
+}
+.notfound__link:hover,
+.notfound__link:focus-visible{
   border-color:#ffffff;
+  color:#ffffff;
+  outline:none;
 }
 @media (max-width:900px){
   .notfound{
-    padding:42px var(--home-gutter) 70px;
-  }
-  .notfound__hero{
-    padding:28px 24px 32px;
+    padding:0;
   }
 }
 @media (max-width:640px){
-  .notfound__hero{
-    border-radius:22px;
-  }
   .notfound__title{
     font-size:30px;
   }
