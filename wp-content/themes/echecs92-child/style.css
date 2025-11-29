@@ -833,18 +833,24 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
     padding-top:12px;
     padding-left:0;
     align-items:flex-start;
+    justify-content:flex-start;
     text-align:left;
+    width:100%;
   }
   .home-figure:first-child{
     border-top:none;
     padding-top:0;
   }
   .home-figure__title{
-    align-items:center;
+    align-items:flex-start;
+  }
+  .home-figure__number,
+  .home-figure__label{
+    text-align:left;
   }
   .home-figures .home-section__header{
-    text-align:center;
-    margin:0 auto 22px;
+    text-align:left;
+    margin:0 0 18px;
   }
   .home-cta__grid{
     display:flex;
