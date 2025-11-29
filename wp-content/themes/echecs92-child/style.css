@@ -496,48 +496,6 @@ body.error404{
   line-height:1.6;
   max-width:640px;
 }
-.notfound__search{
-  margin:0 0 18px;
-  max-width:520px;
-}
-.notfound__search .wp-block-search__label{
-  display:none;
-}
-.notfound__search .wp-block-search__inside-wrapper{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:6px;
-  border-radius:999px;
-  border:1px solid rgba(255,255,255,0.28);
-  background:rgba(255,255,255,0.08);
-}
-.notfound__search .wp-block-search__input{
-  flex:1;
-  border:none;
-  background:transparent;
-  color:#ffffff;
-  font-size:15px;
-  padding:12px 12px 12px 16px;
-}
-.notfound__search .wp-block-search__input::placeholder{
-  color:rgba(255,255,255,0.72);
-}
-.notfound__search .wp-block-search__button{
-  border:none;
-  border-radius:999px;
-  background:#ffffff;
-  color:#0b2e4c;
-  font-weight:700;
-  padding:10px 16px;
-  cursor:pointer;
-  box-shadow:0 10px 24px rgba(0,0,0,0.1);
-}
-.notfound__search .wp-block-search__button:hover,
-.notfound__search .wp-block-search__button:focus-visible{
-  background:#f8fafc;
-  outline:none;
-}
 .notfound__actions{
   display:flex;
   flex-wrap:wrap;
@@ -634,15 +592,6 @@ body.error404{
   }
   .notfound__title{
     font-size:30px;
-  }
-  .notfound__search .wp-block-search__inside-wrapper{
-    flex-direction:column;
-    align-items:stretch;
-    border-radius:16px;
-  }
-  .notfound__search .wp-block-search__button{
-    width:100%;
-    justify-content:center;
   }
 }
 
