@@ -15,14 +15,24 @@
   let manifestPromise = null;
   let datasetPromise = null;
 
+  const jitterDelay = (base) => {
+    if (!Number.isFinite(base) || base <= 0) {
+      return 0;
+    }
+    const spread = Math.min(240, Math.max(40, Math.round(base * 0.18)));
+    const offset = Math.round((Math.random() - 0.5) * spread);
+    return Math.max(0, base + offset);
+  };
+
   const scheduleAfterMinimumDelay = (startedAt, callback, minDelay = MIN_RESULTS_SCROLL_DELAY_MS) => {
     if (typeof callback !== 'function') {
       return;
     }
     const reference = Number.isFinite(startedAt) ? startedAt : Date.now();
     const minimum = Number.isFinite(minDelay) ? minDelay : MIN_RESULTS_SCROLL_DELAY_MS;
+    const jitteredMinimum = jitterDelay(minimum);
     const elapsed = Date.now() - reference;
-    const remaining = Math.max(0, minimum - elapsed);
+    const remaining = Math.max(0, jitteredMinimum - elapsed);
     const timerHost =
       typeof window !== 'undefined' && typeof window.setTimeout === 'function'
         ? window
