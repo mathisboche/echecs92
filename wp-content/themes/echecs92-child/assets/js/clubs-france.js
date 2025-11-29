@@ -2026,9 +2026,27 @@
     return { matched: true, score: total };
   };
 
-  const applySearch = (rawQuery) => {
+  const deriveParisArrPostal = (query) => {
+    if (!query) {
+      return null;
+    }
+    const match = query.match(/paris[^0-9]{0,3}(\d{1,2})\s*(?:e|eme|ème|er)?\b/i);
+    if (!match || !match[1]) {
+      return null;
+    }
+    const num = Number.parseInt(match[1], 10);
+    if (!Number.isFinite(num) || num < 1 || num > 20) {
+      return null;
+    }
+    const postal = `750${num.toString().padStart(2, '0')}`;
+    return postal;
+  };
+
+  const applySearch = (rawQuery, options = {}) => {
+    const displayQuery = typeof options.displayQuery === 'string' ? options.displayQuery : rawQuery;
+    const trimmedDisplay = (displayQuery || '').trim();
     const trimmed = (rawQuery || '').trim();
-    state.query = trimmed;
+    state.query = trimmedDisplay;
     const normalisedQuery = normaliseForSearch(trimmed);
     const terms = normalisedQuery ? normalisedQuery.split(/\s+/).filter(Boolean) : [];
 
@@ -2070,7 +2088,7 @@
     return {
       total: state.filtered.length,
       hasQuery: terms.length > 0,
-      rawQuery: trimmed,
+      rawQuery: trimmedDisplay,
     };
   };
 
@@ -2247,7 +2265,9 @@
 
     updateStatusIfCurrent('Recherche en cours…', 'info');
 
-    const meta = applySearch(trimmed);
+    const arrondissementPostal = deriveParisArrPostal(trimmed);
+    const searchQuery = arrondissementPostal ? `${trimmed} ${arrondissementPostal}` : trimmed;
+    const meta = applySearch(searchQuery, { displayQuery: trimmed });
     if (abortIfStale()) {
       return;
     }
