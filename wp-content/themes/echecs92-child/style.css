@@ -707,10 +707,10 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 }
 
 .home-figure{
-  padding:26px;
-  border-radius:22px;
-  border:1px solid rgba(255,255,255,0.24);
-  background:rgba(255,255,255,0.05);
+  padding:0;
+  border-radius:0;
+  border:none;
+  background:transparent;
   display:flex;
   flex-direction:column;
   gap:8px;
