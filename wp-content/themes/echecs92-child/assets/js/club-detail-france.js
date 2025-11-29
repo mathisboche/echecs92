@@ -219,36 +219,47 @@
     return base;
   };
 
-  const buildClubSlugBase = (club) => {
-    const provided = club.slug ? slugify(club.slug) : '';
-    if (provided) {
-      return provided;
+  const hashStringToInt = (value) => {
+    const str = value || '';
+    let hash = 2166136261 >>> 0; // FNV-1a seed
+    for (let i = 0; i < str.length; i += 1) {
+      hash ^= str.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
     }
-    const communePart = slugify(club.commune || '');
-    const deptPart = slugify(club.departmentCode || club.departmentSlug || club.departmentName || '');
-    const namePart = slugify(club.name || '');
-    const parts = [];
-    if (communePart) {
-      parts.push(communePart);
-    } else if (deptPart) {
-      parts.push(deptPart);
+    return hash >>> 0;
+  };
+
+  const toBase36 = (value) => {
+    const n = Number.isFinite(value) ? value : Number.parseInt(value, 10);
+    if (!Number.isFinite(n)) {
+      return '';
     }
-    if (namePart && !parts.includes(namePart)) {
-      parts.push(namePart);
-    }
-    const joined = parts.filter(Boolean).join('-');
-    const idBased = club.id ? slugify(club.id) : '';
-    return joined || idBased || 'club';
+    return Math.abs(n >>> 0).toString(36);
+  };
+
+  const buildShortSlugBase = (club, index) => {
+    const seedParts = [
+      club.id || '',
+      club.name || '',
+      club.commune || '',
+      club.postalCode || '',
+      club.departmentCode || club.departmentSlug || club.departmentName || '',
+      typeof index === 'number' ? String(index) : '',
+    ];
+    const seed = seedParts.filter(Boolean).join('|') || `club-${index || 0}`;
+    const hash = hashStringToInt(seed);
+    const code = toBase36(hash).padStart(6, '0').slice(0, 8);
+    return `c${code}`;
   };
 
   const ensureUniqueSlugs = (clubs) => {
     const seen = new Set();
-    clubs.forEach((club) => {
-      const base = buildClubSlugBase(club);
-      let candidate = base || 'club';
+    clubs.forEach((club, idx) => {
+      const base = buildShortSlugBase(club, idx) || 'cclub';
+      let candidate = base;
       let suffix = 2;
       while (seen.has(candidate)) {
-        candidate = `${base}-${suffix}`;
+        candidate = `${base}-${toBase36(suffix)}`;
         suffix += 1;
       }
       club.slug = candidate;
@@ -684,14 +695,14 @@
     const communeRaw = raw.commune || raw.ville || addressParts.city || secondaryParts.city || '';
     const commune = formatCommune(communeRaw);
     const postalCode = raw.code_postal || raw.postal_code || addressParts.postalCode || secondaryParts.postalCode || '';
-    const slugSource = commune || name || postalCode || primaryAddress || secondaryAddress;
     const standardAddress = buildStandardAddress(
       primaryAddress,
       secondaryAddress,
       postalCode,
       commune || addressParts.city || secondaryParts.city || ''
     );
-    const id = raw.id || slugify(name || slugSource) || slugify(raw.slug || '') || 'club';
+    const slugSource = commune || name || postalCode || primaryAddress || secondaryAddress;
+    const id = raw.id || slugify(name || slugSource) || 'club';
 
     const rawSite = raw.site || raw.website || '';
     let site = rawSite;
@@ -747,7 +758,7 @@
         B: toNumber(raw.licences_b ?? raw.licenses_b ?? raw.license_b),
       },
       postalCode,
-      slug: raw.slug ? slugify(raw.slug) : '',
+      slug: '',
       departmentCode:
         raw.departmentCode ||
         raw.department_code ||
