@@ -702,33 +702,48 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 
 .home-figures__grid{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-  gap:22px;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:clamp(14px,3vw,28px);
+  align-items:stretch;
 }
 
 .home-figure{
-  padding:0;
-  border-radius:0;
-  border:none;
-  background:transparent;
+  padding:12px 0;
+  border-left:1px solid rgba(255,255,255,0.22);
   display:flex;
-  flex-direction:column;
-  gap:8px;
+  align-items:flex-start;
+  justify-content:center;
+  min-height:100%;
+}
+
+.home-figure:first-child{
+  border-left:none;
+  padding-left:0;
 }
 
 .home-figure__title{
   margin:0;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
   font-size:16px;
-  letter-spacing:.02em;
-  color:rgba(248,250,252,0.75);
+  letter-spacing:.01em;
+  color:rgba(248,250,252,0.82);
 }
 
 .home-figure__number{
   display:block;
-  font-size:42px;
-  font-weight:650;
+  font-size:48px;
+  font-weight:700;
   letter-spacing:-0.02em;
   color:#ffffff;
+}
+
+.home-figure__label{
+  text-transform:uppercase;
+  font-size:13px;
+  letter-spacing:.12em;
+  color:rgba(226,232,240,0.75);
 }
 
 .home-figure p{
@@ -804,6 +819,16 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   .home-figures__grid{
     gap:clamp(18px,5vw,32px);
   }
+  .home-figure{
+    border-left:none;
+    border-top:1px solid rgba(255,255,255,0.18);
+    padding-top:16px;
+    padding-left:0;
+  }
+  .home-figure:first-child{
+    border-top:none;
+    padding-top:0;
+  }
   .home-cta__grid{
     display:flex;
     flex-direction:column;
@@ -838,7 +863,6 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
     border-radius:22px;
   }
   .home-point,
-  .home-figure,
   .home-cta__card{
     border-radius:18px;
   }
