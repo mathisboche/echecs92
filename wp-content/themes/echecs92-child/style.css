@@ -2607,17 +2607,21 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   line-height:1.7;
   color:#334155;
 }
-.mathis-profile__email{
+.mathis-profile__email,
+.mathis-profile__website{
   margin:8px 0 0;
   font-weight:700;
 }
-.mathis-profile__email a{
+.mathis-profile__email a,
+.mathis-profile__website a{
   color:#0f172a;
   text-decoration:none;
   border-bottom:1px solid #0f172a;
 }
 .mathis-profile__email a:hover,
-.mathis-profile__email a:focus-visible{
+.mathis-profile__email a:focus-visible,
+.mathis-profile__website a:hover,
+.mathis-profile__website a:focus-visible{
   text-decoration:none;
   border-bottom-color:transparent;
   outline:none;
