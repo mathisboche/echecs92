@@ -92,6 +92,14 @@
       return '';
     }
   })();
+  const getCurrentBackPath = () => {
+    try {
+      const url = new URL(window.location.href);
+      return url.pathname + url.search + url.hash;
+    } catch (error) {
+      return mapHostPath || '/clubs-france';
+    }
+  };
   const navigationContext = (() => {
     try {
       const storage = window.localStorage;
@@ -1087,7 +1095,8 @@
       return;
     }
     const fromListingPage = mapHostPath === '/clubs-france';
-    rememberNavigation(fromListingPage ? 'detail:list' : 'detail:map', fromListingPage ? '/clubs-france' : '/carte-des-clubs-france');
+    const backPath = getCurrentBackPath();
+    rememberNavigation(fromListingPage ? 'detail:list' : 'detail:map', backPath || (fromListingPage ? '/clubs-france' : '/carte-des-clubs-france'));
   };
 
   mapElement.addEventListener('click', handleMapLinkInteraction);

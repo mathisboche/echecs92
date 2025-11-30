@@ -494,6 +494,15 @@
     }
   };
 
+  const getCurrentBackPath = () => {
+    try {
+      const url = new URL(window.location.href);
+      return url.pathname + url.search + url.hash;
+    } catch (error) {
+      return '/clubs-france';
+    }
+  };
+
   const rememberClubsNavigation = (context, backPath) => {
     try {
       const storage = window.localStorage;
@@ -503,7 +512,7 @@
       const payload = {
         ts: Date.now(),
         context: context || 'detail:list',
-        back: backPath || '/clubs-france',
+        back: backPath || getCurrentBackPath(),
       };
       storage.setItem(CLUBS_NAV_STORAGE_KEY, JSON.stringify(payload));
     } catch (error) {
@@ -3237,7 +3246,7 @@
         return;
       }
       persistListUiState();
-      rememberClubsNavigation('detail:list', '/clubs-france');
+      rememberClubsNavigation('detail:list', getCurrentBackPath());
     };
 
     const handleDebugDoubleClick = (event) => {

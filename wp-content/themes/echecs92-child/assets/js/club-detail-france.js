@@ -147,6 +147,20 @@
 
   const storedNavigation = consumeStoredClubsNavigation();
 
+  const getStoredBackPath = (fallback) => {
+    if (storedNavigation && storedNavigation.back) {
+      try {
+        const url = new URL(storedNavigation.back, window.location.origin);
+        if (url.origin === window.location.origin) {
+          return url.pathname + url.search + url.hash;
+        }
+      } catch (error) {
+        // ignore invalid URLs
+      }
+    }
+    return fallback;
+  };
+
   const cameFromClubsSearch = () => {
     if (storedNavigation && storedNavigation.context === 'detail:list') {
       return true;
@@ -190,6 +204,7 @@
   const updateBackLinkVisibility = () => {
     if (backLink) {
       if (cameFromClubsSearch()) {
+        backLink.href = getStoredBackPath('/clubs-france');
         backLink.removeAttribute('hidden');
       } else {
         backLink.setAttribute('hidden', '');
@@ -197,6 +212,7 @@
     }
     if (backLinkMap) {
       if (cameFromClubsMap()) {
+        backLinkMap.href = getStoredBackPath('/carte-des-clubs-france');
         backLinkMap.removeAttribute('hidden');
       } else {
         backLinkMap.setAttribute('hidden', '');
