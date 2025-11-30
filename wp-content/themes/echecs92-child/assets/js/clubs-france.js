@@ -262,21 +262,12 @@
   const locationClearButton = document.getElementById('clubs-location-clear');
   const geolocButton = document.getElementById('clubs-use-geoloc');
   const locationStatus = document.getElementById('clubs-location-status');
+  const geolocStatus = document.getElementById('clubs-geoloc-status');
   const locationDatalist = document.getElementById('clubs-location-suggestions');
   const distanceGroup = document.querySelector('[data-mobile-collapsible]');
   const distanceFields = document.getElementById('clubs-distance-fields');
   const distanceToggle = document.getElementById('clubs-distance-toggle');
   const distanceHeader = document.querySelector('.clubs-distance__intro');
-
-  const revealDistanceSection = () => {
-    if (!distanceGroup) {
-      return;
-    }
-    if (distanceGroup.hasAttribute('hidden')) {
-      distanceGroup.removeAttribute('hidden');
-    }
-    distanceGroup.setAttribute('aria-hidden', 'false');
-  };
 
   const updateClearButtons = () => {
     if (resetButton && searchInput) {
@@ -374,7 +365,6 @@
     if (!distanceGroup) {
       return;
     }
-    revealDistanceSection();
     distanceGroup.dataset.expanded = 'true';
     if (distanceToggle) {
       distanceToggle.setAttribute('aria-expanded', 'true');
@@ -1059,7 +1049,6 @@
         }
       }
     });
-    revealDistanceSection();
     if (optionsDetails) {
       optionsDetails.removeAttribute('aria-hidden');
     }
@@ -1086,16 +1075,22 @@
     updateTotalCounter();
   };
 
+  const setStatusNode = (node, message, tone) => {
+    if (!node) {
+      return;
+    }
+    node.textContent = message || '';
+    if (message) {
+      node.dataset.tone = tone;
+    } else if (node.dataset && node.dataset.tone) {
+      delete node.dataset.tone;
+    }
+  };
+
   const setLocationStatus = (message, tone = 'info') => {
     state.locationMessage = message || '';
-    if (locationStatus) {
-      locationStatus.textContent = message || '';
-      if (message) {
-        locationStatus.dataset.tone = tone;
-      } else {
-        delete locationStatus.dataset.tone;
-      }
-    }
+    setStatusNode(locationStatus, message, tone);
+    setStatusNode(geolocStatus, message, tone);
     updateTotalCounter();
   };
 

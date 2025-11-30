@@ -3578,6 +3578,18 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .clubs-location__status[data-tone="error"]{
   color:#b91c1c;
 }
+.clubs-geoloc-status{
+  min-height:18px;
+  margin:4px 0 0;
+  font-size:13px;
+  color:#b91c1c;
+}
+.clubs-geoloc-status[data-tone="success"]{
+  color:#166534;
+}
+.clubs-geoloc-status[data-tone="info"]{
+  color:#334155;
+}
 .clubs-map-box{
   background:#ffffff;
   border:1px solid #dce2ef;
