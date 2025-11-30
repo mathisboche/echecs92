@@ -543,6 +543,7 @@
 
   const geocodePlace = (query, options = {}) => {
     const expectedPostal = (options.postalCode || '').toString().trim();
+    const allowPostalMismatch = options.allowMismatch === true;
     const normalizedQuery = normalise(query).replace(/\s+/g, ' ').trim();
     const key = `${normalizedQuery}|${expectedPostal}`;
     if (!key) {
@@ -588,7 +589,7 @@
         }
         const postalCodeRaw = first?.address?.postcode || '';
         const postalCode = postalCodeRaw.split(';')[0].trim();
-        if (expectedPostal && postalCode && postalCode !== expectedPostal) {
+        if (!allowPostalMismatch && expectedPostal && postalCode && postalCode !== expectedPostal) {
           return null;
         }
         return {
@@ -633,31 +634,46 @@
       .map((q) => (q || '').trim())
       .filter(Boolean);
 
-    for (let i = 0; i < queries.length; i += 1) {
-      const q = queries[i];
-      try {
-        const place = await geocodePlace(q, { postalCode: expectedPostal });
-        if (place) {
-          club.latitude = place.lat;
-          club.longitude = place.lng;
-          if (!club.postalCode && place.postalCode) {
-            club.postalCode = place.postalCode;
+    const attemptGeocode = async (postalConstraint, allowMismatch) => {
+      for (let i = 0; i < queries.length; i += 1) {
+        const q = queries[i];
+        try {
+          const place = await geocodePlace(q, { postalCode: postalConstraint, allowMismatch });
+          if (place) {
+            club.latitude = place.lat;
+            club.longitude = place.lng;
+            if (!club.postalCode && place.postalCode) {
+              club.postalCode = place.postalCode;
+            }
+            const signature = buildClubSignature(club);
+            if (signature) {
+              geoHintsCache.set(signature, {
+                lat: club.latitude,
+                lng: club.longitude,
+                postalCode: club.postalCode || postalConstraint || '',
+              });
+              persistGeoHintsCache();
+            }
+            return true;
           }
-          const signature = buildClubSignature(club);
-          if (signature) {
-            geoHintsCache.set(signature, {
-              lat: club.latitude,
-              lng: club.longitude,
-              postalCode: club.postalCode || expectedPostal || '',
-            });
-            persistGeoHintsCache();
-          }
-          return true;
+        } catch {
+          // try next query
         }
-      } catch {
-        // continue to next query
       }
+      return false;
+    };
+
+    // First pass: keep postal constraint for precision.
+    const strictResult = await attemptGeocode(expectedPostal, false);
+    if (strictResult) {
+      return true;
     }
+    // Second pass: relax postal to match geocoder result if strict search failed.
+    const relaxedResult = await attemptGeocode('', true);
+    if (relaxedResult) {
+      return true;
+    }
+
     return false;
   };
 
