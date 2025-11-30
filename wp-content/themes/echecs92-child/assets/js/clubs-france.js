@@ -3201,6 +3201,7 @@
       ensureDistanceSectionOpen();
       finalizeGeolocSearch(() => {
         setLocationStatus(message, 'error');
+        setSearchStatus(message, 'error');
       });
       scheduleRelease();
     };
