@@ -5,6 +5,7 @@
 (function () {
   const DATA_MANIFEST_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france.json';
   const DATA_FALLBACK_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france/';
+  const GEO_HINTS_REMOTE_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json';
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
   const detailContainer = document.getElementById('club-detail');
   const backLink = document.querySelector('[data-club-back]');
@@ -79,6 +80,35 @@
       });
     }
     return datasetPromise;
+  };
+
+  let staticGeoHintsPromise = null;
+  const loadStaticGeoHints = () => {
+    if (!staticGeoHintsPromise) {
+      staticGeoHintsPromise = fetchJson(GEO_HINTS_REMOTE_URL)
+        .then((payload) => {
+          const hints = payload && typeof payload === 'object' ? payload.hints || {} : {};
+          const map = new Map();
+          Object.entries(hints).forEach(([slug, value]) => {
+            if (!value || typeof value !== 'object') {
+              return;
+            }
+            const lat = Number.parseFloat(value.lat);
+            const lng = Number.parseFloat(value.lng);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+              return;
+            }
+            map.set(slug, {
+              lat,
+              lng,
+              postalCode: value.postalCode || '',
+            });
+          });
+          return map;
+        })
+        .catch(() => new Map());
+    }
+    return staticGeoHintsPromise;
   };
 
   if (!detailContainer) {
@@ -278,6 +308,29 @@
         const suffix = idx === 0 ? '' : `-${toBase36(idx + 1)}`;
         entry.club.slug = `${base}${suffix}`;
       });
+    });
+  };
+
+  const applyStaticHints = (clubs, hints) => {
+    if (!(hints instanceof Map) || !hints.size) {
+      return;
+    }
+    clubs.forEach((club) => {
+      const key = club.slug || club.id || '';
+      if (!key || !hints.has(key)) {
+        return;
+      }
+      const hint = hints.get(key);
+      const lat = Number.parseFloat(hint.lat);
+      const lng = Number.parseFloat(hint.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return;
+      }
+      club.latitude = lat;
+      club.longitude = lng;
+      if (!club.postalCode && hint.postalCode) {
+        club.postalCode = hint.postalCode;
+      }
     });
   };
 
@@ -1246,10 +1299,11 @@
       renderMessage(detailContainer.dataset.emptyMessage || 'Club introuvable.');
       return;
     }
-    loadFranceClubsDataset()
-      .then(async (data) => {
+    Promise.all([loadFranceClubsDataset(), loadStaticGeoHints()])
+      .then(async ([data, staticHints]) => {
         const clubs = (Array.isArray(data) ? data : []).map(hydrateClub);
         ensureUniqueSlugs(clubs);
+        applyStaticHints(clubs, staticHints);
         const club = clubs.find((entry) => entry.slug === clubSlug || entry.id === clubSlug);
         if (!club) {
           renderMessage(detailContainer.dataset.emptyMessage || 'Club introuvable.');
