@@ -194,6 +194,30 @@
     '95': { label: "Val-d'Oise", lat: 49.036, lng: 2.063 }, // Cergy
   };
 
+  const populateLocationSuggestions = () => {
+    if (!locationDatalist) {
+      return;
+    }
+    const seen = new Set();
+    const addOption = (value, label) => {
+      const key = value ? value.toString().trim() : '';
+      if (!key || seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      const option = document.createElement('option');
+      option.value = key;
+      option.label = label || key;
+      locationDatalist.appendChild(option);
+    };
+    Object.entries(POSTAL_COORDINATES).forEach(([postal, info]) => {
+      addOption(postal, `${postal} — ${info.label}`);
+    });
+    Object.entries(DEPT_FALLBACK_COORDS).forEach(([postal, info]) => {
+      addOption(postal, `${postal} — ${info.label}`);
+    });
+  };
+
   const getDeptFallbackCoordinates = (postalCode) => {
     if (!postalCode) {
       return null;
@@ -233,15 +257,17 @@
   const isMobileViewport = () => (mobileViewportQuery ? mobileViewportQuery.matches : false);
 
   const searchInput = document.getElementById('clubs-search');
-  const searchButton = document.getElementById('clubs-search-btn');
-  const resetButton = document.getElementById('clubs-reset-btn');
+  const searchButton = document.getElementById('clubs-search-submit');
+  const resetButton = document.getElementById('clubs-search-clear');
   const locationInput = document.getElementById('clubs-location');
   const locationApplyButton = document.getElementById('clubs-location-apply');
   const locationClearButton = document.getElementById('clubs-location-clear');
   const geolocButton = document.getElementById('clubs-use-geoloc');
+  const locationDatalist = document.getElementById('clubs-location-suggestions');
   const distanceGroup = document.querySelector('[data-mobile-collapsible]');
   const distanceFields = document.getElementById('clubs-distance-fields');
   const distanceToggle = document.getElementById('clubs-distance-toggle');
+  const distanceHeader = document.querySelector('.clubs-distance__intro');
   const moreButton = document.getElementById('clubs-more-button');
   const optionsDetails = document.getElementById('clubs-options');
   const sortButtons = document.querySelectorAll('[data-club-sort]');
@@ -3521,6 +3547,7 @@
   };
 
   const init = () => {
+    populateLocationSuggestions();
     loadGeocodeCache();
     initialiseLocationControls();
     syncDistanceCollapse();
@@ -3664,6 +3691,12 @@
     distanceToggle?.addEventListener('click', (event) => {
       event.preventDefault();
       const wasExpanded = distanceGroup?.dataset?.expanded === 'true';
+      toggleDistanceSection();
+    });
+    distanceHeader?.addEventListener('click', (event) => {
+      if (event.target && event.target.closest('.clubs-distance__body')) {
+        return;
+      }
       toggleDistanceSection();
     });
     resultsCloseButton?.addEventListener('click', (event) => {
