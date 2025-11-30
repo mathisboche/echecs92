@@ -3130,8 +3130,8 @@
       if (meta.finite > 0) {
         const reference = meta.label || decoratedLabel || raw;
         finalizeLocationSearch(() => {
-          setLocationStatus(`Distances calculées depuis ${reference}.`, 'success');
-          setSearchStatus(`Clubs triés par distance depuis ${reference}.`, 'info');
+          setLocationStatus('', 'info');
+          setSearchStatus('', 'info');
         }, { scroll: true });
       } else {
         finalizeLocationSearch(() => {
@@ -3674,7 +3674,8 @@
           .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
         ensureUniqueSlugs(state.clubs);
 
-        const savedUi = consumeListUiState();
+        const hasInitialParams = Boolean(initialQueryParam || initialLocParam || initialSortParam || initialOpenResults);
+        const savedUi = hasInitialParams ? consumeListUiState() : null;
         const urlRestored = await applyInitialUrlState();
         let restored = urlRestored;
 

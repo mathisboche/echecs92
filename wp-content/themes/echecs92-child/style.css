@@ -3077,8 +3077,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .clubs-geoloc-hero .btn-geoloc:focus-visible,
 .clubs-geoloc-hero__btn:hover,
 .clubs-geoloc-hero__btn:focus-visible{
-  background:#0a8a4f;
-  border-color:#0a8a4f;
+  background:#0a8a4f !important;
+  border-color:#0a8a4f !important;
+  color:#ffffff !important;
 }
 @media (max-width:640px){
   .clubs-geoloc-hero{
