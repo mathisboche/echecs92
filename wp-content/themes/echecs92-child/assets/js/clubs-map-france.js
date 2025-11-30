@@ -947,6 +947,17 @@
     return null;
   };
 
+  const buildFeaturesFromClubs = (clubs) => {
+    const list = [];
+    (Array.isArray(clubs) ? clubs : []).forEach((club) => {
+      const coords = resolveClubCoordinates(club);
+      if (coords) {
+        list.push({ club, coords });
+      }
+    });
+    return list;
+  };
+
   const getClubDetailUrl = (club) => {
     if (!club) {
       return '#';
@@ -1002,7 +1013,7 @@
   loadGeoHintsCache();
 
   loadFranceClubsDataset()
-    .then(async (payload) => {
+    .then((payload) => {
       const data = Array.isArray(payload) ? payload : [];
       if (!data.length) {
         updateStatus('Aucun club à afficher pour le moment.', 'error');
@@ -1012,21 +1023,7 @@
       const clubs = data.map(adaptClubRecord);
       ensureUniqueSlugs(clubs);
 
-      // Géocode un lot dès le chargement pour maximiser la précision avant affichage.
-      await geocodeClubsBatch(clubs, { limit: 200, delayMs: 120, concurrency: 6 });
-
-      const features = [];
-      clubs.forEach((club) => {
-        const coords = resolveClubCoordinates(club);
-        if (coords) {
-          features.push({ club, coords });
-        }
-      });
-
-      if (!features.length) {
-        updateStatus('Impossible de positionner les clubs sur la carte.', 'error');
-        return;
-      }
+      const features = buildFeaturesFromClubs(clubs);
 
       const map = L.map(mapElement, {
         zoomControl: true,
@@ -1040,8 +1037,9 @@
       }).addTo(map);
 
       const markersLayer = L.layerGroup().addTo(map);
+      let hasFittedView = false;
 
-      const renderMarkers = (list) => {
+      const renderMarkers = (list, { refit = false } = {}) => {
         markersLayer.clearLayers();
         const bounds = L.latLngBounds();
         list.forEach(({ club, coords }) => {
@@ -1054,23 +1052,55 @@
           marker.addTo(markersLayer);
           bounds.extend([coords.lat, coords.lng]);
         });
-        if (bounds.isValid()) {
+        if (bounds.isValid() && (refit || !hasFittedView)) {
           if (list.length === 1) {
             map.setView(bounds.getCenter(), 13);
           } else {
             map.fitBounds(bounds, { padding: [32, 32], maxZoom: 14 });
           }
+          hasFittedView = true;
         }
       };
 
-      let total = features.length;
-      renderMarkers(features);
+      if (features.length) {
+        renderMarkers(features, { refit: true });
+        updateStatus(
+          `${features.length} club${features.length > 1 ? 's' : ''} affiché${features.length > 1 ? 's' : ''} sur la carte.`,
+          'success'
+        );
+      } else {
+        updateStatus('Localisation des clubs en cours…', 'info');
+      }
 
       setTimeout(() => {
         map.invalidateSize();
       }, 100);
 
-      updateStatus(`${total} club${total > 1 ? 's' : ''} affiché${total > 1 ? 's' : ''} sur la carte.`, 'success');
+      geocodeClubsBatch(clubs, { limit: 200, delayMs: 120, concurrency: 6 })
+        .then((geocodedCount) => {
+          if (!geocodedCount && features.length) {
+            return;
+          }
+          const updatedFeatures = buildFeaturesFromClubs(clubs);
+          if (!updatedFeatures.length) {
+            updateStatus('Impossible de positionner les clubs sur la carte.', 'error');
+            return;
+          }
+          const gained = updatedFeatures.length - features.length;
+          const shouldRefit = !features.length && updatedFeatures.length > 0;
+          if (geocodedCount || gained > 0 || shouldRefit) {
+            renderMarkers(updatedFeatures, { refit: shouldRefit });
+          }
+          updateStatus(
+            `${updatedFeatures.length} club${updatedFeatures.length > 1 ? 's' : ''} affiché${updatedFeatures.length > 1 ? 's' : ''} sur la carte${geocodedCount ? ' (coordonnées affinées)' : ''}.`,
+            'success'
+          );
+        })
+        .catch(() => {
+          if (!features.length) {
+            updateStatus('Impossible de positionner les clubs sur la carte.', 'error');
+          }
+        });
     })
     .catch(() => {
       updateStatus('Impossible de charger la carte pour le moment. Veuillez réessayer plus tard.', 'error');
