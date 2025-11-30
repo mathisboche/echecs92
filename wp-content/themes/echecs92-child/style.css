@@ -2935,7 +2935,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .clubs-search-panel__group--distance{
   background:#f8fafc;
   position:relative;
-  margin-top:6px;
+  margin-top:4px;
 }
 .clubs-geoloc-hero{
   margin:6px 0 6px;
@@ -2971,6 +2971,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   box-shadow:none;
   min-width:110px;
   transition:none;
+  font-weight:700;
 }
 .clubs-geoloc-hero .btn-geoloc{
   background:#0a8a4f;
@@ -3030,6 +3031,12 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   transform:translateY(1px);
   margin-left:6px;
   text-decoration:none;
+  position:relative;
+  top:1px;
+}
+ .clubs-distance__toggle,
+.clubs-distance__toggle::after{
+  text-decoration:none !important;
 }
 .clubs-distance__body{
   display:flex;
@@ -3629,7 +3636,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   display:flex;
   flex-direction:column;
   gap:12px;
-  padding-top:calc(env(safe-area-inset-top,0) + 8px);
+  padding-top:calc(env(safe-area-inset-top,0) + 6px);
 }
 .clubs-results-shell__header{
   display:flex;
@@ -3638,7 +3645,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   gap:10px;
   padding:6px 0;
   position:sticky;
-  top:calc(env(safe-area-inset-top,0) + 2px);
+  top:0;
   background:#ffffff;
   z-index:3;
 }
@@ -3676,7 +3683,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
     position:fixed;
     inset:0;
     background:#ffffff;
-    padding:calc(env(safe-area-inset-top,0) + 8px) 16px 24px;
+    padding:calc(env(safe-area-inset-top,0) + 6px) 16px 24px;
     z-index:40;
     transform:translateX(100%);
     opacity:0;
