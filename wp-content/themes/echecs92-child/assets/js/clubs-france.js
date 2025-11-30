@@ -282,6 +282,11 @@
   const mapCtaLink = document.querySelector('.clubs-map-box__cta');
   const highlightLocationButton = document.getElementById('clubs-highlight-location');
   const highlightGeolocButton = document.getElementById('clubs-highlight-geoloc');
+  const canUseHistory = typeof window !== 'undefined' && window.history && typeof window.history.pushState === 'function';
+  const initialHistoryState =
+    canUseHistory && typeof window.history.state === 'object' && window.history.state !== null
+      ? window.history.state
+      : null;
 
   let renderUpdatesDeferred = false;
   let pendingRenderOptions = null;
@@ -291,6 +296,7 @@
   let totalCounterPlaceholderText = COUNTER_LOADING_TEXT;
   let mobileResultsOpen = false;
   let pageScrollBeforeResults = 0;
+  let resultsHistoryPushed = false;
 
   const deferResultsRendering = (options = {}) => {
     const placeholder =
@@ -443,6 +449,21 @@
     if (typeof document !== 'undefined' && document.body) {
       document.body.classList.add('clubs-results-open');
     }
+    if (canUseHistory && !resultsHistoryPushed) {
+      try {
+        const baseState =
+          typeof window.history.state === 'object' && window.history.state !== null
+            ? window.history.state
+            : initialHistoryState && typeof initialHistoryState === 'object'
+            ? initialHistoryState
+            : {};
+        const payload = { ...baseState, clubsResultsOpen: true, clubsContext: 'clubs-france' };
+        window.history.pushState(payload, '', window.location.href);
+        resultsHistoryPushed = true;
+      } catch (error) {
+        resultsHistoryPushed = false;
+      }
+    }
     if (typeof resultsShell.scrollTo === 'function') {
       try {
         resultsShell.scrollTo({ top: 0, behavior: 'auto' });
@@ -471,6 +492,7 @@
         window.scrollTo(0, pageScrollBeforeResults || 0);
       }
     }
+    resultsHistoryPushed = false;
   };
 
   const jumpToResults = (options = {}) => {
@@ -3650,6 +3672,16 @@
       });
     });
     updateSortButtons();
+    if (canUseHistory) {
+      window.addEventListener('popstate', (event) => {
+        const state = event?.state;
+        const isResultsState = state && state.clubsResultsOpen && state.clubsContext === 'clubs-france';
+        if (mobileResultsOpen || isResultsState) {
+          closeResultsShell();
+          resultsHistoryPushed = false;
+        }
+      });
+    }
   };
 
   if (typeof window !== 'undefined') {
