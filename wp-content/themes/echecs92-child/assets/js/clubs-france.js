@@ -3157,7 +3157,7 @@
       updateSortButtons();
     }
     clearSearchQuery({ silent: true });
-    setLocationStatus('Recherche de votre position…', 'info');
+    setLocationStatus('', 'info');
     const releaseButton = () => {};
     let geolocActionFinalized = false;
     const finalizeGeolocSearch = (finalizer, options = {}) => {
@@ -3245,8 +3245,8 @@
               if (meta.finite > 0) {
                 const reference = meta.label || decoratedLabel || 'votre position';
                 finalizeGeolocSearch(() => {
-                  setLocationStatus(`Distances calculées depuis ${reference}.`, 'success');
-                  setSearchStatus(`Clubs triés par distance depuis ${reference}.`, 'info');
+                  setLocationStatus('', 'info');
+                  setSearchStatus('', 'info');
                 }, { scroll: true });
               } else {
                 finalizeGeolocSearch(() => {
