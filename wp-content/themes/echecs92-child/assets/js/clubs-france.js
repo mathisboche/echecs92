@@ -182,6 +182,33 @@
     '75020': { label: 'Paris 20e', lat: 48.8674, lng: 2.3984 },
   };
 
+  const DEPT_FALLBACK_COORDS = {
+    '75': { label: 'Paris', lat: 48.8566, lng: 2.3522 },
+    '77': { label: 'Seine-et-Marne', lat: 48.5396, lng: 2.6526 }, // Melun
+    '78': { label: 'Yvelines', lat: 48.8049, lng: 2.1204 }, // Versailles
+    '91': { label: 'Essonne', lat: 48.6298, lng: 2.4417 }, // Évry-Courcouronnes
+    '92': { label: 'Hauts-de-Seine', lat: 48.8927825, lng: 2.2073652 }, // Nanterre
+    '93': { label: 'Seine-Saint-Denis', lat: 48.9047, lng: 2.4395 }, // Bobigny
+    '94': { label: 'Val-de-Marne', lat: 48.7904, lng: 2.455 }, // Créteil
+    '95': { label: \"Val-d'Oise\", lat: 49.036, lng: 2.063 }, // Cergy
+  };
+
+  const getDeptFallbackCoordinates = (postalCode) => {
+    if (!postalCode) {
+      return null;
+    }
+    const str = postalCode.toString().trim();
+    if (str.length < 2) {
+      return null;
+    }
+    const dept = str.slice(0, 2);
+    const entry = DEPT_FALLBACK_COORDS[dept];
+    if (!entry) {
+      return null;
+    }
+    return { postalCode: str, lat: entry.lat, lng: entry.lng, label: entry.label };
+  };
+
   const GEOCODE_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
 
   const resultsEl = document.getElementById('clubs-results');
@@ -1784,6 +1811,15 @@
       if (coords) {
         club._distanceCoords = coords;
         return coords;
+      }
+    }
+
+    // Department-level fallback (approximate) when no precise postal match is available.
+    for (let i = 0; i < postalCandidates.length; i += 1) {
+      const deptCoords = getDeptFallbackCoordinates(postalCandidates[i]);
+      if (deptCoords) {
+        club._distanceCoords = deptCoords;
+        return deptCoords;
       }
     }
 

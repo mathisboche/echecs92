@@ -575,6 +575,33 @@
     return null;
   };
 
+  const DEPT_FALLBACK_COORDS = {
+    '75': { label: 'Paris', lat: 48.8566, lng: 2.3522 },
+    '77': { label: 'Seine-et-Marne', lat: 48.5396, lng: 2.6526 },
+    '78': { label: 'Yvelines', lat: 48.8049, lng: 2.1204 },
+    '91': { label: 'Essonne', lat: 48.6298, lng: 2.4417 },
+    '92': { label: 'Hauts-de-Seine', lat: 48.8927825, lng: 2.2073652 },
+    '93': { label: 'Seine-Saint-Denis', lat: 48.9047, lng: 2.4395 },
+    '94': { label: 'Val-de-Marne', lat: 48.7904, lng: 2.455 },
+    '95': { label: "Val-d'Oise", lat: 49.036, lng: 2.063 },
+  };
+
+  const getDeptFallbackCoordinates = (postalCode) => {
+    if (!postalCode) {
+      return null;
+    }
+    const str = postalCode.toString().trim();
+    if (str.length < 2) {
+      return null;
+    }
+    const dept = str.slice(0, 2);
+    const entry = DEPT_FALLBACK_COORDS[dept];
+    if (!entry) {
+      return null;
+    }
+    return { lat: entry.lat, lng: entry.lng, label: entry.label, postalCode: str };
+  };
+
   const resolveClubCoordinates = (club) => {
     if (!club || typeof club !== 'object') {
       return null;
@@ -615,6 +642,13 @@
       const coords = getPostalCoordinates(postalCandidates[i]);
       if (coords) {
         return { lat: coords.lat, lng: coords.lng, label: coords.label, postalCode: coords.postalCode };
+      }
+    }
+
+    for (let i = 0; i < postalCandidates.length; i += 1) {
+      const fallback = getDeptFallbackCoordinates(postalCandidates[i]);
+      if (fallback) {
+        return fallback;
       }
     }
 
