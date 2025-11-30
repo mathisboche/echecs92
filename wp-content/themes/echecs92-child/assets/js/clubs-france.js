@@ -3665,10 +3665,6 @@
       event.preventDefault();
       const wasExpanded = distanceGroup?.dataset?.expanded === 'true';
       toggleDistanceSection();
-      const isExpanded = distanceGroup?.dataset?.expanded === 'true';
-      if (!wasExpanded && isExpanded && isMobileViewport() && locationInput) {
-        locationInput.focus();
-      }
     });
     resultsCloseButton?.addEventListener('click', (event) => {
       event.preventDefault();
