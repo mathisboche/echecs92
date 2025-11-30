@@ -2910,7 +2910,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .clubs-page--france .clubs-search-block{
   display:flex;
   flex-direction:column;
-  gap:24px;
+  gap:10px;
   border:none;
   background:transparent;
   padding:0;
@@ -3015,28 +3015,24 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .clubs-distance__toggle{
   display:none;
   align-items:center;
-  gap:4px;
+  justify-content:center;
+  width:36px;
+  height:36px;
   font-weight:700;
   color:#0f172a;
-  background:transparent;
-  border:none;
-  padding:0 0 2px;
+  background:#e2e8f0;
+  border:1px solid #d7deec;
+  border-radius:50%;
+  padding:0;
   text-decoration:none;
   position:relative;
-  line-height:1.1;
+  line-height:1;
 }
-.clubs-distance__toggle::after{
-  content:'›';
+.clubs-distance__icon{
   display:inline-block;
+  font-size:14px;
+  line-height:1;
   transform:translateY(1px);
-  margin-left:6px;
-  text-decoration:none;
-  position:relative;
-  top:1px;
-}
- .clubs-distance__toggle,
-.clubs-distance__toggle::after{
-  text-decoration:none !important;
 }
 .clubs-distance__body{
   display:flex;
@@ -3231,10 +3227,10 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   .clubs-search-panel__group--distance[data-mobile-collapsible][data-expanded="false"] .clubs-distance__body{
     display:none;
   }
-  .clubs-distance__toggle::after{
+  .clubs-distance__icon{
     transition:transform .2s ease;
   }
-  .clubs-search-panel__group--distance[data-mobile-collapsible][data-expanded="true"] .clubs-distance__toggle::after{
+  .clubs-search-panel__group--distance[data-mobile-collapsible][data-expanded="true"] .clubs-distance__icon{
     transform:rotate(90deg);
   }
 }

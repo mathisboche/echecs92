@@ -16,13 +16,12 @@
     <div class="clubs-search-panel__layout">
       <div class="clubs-search-panel__group clubs-search-panel__group--primary">
         <p class="clubs-search-panel__title">Recherche</p>
-        <label for="clubs-search" class="clubs-search-panel__label">Nom du club, ville ou établissement</label>
         <input
           id="clubs-search"
           class="clubs-input clubs-search-panel__input"
           type="search"
-          placeholder="Ex. Paris 15e, Nanterre, Lyon…"
-          aria-label="Tapez le nom d’un club ou d’une ville"
+          placeholder="Nom du club ou ville…"
+          aria-label="Rechercher un club ou une ville"
           autocomplete="off"
         >
         <div class="clubs-search-panel__actions">
@@ -47,21 +46,23 @@
             type="button"
             aria-expanded="false"
             aria-controls="clubs-distance-fields"
+            aria-label="Déplier la recherche par distance"
           >
-            Ville ou code
+            <span class="clubs-distance__icon" aria-hidden="true">▾</span>
+            <span class="sr-only">Déplier la recherche par distance</span>
           </button>
         </div>
       </div>
 
       <div id="clubs-distance-fields" class="clubs-distance__body">
-        <label for="clubs-location" class="clubs-search-panel__label">Ville ou code postal</label>
         <input
           id="clubs-location"
           class="clubs-search-panel__input"
           type="text"
           inputmode="search"
           autocomplete="postal-code"
-          placeholder="Autour de Paris 11e, Nanterre, 75015…"
+          placeholder="Ville ou code postal…"
+          aria-label="Ville ou code postal pour trier par distance"
         >
         <div class="clubs-search-panel__actions clubs-search-panel__actions--distance">
           <button id="clubs-location-apply" class="btn clubs-search-panel__btn" type="button">Valider</button>
