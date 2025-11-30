@@ -1139,11 +1139,14 @@
     const minDelay = Number.isFinite(options.minDelay) ? options.minDelay : MIN_RESULTS_SCROLL_DELAY_MS;
     const shouldDelay = options.delay !== false;
     const shouldScroll = options.forceScroll ? true : !options.skipScroll;
+    const isQuiet = options.quiet === true || state.restoreMode;
     const activeLicenseSort = getActiveLicenseSort();
     const finalizeSort = (message, metaKey) => {
       const run = () => {
         setSearchMeta({ sort: metaKey, total: state.filtered.length });
-        setSearchStatus(message, 'info');
+        if (!isQuiet) {
+          setSearchStatus(message, 'info');
+        }
         if (shouldScroll) {
           jumpToResults(options.scrollOptions || {});
         }
@@ -2332,6 +2335,7 @@
     const suppressJump = Boolean(options.suppressJump);
     const forceJump = Boolean(options.forceJump);
     const requestedMinDelay = Number.isFinite(options.minDelay) ? options.minDelay : null;
+    const isQuiet = options.quiet === true || state.restoreMode;
     const actionStartedAt = Date.now();
     const raw = searchInput ? searchInput.value : '';
     const trimmed = (raw || '').trim();
@@ -2367,6 +2371,9 @@
     };
 
     const updateStatusIfCurrent = (message, tone = 'info') => {
+      if (isQuiet) {
+        return;
+      }
       if (requestId === searchRequestId) {
         setSearchStatus(message, tone);
       }
@@ -2377,9 +2384,11 @@
         return;
       }
       actionCompleted = true;
-      const shouldScroll = extra.skipScroll ? false : forceJump || !suppressJump;
+      const shouldScroll = extra.skipScroll ? false : forceJump || (!suppressJump && !isQuiet);
       const minDelay = Number.isFinite(extra.minDelay)
         ? extra.minDelay
+        : isQuiet
+        ? 0
         : requestedMinDelay ?? MIN_RESULTS_SCROLL_DELAY_MS;
       const behavior = extra.behavior;
       const margin = extra.margin;
@@ -2508,10 +2517,14 @@
     }
   };
 
-  const handleLocationSubmit = async (event) => {
-    if (event && typeof event.preventDefault === 'function') {
-      event.preventDefault();
+  const handleLocationSubmit = async (eventOrOptions) => {
+    let options = {};
+    if (eventOrOptions && typeof eventOrOptions.preventDefault === 'function') {
+      eventOrOptions.preventDefault();
+    } else if (eventOrOptions && typeof eventOrOptions === 'object') {
+      options = eventOrOptions;
     }
+    const quiet = options.quiet === true || state.restoreMode;
     if (!locationInput) {
       return;
     }
@@ -2521,23 +2534,29 @@
       return;
     }
 
-    deferResultsRendering();
+    if (!quiet) {
+      deferResultsRendering();
+    }
     const requestId = ++locationRequestId;
     if (state.sortMode !== 'default') {
       state.sortMode = 'default';
       updateSortButtons();
     }
     clearSearchQuery({ silent: true });
-    setLocationStatus(`Recherche de ${raw}…`, 'info');
+    if (!quiet) {
+      setLocationStatus(`Recherche de ${raw}…`, 'info');
+    } else {
+      setLocationStatus('', 'info');
+    }
     const actionStartedAt = Date.now();
-    const releaseButton = beginButtonWait(locationApplyButton, 'Recherche…');
+    const releaseButton = quiet ? () => {} : beginButtonWait(locationApplyButton, 'Recherche…');
     let locationActionFinalized = false;
     const finalizeLocationSearch = (finalizer, options = {}) => {
       if (locationActionFinalized) {
         return;
       }
       locationActionFinalized = true;
-      const shouldScroll = options.scroll === true;
+      const shouldScroll = options.scroll === true && !quiet;
       const run = () => {
         if (requestId !== locationRequestId) {
           return;
@@ -2658,7 +2677,7 @@
         return;
       }
       geolocActionFinalized = true;
-      const shouldScroll = options.scroll === true;
+      const shouldScroll = options.scroll === true && !state.restoreMode;
       const run = () => {
         if (requestId !== locationRequestId) {
           return;
