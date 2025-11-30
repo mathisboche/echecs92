@@ -289,6 +289,11 @@
     canUseHistory && typeof window.history.state === 'object' && window.history.state !== null
       ? window.history.state
       : null;
+  const initialSearchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const initialQueryParam = initialSearchParams ? (initialSearchParams.get('q') || '').trim() : '';
+  const initialSortParam = initialSearchParams ? (initialSearchParams.get('tri') || '').trim() : '';
+  const initialLocParam = initialSearchParams ? (initialSearchParams.get('loc') || '').trim() : '';
+  const initialOpenResults = initialSearchParams ? initialSearchParams.get('liste') === '1' : false;
 
   let renderUpdatesDeferred = false;
   let pendingRenderOptions = null;
@@ -433,10 +438,11 @@
     }
   };
 
-  const openResultsShell = () => {
+  const openResultsShell = (options = {}) => {
     if (!resultsShell) {
       return;
     }
+    const skipHistory = options.skipHistory === true;
     if (typeof window !== 'undefined') {
       pageScrollBeforeResults = window.scrollY || document.documentElement.scrollTop || 0;
       try {
@@ -451,7 +457,7 @@
     if (typeof document !== 'undefined' && document.body) {
       document.body.classList.add('clubs-results-open');
     }
-    if (canUseHistory && !resultsHistoryPushed) {
+    if (canUseHistory && !resultsHistoryPushed && !skipHistory) {
       try {
         const baseState =
           typeof window.history.state === 'object' && window.history.state !== null
@@ -460,11 +466,14 @@
             ? initialHistoryState
             : {};
         const payload = { ...baseState, clubsResultsOpen: true, clubsContext: 'clubs-france' };
-        window.history.pushState(payload, '', window.location.href);
+        const nextUrl = buildUrlWithState(true);
+        window.history.pushState(payload, '', nextUrl || window.location.href);
         resultsHistoryPushed = true;
       } catch (error) {
         resultsHistoryPushed = false;
       }
+    } else if (canUseHistory) {
+      syncUrlState({ openResults: true });
     }
     if (typeof resultsShell.scrollTo === 'function') {
       try {
@@ -477,8 +486,15 @@
     }
   };
 
-  const closeResultsShell = () => {
+  const closeResultsShell = (options = {}) => {
     if (!resultsShell) {
+      return;
+    }
+    const fromPopstate = options.fromPopstate === true;
+    const viaUser = options.viaUser === true;
+    if (viaUser && resultsHistoryPushed && canUseHistory) {
+      // Laisse le navigateur revenir à l'entrée précédente (sans la liste ouverte).
+      window.history.back();
       return;
     }
     mobileResultsOpen = false;
@@ -493,6 +509,9 @@
       } catch {
         window.scrollTo(0, pageScrollBeforeResults || 0);
       }
+    }
+    if (canUseHistory && !fromPopstate) {
+      syncUrlState({ openResults: false });
     }
     resultsHistoryPushed = false;
   };
@@ -550,6 +569,49 @@
       return flag === '1';
     } catch (error) {
       return false;
+    }
+  };
+
+  const buildUrlWithState = (openResultsFlag) => {
+    if (typeof window === 'undefined') {
+      return '';
+    }
+    const params = new URLSearchParams(window.location.search || '');
+    params.delete('q');
+    params.delete('loc');
+    params.delete('tri');
+    params.delete('liste');
+    const queryValue = (state.query || '').trim();
+    if (queryValue) {
+      params.set('q', queryValue);
+    }
+    if (state.distanceMode && state.distanceReference) {
+      params.set('loc', state.distanceReference);
+    }
+    if (state.sortMode && state.sortMode !== 'default') {
+      params.set('tri', state.sortMode);
+    }
+    if (openResultsFlag) {
+      params.set('liste', '1');
+    }
+    const queryString = params.toString();
+    const hash = window.location.hash || '';
+    return queryString ? `${window.location.pathname}?${queryString}${hash}` : `${window.location.pathname}${hash}`;
+  };
+
+  const syncUrlState = (options = {}) => {
+    if (!canUseHistory) {
+      return;
+    }
+    const openFlag = options.openResults ?? mobileResultsOpen;
+    const nextUrl = buildUrlWithState(openFlag);
+    const baseState =
+      typeof window.history.state === 'object' && window.history.state !== null ? window.history.state : {};
+    const payload = { ...baseState, clubsResultsOpen: openFlag, clubsContext: 'clubs-france' };
+    try {
+      window.history.replaceState(payload, '', nextUrl);
+    } catch (error) {
+      // ignore history issues
     }
   };
 
@@ -1535,6 +1597,7 @@
       state.filtered = state.clubs.slice();
       state.visibleCount = Math.min(VISIBLE_RESULTS_DEFAULT, state.filtered.length);
       void performSearch({ forceJump: true, minDelay: sortDelay });
+      syncUrlState();
       releaseTriggerButton();
       return;
     }
@@ -1548,7 +1611,36 @@
     state.distanceReferenceCommune = '';
     state.distanceReferenceType = '';
     applySortMode({ forceScroll: true, startedAt: actionStartedAt, minDelay: sortDelay });
+    syncUrlState();
     releaseTriggerButton();
+  };
+
+  const applyInitialUrlState = async () => {
+    let applied = false;
+    if (initialQueryParam) {
+      if (searchInput) {
+        searchInput.value = initialQueryParam;
+      }
+      await performSearch({ suppressJump: true, quiet: true });
+      applied = true;
+    }
+    if (initialSortParam) {
+      const normalized =
+        LICENSE_SORT_CONFIGS[initialSortParam] || initialSortParam === 'alpha'
+          ? initialSortParam
+          : 'default';
+      if (normalized !== 'default') {
+        state.sortMode = normalized;
+        updateSortButtons();
+        if (applied) {
+          applySortMode({ skipScroll: true, delay: false, quiet: true, forceScroll: false });
+        }
+      }
+    }
+    if (!applied && initialLocParam && locationInput) {
+      locationInput.value = initialLocParam;
+    }
+    return applied;
   };
 
   const beginButtonWait = (button, busyLabel) => {
@@ -2735,9 +2827,9 @@
       deferResultsRendering();
     }
     const releaseSearchFeedback = (() => {
-      if (!shouldShowBusy) {
-        return () => {};
-      }
+    if (!shouldShowBusy) {
+      return () => {};
+    }
       const release = beginButtonWait(searchButton);
       let released = false;
       return () => {
@@ -2783,14 +2875,15 @@
       const margin = extra.margin;
       const run = () => {
         if (requestId === searchRequestId) {
-          if (typeof finalizer === 'function') {
-            finalizer();
-          }
-          flushDeferredResultsRendering();
-          persistListUiState();
-          if (shouldScroll) {
-            jumpToResults({ behavior, margin });
-          }
+        if (typeof finalizer === 'function') {
+          finalizer();
+        }
+        flushDeferredResultsRendering();
+        persistListUiState();
+        syncUrlState();
+        if (shouldScroll) {
+          jumpToResults({ behavior, margin });
+        }
         }
         releaseSearchFeedback();
       };
@@ -2872,6 +2965,7 @@
       setSearchStatus('Aucun club disponible pour le moment.', 'info');
     }
     flushDeferredResultsRendering();
+    syncUrlState({ openResults: mobileResultsOpen });
   };
 
   const handleLocationClear = (eventOrOptions) => {
@@ -2904,6 +2998,8 @@
     updateClearButtons();
     if (!skipSearch) {
       void performSearch({ suppressJump });
+    } else {
+      syncUrlState();
     }
   };
 
@@ -2957,6 +3053,7 @@
         }
         flushDeferredResultsRendering();
         persistListUiState();
+        syncUrlState();
         if (shouldScroll) {
           jumpToResults();
         }
@@ -3079,6 +3176,7 @@
         }
         flushDeferredResultsRendering();
         persistListUiState();
+        syncUrlState();
         if (shouldScroll) {
           jumpToResults();
         }
@@ -3559,9 +3657,10 @@
         ensureUniqueSlugs(state.clubs);
 
         const savedUi = consumeListUiState();
-        let restored = false;
+        const urlRestored = await applyInitialUrlState();
+        let restored = urlRestored;
 
-        if (savedUi) {
+        if (!restored && savedUi) {
           if (searchInput) {
             searchInput.value = savedUi.query || '';
           }
@@ -3588,6 +3687,10 @@
             updateSortButtons();
             applySortMode({ skipScroll: true, delay: false, quiet: true });
           }
+        } else if (urlRestored && savedUi && !initialSortParam && savedUi.sortMode && savedUi.sortMode !== 'default') {
+          state.sortMode = savedUi.sortMode;
+          updateSortButtons();
+          applySortMode({ skipScroll: true, delay: false, quiet: true });
         }
         // Enrichir progressivement les clubs sans coordonnées précises.
         geocodeClubsBatch(state.clubs, { limit: 200, delayMs: 120, concurrency: 6 }).then((count) => {
@@ -3687,7 +3790,7 @@
     });
     resultsCloseButton?.addEventListener('click', (event) => {
       event.preventDefault();
-      closeResultsShell();
+      closeResultsShell({ viaUser: true });
     });
     if (resultsShell) {
       resultsShell.addEventListener('keydown', (event) => {
@@ -3709,17 +3812,28 @@
       });
     });
     updateSortButtons();
-    const shouldReopenResults = consumeReopenResultsFlag();
-    if (shouldReopenResults && state.filtered.length) {
-      openResultsShell();
-      jumpToResults({ behavior: 'instant' });
+    const shouldReopenResults = initialOpenResults || consumeReopenResultsFlag();
+    if (shouldReopenResults) {
+      openResultsShell({ skipHistory: initialOpenResults });
+      if (state.filtered.length) {
+        jumpToResults({ behavior: 'instant' });
+      }
+      syncUrlState({ openResults: true });
+    } else {
+      syncUrlState({ openResults: mobileResultsOpen });
     }
     if (canUseHistory) {
       window.addEventListener('popstate', (event) => {
         const state = event?.state;
         const isResultsState = state && state.clubsResultsOpen && state.clubsContext === 'clubs-france';
-        if (mobileResultsOpen || isResultsState) {
-          closeResultsShell();
+        const shouldOpen = Boolean(isResultsState);
+        if (shouldOpen && !mobileResultsOpen) {
+          openResultsShell({ skipHistory: true });
+          resultsHistoryPushed = false;
+          return;
+        }
+        if (!shouldOpen && mobileResultsOpen) {
+          closeResultsShell({ fromPopstate: true });
           resultsHistoryPushed = false;
         }
       });
