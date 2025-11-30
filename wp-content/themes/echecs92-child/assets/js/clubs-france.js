@@ -260,6 +260,7 @@
   const locationApplyButton = document.getElementById('clubs-location-apply');
   const locationClearButton = document.getElementById('clubs-location-clear');
   const geolocButton = document.getElementById('clubs-use-geoloc');
+  const locationStatus = document.getElementById('clubs-location-status');
   const locationDatalist = document.getElementById('clubs-location-suggestions');
   const distanceGroup = document.querySelector('[data-mobile-collapsible]');
   const distanceFields = document.getElementById('clubs-distance-fields');
@@ -986,6 +987,14 @@
 
   const setLocationStatus = (message, tone = 'info') => {
     state.locationMessage = message || '';
+    if (locationStatus) {
+      locationStatus.textContent = message || '';
+      if (message) {
+        locationStatus.dataset.tone = tone;
+      } else {
+        delete locationStatus.dataset.tone;
+      }
+    }
     updateTotalCounter();
   };
 
