@@ -728,6 +728,34 @@
   let locationRequestId = 0;
   const geocodeCache = new Map();
   const reverseGeocodeCache = new Map();
+  const geocodeStorageKey = 'echecs92:clubs-fr:geocode';
+
+  const loadGeocodeCache = () => {
+    try {
+      const raw = window.localStorage.getItem(geocodeStorageKey);
+      if (!raw) {
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        Object.entries(parsed).forEach(([key, value]) => geocodeCache.set(key, value));
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const persistGeocodeCache = () => {
+    try {
+      const obj = {};
+      geocodeCache.forEach((value, key) => {
+        obj[key] = value;
+      });
+      window.localStorage.setItem(geocodeStorageKey, JSON.stringify(obj));
+    } catch {
+      // ignore
+    }
+  };
 
   const initialiseLocationControls = () => {
     [locationInput, locationApplyButton, locationClearButton, geolocButton].forEach((element) => {
@@ -2060,11 +2088,79 @@
       .catch(() => null)
       .then((finalResult) => {
         geocodeCache.set(key, finalResult);
+        persistGeocodeCache();
         return finalResult;
       });
 
     geocodeCache.set(key, request);
     return request;
+  };
+
+  const parseGeocodeResult = (place) => {
+    if (!place) {
+      return null;
+    }
+    const lat = Number.parseFloat(place.latitude ?? place.lat);
+    const lng = Number.parseFloat(place.longitude ?? place.lon ?? place.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return null;
+    }
+    const postalCode = place.postalCode || place.postcode || '';
+    const label = place.label || '';
+    return { lat, lng, postalCode, label };
+  };
+
+  const geocodeClubIfNeeded = async (club) => {
+    if (!club || typeof club !== 'object') {
+      return false;
+    }
+    const hasCoords =
+      Number.isFinite(Number.parseFloat(club.latitude)) &&
+      Number.isFinite(Number.parseFloat(club.longitude));
+    if (hasCoords) {
+      return false;
+    }
+    const query = club.addressStandard || club.address || club.siege || club.commune || club.name || '';
+    if (!query.trim()) {
+      return false;
+    }
+    try {
+      const place = await geocodePlace(query);
+      const parsed = parseGeocodeResult(place);
+      if (!parsed) {
+        return false;
+      }
+      club.latitude = parsed.lat;
+      club.longitude = parsed.lng;
+      if (!club.postalCode && parsed.postalCode) {
+        club.postalCode = parsed.postalCode;
+      }
+      if (Object.prototype.hasOwnProperty.call(club, '_distanceCoords')) {
+        delete club._distanceCoords;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const geocodeClubsBatch = async (clubs, options = {}) => {
+    const items = Array.isArray(clubs) ? clubs : [];
+    const limit = Number.isFinite(options.limit) ? options.limit : 60;
+    const delayMs = Number.isFinite(options.delayMs) ? options.delayMs : 700;
+    let processed = 0;
+    for (let i = 0; i < items.length; i += 1) {
+      if (processed >= limit) {
+        break;
+      }
+      const club = items[i];
+      const did = await geocodeClubIfNeeded(club);
+      if (did) {
+        processed += 1;
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+    return processed;
   };
 
   const reverseGeocode = (latitude, longitude) => {
@@ -3251,6 +3347,7 @@
   };
 
   const init = () => {
+    loadGeocodeCache();
     initialiseLocationControls();
     bindMapCtaNavigation();
     setSearchStatus('Chargement de la liste des clubs…', 'info');
@@ -3295,6 +3392,14 @@
             applySortMode({ skipScroll: true, delay: false, quiet: true });
           }
         }
+        // Enrichir progressivement les clubs sans coordonnées précises.
+        geocodeClubsBatch(state.clubs, { limit: 80, delayMs: 750 }).then((count) => {
+          if (count > 0) {
+            state.filtered = state.filtered.slice();
+            renderResults({ force: true });
+            updateTotalCounter();
+          }
+        });
 
         if (!restored) {
           if (getActiveLicenseSort() || state.sortMode === 'alpha') {

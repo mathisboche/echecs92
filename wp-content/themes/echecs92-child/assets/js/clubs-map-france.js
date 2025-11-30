@@ -481,6 +481,120 @@
     return { lat: entry.lat, lng: entry.lng, label: entry.label, postalCode: str };
   };
 
+  const GEOCODE_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
+  const geocodeCache = new Map();
+
+  const geocodePlace = (query) => {
+    const key = normalise(query).replace(/\s+/g, ' ').trim();
+    if (!key) {
+      return Promise.resolve(null);
+    }
+    const cached = geocodeCache.get(key);
+    if (cached) {
+      if (typeof cached.then === 'function') {
+        return cached;
+      }
+      return Promise.resolve(cached);
+    }
+
+    const params = new URLSearchParams({
+      format: 'json',
+      addressdetails: '1',
+      limit: '1',
+      countrycodes: 'fr',
+      q: query,
+    });
+
+    const request = fetch(`${GEOCODE_ENDPOINT}?${params.toString()}`, {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'echecs92-clubs-map-fr/1.0 (contact@echecs92.com)',
+      },
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((payload) => {
+        if (!Array.isArray(payload) || !payload.length) {
+          return null;
+        }
+        const first = payload[0];
+        const lat = Number.parseFloat(first.lat);
+        const lng = Number.parseFloat(first.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          return null;
+        }
+        const postalCodeRaw = first?.address?.postcode || '';
+        const postalCode = postalCodeRaw.split(';')[0].trim();
+        return {
+          lat,
+          lng,
+          label: formatCommune(first.display_name || ''),
+          postalCode,
+        };
+      })
+      .catch(() => null)
+      .then((result) => {
+        geocodeCache.set(key, result);
+        return result;
+      });
+
+    geocodeCache.set(key, request);
+    return request;
+  };
+
+  const geocodeClubIfNeeded = async (club) => {
+    if (!club || typeof club !== 'object') {
+      return false;
+    }
+    const hasCoords =
+      Number.isFinite(Number.parseFloat(club.latitude)) &&
+      Number.isFinite(Number.parseFloat(club.longitude));
+    if (hasCoords) {
+      return false;
+    }
+    const query = club.addressStandard || club.address || club.siege || club.commune || club.name || '';
+    if (!query.trim()) {
+      return false;
+    }
+    try {
+      const place = await geocodePlace(query);
+      if (!place) {
+        return false;
+      }
+      club.latitude = place.lat;
+      club.longitude = place.lng;
+      if (!club.postalCode && place.postalCode) {
+        club.postalCode = place.postalCode;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const geocodeClubsBatch = async (clubs, options = {}) => {
+    const items = Array.isArray(clubs) ? clubs : [];
+    const limit = Number.isFinite(options.limit) ? options.limit : 60;
+    const delayMs = Number.isFinite(options.delayMs) ? options.delayMs : 700;
+    let processed = 0;
+    for (let i = 0; i < items.length; i += 1) {
+      if (processed >= limit) {
+        break;
+      }
+      const club = items[i];
+      const did = await geocodeClubIfNeeded(club);
+      if (did) {
+        processed += 1;
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+    return processed;
+  };
+
   const COMMUNE_COORDINATES_BY_NAME = Object.entries(POSTAL_COORDINATES).reduce(
     (acc, [postalCode, info]) => {
       const key = normaliseCommuneKey(info.label);
@@ -768,7 +882,7 @@
   updateStatus('Chargement de la carte…', 'info');
 
   loadFranceClubsDataset()
-    .then((payload) => {
+    .then(async (payload) => {
       const data = Array.isArray(payload) ? payload : [];
       if (!data.length) {
         updateStatus('Aucun club à afficher pour le moment.', 'error');
@@ -777,6 +891,8 @@
 
       const clubs = data.map(adaptClubRecord);
       ensureUniqueSlugs(clubs);
+
+       await geocodeClubsBatch(clubs, { limit: 80, delayMs: 750 });
       const features = [];
 
       clubs.forEach((club) => {
