@@ -7,6 +7,7 @@
   const DATA_FALLBACK_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france/';
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
   const CLUBS_UI_STATE_KEY = 'echecs92:clubs-fr:ui';
+  const REOPEN_RESULTS_FLAG_KEY = 'echecs92:clubs-fr:reopen-results';
   const VISIBLE_RESULTS_DEFAULT = 12;
   const MIN_RESULTS_SCROLL_DELAY_MS = 1100;
   const SORT_SCROLL_DELAY_MS = Math.max(180, Math.round(MIN_RESULTS_SCROLL_DELAY_MS / 4));
@@ -523,6 +524,32 @@
       return url.pathname + url.search + url.hash;
     } catch (error) {
       return '/clubs-france';
+    }
+  };
+
+  const markShouldReopenResults = () => {
+    try {
+      const storage = window.localStorage;
+      if (!storage) {
+        return;
+      }
+      storage.setItem(REOPEN_RESULTS_FLAG_KEY, '1');
+    } catch (error) {
+      // ignore
+    }
+  };
+
+  const consumeReopenResultsFlag = () => {
+    try {
+      const storage = window.localStorage;
+      if (!storage) {
+        return false;
+      }
+      const flag = storage.getItem(REOPEN_RESULTS_FLAG_KEY);
+      storage.removeItem(REOPEN_RESULTS_FLAG_KEY);
+      return flag === '1';
+    } catch (error) {
+      return false;
     }
   };
 
@@ -3277,6 +3304,7 @@
         return;
       }
       persistListUiState();
+      markShouldReopenResults();
       rememberClubsNavigation('detail:list', getCurrentBackPath());
     };
 
@@ -3681,6 +3709,11 @@
       });
     });
     updateSortButtons();
+    const shouldReopenResults = consumeReopenResultsFlag();
+    if (shouldReopenResults && state.filtered.length) {
+      openResultsShell();
+      jumpToResults({ behavior: 'instant' });
+    }
     if (canUseHistory) {
       window.addEventListener('popstate', (event) => {
         const state = event?.state;
