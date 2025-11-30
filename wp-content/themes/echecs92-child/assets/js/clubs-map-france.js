@@ -512,8 +512,10 @@
     }
   };
 
-  const geocodePlace = (query) => {
-    const key = normalise(query).replace(/\s+/g, ' ').trim();
+  const geocodePlace = (query, options = {}) => {
+    const expectedPostal = (options.postalCode || '').toString().trim();
+    const normalizedQuery = normalise(query).replace(/\s+/g, ' ').trim();
+    const key = `${normalizedQuery}|${expectedPostal}`;
     if (!key) {
       return Promise.resolve(null);
     }
@@ -530,7 +532,7 @@
       addressdetails: '1',
       limit: '1',
       countrycodes: 'fr',
-      q: query,
+      q: expectedPostal ? `${query} ${expectedPostal}` : query,
     });
 
     const request = fetch(`${GEOCODE_ENDPOINT}?${params.toString()}`, {
@@ -557,11 +559,14 @@
         }
         const postalCodeRaw = first?.address?.postcode || '';
         const postalCode = postalCodeRaw.split(';')[0].trim();
+        if (expectedPostal && postalCode && postalCode !== expectedPostal) {
+          return null;
+        }
         return {
           lat,
           lng,
           label: formatCommune(first.display_name || ''),
-          postalCode,
+          postalCode: postalCode || expectedPostal,
         };
       })
       .catch(() => null)
@@ -585,24 +590,37 @@
     if (hasCoords) {
       return false;
     }
-    const query = club.addressStandard || club.address || club.siege || club.commune || club.name || '';
-    if (!query.trim()) {
-      return false;
-    }
-    try {
-      const place = await geocodePlace(query);
-      if (!place) {
-        return false;
+    const postalCandidates = collectPostalCodes(club);
+    const expectedPostal = postalCandidates[0] || '';
+    const queries = [
+      club.addressStandard || '',
+      club.address || '',
+      club.siege || '',
+      (club.commune && expectedPostal) ? `${club.commune} ${expectedPostal}` : '',
+      club.commune || '',
+      expectedPostal,
+      club.name || '',
+    ]
+      .map((q) => (q || '').trim())
+      .filter(Boolean);
+
+    for (let i = 0; i < queries.length; i += 1) {
+      const q = queries[i];
+      try {
+        const place = await geocodePlace(q, { postalCode: expectedPostal });
+        if (place) {
+          club.latitude = place.lat;
+          club.longitude = place.lng;
+          if (!club.postalCode && place.postalCode) {
+            club.postalCode = place.postalCode;
+          }
+          return true;
+        }
+      } catch {
+        // continue to next query
       }
-      club.latitude = place.lat;
-      club.longitude = place.lng;
-      if (!club.postalCode && place.postalCode) {
-        club.postalCode = place.postalCode;
-      }
-      return true;
-    } catch {
-      return false;
     }
+    return false;
   };
 
   const geocodeClubsBatch = async (clubs, options = {}) => {
