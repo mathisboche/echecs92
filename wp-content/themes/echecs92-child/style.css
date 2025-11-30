@@ -3759,9 +3759,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
     left:0;
     right:0;
     bottom:0;
-    top:calc(env(safe-area-inset-top,0) + var(--header-height, var(--cm-header-height,64px)));
+    top:0;
     background:#ffffff;
-    padding:16px 16px 24px;
+    padding:calc(env(safe-area-inset-top,0) + var(--header-height, var(--cm-header-height,64px)) + 16px) 16px 24px;
     z-index:40;
     transform:translateX(100%);
     opacity:0;
