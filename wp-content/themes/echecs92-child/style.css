@@ -2935,10 +2935,10 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .clubs-search-panel__group--distance{
   background:#f8fafc;
   position:relative;
-  margin-top:10px;
+  margin-top:6px;
 }
 .clubs-geoloc-hero{
-  margin:6px 0 8px;
+  margin:6px 0 6px;
   padding:12px 14px;
   border-radius:12px;
   background:#dff7e8;
@@ -2970,6 +2970,17 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   border-radius:10px;
   box-shadow:none;
   min-width:110px;
+  transition:none;
+}
+.clubs-geoloc-hero .btn-geoloc{
+  background:#0a8a4f;
+  border-color:#0a8a4f;
+  color:#ffffff;
+}
+.clubs-geoloc-hero .btn-geoloc:hover,
+.clubs-geoloc-hero .btn-geoloc:focus-visible{
+  background:#087743;
+  border-color:#087743;
 }
 .clubs-geoloc-hero__btn:hover,
 .clubs-geoloc-hero__btn:focus-visible{
@@ -3008,15 +3019,17 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   color:#0f172a;
   background:transparent;
   border:none;
-  padding:0;
-  text-decoration:underline;
+  padding:0 0 2px;
+  text-decoration:none;
   position:relative;
+  line-height:1.1;
 }
 .clubs-distance__toggle::after{
   content:'›';
   display:inline-block;
   transform:translateY(1px);
   margin-left:6px;
+  text-decoration:none;
 }
 .clubs-distance__body{
   display:flex;
@@ -3616,7 +3629,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   display:flex;
   flex-direction:column;
   gap:12px;
-  padding-top:12px;
+  padding-top:calc(env(safe-area-inset-top,0) + 8px);
 }
 .clubs-results-shell__header{
   display:flex;
@@ -3625,7 +3638,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   gap:10px;
   padding:6px 0;
   position:sticky;
-  top:env(safe-area-inset-top,0);
+  top:calc(env(safe-area-inset-top,0) + 2px);
   background:#ffffff;
   z-index:3;
 }
@@ -3663,7 +3676,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
     position:fixed;
     inset:0;
     background:#ffffff;
-    padding:12px 16px 24px;
+    padding:calc(env(safe-area-inset-top,0) + 8px) 16px 24px;
     z-index:40;
     transform:translateX(100%);
     opacity:0;
