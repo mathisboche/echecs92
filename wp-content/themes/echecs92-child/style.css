@@ -4333,6 +4333,9 @@ body.mathis-mode .mathis-fragment{
   overflow:hidden;
   background:#f8fafc;
   box-shadow:inset 0 0 0 1px rgba(15,23,42,0.02);
+  position:relative;
+  isolation:isolate;
+  z-index:0;
 }
 .clubs-map{
   width:100%;
