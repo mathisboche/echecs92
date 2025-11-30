@@ -2,7 +2,7 @@
 
 <!-- wp:html -->
 <div class="clubs-page legal clubs-page--france">
-  <h1>Clubs en France</h1>
+  <h1>Clubs d’Échecs</h1>
 
   <!-- Barre de recherche unifiée -->
   <section class="clubs-search-block clubs-search-panel" role="search" aria-label="Rechercher un club">
@@ -23,43 +23,50 @@
           <button id="clubs-reset-btn" class="btn btn-secondary clubs-search-panel__btn" type="button">Effacer</button>
         </div>
       </div>
+    </div>
 
-      <div
-        class="clubs-search-panel__group clubs-search-panel__group--distance"
-        data-mobile-collapsible="true"
-        data-expanded="false"
-        aria-live="polite"
-      >
-        <div class="clubs-distance__intro">
-          <p class="clubs-search-panel__title">Distance</p>
-          <div class="clubs-distance__actions">
-            <button id="clubs-use-geoloc" class="btn btn-geoloc clubs-distance__geoloc" type="button">Autour de moi</button>
-            <button
-              id="clubs-distance-toggle"
-              class="link-button clubs-distance__toggle"
-              type="button"
-              aria-expanded="false"
-              aria-controls="clubs-distance-fields"
-            >
-              Ville ou code
-            </button>
-          </div>
-        </div>
+    <div class="clubs-geoloc-hero" role="region" aria-label="Recherche autour de vous">
+      <div class="clubs-geoloc-hero__text">
+        <strong>Autour de moi</strong>
+        <span>Tri automatique par proximité</span>
+      </div>
+      <button id="clubs-use-geoloc" class="btn btn-geoloc clubs-geoloc-hero__btn" type="button">Activer</button>
+    </div>
 
-        <div id="clubs-distance-fields" class="clubs-distance__body">
-          <label for="clubs-location" class="clubs-search-panel__label">Ville ou code postal</label>
-          <input
-            id="clubs-location"
-            class="clubs-search-panel__input"
-            type="text"
-            inputmode="search"
-            autocomplete="postal-code"
-            placeholder="Autour de Paris 11e, Nanterre, 75015…"
+    <div
+      class="clubs-search-panel__group clubs-search-panel__group--distance"
+      data-mobile-collapsible="true"
+      data-expanded="false"
+      aria-live="polite"
+    >
+      <div class="clubs-distance__intro">
+        <p class="clubs-search-panel__title">Distance</p>
+        <div class="clubs-distance__actions">
+          <button
+            id="clubs-distance-toggle"
+            class="link-button clubs-distance__toggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="clubs-distance-fields"
           >
-          <div class="clubs-search-panel__actions clubs-search-panel__actions--distance">
-            <button id="clubs-location-apply" class="btn clubs-search-panel__btn" type="button">Valider</button>
-            <button id="clubs-location-clear" class="btn btn-secondary clubs-search-panel__btn" type="button">Effacer</button>
-          </div>
+            Ville ou code
+          </button>
+        </div>
+      </div>
+
+      <div id="clubs-distance-fields" class="clubs-distance__body">
+        <label for="clubs-location" class="clubs-search-panel__label">Ville ou code postal</label>
+        <input
+          id="clubs-location"
+          class="clubs-search-panel__input"
+          type="text"
+          inputmode="search"
+          autocomplete="postal-code"
+          placeholder="Autour de Paris 11e, Nanterre, 75015…"
+        >
+        <div class="clubs-search-panel__actions clubs-search-panel__actions--distance">
+          <button id="clubs-location-apply" class="btn clubs-search-panel__btn" type="button">Valider</button>
+          <button id="clubs-location-clear" class="btn btn-secondary clubs-search-panel__btn" type="button">Effacer</button>
         </div>
       </div>
     </div>
@@ -68,7 +75,7 @@
   <div class="clubs-results-shell" id="clubs-results-shell" aria-live="polite" aria-label="Résultats de la recherche">
     <div class="clubs-results-shell__header">
       <p class="clubs-results-shell__eyebrow">Résultats</p>
-      <button id="clubs-results-close" class="clubs-results-shell__close" type="button" aria-label="Revenir à la recherche">Fermer</button>
+      <button id="clubs-results-close" class="clubs-results-shell__close" type="button" aria-label="Revenir à la recherche">← Retour</button>
     </div>
 
     <details class="clubs-sort-toggle" id="clubs-sort-toggle">
@@ -98,10 +105,6 @@
     </div>
   </div>
 
-  <p class="clubs-help">
-    Une info à corriger&nbsp;? Écrivez à
-    <a href="mailto:contact@echecs92.com">contact@echecs92.com</a>
-  </p>
 </div>
 
 <!-- Script de la recherche de clubs -->

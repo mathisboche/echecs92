@@ -256,6 +256,7 @@
   let totalCounterPlaceholderActive = false;
   let totalCounterPlaceholderText = COUNTER_LOADING_TEXT;
   let mobileResultsOpen = false;
+  let pageScrollBeforeResults = 0;
 
   const deferResultsRendering = (options = {}) => {
     const placeholder =
@@ -401,6 +402,14 @@
     if (!resultsShell || !isMobileViewport()) {
       return;
     }
+    if (typeof window !== 'undefined') {
+      pageScrollBeforeResults = window.scrollY || document.documentElement.scrollTop || 0;
+      try {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      } catch {
+        window.scrollTo(0, 0);
+      }
+    }
     mobileResultsOpen = true;
     resultsShell.classList.add('is-active');
     resultsShell.setAttribute('aria-hidden', 'false');
@@ -439,6 +448,13 @@
     }
     if (typeof document !== 'undefined' && document.body) {
       document.body.classList.remove('clubs-results-open');
+    }
+    if (typeof window !== 'undefined' && Number.isFinite(pageScrollBeforeResults)) {
+      try {
+        window.scrollTo({ top: pageScrollBeforeResults, behavior: 'auto' });
+      } catch {
+        window.scrollTo(0, pageScrollBeforeResults || 0);
+      }
     }
     if (isMobileViewport() && searchInput && typeof searchInput.focus === 'function') {
       try {

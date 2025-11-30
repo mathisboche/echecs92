@@ -2936,6 +2936,56 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   background:#f8fafc;
   position:relative;
 }
+.clubs-geoloc-hero{
+  margin:6px 0 10px;
+  padding:14px 16px;
+  border-radius:14px;
+  background:linear-gradient(135deg,#0b7a46,#0db1ff);
+  color:#f8fdff;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:12px;
+  box-shadow:0 14px 30px rgba(13,177,255,0.18);
+}
+.clubs-geoloc-hero__text{
+  flex:1;
+  min-width:200px;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.clubs-geoloc-hero__text strong{
+  font-size:16px;
+  color:#ffffff;
+  letter-spacing:.02em;
+}
+.clubs-geoloc-hero__text span{
+  font-size:13px;
+  color:rgba(255,255,255,0.85);
+}
+.clubs-geoloc-hero__btn{
+  background:#0f172a;
+  border-color:#0f172a;
+  color:#ffffff;
+  padding:10px 16px;
+  border-radius:12px;
+  box-shadow:0 10px 22px rgba(15,23,42,0.24);
+}
+.clubs-geoloc-hero__btn:hover,
+.clubs-geoloc-hero__btn:focus-visible{
+  background:#0b1222;
+  border-color:#0b1222;
+}
+@media (max-width:640px){
+  .clubs-geoloc-hero{
+    padding:12px;
+  }
+  .clubs-geoloc-hero__btn{
+    width:100%;
+    justify-content:center;
+  }
+}
 .clubs-distance__intro{
   display:flex;
   align-items:flex-start;
@@ -3591,7 +3641,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   border:1px solid #d7deec;
   background:#f6f8fc;
   color:#0f172a;
-  border-radius:999px;
+  border-radius:12px;
   padding:8px 14px;
   font-weight:700;
   display:none;
