@@ -13,7 +13,7 @@
       aria-live="polite"
     >
       <div class="clubs-distance__intro">
-        <p class="clubs-search-panel__title">Distance</p>
+        <p class="clubs-search-panel__title">Tri par distance</p>
         <div class="clubs-distance__actions">
           <button
             id="clubs-distance-toggle"
@@ -36,13 +36,13 @@
             class="clubs-search-panel__input"
             type="search"
             inputmode="search"
+            enterkeyhint="search"
             autocomplete="postal-code"
             list="clubs-location-suggestions"
             placeholder="Ville ou code postal…"
             aria-label="Ville ou code postal pour trier par distance"
           >
-          <button id="clubs-location-clear" class="clubs-input__clear" type="button" aria-label="Effacer la localisation">×</button>
-          <button id="clubs-location-apply" class="clubs-input__submit" type="button" aria-label="Valider la localisation">↵</button>
+          <button id="clubs-location-clear" class="clubs-input__clear" type="button" aria-label="Effacer la localisation" hidden>×</button>
         </div>
         <datalist id="clubs-location-suggestions"></datalist>
       </div>
@@ -59,18 +59,19 @@
             placeholder="Nom du club ou ville…"
             aria-label="Rechercher un club ou une ville"
             autocomplete="off"
+            enterkeyhint="search"
           >
-          <button id="clubs-search-clear" class="clubs-input__clear" type="button" aria-label="Effacer la recherche">×</button>
-          <button id="clubs-search-submit" class="clubs-input__submit" type="button" aria-label="Lancer la recherche">↵</button>
+          <button id="clubs-search-clear" class="clubs-input__clear" type="button" aria-label="Effacer la recherche" hidden>×</button>
         </div>
       </div>
     </div>
 
     <div class="clubs-geoloc-hero" role="region" aria-label="Recherche autour de vous">
       <div class="clubs-geoloc-hero__text">
-        <span class="clubs-geoloc-hero__icon" aria-hidden="true"></span>
+        <span class="clubs-geoloc-hero__icon" aria-hidden="true">📍</span>
+        <span class="sr-only">Autour de moi</span>
       </div>
-      <button id="clubs-use-geoloc" class="btn btn-geoloc clubs-geoloc-hero__btn" type="button">Activer</button>
+      <button id="clubs-use-geoloc" class="btn btn-geoloc clubs-geoloc-hero__btn" type="button">Activer la géolocalisation</button>
     </div>
   </section>
 

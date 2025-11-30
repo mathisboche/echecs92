@@ -268,6 +268,17 @@
   const distanceFields = document.getElementById('clubs-distance-fields');
   const distanceToggle = document.getElementById('clubs-distance-toggle');
   const distanceHeader = document.querySelector('.clubs-distance__intro');
+
+  const updateClearButtons = () => {
+    if (resetButton && searchInput) {
+      const hasValue = (searchInput.value || '').trim().length > 0;
+      resetButton.hidden = !hasValue;
+    }
+    if (locationClearButton && locationInput) {
+      const hasValue = (locationInput.value || '').trim().length > 0;
+      locationClearButton.hidden = !hasValue;
+    }
+  };
   const moreButton = document.getElementById('clubs-more-button');
   const optionsDetails = document.getElementById('clubs-options');
   const sortButtons = document.querySelectorAll('[data-club-sort]');
@@ -350,6 +361,7 @@
     if (distanceFields) {
       distanceFields.hidden = false;
     }
+    updateClearButtons();
   };
 
   const syncDistanceCollapse = () => {
@@ -369,6 +381,7 @@
     if (distanceFields) {
       distanceFields.hidden = !expanded;
     }
+    updateClearButtons();
   };
 
   const toggleDistanceSection = () => {
@@ -990,6 +1003,7 @@
     if (searchInput) {
       searchInput.value = '';
     }
+    updateClearButtons();
     if (!silent) {
       setSearchStatus('Tous les clubs sont affichés.', 'info');
     }
@@ -2681,6 +2695,7 @@
     const actionStartedAt = Date.now();
     const raw = searchInput ? searchInput.value : '';
     const trimmed = (raw || '').trim();
+    updateClearButtons();
     if (tryHandleSecretCommand(raw)) {
       return;
     }
@@ -2857,6 +2872,7 @@
       locationInput.value = '';
     }
     setLocationStatus(silent ? '' : 'Localisation effacée.', 'info');
+    updateClearButtons();
     if (!skipSearch) {
       void performSearch({ suppressJump });
     }
@@ -3547,6 +3563,7 @@
   };
 
   const init = () => {
+    updateClearButtons();
     populateLocationSuggestions();
     loadGeocodeCache();
     initialiseLocationControls();
@@ -3628,6 +3645,7 @@
           }
         }
         state.restoreMode = false;
+        updateClearButtons();
       })
       .catch(() => {
         if (resultsEl) {
@@ -3649,6 +3667,7 @@
     }
     resetButton?.addEventListener('click', resetSearch);
     if (searchInput) {
+      searchInput.addEventListener('input', updateClearButtons);
       searchInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
           event.preventDefault();
@@ -3664,6 +3683,7 @@
     }
     locationApplyButton?.addEventListener('click', handleLocationSubmit);
     locationClearButton?.addEventListener('click', handleLocationClear);
+    locationInput?.addEventListener('input', updateClearButtons);
     locationInput?.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') {
         event.preventDefault();
