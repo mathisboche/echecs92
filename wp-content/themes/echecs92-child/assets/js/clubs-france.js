@@ -3184,71 +3184,87 @@
       scheduleAfterMinimumDelay(actionStartedAt, run);
     };
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        reverseGeocode(latitude, longitude)
-          .catch(() => null)
-          .then((place) => {
-            if (requestId !== locationRequestId) {
-              scheduleRelease();
-              return;
-            }
-
-            const referenceType = 'geoloc';
-            const baseLabel = toDistanceReferenceLabel(
-              place?.label || 'votre position',
-              place?.postalCode,
-              { type: referenceType }
-            );
-            const referenceContext = deriveReferenceContext(place?.label || '', place || {}, referenceType);
-            const decoratedLabel = decorateReferenceLabel(baseLabel, referenceContext.type);
-
-            if (locationInput) {
-              locationInput.value = decoratedLabel || place?.label || '';
-            }
-
-            expandOptionsPanel();
-            ensureDistanceSectionOpen();
-
-            searchRequestId += 1;
-            const meta = runDistanceSearch({
-              latitude,
-              longitude,
-              label: decoratedLabel,
-              query: place?.label || 'votre position',
-              referencePostalCode: referenceContext.postalCode,
-              referenceCommune: referenceContext.commune,
-              referenceType: referenceContext.type,
-            });
-
-            if (meta.finite > 0) {
-              const reference = meta.label || decoratedLabel || 'votre position';
-              finalizeGeolocSearch(() => {
-                setLocationStatus(`Distances calculées depuis ${reference}.`, 'success');
-                setSearchStatus(`Clubs triés par distance depuis ${reference}.`, 'info');
-              }, { scroll: true });
-            } else {
-              finalizeGeolocSearch(() => {
-                setLocationStatus('Impossible de calculer les distances pour cette localisation.', 'error');
-              });
-            }
-          })
-          .finally(() => {
-            scheduleRelease();
-          });
-      },
-      () => {
-        finalizeGeolocSearch(() => {
-          setLocationStatus('Impossible de récupérer votre position.', 'error');
-        });
-        scheduleRelease();
-      },
-      {
-        enableHighAccuracy: false,
-        timeout: 10000,
+    const handleGeolocError = (error) => {
+      let message = 'Impossible de récupérer votre position.';
+      if (error && typeof error.code === 'number') {
+        if (error.code === 1) {
+          message = 'Accès à la localisation refusé. Autorisez la localisation ou saisissez votre ville.';
+        } else if (error.code === 2) {
+          message = 'Position indisponible pour le moment. Réessayez ou saisissez une ville.';
+        } else if (error.code === 3) {
+          message = 'La recherche de position a expiré. Réessayez ou saisissez une ville.';
+        }
       }
-    );
+      finalizeGeolocSearch(() => {
+        setLocationStatus(message, 'error');
+      });
+      scheduleRelease();
+    };
+
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          reverseGeocode(latitude, longitude)
+            .catch(() => null)
+            .then((place) => {
+              if (requestId !== locationRequestId) {
+                scheduleRelease();
+                return;
+              }
+
+              const referenceType = 'geoloc';
+              const baseLabel = toDistanceReferenceLabel(
+                place?.label || 'votre position',
+                place?.postalCode,
+                { type: referenceType }
+              );
+              const referenceContext = deriveReferenceContext(place?.label || '', place || {}, referenceType);
+              const decoratedLabel = decorateReferenceLabel(baseLabel, referenceContext.type);
+
+              if (locationInput) {
+                locationInput.value = decoratedLabel || place?.label || '';
+              }
+
+              expandOptionsPanel();
+              ensureDistanceSectionOpen();
+
+              searchRequestId += 1;
+              const meta = runDistanceSearch({
+                latitude,
+                longitude,
+                label: decoratedLabel,
+                query: place?.label || 'votre position',
+                referencePostalCode: referenceContext.postalCode,
+                referenceCommune: referenceContext.commune,
+                referenceType: referenceContext.type,
+              });
+
+              if (meta.finite > 0) {
+                const reference = meta.label || decoratedLabel || 'votre position';
+                finalizeGeolocSearch(() => {
+                  setLocationStatus(`Distances calculées depuis ${reference}.`, 'success');
+                  setSearchStatus(`Clubs triés par distance depuis ${reference}.`, 'info');
+                }, { scroll: true });
+              } else {
+                finalizeGeolocSearch(() => {
+                  setLocationStatus('Impossible de calculer les distances pour cette localisation.', 'error');
+                });
+              }
+            })
+            .finally(() => {
+              scheduleRelease();
+            });
+        },
+        handleGeolocError,
+        {
+          enableHighAccuracy: false,
+          timeout: 10000,
+        }
+      );
+    } catch (error) {
+      handleGeolocError(error);
+    }
   };
 
   const adaptClubRecord = (raw) => {
