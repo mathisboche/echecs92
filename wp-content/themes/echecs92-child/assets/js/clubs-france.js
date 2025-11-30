@@ -268,6 +268,16 @@
   const distanceToggle = document.getElementById('clubs-distance-toggle');
   const distanceHeader = document.querySelector('.clubs-distance__intro');
 
+  const revealDistanceSection = () => {
+    if (!distanceGroup) {
+      return;
+    }
+    if (distanceGroup.hasAttribute('hidden')) {
+      distanceGroup.removeAttribute('hidden');
+    }
+    distanceGroup.setAttribute('aria-hidden', 'false');
+  };
+
   const updateClearButtons = () => {
     if (resetButton && searchInput) {
       const hasValue = (searchInput.value || '').trim().length > 0;
@@ -364,6 +374,7 @@
     if (!distanceGroup) {
       return;
     }
+    revealDistanceSection();
     distanceGroup.dataset.expanded = 'true';
     if (distanceToggle) {
       distanceToggle.setAttribute('aria-expanded', 'true');
@@ -1048,6 +1059,7 @@
         }
       }
     });
+    revealDistanceSection();
     if (optionsDetails) {
       optionsDetails.removeAttribute('aria-hidden');
     }
