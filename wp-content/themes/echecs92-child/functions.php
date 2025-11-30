@@ -200,7 +200,7 @@ add_filter('query_vars', function ($vars) {
 
 add_filter('document_title_parts', function ($title) {
     if (is_page('mathis-boche')) {
-        $title['title'] = "Mathis Boche - Comité d'Échecs des Hauts-de-Seine";
+        $title['title'] = "Mathis Boche";
     }
 
     return $title;
