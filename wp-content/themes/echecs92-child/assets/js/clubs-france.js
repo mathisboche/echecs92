@@ -452,14 +452,6 @@
     } else {
       resultsShell.scrollTop = 0;
     }
-    const focusTarget = resultsEl || resultsShell;
-    if (focusTarget && typeof focusTarget.focus === 'function') {
-      try {
-        focusTarget.focus({ preventScroll: true });
-      } catch {
-        focusTarget.focus();
-      }
-    }
   };
 
   const closeResultsShell = () => {
@@ -477,13 +469,6 @@
         window.scrollTo({ top: pageScrollBeforeResults, behavior: 'auto' });
       } catch {
         window.scrollTo(0, pageScrollBeforeResults || 0);
-      }
-    }
-    if (searchInput && typeof searchInput.focus === 'function') {
-      try {
-        searchInput.focus({ preventScroll: true });
-      } catch {
-        searchInput.focus();
       }
     }
   };
@@ -506,13 +491,6 @@
       target.scrollIntoView({ behavior, block: 'start', inline: 'nearest' });
     } catch {
       target.scrollIntoView({ block: 'start' });
-    }
-    if (typeof resultsEl.focus === 'function') {
-      try {
-        resultsEl.focus({ preventScroll: true });
-      } catch {
-        resultsEl.focus();
-      }
     }
   };
 

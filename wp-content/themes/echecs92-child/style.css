@@ -3760,7 +3760,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   align-items:center;
   justify-content:flex-start;
   gap:12px;
-  padding:12px 0 14px;
+  padding:12px 16px 14px;
+  margin-left:-16px;
+  margin-right:-16px;
   position:sticky;
   top:0;
   background:#ffffff;
