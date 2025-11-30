@@ -200,7 +200,7 @@ add_filter('query_vars', function ($vars) {
 
 add_filter('document_title_parts', function ($title) {
     if (is_page('mathis-boche')) {
-        $title['title'] = "Mathis Boche";
+        $title['title'] = "Mathis Boche CDJE 92";
     }
 
     return $title;
