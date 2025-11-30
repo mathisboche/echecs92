@@ -11,6 +11,8 @@
       data-mobile-collapsible="true"
       data-expanded="false"
       aria-live="polite"
+      hidden
+      aria-hidden="true"
     >
       <div class="clubs-distance__intro">
         <p class="clubs-search-panel__title">Tri par distance</p>
@@ -66,13 +68,13 @@
       </div>
     </div>
 
-    <div class="clubs-geoloc-hero" role="region" aria-label="Recherche autour de vous">
-      <div class="clubs-geoloc-hero__text">
-        <span class="clubs-geoloc-hero__icon" aria-hidden="true">📍</span>
-        <span class="sr-only">Autour de moi</span>
+      <div class="clubs-geoloc-hero" role="region" aria-label="Recherche autour de vous">
+        <div class="clubs-geoloc-hero__text">
+          <span class="clubs-geoloc-hero__icon" aria-hidden="true"></span>
+          <span class="sr-only">Autour de moi</span>
+        </div>
+        <button id="clubs-use-geoloc" class="btn btn-geoloc clubs-geoloc-hero__btn" type="button">Activer la géolocalisation</button>
       </div>
-      <button id="clubs-use-geoloc" class="btn btn-geoloc clubs-geoloc-hero__btn" type="button">Activer la géolocalisation</button>
-    </div>
   </section>
 
   <div class="clubs-results-shell" id="clubs-results-shell" aria-live="polite" aria-label="Résultats de la recherche">
