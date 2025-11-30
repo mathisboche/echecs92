@@ -3709,11 +3709,19 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   }
 }
 .clubs-results-shell{
-  margin:12px 0 0;
+  position:fixed;
+  inset:0;
+  background:#ffffff;
   display:flex;
   flex-direction:column;
   gap:12px;
-  padding-top:calc(env(safe-area-inset-top,0) + var(--cm-header-height,64px) + 6px);
+  padding:calc(env(safe-area-inset-top,0) + var(--header-height, var(--cm-header-height,64px)) + 16px) 16px 24px;
+  z-index:40;
+  transform:translateX(100%);
+  opacity:0;
+  transition:none;
+  overflow-y:auto;
+  box-shadow:0 28px 45px rgba(15,23,42,0.18);
 }
 .clubs-results-shell__header{
   display:flex;
@@ -3722,7 +3730,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   gap:10px;
   padding:0 0 6px;
   position:sticky;
-  top:calc(env(safe-area-inset-top,0) + var(--cm-header-height,64px));
+  top:0;
   background:#ffffff;
   z-index:3;
 }
@@ -3742,7 +3750,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   border-radius:12px;
   padding:8px 14px;
   font-weight:700;
-  display:none;
+  display:inline-flex;
   position:sticky;
   left:0;
 }
@@ -3752,48 +3760,15 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   color:#0f172a;
   border-color:#d7deec;
 }
-@media (max-width:820px){
-  .clubs-results-shell{
-    margin:0;
-    position:fixed;
-    left:0;
-    right:0;
-    bottom:0;
-    top:0;
-    background:#ffffff;
-    padding:calc(env(safe-area-inset-top,0) + var(--header-height, var(--cm-header-height,64px)) + 16px) 16px 24px;
-    z-index:40;
-    transform:translateX(100%);
-    opacity:0;
-    transition:none;
-    overflow-y:auto;
-    box-shadow:0 28px 45px rgba(15,23,42,0.18);
-  }
-  .clubs-results-shell.is-active{
-    transform:translateX(0);
-    opacity:1;
-  }
-  .clubs-results-shell__header{
-    top:0;
-    padding-top:0;
-  }
-  .clubs-results-shell__close{
-    display:inline-flex;
-  }
-  .clubs-results-shell__header{
-    top:env(safe-area-inset-top,0);
-  }
-  .clubs-results-shell .clubs-results-wrapper{
-    margin-top:12px;
-  }
-  body.clubs-results-open{
-    overflow:hidden;
-  }
+.clubs-results-shell.is-active{
+  transform:translateX(0);
+  opacity:1;
 }
-@media (min-width:821px){
-  .clubs-results-shell__close{
-    display:none;
-  }
+.clubs-results-shell .clubs-results-wrapper{
+  margin-top:12px;
+}
+body.clubs-results-open{
+  overflow:hidden;
 }
 .clubs-total{
   font-size:15px;

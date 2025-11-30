@@ -250,11 +250,8 @@
   };
   const configuredScrollMargin = parseScrollMargin(resultsEl?.dataset?.scrollMargin);
   const resultsScrollMargin = configuredScrollMargin ?? DEFAULT_RESULTS_SCROLL_MARGIN;
-  const mobileViewportQuery =
-    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-      ? window.matchMedia(`(max-width: ${MOBILE_RESULTS_BREAKPOINT}px)`)
-      : null;
-  const isMobileViewport = () => (mobileViewportQuery ? mobileViewportQuery.matches : false);
+  const mobileViewportQuery = null;
+  const isMobileViewport = () => true;
 
   const searchInput = document.getElementById('clubs-search');
   const searchButton = document.getElementById('clubs-search-submit');
@@ -413,15 +410,6 @@
     if (!resultsShell) {
       return;
     }
-    if (!isMobileViewport()) {
-      resultsShell.classList.remove('is-active');
-      resultsShell.removeAttribute('aria-hidden');
-      if (typeof document !== 'undefined' && document.body) {
-        document.body.classList.remove('clubs-results-open');
-      }
-      mobileResultsOpen = false;
-      return;
-    }
     if (mobileResultsOpen) {
       resultsShell.classList.add('is-active');
       resultsShell.setAttribute('aria-hidden', 'false');
@@ -438,7 +426,7 @@
   };
 
   const openResultsShell = () => {
-    if (!resultsShell || !isMobileViewport()) {
+    if (!resultsShell) {
       return;
     }
     if (typeof window !== 'undefined') {
@@ -480,11 +468,7 @@
     }
     mobileResultsOpen = false;
     resultsShell.classList.remove('is-active');
-    if (isMobileViewport()) {
-      resultsShell.setAttribute('aria-hidden', 'true');
-    } else {
-      resultsShell.removeAttribute('aria-hidden');
-    }
+    resultsShell.setAttribute('aria-hidden', 'true');
     if (typeof document !== 'undefined' && document.body) {
       document.body.classList.remove('clubs-results-open');
     }
@@ -495,7 +479,7 @@
         window.scrollTo(0, pageScrollBeforeResults || 0);
       }
     }
-    if (isMobileViewport() && searchInput && typeof searchInput.focus === 'function') {
+    if (searchInput && typeof searchInput.focus === 'function') {
       try {
         searchInput.focus({ preventScroll: true });
       } catch {
@@ -508,7 +492,7 @@
     if (!resultsEl) {
       return;
     }
-    if (isMobileViewport() && resultsShell) {
+    if (resultsShell) {
       openResultsShell();
       return;
     }
