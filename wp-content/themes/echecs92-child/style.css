@@ -3590,6 +3590,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .clubs-geoloc-status[data-tone="info"]{
   color:#334155;
 }
+.clubs-geoloc-status[data-tone="error"]{
+  color:#b91c1c;
+}
 .clubs-map-box{
   background:#ffffff;
   border:1px solid #dce2ef;
