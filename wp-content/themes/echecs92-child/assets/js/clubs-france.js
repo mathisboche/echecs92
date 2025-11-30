@@ -3675,8 +3675,9 @@
           .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
         ensureUniqueSlugs(state.clubs);
 
+        const reopenResultsRequested = consumeReopenResultsFlag();
         const hasInitialParams = Boolean(initialQueryParam || initialLocParam || initialSortParam || initialOpenResults);
-        const savedUi = hasInitialParams ? consumeListUiState() : null;
+        const savedUi = hasInitialParams || reopenResultsRequested ? consumeListUiState() : null;
         const urlRestored = await applyInitialUrlState();
         let restored = urlRestored;
 
@@ -3845,9 +3846,12 @@
       Boolean(state.query) ||
       Boolean(state.distanceMode && state.distanceReference) ||
       Boolean(savedUi && (savedUi.query || savedUi.location));
-    const shouldReopenResults =
-      initialOpenResults || (hasSearchContext && consumeReopenResultsFlag());
-    if (shouldReopenResults) {
+    const shouldAutoOpenResults =
+      initialOpenResults ||
+      Boolean(initialQueryParam || initialLocParam) ||
+      reopenResultsRequested ||
+      hasSearchContext;
+    if (shouldAutoOpenResults) {
       openResultsShell({ skipHistory: initialOpenResults });
       if (state.filtered.length) {
         jumpToResults({ behavior: 'instant' });
