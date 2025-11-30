@@ -607,20 +607,31 @@
 
   const geocodeClubsBatch = async (clubs, options = {}) => {
     const items = Array.isArray(clubs) ? clubs : [];
-    const limit = Number.isFinite(options.limit) ? options.limit : 60;
-    const delayMs = Number.isFinite(options.delayMs) ? options.delayMs : 700;
+    const limit = Number.isFinite(options.limit) ? options.limit : 120;
+    const delayMs = Number.isFinite(options.delayMs) ? options.delayMs : 150;
+    const concurrency = Math.max(1, Math.min(8, Number.parseInt(options.concurrency || 4, 10)));
     let processed = 0;
-    for (let i = 0; i < items.length; i += 1) {
-      if (processed >= limit) {
-        break;
+    let index = 0;
+
+    const worker = async () => {
+      while (processed < limit && index < items.length) {
+        const current = items[index];
+        index += 1;
+        if (!current) {
+          continue;
+        }
+        const did = await geocodeClubIfNeeded(current);
+        if (did) {
+          processed += 1;
+          if (delayMs > 0) {
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+          }
+        }
       }
-      const club = items[i];
-      const did = await geocodeClubIfNeeded(club);
-      if (did) {
-        processed += 1;
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-      }
-    }
+    };
+
+    const workers = Array.from({ length: concurrency }, () => worker());
+    await Promise.all(workers);
     return processed;
   };
 
@@ -910,10 +921,9 @@
 
   updateStatus('Chargement de la carte…', 'info');
 
-  loadGeocodeCache();
-
   loadFranceClubsDataset()
     .then(async (payload) => {
+      loadGeocodeCache();
       const data = Array.isArray(payload) ? payload : [];
       if (!data.length) {
         updateStatus('Aucun club à afficher pour le moment.', 'error');
