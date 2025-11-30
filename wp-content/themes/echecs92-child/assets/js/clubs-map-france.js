@@ -985,6 +985,7 @@
         }
       };
 
+      let total = features.length;
       renderMarkers(features);
 
       if (pending.length) {
@@ -998,6 +999,7 @@
               }
             });
             if (refreshed.length) {
+              total = refreshed.length;
               renderMarkers(refreshed);
             }
           }
