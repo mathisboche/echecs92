@@ -1569,6 +1569,13 @@
     const refCommune = state.distanceReferenceCommune;
     const clubPostal = normalisePostalCodeValue(club.postalCode);
     const clubCommune = normaliseCommuneForCompare(club.commune);
+
+    const isParis = (communeKey) => communeKey === 'paris';
+    if (isParis(refCommune)) {
+      // Pour Paris, on ne considère "sur place" que si le code postal est identique (arrondissement).
+      return Boolean(refPostal && clubPostal && refPostal === clubPostal);
+    }
+
     if (refPostal && clubPostal && clubPostal === refPostal) {
       return true;
     }
