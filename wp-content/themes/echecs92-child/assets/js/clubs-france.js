@@ -3151,7 +3151,6 @@
       return;
     }
 
-    deferResultsRendering();
     const requestId = ++locationRequestId;
     if (state.sortMode !== 'default') {
       state.sortMode = 'default';
@@ -3159,16 +3158,7 @@
     }
     clearSearchQuery({ silent: true });
     setLocationStatus('Recherche de votre position…', 'info');
-    const actionStartedAt = Date.now();
-    const releaseButton = beginButtonWait(geolocButton, 'Recherche…');
-    let releaseScheduled = false;
-    const scheduleRelease = () => {
-      if (releaseScheduled) {
-        return;
-      }
-      releaseScheduled = true;
-      scheduleAfterMinimumDelay(actionStartedAt, releaseButton);
-    };
+    const releaseButton = () => {};
     let geolocActionFinalized = false;
     const finalizeGeolocSearch = (finalizer, options = {}) => {
       if (geolocActionFinalized) {
@@ -3190,14 +3180,14 @@
           jumpToResults();
         }
       };
-      scheduleAfterMinimumDelay(actionStartedAt, run);
+      run();
     };
 
     const handleGeolocError = (error) => {
       let message = 'Impossible de récupérer votre position.';
       if (error && typeof error.code === 'number') {
         if (error.code === 1) {
-          message = 'Accès à la localisation refusé. Autorisez la localisation ou saisissez votre ville.';
+          message = 'Accès à la localisation refusé. Autorisez la localisation.';
         } else if (error.code === 2) {
           message = 'Position indisponible pour le moment. Réessayez ou saisissez une ville.';
         } else if (error.code === 3) {
@@ -3210,7 +3200,7 @@
         setLocationStatus(message, 'error');
         setSearchStatus(message, 'error');
       });
-      scheduleRelease();
+      releaseButton();
     };
 
     try {
@@ -3221,7 +3211,7 @@
             .catch(() => null)
             .then((place) => {
               if (requestId !== locationRequestId) {
-                scheduleRelease();
+                releaseButton();
                 return;
               }
 
@@ -3265,7 +3255,7 @@
               }
             })
             .finally(() => {
-              scheduleRelease();
+              releaseButton();
             });
         },
         handleGeolocError,
