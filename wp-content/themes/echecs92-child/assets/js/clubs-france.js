@@ -190,7 +190,7 @@
     '92': { label: 'Hauts-de-Seine', lat: 48.8927825, lng: 2.2073652 }, // Nanterre
     '93': { label: 'Seine-Saint-Denis', lat: 48.9047, lng: 2.4395 }, // Bobigny
     '94': { label: 'Val-de-Marne', lat: 48.7904, lng: 2.455 }, // Créteil
-    '95': { label: \"Val-d'Oise\", lat: 49.036, lng: 2.063 }, // Cergy
+    '95': { label: "Val-d'Oise", lat: 49.036, lng: 2.063 }, // Cergy
   };
 
   const getDeptFallbackCoordinates = (postalCode) => {
