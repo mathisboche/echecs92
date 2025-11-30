@@ -67,8 +67,9 @@ add_action('wp_enqueue_scripts', function () {
     $is_92_detail = is_page('club') || is_page_template('page-club.html');
     $is_fr_map = is_page('carte-des-clubs-france') || is_page_template('page-carte-des-clubs-france.html');
     $is_fr_detail = is_page('club-france') || is_page_template('page-club-france.html');
+    $is_fr_listing = is_page('clubs-france') || is_page_template('page-clubs-france.html');
 
-    $needs_leaflet = $is_92_map || $is_fr_map || $is_92_detail || $is_fr_detail;
+    $needs_leaflet = $is_92_map || $is_fr_map || $is_92_detail || $is_fr_detail || $is_fr_listing;
 
     if ($needs_leaflet) {
         wp_enqueue_style(
@@ -96,7 +97,7 @@ add_action('wp_enqueue_scripts', function () {
         );
     }
 
-    if ($is_fr_map) {
+    if ($is_fr_map || $is_fr_listing) {
         wp_enqueue_script(
             'echecs92-clubs-map-france',
             get_stylesheet_directory_uri() . '/assets/js/clubs-map-france.js',
