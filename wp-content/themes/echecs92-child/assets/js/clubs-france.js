@@ -2689,6 +2689,7 @@
     state.distanceReferencePostal = '';
     state.distanceReferenceCommune = '';
     state.distanceReferenceType = '';
+    state.query = searchInput ? (searchInput.value || '').trim() : '';
     state.clubs.forEach((club) => {
       if (Object.prototype.hasOwnProperty.call(club, 'distanceKm')) {
         delete club.distanceKm;
@@ -2802,7 +2803,7 @@
     state.distanceReferencePostal = normalisePostalCodeValue(referencePostalCode);
     state.distanceReferenceCommune = normaliseCommuneForCompare(referenceCommune);
     state.distanceReferenceType = referenceType || '';
-    state.query = query || '';
+    state.query = '';
     state.visibleCount = Math.min(VISIBLE_RESULTS_DEFAULT, state.filtered.length);
     renderResults();
     updateTotalCounter();
@@ -3831,7 +3832,12 @@
       });
     });
     updateSortButtons();
-    const shouldReopenResults = initialOpenResults || consumeReopenResultsFlag();
+    const hasSearchContext =
+      Boolean(state.query) ||
+      Boolean(state.distanceMode && state.distanceReference) ||
+      Boolean(savedUi && (savedUi.query || savedUi.location));
+    const shouldReopenResults =
+      initialOpenResults || (hasSearchContext && consumeReopenResultsFlag());
     if (shouldReopenResults) {
       openResultsShell({ skipHistory: initialOpenResults });
       if (state.filtered.length) {

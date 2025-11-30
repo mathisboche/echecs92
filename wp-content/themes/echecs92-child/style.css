@@ -3837,6 +3837,13 @@ body.clubs-results-open{
   gap:16px;
   margin-top:24px;
 }
+.clubs-results-shell .clubs-results-wrapper,
+.clubs-results-shell .clubs-list{
+  max-width:960px;
+  width:100%;
+  margin-left:auto;
+  margin-right:auto;
+}
 .clubs-list{
   display:flex;
   flex-direction:column;
