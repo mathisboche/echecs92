@@ -3753,6 +3753,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   opacity:0;
   transition:none;
   overflow-y:auto;
+  overflow-x:hidden;
   box-shadow:0 28px 45px rgba(15,23,42,0.18);
 }
 .clubs-results-shell__header{
