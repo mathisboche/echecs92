@@ -1647,6 +1647,43 @@
     return Array.from(codes);
   };
 
+  const extractParisPostal = (value) => {
+    if (!value) {
+      return null;
+    }
+    const raw = value.toString();
+    const direct = raw.match(/\b75\d{3}\b/);
+    if (direct && direct[0]) {
+      return direct[0];
+    }
+    const arr = raw.match(/paris[^0-9]{0,3}(\d{1,2})\s*(?:e|eme|ème|er)?\b/i);
+    if (arr && arr[1]) {
+      const num = Number.parseInt(arr[1], 10);
+      if (Number.isFinite(num) && num >= 1 && num <= 20) {
+        return `750${num.toString().padStart(2, '0')}`;
+      }
+    }
+    return null;
+  };
+
+  const deriveParisPostalFromClub = (club) => {
+    const fields = [
+      club.postalCode,
+      club.addressStandard,
+      club.address,
+      club.siege,
+      club.commune,
+      club.name,
+    ];
+    for (let i = 0; i < fields.length; i += 1) {
+      const code = extractParisPostal(fields[i]);
+      if (code) {
+        return code;
+      }
+    }
+    return null;
+  };
+
   const resolveClubDistanceCoordinates = (club) => {
     if (Object.prototype.hasOwnProperty.call(club, '_distanceCoords')) {
       return club._distanceCoords;
@@ -1676,6 +1713,15 @@
     const postalCandidates = collectPostalCodes(club);
     for (let i = 0; i < postalCandidates.length; i += 1) {
       const coords = getPostalCoordinates(postalCandidates[i]);
+      if (coords) {
+        club._distanceCoords = coords;
+        return coords;
+      }
+    }
+
+    const parisPostal = deriveParisPostalFromClub(club);
+    if (parisPostal) {
+      const coords = getPostalCoordinates(parisPostal);
       if (coords) {
         club._distanceCoords = coords;
         return coords;
@@ -2878,9 +2924,17 @@
       debugBar.style.gap = '8px';
       debugBar.style.alignItems = 'center';
 
-      const lat = Number.isFinite(club.latitude) ? club.latitude : Number.parseFloat(club.lat);
-      const lng =
-        Number.isFinite(club.longitude) ? club.longitude : Number.parseFloat(club.lng ?? club.lon);
+      const resolved = resolveClubDistanceCoordinates(club);
+      const lat = Number.isFinite(resolved?.lat)
+        ? resolved.lat
+        : Number.isFinite(club.latitude)
+        ? club.latitude
+        : Number.parseFloat(club.lat);
+      const lng = Number.isFinite(resolved?.lng)
+        ? resolved.lng
+        : Number.isFinite(club.longitude)
+        ? club.longitude
+        : Number.parseFloat(club.lng ?? club.lon);
       const coordsText =
         Number.isFinite(lat) && Number.isFinite(lng)
           ? `${lat.toFixed(5)}, ${lng.toFixed(5)}`

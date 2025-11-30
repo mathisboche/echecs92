@@ -359,6 +359,43 @@
     return Array.from(codes);
   };
 
+  const extractParisPostal = (value) => {
+    if (!value) {
+      return null;
+    }
+    const raw = value.toString();
+    const direct = raw.match(/\b75\d{3}\b/);
+    if (direct && direct[0]) {
+      return direct[0];
+    }
+    const arr = raw.match(/paris[^0-9]{0,3}(\d{1,2})\s*(?:e|eme|ème|er)?\b/i);
+    if (arr && arr[1]) {
+      const num = Number.parseInt(arr[1], 10);
+      if (Number.isFinite(num) && num >= 1 && num <= 20) {
+        return `750${num.toString().padStart(2, '0')}`;
+      }
+    }
+    return null;
+  };
+
+  const deriveParisPostalFromClub = (club) => {
+    const fields = [
+      club.postalCode,
+      club.addressStandard,
+      club.address,
+      club.siege,
+      club.commune,
+      club.name,
+    ];
+    for (let i = 0; i < fields.length; i += 1) {
+      const code = extractParisPostal(fields[i]);
+      if (code) {
+        return code;
+      }
+    }
+    return null;
+  };
+
   const POSTAL_COORDINATES = {
     '92000': { label: 'Nanterre', lat: 48.8927825, lng: 2.2073652 },
     '92100': { label: 'Boulogne-Billancourt', lat: 48.837494, lng: 2.2378546 },
@@ -605,6 +642,14 @@
     const postalCandidates = collectPostalCodes(club);
     for (let i = 0; i < postalCandidates.length; i += 1) {
       const coords = getPostalCoordinates(postalCandidates[i]);
+      if (coords) {
+        return { lat: coords.lat, lng: coords.lng, label: coords.label, postalCode: coords.postalCode };
+      }
+    }
+
+    const parisPostal = deriveParisPostalFromClub(club);
+    if (parisPostal) {
+      const coords = getPostalCoordinates(parisPostal);
       if (coords) {
         return { lat: coords.lat, lng: coords.lng, label: coords.label, postalCode: coords.postalCode };
       }
