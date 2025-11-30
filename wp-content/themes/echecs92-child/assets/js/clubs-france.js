@@ -387,6 +387,7 @@
     sortMode: 'default',
     statusMessage: '',
     locationMessage: '',
+    restoreMode: false,
   };
 
   const DEBUG_FLAG_KEY = 'echecs92:clubs-fr:debug';
@@ -1737,6 +1738,13 @@
     return null;
   };
 
+  const stripSelfPositionSuffix = (value) => {
+    if (!value) {
+      return '';
+    }
+    return value.replace(/\(.*ma position.*\)/i, '').replace(/\s{2,}/g, ' ').trim();
+  };
+
   const resolveClubDistanceCoordinates = (club) => {
     if (Object.prototype.hasOwnProperty.call(club, '_distanceCoords')) {
       return club._distanceCoords;
@@ -2529,6 +2537,7 @@
       return;
     }
     const raw = locationInput.value.trim();
+    const effectiveRaw = stripSelfPositionSuffix(raw);
     if (!raw) {
       handleLocationClear();
       return;
@@ -2574,21 +2583,21 @@
     };
 
     try {
-      const looksLikeAddress = looksLikeDetailedAddress(raw);
+      const looksLikeAddress = looksLikeDetailedAddress(effectiveRaw);
       let coords = null;
       if (looksLikeAddress) {
         try {
-          coords = await geocodePlace(raw);
+          coords = await geocodePlace(effectiveRaw);
         } catch {
           coords = null;
         }
       }
       if (!coords) {
-        coords = lookupLocalCoordinates(raw);
+        coords = lookupLocalCoordinates(effectiveRaw);
       }
       if (!coords && !looksLikeAddress) {
         try {
-          coords = await geocodePlace(raw);
+          coords = await geocodePlace(effectiveRaw);
         } catch {
           coords = null;
         }
@@ -2607,11 +2616,11 @@
 
       const referenceType = looksLikeAddress ? 'address' : 'location';
       const baseLabel = toDistanceReferenceLabel(
-        coords.label || formatCommune(raw) || raw,
+        coords.label || formatCommune(effectiveRaw) || effectiveRaw || raw,
         coords.postalCode,
         { type: referenceType }
       );
-      const referenceContext = deriveReferenceContext(raw, coords, referenceType);
+      const referenceContext = deriveReferenceContext(effectiveRaw || raw, coords, referenceType);
       const decoratedLabel = decorateReferenceLabel(baseLabel, referenceContext.type);
 
       if (locationInput) {
@@ -3203,6 +3212,7 @@
     bindMapCtaNavigation();
     setSearchStatus('Chargement de la liste des clubs…', 'info');
 
+    state.restoreMode = true;
     loadFranceClubsDataset()
       .then(async (payload) => {
         const data = Array.isArray(payload) ? payload : [];
@@ -3227,19 +3237,19 @@
           }
           if (savedUi.distanceMode && savedUi.location) {
             try {
-              await handleLocationSubmit({ preventDefault() {} });
+              await handleLocationSubmit({ preventDefault() {}, quiet: true });
               restored = true;
             } catch {
               restored = false;
             }
           } else if (savedUi.query) {
-            await performSearch({ suppressJump: true, forceJump: false });
+            await performSearch({ suppressJump: true, forceJump: false, quiet: true });
             restored = true;
           }
           if (restored && savedUi.sortMode && savedUi.sortMode !== 'default' && !state.distanceMode) {
             state.sortMode = savedUi.sortMode;
             updateSortButtons();
-            applySortMode({ skipScroll: true, delay: false });
+            applySortMode({ skipScroll: true, delay: false, quiet: true });
           }
         }
 
@@ -3255,6 +3265,7 @@
             }
           }
         }
+        state.restoreMode = false;
       })
       .catch(() => {
         if (resultsEl) {
