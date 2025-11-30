@@ -83,6 +83,15 @@
 
   const statusElement = document.getElementById('clubs-map-status');
   const detailBase = mapElement.dataset.detailBase || '/club/';
+  const mapHostPath = (() => {
+    try {
+      const path = window.location && window.location.pathname ? window.location.pathname : '';
+      const normalized = path.replace(/\/+$/u, '') || '/';
+      return normalized;
+    } catch (error) {
+      return '';
+    }
+  })();
   const navigationContext = (() => {
     try {
       const storage = window.localStorage;
@@ -1077,7 +1086,8 @@
     if (event.type === 'auxclick' && event.button !== 1) {
       return;
     }
-    rememberNavigation('detail:map', '/carte-des-clubs-france');
+    const fromListingPage = mapHostPath === '/clubs-france';
+    rememberNavigation(fromListingPage ? 'detail:list' : 'detail:map', fromListingPage ? '/clubs-france' : '/carte-des-clubs-france');
   };
 
   mapElement.addEventListener('click', handleMapLinkInteraction);
