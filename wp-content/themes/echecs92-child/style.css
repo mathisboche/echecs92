@@ -3723,17 +3723,6 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   overflow-y:auto;
   box-shadow:0 28px 45px rgba(15,23,42,0.18);
 }
-.clubs-results-shell::before{
-  content:"";
-  position:absolute;
-  top:0;
-  left:0;
-  right:0;
-  height:calc(env(safe-area-inset-top,0) + var(--header-height, var(--cm-header-height,64px)));
-  background:#ffffff;
-  z-index:1;
-  pointer-events:none;
-}
 .clubs-results-shell__header{
   display:flex;
   align-items:center;
@@ -3741,7 +3730,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   gap:10px;
   padding:0 0 6px;
   position:sticky;
-  top:calc(env(safe-area-inset-top,0) + var(--header-height, var(--cm-header-height,64px)));
+  top:0;
   background:#ffffff;
   z-index:3;
 }
