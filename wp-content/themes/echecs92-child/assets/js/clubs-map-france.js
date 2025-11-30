@@ -828,13 +828,6 @@
       }
     }
 
-    for (let i = 0; i < postalCandidates.length; i += 1) {
-      const fallback = getDeptFallbackCoordinates(postalCandidates[i]);
-      if (fallback) {
-        return fallback;
-      }
-    }
-
     const parisPostal = deriveParisPostalFromClub(club);
     if (parisPostal) {
       const coords = getPostalCoordinates(parisPostal);
@@ -933,15 +926,14 @@
       const clubs = data.map(adaptClubRecord);
       ensureUniqueSlugs(clubs);
 
-      const features = [];
-      const pending = [];
+      // Géocode un lot dès le chargement pour maximiser la précision avant affichage.
+      await geocodeClubsBatch(clubs, { limit: 200, delayMs: 120, concurrency: 6 });
 
+      const features = [];
       clubs.forEach((club) => {
         const coords = resolveClubCoordinates(club);
         if (coords) {
           features.push({ club, coords });
-        } else {
-          pending.push(club);
         }
       });
 
@@ -987,24 +979,6 @@
 
       let total = features.length;
       renderMarkers(features);
-
-      if (pending.length) {
-        geocodeClubsBatch(pending, { limit: 80, delayMs: 200, concurrency: 6 }).then((count) => {
-          if (count > 0) {
-            const refreshed = [];
-            clubs.forEach((club) => {
-              const coords = resolveClubCoordinates(club);
-              if (coords) {
-                refreshed.push({ club, coords });
-              }
-            });
-            if (refreshed.length) {
-              total = refreshed.length;
-              renderMarkers(refreshed);
-            }
-          }
-        });
-      }
 
       setTimeout(() => {
         map.invalidateSize();
