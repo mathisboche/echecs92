@@ -3725,12 +3725,13 @@
           if (getActiveLicenseSort() || state.sortMode === 'alpha') {
             applySortMode({ skipScroll: true, delay: false });
           } else {
-            const meta = applySearch('');
-            if (meta.total > 0) {
-              setSearchStatus('Tous les clubs sont affichés.', 'info');
-            } else {
-              setSearchStatus('Aucun club disponible pour le moment.', 'info');
+            state.filtered = [];
+            state.visibleCount = 0;
+            if (resultsEl) {
+              resultsEl.innerHTML = '';
             }
+            updateTotalCounter();
+            setSearchStatus('', 'info');
           }
         }
         state.restoreMode = false;
@@ -3751,6 +3752,10 @@
         if (searchButton.getAttribute('aria-busy') === 'true') {
           return;
         }
+        const raw = searchInput ? searchInput.value.trim() : '';
+        if (!raw) {
+          return;
+        }
         void performSearch({ showBusy: true });
       });
     }
@@ -3764,6 +3769,10 @@
             return;
           }
           if (searchButton && searchButton.getAttribute('aria-busy') === 'true') {
+            return;
+          }
+          const raw = searchInput.value.trim();
+          if (!raw) {
             return;
           }
           void performSearch({ showBusy: true });

@@ -3247,6 +3247,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   border-radius:12px;
   background:#f9fafc;
   overflow:hidden;
+  display:none !important;
 }
 .clubs-sort-toggle summary{
   padding:14px 18px;
