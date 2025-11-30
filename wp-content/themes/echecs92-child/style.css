@@ -3727,11 +3727,13 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   display:flex;
   align-items:center;
   justify-content:flex-start;
-  gap:10px;
-  padding:0 0 6px;
+  gap:12px;
+  padding:12px 0 14px;
   position:sticky;
   top:0;
   background:#ffffff;
+  border-bottom:1px solid #e2e8f0;
+  margin-bottom:12px;
   z-index:3;
 }
 .clubs-results-shell__eyebrow{
