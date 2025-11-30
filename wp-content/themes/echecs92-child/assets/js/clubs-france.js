@@ -2693,7 +2693,7 @@
       if (!shouldShowBusy) {
         return () => {};
       }
-      const release = beginButtonWait(searchButton, 'Recherche…');
+      const release = beginButtonWait(searchButton);
       let released = false;
       return () => {
         if (released) {
