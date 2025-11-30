@@ -481,8 +481,36 @@
     return { lat: entry.lat, lng: entry.lng, label: entry.label, postalCode: str };
   };
 
+  const GEOCODE_STORAGE_KEY = 'echecs92:clubs-fr:geocode';
   const GEOCODE_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
   const geocodeCache = new Map();
+
+  const loadGeocodeCache = () => {
+    try {
+      const raw = window.localStorage.getItem(GEOCODE_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        Object.entries(parsed).forEach(([key, value]) => geocodeCache.set(key, value));
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const persistGeocodeCache = () => {
+    try {
+      const obj = {};
+      geocodeCache.forEach((value, key) => {
+        obj[key] = value;
+      });
+      window.localStorage.setItem(GEOCODE_STORAGE_KEY, JSON.stringify(obj));
+    } catch {
+      // ignore
+    }
+  };
 
   const geocodePlace = (query) => {
     const key = normalise(query).replace(/\s+/g, ' ').trim();
@@ -539,6 +567,7 @@
       .catch(() => null)
       .then((result) => {
         geocodeCache.set(key, result);
+        persistGeocodeCache();
         return result;
       });
 
@@ -881,6 +910,8 @@
 
   updateStatus('Chargement de la carte…', 'info');
 
+  loadGeocodeCache();
+
   loadFranceClubsDataset()
     .then(async (payload) => {
       const data = Array.isArray(payload) ? payload : [];
@@ -892,18 +923,16 @@
       const clubs = data.map(adaptClubRecord);
       ensureUniqueSlugs(clubs);
 
-       await geocodeClubsBatch(clubs, { limit: 80, delayMs: 750 });
       const features = [];
+      const pending = [];
 
       clubs.forEach((club) => {
         const coords = resolveClubCoordinates(club);
-        if (!coords) {
-          return;
+        if (coords) {
+          features.push({ club, coords });
+        } else {
+          pending.push(club);
         }
-        features.push({
-          club,
-          coords,
-        });
       });
 
       if (!features.length) {
@@ -922,24 +951,47 @@
         maxZoom: 18,
       }).addTo(map);
 
-      const bounds = L.latLngBounds();
+      const markersLayer = L.layerGroup().addTo(map);
 
-      features.forEach(({ club, coords }) => {
-        const marker = L.marker([coords.lat, coords.lng], {
-          title: club.name,
+      const renderMarkers = (list) => {
+        markersLayer.clearLayers();
+        const bounds = L.latLngBounds();
+        list.forEach(({ club, coords }) => {
+          const marker = L.marker([coords.lat, coords.lng], {
+            title: club.name,
+          });
+          marker.bindPopup(createPopupContent(club), {
+            keepInView: true,
+          });
+          marker.addTo(markersLayer);
+          bounds.extend([coords.lat, coords.lng]);
         });
-        marker.bindPopup(createPopupContent(club), {
-          keepInView: true,
-        });
-        marker.addTo(map);
-        bounds.extend([coords.lat, coords.lng]);
-      });
+        if (bounds.isValid()) {
+          if (list.length === 1) {
+            map.setView(bounds.getCenter(), 13);
+          } else {
+            map.fitBounds(bounds, { padding: [32, 32], maxZoom: 14 });
+          }
+        }
+      };
 
-      const total = features.length;
-      if (total === 1) {
-        map.setView(bounds.getCenter(), 13);
-      } else {
-        map.fitBounds(bounds, { padding: [32, 32], maxZoom: 14 });
+      renderMarkers(features);
+
+      if (pending.length) {
+        geocodeClubsBatch(pending, { limit: 80, delayMs: 200, concurrency: 6 }).then((count) => {
+          if (count > 0) {
+            const refreshed = [];
+            clubs.forEach((club) => {
+              const coords = resolveClubCoordinates(club);
+              if (coords) {
+                refreshed.push({ club, coords });
+              }
+            });
+            if (refreshed.length) {
+              renderMarkers(refreshed);
+            }
+          }
+        });
       }
 
       setTimeout(() => {
