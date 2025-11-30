@@ -6,6 +6,7 @@
   const DATA_MANIFEST_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france.json';
   const DATA_FALLBACK_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france/';
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
+  const CLUBS_UI_STATE_KEY = 'echecs92:clubs-fr:ui';
   const VISIBLE_RESULTS_DEFAULT = 12;
   const MIN_RESULTS_SCROLL_DELAY_MS = 1100;
   const SORT_SCROLL_DELAY_MS = Math.max(180, Math.round(MIN_RESULTS_SCROLL_DELAY_MS / 4));
@@ -321,6 +322,54 @@
       storage.setItem(CLUBS_NAV_STORAGE_KEY, JSON.stringify(payload));
     } catch (error) {
       // ignore storage failures
+    }
+  };
+
+  const persistListUiState = () => {
+    try {
+      const storage = window.localStorage;
+      if (!storage) {
+        return;
+      }
+      const payload = {
+        ts: Date.now(),
+        query: searchInput ? searchInput.value : '',
+        location: locationInput ? locationInput.value : '',
+        distanceMode: state.distanceMode,
+        sortMode: state.sortMode,
+      };
+      storage.setItem(CLUBS_UI_STATE_KEY, JSON.stringify(payload));
+    } catch (error) {
+      // ignore storage failures
+    }
+  };
+
+  const consumeListUiState = () => {
+    try {
+      const storage = window.localStorage;
+      if (!storage) {
+        return null;
+      }
+      const raw = storage.getItem(CLUBS_UI_STATE_KEY);
+      if (!raw) {
+        return null;
+      }
+      let payload = null;
+      try {
+        payload = JSON.parse(raw);
+      } catch {
+        payload = null;
+      }
+      if (!payload || typeof payload !== 'object') {
+        return null;
+      }
+      const maxAge = 6 * 60 * 60 * 1000;
+      if (payload.ts && Date.now() - payload.ts > maxAge) {
+        return null;
+      }
+      return payload;
+    } catch (error) {
+      return null;
     }
   };
 
@@ -677,6 +726,7 @@
       if (event.type === 'auxclick' && event.button !== 1) {
         return;
       }
+      persistListUiState();
       rememberClubsNavigation('map:from-list', '/clubs-france');
     };
     mapCtaLink.addEventListener('click', handleIntent);
@@ -2226,6 +2276,15 @@
       const aFinite = Number.isFinite(a.distance);
       const bFinite = Number.isFinite(b.distance);
       if (aFinite && bFinite) {
+        const onsiteA = a.distance < 0.05;
+        const onsiteB = b.distance < 0.05;
+        if (onsiteA && onsiteB) {
+          const totalA = getLicenseCount(a.club, 'total');
+          const totalB = getLicenseCount(b.club, 'total');
+          if (totalB !== totalA) {
+            return totalB - totalA;
+          }
+        }
         if (a.distance !== b.distance) {
           return a.distance - b.distance;
         }
@@ -2330,6 +2389,7 @@
             finalizer();
           }
           flushDeferredResultsRendering();
+          persistListUiState();
           if (shouldScroll) {
             jumpToResults({ behavior, margin });
           }
@@ -2486,6 +2546,7 @@
           finalizer();
         }
         flushDeferredResultsRendering();
+        persistListUiState();
         if (shouldScroll) {
           jumpToResults();
         }
@@ -2606,6 +2667,7 @@
           finalizer();
         }
         flushDeferredResultsRendering();
+        persistListUiState();
         if (shouldScroll) {
           jumpToResults();
         }
@@ -2829,6 +2891,7 @@
       if (event.type === 'auxclick' && event.button !== 1) {
         return;
       }
+      persistListUiState();
       rememberClubsNavigation('detail:list', '/clubs-france');
     };
 
@@ -3122,21 +3185,55 @@
     setSearchStatus('Chargement de la liste des clubs…', 'info');
 
     loadFranceClubsDataset()
-      .then((payload) => {
+      .then(async (payload) => {
         const data = Array.isArray(payload) ? payload : [];
         state.clubs = data
           .map(hydrateClub)
           .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
         ensureUniqueSlugs(state.clubs);
 
-        if (getActiveLicenseSort() || state.sortMode === 'alpha') {
-          applySortMode({ skipScroll: true, delay: false });
-        } else {
-          const meta = applySearch('');
-          if (meta.total > 0) {
-            setSearchStatus('Tous les clubs sont affichés.', 'info');
+        const savedUi = consumeListUiState();
+        let restored = false;
+
+        if (savedUi) {
+          if (searchInput) {
+            searchInput.value = savedUi.query || '';
+          }
+          if (locationInput) {
+            locationInput.value = savedUi.location || '';
+          }
+          if (savedUi.sortMode) {
+            state.sortMode = savedUi.sortMode;
+            updateSortButtons();
+          }
+          if (savedUi.distanceMode && savedUi.location) {
+            try {
+              await handleLocationSubmit({ preventDefault() {} });
+              restored = true;
+            } catch {
+              restored = false;
+            }
+          } else if (savedUi.query) {
+            await performSearch({ suppressJump: true, forceJump: false });
+            restored = true;
+          }
+          if (restored && savedUi.sortMode && savedUi.sortMode !== 'default' && !state.distanceMode) {
+            state.sortMode = savedUi.sortMode;
+            updateSortButtons();
+            applySortMode({ skipScroll: true, delay: false });
+          }
+        }
+
+        if (!restored) {
+          if (getActiveLicenseSort() || state.sortMode === 'alpha') {
+            applySortMode({ skipScroll: true, delay: false });
           } else {
-            setSearchStatus('Aucun club disponible pour le moment.', 'info');
+            const meta = applySearch('');
+            if (meta.total > 0) {
+              setSearchStatus('Tous les clubs sont affichés.', 'info');
+            } else {
+              setSearchStatus('Aucun club disponible pour le moment.', 'info');
+            }
           }
         }
       })
