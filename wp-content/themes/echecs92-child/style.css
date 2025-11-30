@@ -3074,14 +3074,11 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   color:#ffffff;
 }
 .clubs-geoloc-hero .btn-geoloc:hover,
-.clubs-geoloc-hero .btn-geoloc:focus-visible{
-  background:#087743;
-  border-color:#087743;
-}
+.clubs-geoloc-hero .btn-geoloc:focus-visible,
 .clubs-geoloc-hero__btn:hover,
 .clubs-geoloc-hero__btn:focus-visible{
-  background:#087743;
-  border-color:#087743;
+  background:#0a8a4f;
+  border-color:#0a8a4f;
 }
 @media (max-width:640px){
   .clubs-geoloc-hero{

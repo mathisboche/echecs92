@@ -583,7 +583,7 @@
     params.delete('tri');
     params.delete('liste');
     const queryValue = (state.query || '').trim();
-    if (queryValue) {
+    if (!state.distanceMode && queryValue) {
       params.set('q', queryValue);
     }
     if (state.distanceMode && state.distanceReference) {
