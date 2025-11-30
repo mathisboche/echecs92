@@ -2934,6 +2934,43 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 }
 .clubs-search-panel__group--distance{
   background:#f7f9fd;
+  position:relative;
+}
+.clubs-distance__intro{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.clubs-distance__labels{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.clubs-distance__note{
+  margin:0;
+  font-size:12px;
+  font-weight:600;
+  color:#64748b;
+  letter-spacing:.02em;
+  text-transform:uppercase;
+}
+.clubs-distance__toggle{
+  display:none;
+  align-items:center;
+  gap:6px;
+  font-weight:700;
+  color:#0f172a;
+}
+.clubs-distance__toggle::after{
+  content:'›';
+  display:inline-block;
+  transform:translateY(1px);
+}
+.clubs-distance__body{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
 }
 .clubs-search-panel__title{
   margin:0;
@@ -3102,6 +3139,32 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   border-color:#0f172a;
   color:#0f172a;
 }
+@media (max-width:820px){
+  .clubs-search-panel__group--distance[data-mobile-collapsible]{
+    border-style:dashed;
+    gap:8px;
+  }
+  .clubs-distance__toggle{
+    display:inline-flex;
+  }
+  .clubs-search-panel__group--distance[data-mobile-collapsible][data-expanded="false"] .clubs-distance__body{
+    display:none;
+  }
+  .clubs-distance__toggle::after{
+    transition:transform .2s ease;
+  }
+  .clubs-search-panel__group--distance[data-mobile-collapsible][data-expanded="true"] .clubs-distance__toggle::after{
+    transform:rotate(90deg);
+  }
+}
+@media (min-width:821px){
+  .clubs-search-panel__group--distance[data-mobile-collapsible] .clubs-distance__toggle{
+    display:none;
+  }
+  .clubs-search-panel__group--distance[data-mobile-collapsible] .clubs-distance__body{
+    display:flex;
+  }
+}
 @media (max-width:640px){
   .clubs-page--france .clubs-search-block{
     padding:20px 0;
@@ -3116,10 +3179,21 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   .clubs-search-panel__actions{
     flex-direction:row;
   }
+  .clubs-search-panel__group--distance[data-mobile-collapsible]{
+    padding:14px 12px;
+  }
+  .clubs-search-panel__group--distance[data-mobile-collapsible] .clubs-distance__body{
+    padding-top:4px;
+  }
+  .clubs-distance__note{
+    font-size:11px;
+  }
   .clubs-geoloc-banner{
     flex-direction:column;
     align-items:flex-start;
     gap:8px;
+    padding:14px;
+    box-shadow:0 8px 18px rgba(9,138,79,0.18);
   }
   .clubs-page--france .clubs-geoloc-banner__text{
     flex:0 0 auto;
@@ -3474,6 +3548,92 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   }
   to{
     transform:rotate(360deg);
+  }
+}
+.clubs-results-shell{
+  margin:12px 0 0;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.clubs-results-shell__header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:6px 0;
+}
+.clubs-results-shell__titles{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.clubs-results-shell__eyebrow{
+  margin:0;
+  font-size:12px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:#64748b;
+  font-weight:700;
+}
+.clubs-results-shell__subtitle{
+  margin:0;
+  font-size:17px;
+  font-weight:700;
+  color:#0f172a;
+}
+.clubs-results-shell__close{
+  align-self:flex-start;
+  border:1px solid #d7deec;
+  background:#f6f8fc;
+  color:#0f172a;
+  border-radius:999px;
+  padding:8px 14px;
+  font-weight:700;
+  display:none;
+}
+.clubs-results-shell__close:hover,
+.clubs-results-shell__close:focus-visible{
+  background:#0f172a;
+  color:#ffffff;
+  border-color:#0f172a;
+}
+.clubs-results-shell__close:active{
+  transform:translateY(1px);
+}
+.clubs-results-shell__eyebrow+.clubs-results-shell__subtitle{
+  margin-top:2px;
+}
+@media (max-width:820px){
+  .clubs-results-shell{
+    position:fixed;
+    inset:0;
+    background:#ffffff;
+    padding:16px 16px 24px;
+    z-index:40;
+    transform:translateX(100%);
+    opacity:0;
+    transition:transform .25s ease, opacity .25s ease;
+    overflow-y:auto;
+    box-shadow:0 28px 45px rgba(15,23,42,0.18);
+  }
+  .clubs-results-shell.is-active{
+    transform:translateX(0);
+    opacity:1;
+  }
+  .clubs-results-shell__close{
+    display:inline-flex;
+  }
+  .clubs-results-shell .clubs-results-wrapper{
+    margin-top:12px;
+  }
+  body.clubs-results-open{
+    overflow:hidden;
+  }
+}
+@media (min-width:821px){
+  .clubs-results-shell__close{
+    display:none;
   }
 }
 .clubs-total{

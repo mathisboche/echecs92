@@ -27,29 +27,62 @@
         </div>
       </div>
 
-      <div class="clubs-search-panel__group clubs-search-panel__group--distance">
-        <p class="clubs-search-panel__title">Distance</p>
-        <label for="clubs-location" class="clubs-search-panel__label">Ville ou code postal</label>
-        <input
-          id="clubs-location"
-          class="clubs-search-panel__input"
-          type="text"
-          inputmode="search"
-          autocomplete="postal-code"
-          placeholder="Autour de Paris 11e, Nanterre, 75015…"
-        >
-        <div class="clubs-search-panel__actions clubs-search-panel__actions--distance">
-          <button id="clubs-location-apply" class="btn clubs-search-panel__btn" type="button">Valider</button>
-          <button id="clubs-location-clear" class="btn btn-secondary clubs-search-panel__btn" type="button">Effacer</button>
+      <div
+        class="clubs-search-panel__group clubs-search-panel__group--distance"
+        data-mobile-collapsible="true"
+        data-expanded="false"
+        aria-live="polite"
+      >
+        <div class="clubs-distance__intro">
+          <div class="clubs-distance__labels">
+            <p class="clubs-search-panel__title">Distance</p>
+            <p class="clubs-distance__note">Optionnel</p>
+          </div>
+          <button
+            id="clubs-distance-toggle"
+            class="link-button clubs-distance__toggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="clubs-distance-fields"
+          >
+            Afficher
+          </button>
+        </div>
+
+        <div id="clubs-distance-fields" class="clubs-distance__body">
+          <label for="clubs-location" class="clubs-search-panel__label">Ville ou code postal</label>
+          <input
+            id="clubs-location"
+            class="clubs-search-panel__input"
+            type="text"
+            inputmode="search"
+            autocomplete="postal-code"
+            placeholder="Autour de Paris 11e, Nanterre, 75015…"
+          >
+          <div class="clubs-search-panel__actions clubs-search-panel__actions--distance">
+            <button id="clubs-location-apply" class="btn clubs-search-panel__btn" type="button">Valider</button>
+            <button id="clubs-location-clear" class="btn btn-secondary clubs-search-panel__btn" type="button">Effacer</button>
+          </div>
+
+          <div class="clubs-geoloc-banner" role="region" aria-label="Recherche autour de vous">
+            <div class="clubs-geoloc-banner__text">
+              <strong>Autour de moi</strong>
+              <span>Détecte votre position pour trier les clubs par proximité.</span>
+            </div>
+            <button id="clubs-use-geoloc" class="btn btn-geoloc clubs-geoloc-banner__btn" type="button">Activer</button>
+          </div>
         </div>
       </div>
     </div>
+  </section>
 
-    <div class="clubs-geoloc-banner" role="region" aria-label="Recherche autour de vous">
-      <div class="clubs-geoloc-banner__text">
-        <strong>Autour de moi</strong>
+  <div class="clubs-results-shell" id="clubs-results-shell" aria-live="polite" aria-label="Résultats de la recherche">
+    <div class="clubs-results-shell__header">
+      <div class="clubs-results-shell__titles">
+        <p class="clubs-results-shell__eyebrow">Résultats</p>
+        <p class="clubs-results-shell__subtitle">Liste des clubs trouvés</p>
       </div>
-      <button id="clubs-use-geoloc" class="btn btn-geoloc clubs-geoloc-banner__btn" type="button">Activer</button>
+      <button id="clubs-results-close" class="clubs-results-shell__close" type="button" aria-label="Revenir à la recherche">Fermer</button>
     </div>
 
     <details class="clubs-sort-toggle" id="clubs-sort-toggle">
@@ -64,20 +97,19 @@
       </div>
     </details>
 
-  </section>
-
-  <!-- Résultats -->
-  <div class="clubs-results-wrapper" role="region" aria-live="polite">
-    <div
-      id="clubs-results"
-      class="clubs-list"
-      role="list"
-      aria-label="Liste des clubs"
-      data-detail-base="/club-france/"
-      data-scroll-margin="24"
-      tabindex="-1"
-    ></div>
-    <button id="clubs-more-button" class="link-button clubs-more-button" type="button" hidden>Afficher d'autres clubs</button>
+    <!-- Résultats -->
+    <div class="clubs-results-wrapper" role="region" aria-live="polite">
+      <div
+        id="clubs-results"
+        class="clubs-list"
+        role="list"
+        aria-label="Liste des clubs"
+        data-detail-base="/club-france/"
+        data-scroll-margin="24"
+        tabindex="-1"
+      ></div>
+      <button id="clubs-more-button" class="link-button clubs-more-button" type="button" hidden>Afficher d'autres clubs</button>
+    </div>
   </div>
 
   <p class="clubs-help">

@@ -12,6 +12,7 @@
   const SORT_SCROLL_DELAY_MS = Math.max(180, Math.round(MIN_RESULTS_SCROLL_DELAY_MS / 4));
   const COUNTER_LOADING_TEXT = 'Recherche en cours…';
   const SORT_COUNTER_LOADING_TEXT = 'Tri en cours…';
+  const MOBILE_RESULTS_BREAKPOINT = 820;
 
   let manifestPromise = null;
   let datasetPromise = null;
@@ -213,6 +214,8 @@
 
   const resultsEl = document.getElementById('clubs-results');
   const detailBase = resultsEl?.dataset?.detailBase || '';
+  const resultsShell = document.getElementById('clubs-results-shell');
+  const resultsCloseButton = document.getElementById('clubs-results-close');
   const DEFAULT_RESULTS_SCROLL_MARGIN = 24;
   const parseScrollMargin = (value) => {
     if (value == null || value === '') {
@@ -223,6 +226,11 @@
   };
   const configuredScrollMargin = parseScrollMargin(resultsEl?.dataset?.scrollMargin);
   const resultsScrollMargin = configuredScrollMargin ?? DEFAULT_RESULTS_SCROLL_MARGIN;
+  const mobileViewportQuery =
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia(`(max-width: ${MOBILE_RESULTS_BREAKPOINT}px)`)
+      : null;
+  const isMobileViewport = () => (mobileViewportQuery ? mobileViewportQuery.matches : false);
 
   const searchInput = document.getElementById('clubs-search');
   const searchButton = document.getElementById('clubs-search-btn');
@@ -231,6 +239,9 @@
   const locationApplyButton = document.getElementById('clubs-location-apply');
   const locationClearButton = document.getElementById('clubs-location-clear');
   const geolocButton = document.getElementById('clubs-use-geoloc');
+  const distanceGroup = document.querySelector('[data-mobile-collapsible]');
+  const distanceFields = document.getElementById('clubs-distance-fields');
+  const distanceToggle = document.getElementById('clubs-distance-toggle');
   const moreButton = document.getElementById('clubs-more-button');
   const optionsDetails = document.getElementById('clubs-options');
   const sortButtons = document.querySelectorAll('[data-club-sort]');
@@ -244,6 +255,7 @@
   let pendingTotalCounterText = null;
   let totalCounterPlaceholderActive = false;
   let totalCounterPlaceholderText = COUNTER_LOADING_TEXT;
+  let mobileResultsOpen = false;
 
   const deferResultsRendering = (options = {}) => {
     const placeholder =
@@ -300,6 +312,52 @@
     optionsDetails.classList.add('is-expanded');
   };
 
+  const ensureDistanceSectionOpen = () => {
+    if (!distanceGroup) {
+      return;
+    }
+    distanceGroup.dataset.expanded = 'true';
+    if (distanceToggle) {
+      distanceToggle.setAttribute('aria-expanded', 'true');
+    }
+    if (distanceFields) {
+      distanceFields.hidden = false;
+    }
+  };
+
+  const syncDistanceCollapse = () => {
+    if (!distanceGroup) {
+      return;
+    }
+    const shouldCollapse = isMobileViewport();
+    if (!shouldCollapse) {
+      ensureDistanceSectionOpen();
+      return;
+    }
+    const expanded = distanceGroup.dataset.expanded !== 'false';
+    distanceGroup.dataset.expanded = expanded ? 'true' : 'false';
+    if (distanceToggle) {
+      distanceToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    }
+    if (distanceFields) {
+      distanceFields.hidden = !expanded;
+    }
+  };
+
+  const toggleDistanceSection = () => {
+    if (!distanceGroup) {
+      return;
+    }
+    const nextExpanded = distanceGroup.dataset.expanded !== 'true';
+    distanceGroup.dataset.expanded = nextExpanded ? 'true' : 'false';
+    if (distanceToggle) {
+      distanceToggle.setAttribute('aria-expanded', nextExpanded ? 'true' : 'false');
+    }
+    if (distanceFields) {
+      distanceFields.hidden = isMobileViewport() ? !nextExpanded : false;
+    }
+  };
+
   let totalCounter = null;
   if (resultsEl) {
     totalCounter = document.createElement('p');
@@ -311,8 +369,92 @@
     resultsEl.before(totalCounter);
   }
 
+  const syncResultsShellToViewport = () => {
+    if (!resultsShell) {
+      return;
+    }
+    if (!isMobileViewport()) {
+      resultsShell.classList.remove('is-active');
+      resultsShell.removeAttribute('aria-hidden');
+      if (typeof document !== 'undefined' && document.body) {
+        document.body.classList.remove('clubs-results-open');
+      }
+      mobileResultsOpen = false;
+      return;
+    }
+    if (mobileResultsOpen) {
+      resultsShell.classList.add('is-active');
+      resultsShell.setAttribute('aria-hidden', 'false');
+      if (typeof document !== 'undefined' && document.body) {
+        document.body.classList.add('clubs-results-open');
+      }
+    } else {
+      resultsShell.classList.remove('is-active');
+      resultsShell.setAttribute('aria-hidden', 'true');
+      if (typeof document !== 'undefined' && document.body) {
+        document.body.classList.remove('clubs-results-open');
+      }
+    }
+  };
+
+  const openResultsShell = () => {
+    if (!resultsShell || !isMobileViewport()) {
+      return;
+    }
+    mobileResultsOpen = true;
+    resultsShell.classList.add('is-active');
+    resultsShell.setAttribute('aria-hidden', 'false');
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.add('clubs-results-open');
+    }
+    if (typeof resultsShell.scrollTo === 'function') {
+      try {
+        resultsShell.scrollTo({ top: 0, behavior: 'auto' });
+      } catch {
+        resultsShell.scrollTo(0, 0);
+      }
+    } else {
+      resultsShell.scrollTop = 0;
+    }
+    const focusTarget = resultsEl || resultsShell;
+    if (focusTarget && typeof focusTarget.focus === 'function') {
+      try {
+        focusTarget.focus({ preventScroll: true });
+      } catch {
+        focusTarget.focus();
+      }
+    }
+  };
+
+  const closeResultsShell = () => {
+    if (!resultsShell) {
+      return;
+    }
+    mobileResultsOpen = false;
+    resultsShell.classList.remove('is-active');
+    if (isMobileViewport()) {
+      resultsShell.setAttribute('aria-hidden', 'true');
+    } else {
+      resultsShell.removeAttribute('aria-hidden');
+    }
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.remove('clubs-results-open');
+    }
+    if (isMobileViewport() && searchInput && typeof searchInput.focus === 'function') {
+      try {
+        searchInput.focus({ preventScroll: true });
+      } catch {
+        searchInput.focus();
+      }
+    }
+  };
+
   const jumpToResults = (options = {}) => {
     if (!resultsEl) {
+      return;
+    }
+    if (isMobileViewport() && resultsShell) {
+      openResultsShell();
       return;
     }
     const target = totalCounter || resultsEl;
@@ -2542,7 +2684,10 @@
         return;
       }
       actionCompleted = true;
-      const shouldScroll = extra.skipScroll ? false : forceJump || (!suppressJump && !isQuiet);
+      const mobilePrefersJump = isMobileViewport() && !isQuiet;
+      const shouldScroll = extra.skipScroll
+        ? mobilePrefersJump
+        : forceJump || (!suppressJump && !isQuiet) || mobilePrefersJump;
       const minDelay = Number.isFinite(extra.minDelay)
         ? extra.minDelay
         : isQuiet
@@ -2778,6 +2923,7 @@
       }
 
       expandOptionsPanel();
+      ensureDistanceSectionOpen();
 
       searchRequestId += 1;
       const meta = runDistanceSearch({
@@ -2878,6 +3024,7 @@
             }
 
             expandOptionsPanel();
+            ensureDistanceSectionOpen();
 
             searchRequestId += 1;
             const meta = runDistanceSearch({
@@ -3360,6 +3507,19 @@
   const init = () => {
     loadGeocodeCache();
     initialiseLocationControls();
+    syncDistanceCollapse();
+    syncResultsShellToViewport();
+    if (mobileViewportQuery) {
+      const listener = () => {
+        syncDistanceCollapse();
+        syncResultsShellToViewport();
+      };
+      if (typeof mobileViewportQuery.addEventListener === 'function') {
+        mobileViewportQuery.addEventListener('change', listener);
+      } else if (typeof mobileViewportQuery.addListener === 'function') {
+        mobileViewportQuery.addListener(listener);
+      }
+    }
     bindMapCtaNavigation();
     setSearchStatus('Chargement de la liste des clubs…', 'info');
 
@@ -3470,12 +3630,14 @@
     geolocButton?.addEventListener('click', handleUseGeolocation);
     highlightLocationButton?.addEventListener('click', () => {
       expandOptionsPanel();
+      ensureDistanceSectionOpen();
       if (locationInput) {
         locationInput.focus();
       }
     });
     highlightGeolocButton?.addEventListener('click', () => {
       expandOptionsPanel();
+      ensureDistanceSectionOpen();
       if (geolocButton) {
         geolocButton.focus();
         geolocButton.click();
@@ -3483,6 +3645,26 @@
         handleUseGeolocation();
       }
     });
+    distanceToggle?.addEventListener('click', (event) => {
+      event.preventDefault();
+      const wasExpanded = distanceGroup?.dataset?.expanded === 'true';
+      toggleDistanceSection();
+      const isExpanded = distanceGroup?.dataset?.expanded === 'true';
+      if (!wasExpanded && isExpanded && isMobileViewport() && locationInput) {
+        locationInput.focus();
+      }
+    });
+    resultsCloseButton?.addEventListener('click', (event) => {
+      event.preventDefault();
+      closeResultsShell();
+    });
+    if (resultsShell) {
+      resultsShell.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && isMobileViewport()) {
+          closeResultsShell();
+        }
+      });
+    }
     moreButton?.addEventListener('click', showAllResults);
     sortButtons.forEach((button) => {
       button.addEventListener('click', () => {
