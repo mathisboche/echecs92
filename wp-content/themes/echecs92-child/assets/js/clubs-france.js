@@ -3138,6 +3138,8 @@
 
   const handleUseGeolocation = () => {
     if (!navigator.geolocation) {
+      expandOptionsPanel();
+      ensureDistanceSectionOpen();
       setLocationStatus('Géolocalisation indisponible sur cet appareil.', 'error');
       return;
     }
@@ -3195,6 +3197,8 @@
           message = 'La recherche de position a expiré. Réessayez ou saisissez une ville.';
         }
       }
+      expandOptionsPanel();
+      ensureDistanceSectionOpen();
       finalizeGeolocSearch(() => {
         setLocationStatus(message, 'error');
       });
