@@ -484,6 +484,8 @@
   const GEOCODE_STORAGE_KEY = 'echecs92:clubs-fr:geocode';
   const GEOCODE_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
   const geocodeCache = new Map();
+  const GEO_HINTS_STORAGE_KEY = 'echecs92:clubs-fr:geo-hints';
+  const geoHintsCache = new Map();
 
   const loadGeocodeCache = () => {
     try {
@@ -507,6 +509,33 @@
         obj[key] = value;
       });
       window.localStorage.setItem(GEOCODE_STORAGE_KEY, JSON.stringify(obj));
+    } catch {
+      // ignore
+    }
+  };
+
+  const loadGeoHintsCache = () => {
+    try {
+      const raw = window.localStorage.getItem(GEO_HINTS_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        Object.entries(parsed).forEach(([key, value]) => geoHintsCache.set(key, value));
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const persistGeoHintsCache = () => {
+    try {
+      const obj = {};
+      geoHintsCache.forEach((value, key) => {
+        obj[key] = value;
+      });
+      window.localStorage.setItem(GEO_HINTS_STORAGE_KEY, JSON.stringify(obj));
     } catch {
       // ignore
     }
@@ -614,6 +643,15 @@
           if (!club.postalCode && place.postalCode) {
             club.postalCode = place.postalCode;
           }
+          const signature = buildClubSignature(club);
+          if (signature) {
+            geoHintsCache.set(signature, {
+              lat: club.latitude,
+              lng: club.longitude,
+              postalCode: club.postalCode || expectedPostal || '',
+            });
+            persistGeoHintsCache();
+          }
           return true;
         }
       } catch {
@@ -621,6 +659,20 @@
       }
     }
     return false;
+  };
+
+  const buildClubSignature = (club) => {
+    const parts = [
+      club.id || '',
+      club.name || '',
+      club.addressStandard || club.address || '',
+      club.siege || '',
+      club.postalCode || '',
+      club.commune || '',
+    ]
+      .map((part) => (part || '').toString().trim().toLowerCase())
+      .filter(Boolean);
+    return parts.join('|');
   };
 
   const geocodeClubsBatch = async (clubs, options = {}) => {
@@ -808,6 +860,20 @@
       return null;
     }
 
+    const signature = buildClubSignature(club);
+    if (signature && geoHintsCache.has(signature)) {
+      const hint = geoHintsCache.get(signature);
+      const lat = Number.parseFloat(hint.lat);
+      const lng = Number.parseFloat(hint.lng);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        club.latitude = lat;
+        club.longitude = lng;
+        if (hint.postalCode && !club.postalCode) {
+          club.postalCode = hint.postalCode;
+        }
+      }
+    }
+
     const directLat = Number.parseFloat(club.latitude ?? club.lat);
     const directLng = Number.parseFloat(club.longitude ?? club.lng ?? club.lon);
     if (Number.isFinite(directLat) && Number.isFinite(directLng)) {
@@ -932,9 +998,11 @@
 
   updateStatus('Chargement de la carte…', 'info');
 
+  loadGeocodeCache();
+  loadGeoHintsCache();
+
   loadFranceClubsDataset()
     .then(async (payload) => {
-      loadGeocodeCache();
       const data = Array.isArray(payload) ? payload : [];
       if (!data.length) {
         updateStatus('Aucun club à afficher pour le moment.', 'error');
