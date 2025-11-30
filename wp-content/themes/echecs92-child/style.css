@@ -2942,18 +2942,16 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   justify-content:space-between;
   gap:12px;
 }
-.clubs-distance__labels{
+.clubs-distance__actions{
   display:flex;
-  flex-direction:column;
-  gap:2px;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:flex-end;
 }
-.clubs-distance__note{
-  margin:0;
-  font-size:12px;
-  font-weight:600;
-  color:#64748b;
-  letter-spacing:.02em;
-  text-transform:uppercase;
+.clubs-distance__geoloc{
+  box-shadow:0 10px 20px rgba(10,138,79,0.18);
+  padding:10px 16px;
+  font-weight:700;
 }
 .clubs-distance__toggle{
   display:none;
@@ -2961,6 +2959,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   gap:6px;
   font-weight:700;
   color:#0f172a;
+  border:1px solid #d7deec;
+  padding:8px 12px;
+  border-radius:999px;
 }
 .clubs-distance__toggle::after{
   content:'›';
@@ -3144,8 +3145,17 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
     border-style:dashed;
     gap:8px;
   }
+  .clubs-distance__actions{
+    width:100%;
+    justify-content:flex-start;
+  }
+  .clubs-distance__geoloc{
+    width:100%;
+    justify-content:center;
+  }
   .clubs-distance__toggle{
     display:inline-flex;
+    background:#ffffff;
   }
   .clubs-search-panel__group--distance[data-mobile-collapsible][data-expanded="false"] .clubs-distance__body{
     display:none;

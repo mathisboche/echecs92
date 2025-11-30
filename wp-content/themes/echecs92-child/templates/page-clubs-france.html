@@ -34,19 +34,19 @@
         aria-live="polite"
       >
         <div class="clubs-distance__intro">
-          <div class="clubs-distance__labels">
-            <p class="clubs-search-panel__title">Distance</p>
-            <p class="clubs-distance__note">Optionnel</p>
+          <p class="clubs-search-panel__title">Distance</p>
+          <div class="clubs-distance__actions">
+            <button id="clubs-use-geoloc" class="btn btn-geoloc clubs-distance__geoloc" type="button">Autour de moi</button>
+            <button
+              id="clubs-distance-toggle"
+              class="link-button clubs-distance__toggle"
+              type="button"
+              aria-expanded="false"
+              aria-controls="clubs-distance-fields"
+            >
+              Ville ou code
+            </button>
           </div>
-          <button
-            id="clubs-distance-toggle"
-            class="link-button clubs-distance__toggle"
-            type="button"
-            aria-expanded="false"
-            aria-controls="clubs-distance-fields"
-          >
-            Afficher
-          </button>
         </div>
 
         <div id="clubs-distance-fields" class="clubs-distance__body">
@@ -62,14 +62,6 @@
           <div class="clubs-search-panel__actions clubs-search-panel__actions--distance">
             <button id="clubs-location-apply" class="btn clubs-search-panel__btn" type="button">Valider</button>
             <button id="clubs-location-clear" class="btn btn-secondary clubs-search-panel__btn" type="button">Effacer</button>
-          </div>
-
-          <div class="clubs-geoloc-banner" role="region" aria-label="Recherche autour de vous">
-            <div class="clubs-geoloc-banner__text">
-              <strong>Autour de moi</strong>
-              <span>Détecte votre position pour trier les clubs par proximité.</span>
-            </div>
-            <button id="clubs-use-geoloc" class="btn btn-geoloc clubs-geoloc-banner__btn" type="button">Activer</button>
           </div>
         </div>
       </div>
