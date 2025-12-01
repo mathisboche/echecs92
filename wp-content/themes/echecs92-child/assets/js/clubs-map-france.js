@@ -1096,7 +1096,8 @@
     }
     const fromListingPage = mapHostPath === '/clubs';
     const backPath = getCurrentBackPath();
-    rememberNavigation(fromListingPage ? 'detail:list' : 'detail:map', backPath || (fromListingPage ? '/clubs' : '/carte-des-clubs'));
+    const fallbackBackPath = fromListingPage ? '/clubs' : '/carte-des-clubs';
+    rememberNavigation('detail:map', backPath || fallbackBackPath);
   };
 
   mapElement.addEventListener('click', handleMapLinkInteraction);
