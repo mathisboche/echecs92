@@ -2,12 +2,13 @@
 
 <!-- wp:html -->
 <div class="clubs-page legal">
-  <h1>Carte des clubs du 92</h1>
-  <p>Explorez la carte pour localiser les 20 clubs affiliés du département.</p>
+  <a class="link-button clubs-map__back" href="/clubs" data-clubs-map-back hidden>← Retour à la recherche des clubs</a>
+
+  <h1>Carte des clubs en France</h1>
 
   <section class="clubs-map-section" aria-label="Carte interactive des clubs">
     <div class="clubs-map__container">
-      <div id="clubs-map" class="clubs-map" data-detail-base="/club-92/" aria-label="Carte des clubs"></div>
+      <div id="clubs-map" class="clubs-map" data-detail-base="/club/" aria-label="Carte des clubs"></div>
       <p id="clubs-map-status" class="clubs-map__status" role="status" aria-live="polite">Chargement de la carte…</p>
     </div>
   </section>

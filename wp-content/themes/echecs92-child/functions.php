@@ -63,11 +63,11 @@ add_action('wp_enqueue_scripts', function () {
         true // charge le script en footer
     );
 
-    $is_92_map = is_page('carte-des-clubs') || is_page_template('page-carte-des-clubs.html');
-    $is_92_detail = is_page('club') || is_page_template('page-club.html');
-    $is_fr_map = is_page('carte-des-clubs-france') || is_page_template('page-carte-des-clubs-france.html');
-    $is_fr_detail = is_page('club-france') || is_page_template('page-club-france.html');
-    $is_fr_listing = is_page('clubs-france') || is_page_template('page-clubs-france.html');
+    $is_92_map = is_page('carte-des-clubs-92') || is_page_template('page-carte-des-clubs-92.html');
+    $is_92_detail = is_page('club-92') || is_page_template('page-club-92.html');
+    $is_fr_map = is_page('carte-des-clubs') || is_page_template('page-carte-des-clubs.html');
+    $is_fr_detail = is_page('club') || is_page_template('page-club.html');
+    $is_fr_listing = is_page('clubs') || is_page_template('page-clubs.html');
 
     $needs_leaflet = $is_92_map || $is_fr_map || $is_92_detail || $is_fr_detail || $is_fr_listing;
 
@@ -135,14 +135,17 @@ add_action('wp_head', function () {
 
 add_action('init', function () {
     // nouvelles URL pour la France (par défaut) et le 92
-    add_rewrite_rule('^clubs-92/?$', 'index.php?pagename=clubs', 'top');
-    add_rewrite_rule('^clubs/?$', 'index.php?pagename=clubs-france', 'top');
-    add_rewrite_rule('^carte-des-clubs-92/?$', 'index.php?pagename=carte-des-clubs', 'top');
-    add_rewrite_rule('^carte-des-clubs/?$', 'index.php?pagename=carte-des-clubs-france', 'top');
+    add_rewrite_rule('^clubs-92/?$', 'index.php?pagename=clubs-92', 'top');
+    add_rewrite_rule('^clubs/?$', 'index.php?pagename=clubs', 'top');
+    add_rewrite_rule('^clubs-france/?$', 'index.php?pagename=clubs', 'top');
 
-    add_rewrite_rule('^club-92/([^/]+)/?$', 'index.php?pagename=club&club_commune=$matches[1]', 'top');
-    add_rewrite_rule('^club/([^/]+)/?$', 'index.php?pagename=club-france&club_commune=$matches[1]', 'top');
-    add_rewrite_rule('^club-france/([^/]+)/?$', 'index.php?pagename=club-france&club_commune=$matches[1]', 'top');
+    add_rewrite_rule('^carte-des-clubs-92/?$', 'index.php?pagename=carte-des-clubs-92', 'top');
+    add_rewrite_rule('^carte-des-clubs/?$', 'index.php?pagename=carte-des-clubs', 'top');
+    add_rewrite_rule('^carte-des-clubs-france/?$', 'index.php?pagename=carte-des-clubs', 'top');
+
+    add_rewrite_rule('^club-92/([^/]+)/?$', 'index.php?pagename=club-92&club_commune=$matches[1]', 'top');
+    add_rewrite_rule('^club/([^/]+)/?$', 'index.php?pagename=club&club_commune=$matches[1]', 'top');
+    add_rewrite_rule('^club-france/([^/]+)/?$', 'index.php?pagename=club&club_commune=$matches[1]', 'top');
 });
 
 add_action('template_redirect', function () {
