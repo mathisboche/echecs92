@@ -3019,6 +3019,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   position:relative;
   margin-top:4px;
 }
+.clubs-page--france .clubs-search-panel__group--distance{
+  display:none !important;
+}
 .clubs-geoloc-hero{
   margin:6px 0 6px;
   padding:12px 14px;
@@ -3769,6 +3772,25 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   overflow-y:auto;
   overflow-x:hidden;
   box-shadow:0 28px 45px rgba(15,23,42,0.18);
+}
+@media (min-width:821px){
+  .clubs-results-shell{
+    position:static;
+    inset:auto;
+    padding:0;
+    background:transparent;
+    transform:none;
+    opacity:1;
+    box-shadow:none;
+    overflow:visible;
+  }
+  .clubs-results-shell__header{
+    display:none;
+  }
+  .clubs-results-shell.is-active{
+    transform:none;
+    opacity:1;
+  }
 }
 .clubs-results-shell__header{
   display:flex;

@@ -1071,11 +1071,6 @@
         }
       }
     });
-    if (distanceGroup) {
-      distanceGroup.hidden = false;
-      distanceGroup.removeAttribute('hidden');
-      distanceGroup.setAttribute('aria-hidden', 'false');
-    }
     if (optionsDetails) {
       optionsDetails.removeAttribute('aria-hidden');
     }
