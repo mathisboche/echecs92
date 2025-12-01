@@ -97,7 +97,7 @@
       const url = new URL(window.location.href);
       return url.pathname + url.search + url.hash;
     } catch (error) {
-      return mapHostPath || '/clubs-france';
+      return mapHostPath || '/clubs';
     }
   };
   const navigationContext = (() => {
@@ -137,7 +137,7 @@
       }
       storage.setItem(
         CLUBS_NAV_STORAGE_KEY,
-        JSON.stringify({ ts: Date.now(), context, back: backPath || '/clubs-france' })
+        JSON.stringify({ ts: Date.now(), context, back: backPath || '/clubs' })
       );
     } catch (error) {
       // ignore
@@ -158,7 +158,7 @@
         return false;
       }
       const normalized = refUrl.pathname.replace(/\/+$/u, '') || '/';
-      return normalized === '/clubs-france';
+      return normalized === '/clubs';
     } catch (error) {
       return false;
     }
@@ -1094,9 +1094,9 @@
     if (event.type === 'auxclick' && event.button !== 1) {
       return;
     }
-    const fromListingPage = mapHostPath === '/clubs-france';
+    const fromListingPage = mapHostPath === '/clubs';
     const backPath = getCurrentBackPath();
-    rememberNavigation(fromListingPage ? 'detail:list' : 'detail:map', backPath || (fromListingPage ? '/clubs-france' : '/carte-des-clubs-france'));
+    rememberNavigation(fromListingPage ? 'detail:list' : 'detail:map', backPath || (fromListingPage ? '/clubs' : '/carte-des-clubs'));
   };
 
   mapElement.addEventListener('click', handleMapLinkInteraction);

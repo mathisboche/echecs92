@@ -23,10 +23,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!path) {
       return false;
     }
-    if (path === '/clubs' || path === '/carte-des-clubs' || path === '/creer-un-club') {
+    if (
+      path === '/clubs' ||
+      path === '/clubs-92' ||
+      path === '/carte-des-clubs' ||
+      path === '/carte-des-clubs-92' ||
+      path === '/creer-un-club'
+    ) {
       return true;
     }
-    return path.startsWith('/club/');
+    return path.startsWith('/club/') || path.startsWith('/club-92/');
   };
   const isComiteSectionPath = (path) => {
     if (!path) {

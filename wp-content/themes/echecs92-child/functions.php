@@ -134,9 +134,68 @@ add_action('wp_head', function () {
 });
 
 add_action('init', function () {
-    add_rewrite_rule('^club/([^/]+)/?$', 'index.php?pagename=club&club_commune=$matches[1]', 'top');
+    // nouvelles URL pour la France (par défaut) et le 92
+    add_rewrite_rule('^clubs-92/?$', 'index.php?pagename=clubs', 'top');
+    add_rewrite_rule('^clubs/?$', 'index.php?pagename=clubs-france', 'top');
+    add_rewrite_rule('^carte-des-clubs-92/?$', 'index.php?pagename=carte-des-clubs', 'top');
+    add_rewrite_rule('^carte-des-clubs/?$', 'index.php?pagename=carte-des-clubs-france', 'top');
+
+    add_rewrite_rule('^club-92/([^/]+)/?$', 'index.php?pagename=club&club_commune=$matches[1]', 'top');
+    add_rewrite_rule('^club/([^/]+)/?$', 'index.php?pagename=club-france&club_commune=$matches[1]', 'top');
     add_rewrite_rule('^club-france/([^/]+)/?$', 'index.php?pagename=club-france&club_commune=$matches[1]', 'top');
 });
+
+add_action('template_redirect', function () {
+    $request_path = isset($_SERVER['REQUEST_URI']) ? wp_parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : '';
+    $query_string = isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] ? '?' . $_SERVER['QUERY_STRING'] : '';
+    $normalized = '/' . ltrim((string) $request_path, '/');
+
+    if (preg_match('#^/clubs-france/?$#i', $normalized)) {
+        wp_redirect(home_url('/clubs/') . $query_string, 301);
+        exit;
+    }
+
+    if (preg_match('#^/carte-des-clubs-france/?$#i', $normalized)) {
+        wp_redirect(home_url('/carte-des-clubs/') . $query_string, 301);
+        exit;
+    }
+
+    if (preg_match('#^/club-france/([^/]+)/?$#i', $normalized, $matches)) {
+        $slug = $matches[1];
+        wp_redirect(trailingslashit(home_url('/club/' . $slug)) . $query_string, 301);
+        exit;
+    }
+});
+
+add_filter('redirect_canonical', function ($redirect_url, $requested_url) {
+    $path = $requested_url ? wp_parse_url($requested_url, PHP_URL_PATH) : '';
+    $normalized = '/' . ltrim((string) $path, '/');
+    $normalized = preg_replace('#/+#', '/', $normalized);
+    $normalized_slash = trailingslashit($normalized);
+
+    $alias_bases = [
+        '/clubs/' => true,
+        '/clubs-france/' => true,
+        '/clubs-92/' => true,
+        '/carte-des-clubs/' => true,
+        '/carte-des-clubs-france/' => true,
+        '/carte-des-clubs-92/' => true,
+    ];
+
+    if (isset($alias_bases[$normalized_slash])) {
+        return false;
+    }
+
+    if (
+        preg_match('#^/club-92/[^/]+/?$#i', $normalized) ||
+        preg_match('#^/club/[^/]+/?$#i', $normalized) ||
+        preg_match('#^/club-france/[^/]+/?$#i', $normalized)
+    ) {
+        return false;
+    }
+
+    return $redirect_url;
+}, 10, 2);
 
 if (! function_exists('cdje92_register_actualites_cpt')) {
     function cdje92_register_actualites_cpt() {

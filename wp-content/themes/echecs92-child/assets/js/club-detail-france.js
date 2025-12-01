@@ -175,7 +175,7 @@
         return false;
       }
       const normalized = refUrl.pathname.replace(/\/+$/u, '') || '/';
-      return normalized === '/clubs-france';
+      return normalized === '/clubs';
     } catch (error) {
       return false;
     }
@@ -195,7 +195,7 @@
         return false;
       }
       const normalized = refUrl.pathname.replace(/\/+$/u, '') || '/';
-      return normalized === '/carte-des-clubs-france';
+      return normalized === '/carte-des-clubs';
     } catch (error) {
       return false;
     }
@@ -204,7 +204,7 @@
   const updateBackLinkVisibility = () => {
     if (backLink) {
       if (cameFromClubsSearch()) {
-        backLink.href = getStoredBackPath('/clubs-france');
+        backLink.href = getStoredBackPath('/clubs');
         backLink.removeAttribute('hidden');
       } else {
         backLink.setAttribute('hidden', '');
@@ -212,7 +212,7 @@
     }
     if (backLinkMap) {
       if (cameFromClubsMap()) {
-        backLinkMap.href = getStoredBackPath('/carte-des-clubs-france');
+        backLinkMap.href = getStoredBackPath('/carte-des-clubs');
         backLinkMap.removeAttribute('hidden');
       } else {
         backLinkMap.setAttribute('hidden', '');
@@ -223,7 +223,7 @@
   updateBackLinkVisibility();
 
   const deriveClubSlugFromPath = () => {
-    const pathMatch = window.location.pathname.match(/\/club-france\/([^\/?#]+)/i);
+    const pathMatch = window.location.pathname.match(/\/club\/([^\/?#]+)/i);
     if (pathMatch && pathMatch[1]) {
       try {
         return decodeURIComponent(pathMatch[1]);
@@ -1130,7 +1130,7 @@
     title.textContent = club.name;
     titleRow.appendChild(title);
 
-    const shareUrl = `${window.location.origin}/club-france/${encodeURIComponent(club.slug || club.id || '')}/`;
+    const shareUrl = `${window.location.origin}/club/${encodeURIComponent(club.slug || club.id || '')}/`;
     const shareBlock = document.createElement('div');
     shareBlock.className = 'club-sheet__share';
 

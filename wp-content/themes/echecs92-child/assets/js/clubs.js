@@ -119,7 +119,7 @@
       const payload = {
         ts: Date.now(),
         context: context || 'detail:list',
-        back: backPath || '/clubs',
+        back: backPath || '/clubs-92',
       };
       storage.setItem(CLUBS_NAV_STORAGE_KEY, JSON.stringify(payload));
     } catch (error) {
@@ -480,7 +480,7 @@
       if (event.type === 'auxclick' && event.button !== 1) {
         return;
       }
-      rememberClubsNavigation('map:from-list', '/clubs');
+      rememberClubsNavigation('map:from-list', '/clubs-92');
     };
     mapCtaLink.addEventListener('click', handleIntent);
     mapCtaLink.addEventListener('auxclick', handleIntent);
@@ -2731,7 +2731,7 @@ const handleLocationSubmit = async (event) => {
       if (event.type === 'auxclick' && event.button !== 1) {
         return;
       }
-      rememberClubsNavigation('detail:list', '/clubs');
+      rememberClubsNavigation('detail:list', '/clubs-92');
     };
 
     const handleDebugDoubleClick = (event) => {

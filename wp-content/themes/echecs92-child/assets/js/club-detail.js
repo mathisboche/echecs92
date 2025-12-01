@@ -60,7 +60,7 @@
         return false;
       }
       const normalized = refUrl.pathname.replace(/\/+$/u, '') || '/';
-      return normalized === '/clubs';
+      return normalized === '/clubs-92';
     } catch (error) {
       return false;
     }
@@ -80,7 +80,7 @@
         return false;
       }
       const normalized = refUrl.pathname.replace(/\/+$/u, '') || '/';
-      return normalized === '/carte-des-clubs';
+      return normalized === '/carte-des-clubs-92';
     } catch (error) {
       return false;
     }
@@ -106,7 +106,7 @@
   updateBackLinkVisibility();
 
   const deriveClubSlugFromPath = () => {
-    const pathMatch = window.location.pathname.match(/\/club\/([^\/?#]+)/i);
+    const pathMatch = window.location.pathname.match(/\/club-92\/([^\/?#]+)/i);
     if (pathMatch && pathMatch[1]) {
       try {
         return decodeURIComponent(pathMatch[1]);
@@ -729,7 +729,7 @@
     title.textContent = club.name;
     titleRow.appendChild(title);
 
-    const shareUrl = `${window.location.origin}/club/${encodeURIComponent(club.slug || club.id || '')}/`;
+    const shareUrl = `${window.location.origin}/club-92/${encodeURIComponent(club.slug || club.id || '')}/`;
     const shareBlock = document.createElement('div');
     shareBlock.className = 'club-sheet__share';
 

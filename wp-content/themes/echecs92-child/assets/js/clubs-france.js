@@ -488,7 +488,7 @@
             : initialHistoryState && typeof initialHistoryState === 'object'
             ? initialHistoryState
             : {};
-        const payload = { ...baseState, clubsResultsOpen: true, clubsContext: 'clubs-france' };
+        const payload = { ...baseState, clubsResultsOpen: true, clubsContext: 'clubs' };
         const nextUrl = buildUrlWithState(true);
         window.history.pushState(payload, '', nextUrl || window.location.href);
         resultsHistoryPushed = true;
@@ -565,7 +565,7 @@
       const url = new URL(window.location.href);
       return url.pathname + url.search + url.hash;
     } catch (error) {
-      return '/clubs-france';
+      return '/clubs';
     }
   };
 
@@ -630,7 +630,7 @@
     const nextUrl = buildUrlWithState(openFlag);
     const baseState =
       typeof window.history.state === 'object' && window.history.state !== null ? window.history.state : {};
-    const payload = { ...baseState, clubsResultsOpen: openFlag, clubsContext: 'clubs-france' };
+    const payload = { ...baseState, clubsResultsOpen: openFlag, clubsContext: 'clubs' };
     try {
       window.history.replaceState(payload, '', nextUrl);
     } catch (error) {
@@ -1086,7 +1086,7 @@
         return;
       }
       persistListUiState();
-      rememberClubsNavigation('map:from-list', '/clubs-france');
+      rememberClubsNavigation('map:from-list', '/clubs');
     };
     mapCtaLink.addEventListener('click', handleIntent);
     mapCtaLink.addEventListener('auxclick', handleIntent);
@@ -3952,7 +3952,7 @@
     if (canUseHistory) {
       window.addEventListener('popstate', (event) => {
         const state = event?.state;
-        const isResultsState = state && state.clubsResultsOpen && state.clubsContext === 'clubs-france';
+        const isResultsState = state && state.clubsResultsOpen && state.clubsContext === 'clubs';
         const shouldOpen = Boolean(isResultsState);
         if (shouldOpen && !mobileResultsOpen) {
           openResultsShell({ skipHistory: true });

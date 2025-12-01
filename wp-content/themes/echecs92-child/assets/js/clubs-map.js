@@ -8,7 +8,7 @@
   }
 
   const statusElement = document.getElementById('clubs-map-status');
-  const detailBase = mapElement.dataset.detailBase || '/club/';
+  const detailBase = mapElement.dataset.detailBase || '/club-92/';
   const navigationContext = (() => {
     try {
       const storage = window.localStorage;
@@ -46,7 +46,7 @@
       }
       storage.setItem(
         CLUBS_NAV_STORAGE_KEY,
-        JSON.stringify({ ts: Date.now(), context, back: backPath || '/clubs' })
+        JSON.stringify({ ts: Date.now(), context, back: backPath || '/clubs-92' })
       );
     } catch (error) {
       // ignore
@@ -67,7 +67,7 @@
         return false;
       }
       const normalized = refUrl.pathname.replace(/\/+$/u, '') || '/';
-      return normalized === '/clubs';
+      return normalized === '/clubs-92';
     } catch (error) {
       return false;
     }
@@ -519,7 +519,7 @@
     if (event.type === 'auxclick' && event.button !== 1) {
       return;
     }
-    rememberNavigation('detail:map', '/carte-des-clubs');
+    rememberNavigation('detail:map', '/carte-des-clubs-92');
   };
 
   mapElement.addEventListener('click', handleMapLinkInteraction);
