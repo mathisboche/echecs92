@@ -1687,6 +1687,7 @@
     [':sansdebug', () => setDebugMode(false)],
     [':debugmode', () => setDebugMode(true)],
     ['mathisboche.com', () => showMathisBocheSpectacle()],
+    ['mb', () => showMathisBocheSpectacle()],
   ]);
 
   const updateSortButtons = () => {
