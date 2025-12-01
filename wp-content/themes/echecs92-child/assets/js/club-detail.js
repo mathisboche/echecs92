@@ -678,6 +678,9 @@
 
     const labelNode = document.createElement('span');
     labelNode.className = 'club-section__label';
+    if (options.icon) {
+      labelNode.dataset.icon = options.icon;
+    }
     labelNode.textContent = label;
     item.appendChild(labelNode);
 
@@ -801,13 +804,14 @@
     const sections = [];
 
     const coords = createSection('Coordonnées');
-    appendDetail(coords.list, 'Adresse', club.address);
+    appendDetail(coords.list, 'Adresse', club.address, { icon: 'address' });
     appendDetail(coords.list, 'Ville', club.commune && !club.address ? club.commune : '');
-    appendDetail(coords.list, 'Email', club.email, { type: 'mail' });
-    appendDetail(coords.list, 'Téléphone', club.phone, { type: 'phone' });
+    appendDetail(coords.list, 'Email', club.email, { type: 'mail', icon: 'mail' });
+    appendDetail(coords.list, 'Téléphone', club.phone, { type: 'phone', icon: 'phone' });
     appendDetail(coords.list, 'Site internet', club.site, {
       type: 'link',
       label: 'Accéder au site du club',
+      icon: 'website',
     });
     if (coords.list.childElementCount) {
       sections.push(coords.section);
@@ -815,7 +819,7 @@
 
     const activities = createSection('Activités');
     appendDetail(activities.list, 'Publics accueillis', club.publics);
-    appendDetail(activities.list, 'Horaires', club.hours);
+    appendDetail(activities.list, 'Horaires', club.hours, { icon: 'hours' });
     appendDetail(activities.list, 'Tarifs', club.tarifs);
     appendDetail(activities.list, 'Informations complémentaires', club.notes && club.publics ? club.notes : '');
     if (activities.list.childElementCount) {
