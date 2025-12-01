@@ -11,8 +11,23 @@
       <div class="cm-nav-item">
         <a class="cm-nav-link" href="/">Accueil</a>
       </div>
-      <div class="cm-nav-item">
-        <a class="cm-nav-link" href="/comite" data-current-group="comite">Le Comité</a>
+      <div class="cm-nav-item" data-submenu="comite">
+        <a class="cm-nav-link" href="/comite" aria-haspopup="true" aria-expanded="false" data-current-group="comite">Le Comité</a>
+        <div class="cm-mega-panel" role="region" aria-label="Sous-menu Comité">
+          <div class="cm-mega-panel-inner">
+            <div class="cm-mega-column">
+              <p class="cm-mega-title">Découvrir le comité</p>
+              <a class="cm-mega-link" href="/comite/gouvernance">Gouvernance</a>
+              <a class="cm-mega-link" href="/comite/presentation">Présentation</a>
+              <a class="cm-mega-link" href="/comite/documents">Documents</a>
+            </div>
+            <div class="cm-mega-column">
+              <p class="cm-mega-title">Liens FFE</p>
+              <a class="cm-mega-link" href="https://www.echecs.asso.fr/FicheComite.aspx?Ref=92" target="_blank" rel="noopener">Fiche Comité 92</a>
+              <a class="cm-mega-link" href="https://www.echecs.asso.fr/ListeClubs.aspx?Action=CLUBCOMITE&ComiteRef=92" target="_blank" rel="noopener">Clubs du comité</a>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="cm-nav-item" data-submenu="clubs">
         <a class="cm-nav-link" href="/clubs" aria-haspopup="true" aria-expanded="false" data-current-group="clubs">Clubs</a>

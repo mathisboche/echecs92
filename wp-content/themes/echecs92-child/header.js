@@ -208,10 +208,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!path) {
       return false;
     }
-    if (path === '/comite' || path === '/mathis-boche') {
+    if (
+      path === '/comite' ||
+      path === '/mathis-boche' ||
+      path === '/comite/gouvernance' ||
+      path === '/comite/presentation' ||
+      path === '/comite/documents'
+    ) {
       return true;
     }
-    return false;
+    return path.startsWith('/comite/');
   };
 
   const markCurrentLinks = (links) => {
