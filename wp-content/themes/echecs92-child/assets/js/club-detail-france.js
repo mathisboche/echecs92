@@ -202,8 +202,11 @@
   };
 
   const updateBackLinkVisibility = () => {
+    const showMapBack = cameFromClubsMap();
+    const showListBack = !showMapBack && cameFromClubsSearch();
+
     if (backLink) {
-      if (cameFromClubsSearch()) {
+      if (showListBack) {
         backLink.href = getStoredBackPath('/clubs');
         backLink.removeAttribute('hidden');
       } else {
@@ -211,7 +214,7 @@
       }
     }
     if (backLinkMap) {
-      if (cameFromClubsMap()) {
+      if (showMapBack) {
         backLinkMap.href = getStoredBackPath('/carte-des-clubs');
         backLinkMap.removeAttribute('hidden');
       } else {
