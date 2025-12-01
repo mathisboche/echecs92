@@ -2987,7 +2987,7 @@
 
     finalizeSearch(() => {
       updateStatusIfCurrent(
-        `Aucun club ne correspond à "${meta.rawQuery}". Vous pouvez essayer la recherche par distance via le bloc "Distance".`,
+        `Aucun club ne correspond à "${meta.rawQuery}". Vous pouvez essayer la recherche par distance via le bloc "Autour de moi".`,
         'error'
       );
     });
