@@ -281,6 +281,132 @@
   const distanceHeader = document.querySelector('.clubs-distance__intro');
   const clubsPageShell = document.querySelector('.clubs-page');
 
+  const LOADING_OVERLAY_ID = 'clubs-loading-overlay';
+  const LOADING_OVERLAY_DEFAULT_LABEL = 'Patientez…';
+  const LOADING_OVERLAY_FALLBACK_ICON = '/wp-content/themes/echecs92-child/assets/cdje92.svg';
+  const LOADING_OVERLAY_MIN_VISIBLE_MS = 480;
+  let loadingOverlayElement = null;
+  let loadingOverlayVisibleSince = 0;
+  let loadingOverlayHideTimer = null;
+  let loadingOverlayStack = 0;
+
+  const resolveFaviconUrl = () => {
+    if (typeof document === 'undefined') {
+      return LOADING_OVERLAY_FALLBACK_ICON;
+    }
+    const selectors = [
+      'link[rel="icon"]',
+      'link[rel="shortcut icon"]',
+      'link[rel*="icon"]',
+      'link[rel="apple-touch-icon"]',
+    ];
+    for (const selector of selectors) {
+      const link = document.querySelector(selector);
+      if (link && link.href) {
+        return link.href;
+      }
+    }
+    return LOADING_OVERLAY_FALLBACK_ICON;
+  };
+
+  const ensureLoadingOverlay = () => {
+    if (loadingOverlayElement) {
+      return loadingOverlayElement;
+    }
+    if (typeof document === 'undefined' || !document.body) {
+      return null;
+    }
+    const overlay = document.createElement('div');
+    overlay.id = LOADING_OVERLAY_ID;
+    overlay.className = 'clubs-loading-overlay';
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.innerHTML = `
+      <div class="clubs-loading-overlay__backdrop"></div>
+      <div class="clubs-loading-overlay__content" role="status" aria-live="polite">
+        <div class="clubs-loading-overlay__spinner">
+          <span class="clubs-loading-overlay__ring"></span>
+          <img class="clubs-loading-overlay__icon" alt="" loading="lazy" decoding="async" />
+        </div>
+        <p class="clubs-loading-overlay__label">${LOADING_OVERLAY_DEFAULT_LABEL}</p>
+      </div>
+    `;
+    const icon = overlay.querySelector('.clubs-loading-overlay__icon');
+    const faviconUrl = resolveFaviconUrl();
+    if (icon && faviconUrl) {
+      icon.setAttribute('src', faviconUrl);
+    }
+    document.body.appendChild(overlay);
+    loadingOverlayElement = overlay;
+    return overlay;
+  };
+
+  const setLoadingOverlayLabel = (label) => {
+    const overlay = ensureLoadingOverlay();
+    if (!overlay) {
+      return;
+    }
+    const labelNode = overlay.querySelector('.clubs-loading-overlay__label');
+    if (labelNode) {
+      labelNode.textContent = label || LOADING_OVERLAY_DEFAULT_LABEL;
+    }
+    const icon = overlay.querySelector('.clubs-loading-overlay__icon');
+    const faviconUrl = resolveFaviconUrl();
+    if (icon && faviconUrl && icon.getAttribute('src') !== faviconUrl) {
+      icon.setAttribute('src', faviconUrl);
+    }
+  };
+
+  const hideLoadingOverlay = () => {
+    if (!loadingOverlayElement) {
+      return;
+    }
+    if (loadingOverlayStack > 0) {
+      loadingOverlayStack -= 1;
+    }
+    if (loadingOverlayStack > 0) {
+      return;
+    }
+    const elapsed = Date.now() - loadingOverlayVisibleSince;
+    const delay = Math.max(0, LOADING_OVERLAY_MIN_VISIBLE_MS - elapsed);
+    if (loadingOverlayHideTimer) {
+      clearTimeout(loadingOverlayHideTimer);
+    }
+    loadingOverlayHideTimer = setTimeout(() => {
+      if (!loadingOverlayElement) {
+        return;
+      }
+      loadingOverlayElement.classList.remove('is-visible');
+      loadingOverlayElement.setAttribute('aria-hidden', 'true');
+      loadingOverlayHideTimer = null;
+    }, delay);
+  };
+
+  const showLoadingOverlay = (label) => {
+    const overlay = ensureLoadingOverlay();
+    if (!overlay) {
+      return () => {};
+    }
+    if (loadingOverlayHideTimer) {
+      clearTimeout(loadingOverlayHideTimer);
+      loadingOverlayHideTimer = null;
+    }
+    if (loadingOverlayStack === 0) {
+      loadingOverlayVisibleSince = Date.now();
+    }
+    loadingOverlayStack += 1;
+    setLoadingOverlayLabel(label);
+    overlay.classList.add('is-visible');
+    overlay.setAttribute('aria-hidden', 'false');
+    let released = false;
+    return () => {
+      if (released) {
+        return;
+      }
+      released = true;
+      hideLoadingOverlay();
+    };
+  };
+
   const updateClearButtons = () => {
     if (resetButton && searchInput) {
       const hasValue = (searchInput.value || '').trim().length > 0;
@@ -2866,13 +2992,14 @@
     const requestId = ++searchRequestId;
     let actionCompleted = false;
     const shouldShowBusy = options.showBusy === true && Boolean(searchButton) && trimmed.length > 0;
+    const releaseOverlay = shouldShowBusy ? showLoadingOverlay('Recherche en cours…') : () => {};
     if (shouldShowBusy) {
       deferResultsRendering();
     }
     const releaseSearchFeedback = (() => {
-    if (!shouldShowBusy) {
-      return () => {};
-    }
+      if (!shouldShowBusy) {
+        return () => {};
+      }
       const release = beginButtonWait(searchButton);
       let released = false;
       return () => {
@@ -2881,6 +3008,7 @@
         }
         released = true;
         release();
+        releaseOverlay();
       };
     })();
     const abortIfStale = () => {
@@ -3080,6 +3208,26 @@
     }
     const actionStartedAt = Date.now();
     const releaseButton = quiet ? () => {} : beginButtonWait(locationApplyButton, 'Recherche…');
+    const overlayLabel = raw ? `Recherche autour de ${raw}…` : 'Recherche en cours…';
+    const releaseOverlay = quiet ? () => {} : showLoadingOverlay(overlayLabel);
+    const releaseLocationUi = (() => {
+      let released = false;
+      return (options = {}) => {
+        if (released) {
+          return;
+        }
+        released = true;
+        const runRelease = () => {
+          releaseButton();
+          releaseOverlay();
+        };
+        if (options.delay === false) {
+          runRelease();
+        } else {
+          scheduleAfterMinimumDelay(actionStartedAt, runRelease);
+        }
+      };
+    })();
     let locationActionFinalized = false;
     const finalizeLocationSearch = (finalizer, options = {}) => {
       if (locationActionFinalized) {
@@ -3089,6 +3237,7 @@
       const shouldScroll = options.scroll === true && !quiet;
       const run = () => {
         if (requestId !== locationRequestId) {
+          releaseLocationUi({ delay: false });
           return;
         }
         if (typeof finalizer === 'function') {
@@ -3100,6 +3249,7 @@
         if (shouldScroll) {
           jumpToResults();
         }
+        releaseLocationUi({ delay: false });
       };
       scheduleAfterMinimumDelay(actionStartedAt, run);
     };
@@ -3175,7 +3325,7 @@
         });
       }
     } finally {
-      scheduleAfterMinimumDelay(actionStartedAt, releaseButton);
+      releaseLocationUi();
     }
   };
 
@@ -3195,6 +3345,17 @@
     clearSearchQuery({ silent: true });
     setLocationStatus('', 'info');
     const releaseButton = () => {};
+    const releaseOverlay = state.restoreMode ? () => {} : showLoadingOverlay('Recherche de votre position…');
+    const releaseGeolocUi = (() => {
+      let released = false;
+      return () => {
+        if (released) {
+          return;
+        }
+        released = true;
+        releaseOverlay();
+      };
+    })();
     let geolocActionFinalized = false;
     const finalizeGeolocSearch = (finalizer, options = {}) => {
       if (geolocActionFinalized) {
@@ -3204,6 +3365,7 @@
       const shouldScroll = options.scroll === true && !state.restoreMode;
       const run = () => {
         if (requestId !== locationRequestId) {
+          releaseGeolocUi();
           return;
         }
         if (typeof finalizer === 'function') {
@@ -3215,6 +3377,7 @@
         if (shouldScroll) {
           jumpToResults();
         }
+        releaseGeolocUi();
       };
       run();
     };
@@ -3237,6 +3400,7 @@
         setSearchStatus(message, 'error');
       });
       releaseButton();
+      releaseGeolocUi();
     };
 
     try {
@@ -3248,6 +3412,7 @@
             .then((place) => {
               if (requestId !== locationRequestId) {
                 releaseButton();
+                releaseGeolocUi();
                 return;
               }
 
@@ -3292,6 +3457,7 @@
             })
             .finally(() => {
               releaseButton();
+              releaseGeolocUi();
             });
         },
         handleGeolocError,
