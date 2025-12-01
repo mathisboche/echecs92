@@ -1315,6 +1315,10 @@
       renderMessage(detailContainer.dataset.emptyMessage || 'Club introuvable.');
       return;
     }
+    const releaseSpinner =
+      typeof window !== 'undefined' && window.cdjeSpinner && typeof window.cdjeSpinner.show === 'function'
+        ? window.cdjeSpinner.show('Chargement du club…')
+        : () => {};
     Promise.all([loadFranceClubsDataset(), loadStaticGeoHints()])
       .then(async ([data, staticHints]) => {
         const clubs = (Array.isArray(data) ? data : []).map(hydrateClub);
@@ -1330,6 +1334,9 @@
       })
       .catch(() => {
         renderMessage('Impossible de charger la fiche du club pour le moment.');
+      })
+      .finally(() => {
+        releaseSpinner();
       });
   };
 

@@ -1,6 +1,176 @@
 // debug flag
 window.echecs92_test = true;
 
+(function () {
+  const OVERLAY_ID = 'clubs-loading-overlay';
+  const DEFAULT_LABEL = 'Patientez…';
+  const FALLBACK_ICON = '/wp-content/themes/echecs92-child/assets/cdje92.svg';
+  const MIN_VISIBLE_MS = 480;
+  let overlayEl = null;
+  let visibleSince = 0;
+  let hideTimer = null;
+  let stack = 0;
+
+  const resolveFaviconUrl = () => {
+    const selectors = [
+      'link[rel="icon"]',
+      'link[rel="shortcut icon"]',
+      'link[rel*="icon"]',
+      'link[rel="apple-touch-icon"]',
+    ];
+    for (const selector of selectors) {
+      const link = document.querySelector(selector);
+      if (link && link.href) {
+        return link.href;
+      }
+    }
+    return FALLBACK_ICON;
+  };
+
+  const lockPage = (active) => {
+    const method = active ? 'add' : 'remove';
+    document.documentElement?.classList[method]('clubs-loading-lock');
+    document.body?.classList[method]('clubs-loading-lock');
+    if (active) {
+      const burger = document.querySelector('.cm-burger[aria-expanded="true"]');
+      const menu = document.getElementById('cm-mobile-menu');
+      if (burger) {
+        burger.setAttribute('aria-expanded', 'false');
+        burger.classList.remove('is-active');
+      }
+      if (menu) {
+        menu.classList.remove('is-open');
+        menu.setAttribute('hidden', '');
+        menu.style.top = '';
+      }
+      document.body?.classList.remove('cm-menu-open');
+      document.documentElement?.classList.remove('cm-menu-open');
+    }
+  };
+
+  const ensureOverlay = () => {
+    if (overlayEl) {
+      return overlayEl;
+    }
+    const overlay = document.createElement('div');
+    overlay.id = OVERLAY_ID;
+    overlay.className = 'clubs-loading-overlay';
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.innerHTML = `
+      <div class="clubs-loading-overlay__backdrop"></div>
+      <div class="clubs-loading-overlay__content" role="status" aria-live="polite">
+        <div class="clubs-loading-overlay__spinner">
+          <span class="clubs-loading-overlay__ring"></span>
+          <img class="clubs-loading-overlay__icon" alt="" loading="lazy" decoding="async" />
+        </div>
+        <p class="clubs-loading-overlay__label">${DEFAULT_LABEL}</p>
+      </div>
+    `;
+    const icon = overlay.querySelector('.clubs-loading-overlay__icon');
+    const faviconUrl = resolveFaviconUrl();
+    if (icon && faviconUrl) {
+      icon.setAttribute('src', faviconUrl);
+    }
+    document.body.appendChild(overlay);
+    overlayEl = overlay;
+    return overlay;
+  };
+
+  const setLabel = (label) => {
+    const overlay = ensureOverlay();
+    if (!overlay) {
+      return;
+    }
+    const labelNode = overlay.querySelector('.clubs-loading-overlay__label');
+    if (labelNode) {
+      labelNode.textContent = label || DEFAULT_LABEL;
+    }
+    const icon = overlay.querySelector('.clubs-loading-overlay__icon');
+    const faviconUrl = resolveFaviconUrl();
+    if (icon && faviconUrl && icon.getAttribute('src') !== faviconUrl) {
+      icon.setAttribute('src', faviconUrl);
+    }
+  };
+
+  const hideOne = () => {
+    if (!overlayEl || stack <= 0) {
+      stack = 0;
+      return;
+    }
+    stack -= 1;
+    if (stack > 0) {
+      return;
+    }
+    const elapsed = Date.now() - visibleSince;
+    const delay = Math.max(0, MIN_VISIBLE_MS - elapsed);
+    if (hideTimer) {
+      clearTimeout(hideTimer);
+    }
+    hideTimer = setTimeout(() => {
+      overlayEl.classList.remove('is-visible');
+      overlayEl.setAttribute('aria-hidden', 'true');
+      lockPage(false);
+      hideTimer = null;
+    }, delay);
+  };
+
+  const show = (label) => {
+    const overlay = ensureOverlay();
+    if (!overlay) {
+      return () => {};
+    }
+    if (hideTimer) {
+      clearTimeout(hideTimer);
+      hideTimer = null;
+    }
+    if (stack === 0) {
+      visibleSince = Date.now();
+      lockPage(true);
+    }
+    stack += 1;
+    setLabel(label);
+    overlay.classList.add('is-visible');
+    overlay.setAttribute('aria-hidden', 'false');
+    let released = false;
+    return () => {
+      if (released) {
+        return;
+      }
+      released = true;
+      hideOne();
+    };
+  };
+
+  const hideAll = () => {
+    if (stack <= 0) {
+      return;
+    }
+    stack = 1;
+    hideOne();
+  };
+
+  window.cdjeSpinner = {
+    show,
+    hide: hideOne,
+    hideAll,
+    isActive: () => stack > 0,
+  };
+
+  document.addEventListener('cdje:spinner', (event) => {
+    const action = event?.detail?.action || '';
+    if (action === 'show') {
+      const release = show(event.detail?.label);
+      if (event.detail) {
+        event.detail.release = release;
+      }
+    } else if (action === 'hide') {
+      hideOne();
+    } else if (action === 'reset') {
+      hideAll();
+    }
+  });
+})();
+
 document.addEventListener('DOMContentLoaded', () => {
   const btn   = document.querySelector('.cm-burger');
   const menu  = document.getElementById('cm-mobile-menu');

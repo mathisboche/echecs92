@@ -2976,6 +2976,11 @@ const handleLocationSubmit = async (event) => {
     bindMapCtaNavigation();
     setSearchStatus('Chargement de la liste des clubs…', 'info');
 
+    const releaseSpinner =
+      typeof window !== 'undefined' && window.cdjeSpinner && typeof window.cdjeSpinner.show === 'function'
+        ? window.cdjeSpinner.show('Chargement des clubs…')
+        : () => {};
+
     fetch(DATA_URL, { headers: { Accept: 'application/json' } })
       .then((response) => {
         if (!response.ok) {
@@ -3008,6 +3013,9 @@ const handleLocationSubmit = async (event) => {
           totalCounter.textContent = '';
         }
         setSearchStatus('Erreur lors du chargement de la liste des clubs.', 'error');
+      })
+      .finally(() => {
+        releaseSpinner();
       });
 
     searchButton?.addEventListener('click', performSearch);

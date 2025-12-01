@@ -1103,6 +1103,10 @@
   mapElement.addEventListener('auxclick', handleMapLinkInteraction);
 
   updateStatus('Chargement de la carte…', 'info');
+  const releaseSpinner =
+    typeof window !== 'undefined' && window.cdjeSpinner && typeof window.cdjeSpinner.show === 'function'
+      ? window.cdjeSpinner.show('Chargement de la carte…')
+      : () => {};
 
   loadGeocodeCache();
   loadGeoHintsCache();
@@ -1219,5 +1223,8 @@
     })
     .catch(() => {
       updateStatus('Impossible de charger la carte pour le moment. Veuillez réessayer plus tard.', 'error');
+    })
+    .finally(() => {
+      releaseSpinner();
     });
 })();

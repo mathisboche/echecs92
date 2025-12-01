@@ -290,6 +290,17 @@
   let loadingOverlayHideTimer = null;
   let loadingOverlayStack = 0;
 
+  const getGlobalSpinner = () => {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    const api = window.cdjeSpinner;
+    if (api && typeof api.show === 'function') {
+      return api;
+    }
+    return null;
+  };
+
   const setLoadingPageLock = (active) => {
     if (typeof document === 'undefined') {
       return;
@@ -408,6 +419,10 @@
   };
 
   const showLoadingOverlay = (label) => {
+    const globalSpinner = getGlobalSpinner();
+    if (globalSpinner) {
+      return globalSpinner.show(label);
+    }
     const overlay = ensureLoadingOverlay();
     if (!overlay) {
       return () => {};
@@ -1764,6 +1779,7 @@
         return () => {};
       }
       deferResultsRendering({ placeholder: SORT_COUNTER_LOADING_TEXT });
+      const overlayRelease = showLoadingOverlay(busyLabel || 'Mise à jour…');
       const release = beginButtonWait(triggerButton, busyLabel);
       let released = false;
       return (forceImmediate = false) => {
@@ -1774,6 +1790,7 @@
         const minDelay = forceImmediate ? 0 : sortDelay;
         scheduleAfterMinimumDelay(actionStartedAt, () => {
           release();
+          overlayRelease();
           flushDeferredResultsRendering();
         }, minDelay);
       };
@@ -3969,6 +3986,7 @@
     setSearchStatus('Chargement de la liste des clubs…', 'info');
 
     state.restoreMode = true;
+    const releaseInitOverlay = showLoadingOverlay('Chargement des clubs…');
     loadFranceClubsDataset()
       .then(async (payload) => {
         const data = Array.isArray(payload) ? payload : [];
@@ -4072,6 +4090,9 @@
           totalCounter.textContent = '';
         }
         setSearchStatus('Erreur lors du chargement de la liste des clubs.', 'error');
+      })
+      .finally(() => {
+        releaseInitOverlay();
       });
 
     if (searchButton) {
