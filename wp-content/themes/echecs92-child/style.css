@@ -3921,6 +3921,14 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 body.clubs-results-open{
   overflow:hidden;
 }
+html.clubs-loading-lock,
+body.clubs-loading-lock{
+  overflow:hidden;
+  touch-action:none;
+}
+.clubs-loading-lock .cm-burger{
+  pointer-events:none;
+}
 .clubs-total{
   font-size:15px;
   font-weight:600;

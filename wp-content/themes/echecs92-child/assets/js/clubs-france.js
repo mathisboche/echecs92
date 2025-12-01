@@ -290,6 +290,31 @@
   let loadingOverlayHideTimer = null;
   let loadingOverlayStack = 0;
 
+  const setLoadingPageLock = (active) => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    const method = active ? 'add' : 'remove';
+    document.documentElement?.classList[method]('clubs-loading-lock');
+    document.body?.classList[method]('clubs-loading-lock');
+    if (active) {
+      // Ferme le menu mobile en cours le cas échéant pour éviter de le rouvrir pendant le chargement.
+      const burger = document.querySelector('.cm-burger[aria-expanded="true"]');
+      const menu = document.getElementById('cm-mobile-menu');
+      if (burger) {
+        burger.setAttribute('aria-expanded', 'false');
+        burger.classList.remove('is-active');
+      }
+      if (menu) {
+        menu.classList.remove('is-open');
+        menu.setAttribute('hidden', '');
+        menu.style.top = '';
+      }
+      document.body?.classList.remove('cm-menu-open');
+      document.documentElement?.classList.remove('cm-menu-open');
+    }
+  };
+
   const resolveFaviconUrl = () => {
     if (typeof document === 'undefined') {
       return LOADING_OVERLAY_FALLBACK_ICON;
@@ -377,6 +402,7 @@
       }
       loadingOverlayElement.classList.remove('is-visible');
       loadingOverlayElement.setAttribute('aria-hidden', 'true');
+      setLoadingPageLock(false);
       loadingOverlayHideTimer = null;
     }, delay);
   };
@@ -392,6 +418,7 @@
     }
     if (loadingOverlayStack === 0) {
       loadingOverlayVisibleSince = Date.now();
+      setLoadingPageLock(true);
     }
     loadingOverlayStack += 1;
     setLoadingOverlayLabel(label);
