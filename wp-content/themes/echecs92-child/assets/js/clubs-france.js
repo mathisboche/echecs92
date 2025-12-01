@@ -417,6 +417,19 @@
       locationClearButton.hidden = !hasValue;
     }
   };
+
+  const dismissMobileSearchKeyboard = () => {
+    if (!searchInput || !isMobileViewport()) {
+      return;
+    }
+    if (typeof document === 'undefined') {
+      return;
+    }
+    const active = document.activeElement;
+    if (active === searchInput && typeof searchInput.blur === 'function') {
+      searchInput.blur();
+    }
+  };
   const moreButton = document.getElementById('clubs-more-button');
   const optionsDetails = document.getElementById('clubs-options');
   const sortButtons = document.querySelectorAll('[data-club-sort]');
@@ -4043,6 +4056,7 @@
         if (!raw) {
           return;
         }
+        dismissMobileSearchKeyboard();
         void performSearch({ showBusy: true });
       });
     }
@@ -4062,6 +4076,7 @@
           if (!raw) {
             return;
           }
+          dismissMobileSearchKeyboard();
           void performSearch({ showBusy: true });
         }
       });
