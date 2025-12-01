@@ -1329,6 +1329,7 @@
   let mathisSequenceActive = false;
   let mathisCollapsedTargets = [];
   let mathisExitStarted = false;
+  let mathisFragmentsPrepared = false;
   let mathisScrollPosition = 0;
 
   const lockMathisScroll = () => {
@@ -1370,6 +1371,199 @@
     return array;
   };
 
+  const getMathisElementDepth = (element) => {
+    let depth = 0;
+    let current = element ? element.parentElement : null;
+    while (current && current !== document.body) {
+      depth += 1;
+      current = current.parentElement;
+    }
+    return depth;
+  };
+
+  const prepareMathisFragments = (overlayElement) => {
+    if (mathisFragmentsPrepared || typeof document === 'undefined' || !document.body) {
+      return;
+    }
+    const overlayHost = overlayElement || document.getElementById(MATHIS_TAKEOVER_ID);
+    const isFlexibleContext = (element) => {
+      if (!element || typeof window === 'undefined' || typeof window.getComputedStyle !== 'function') {
+        return false;
+      }
+      try {
+        const display = window.getComputedStyle(element).display || '';
+        return display.includes('flex') || display.includes('grid');
+      } catch (error) {
+        return false;
+      }
+    };
+    const TEXT_NODE = 3;
+    const ELEMENT_NODE = 1;
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const nodesToProcess = [];
+    const visitNode = (node) => {
+      if (!node || !node.childNodes) {
+        return;
+      }
+      Array.from(node.childNodes).forEach((child) => {
+        if (!child) {
+          return;
+        }
+        if (child.nodeType === TEXT_NODE) {
+          const parentElement = child.parentElement;
+          const textValue = child.textContent || '';
+          if (
+            !parentElement ||
+            !textValue.replace(/\u00a0/g, ' ').trim() ||
+            parentElement.closest('script, style, noscript, textarea, option, select, optgroup') ||
+            parentElement.namespaceURI === SVG_NS
+          ) {
+            return;
+          }
+          if (overlayHost && (parentElement === overlayHost || parentElement.closest(`#${MATHIS_TAKEOVER_ID}`))) {
+            return;
+          }
+          if (isFlexibleContext(parentElement)) {
+            return;
+          }
+          nodesToProcess.push(child);
+        } else if (child.nodeType === ELEMENT_NODE) {
+          const tagName = child.tagName ? child.tagName.toUpperCase() : '';
+          if (!tagName) {
+            return;
+          }
+          if (
+            tagName === 'SCRIPT' ||
+            tagName === 'STYLE' ||
+            tagName === 'NOSCRIPT' ||
+            tagName === 'TEXTAREA' ||
+            tagName === 'OPTION' ||
+            tagName === 'OPTGROUP' ||
+            tagName === 'SELECT'
+          ) {
+            return;
+          }
+          if (child.namespaceURI === SVG_NS) {
+            return;
+          }
+          if (overlayHost && (child === overlayHost || child.closest(`#${MATHIS_TAKEOVER_ID}`))) {
+            return;
+          }
+          visitNode(child);
+        }
+      });
+    };
+    visitNode(document.body);
+    nodesToProcess.forEach((textNode) => {
+      const parent = textNode.parentElement;
+      if (!parent) {
+        return;
+      }
+      const fragment = document.createDocumentFragment();
+      const parts = (textNode.textContent || '').split(/(\s+)/);
+      parts.forEach((part) => {
+        if (!part) {
+          return;
+        }
+        if (/^\s+$/.test(part)) {
+          fragment.appendChild(document.createTextNode(part));
+        } else {
+          const span = document.createElement('span');
+          span.className = 'mathis-fragment';
+          span.textContent = part;
+          fragment.appendChild(span);
+        }
+      });
+      parent.replaceChild(fragment, textNode);
+    });
+    mathisFragmentsPrepared = true;
+  };
+
+  const cleanupMathisFragments = () => {
+    if (!mathisFragmentsPrepared || typeof document === 'undefined') {
+      return;
+    }
+    const fragments = document.querySelectorAll('.mathis-fragment');
+    fragments.forEach((fragment) => {
+      if (!fragment || fragment.closest(`#${MATHIS_TAKEOVER_ID}`)) {
+        return;
+      }
+      const parent = fragment.parentNode;
+      if (!parent) {
+        return;
+      }
+      const textContent = fragment.textContent || '';
+      const textNode = document.createTextNode(textContent);
+      parent.replaceChild(textNode, fragment);
+      if (typeof parent.normalize === 'function') {
+        parent.normalize();
+      }
+    });
+    mathisFragmentsPrepared = false;
+  };
+
+  const gatherMathisFallbackContainers = () => {
+    if (typeof document === 'undefined') {
+      return [];
+    }
+    const selectors = [
+      'body > *:not(script):not(style):not(noscript)',
+      '.cm-header',
+      '.cm-nav-desktop',
+      '.cm-nav-mobile',
+      '.clubs-page > *',
+      '.clubs-results-wrapper > *',
+      '.clubs-list > *',
+      '.clubs-options',
+      '.clubs-search-block',
+      '.club-row',
+    ];
+    const collection = new Set();
+    selectors.forEach((selector) => {
+      document.querySelectorAll(selector).forEach((node) => {
+        if (!node || node.id === MATHIS_TAKEOVER_ID) {
+          return;
+        }
+        if (node.closest(`#${MATHIS_TAKEOVER_ID}`)) {
+          return;
+        }
+        collection.add(node);
+      });
+    });
+    const rawTargets = Array.from(collection).filter((element) => element && element !== document.body && element !== document.documentElement);
+    const filteredTargets = rawTargets.filter(
+      (element, index, array) => !array.some((other, otherIndex) => otherIndex !== index && other.contains(element))
+    );
+    return filteredTargets.sort((a, b) => getMathisElementDepth(b) - getMathisElementDepth(a));
+  };
+
+  const getMathisRestoreOrder = () => {
+    if (!mathisCollapsedTargets.length) {
+      return [];
+    }
+    const buckets = new Map();
+    mathisCollapsedTargets.forEach((element) => {
+      if (!element) {
+        return;
+      }
+      const depth = getMathisElementDepth(element);
+      if (!buckets.has(depth)) {
+        buckets.set(depth, []);
+      }
+      buckets.get(depth).push(element);
+    });
+    const ordered = [];
+    Array.from(buckets.keys())
+      .sort((a, b) => a - b)
+      .forEach((depth) => {
+        const batch = buckets.get(depth);
+        if (batch && batch.length) {
+          shuffleArray(batch).forEach((element) => ordered.push(element));
+        }
+      });
+    return ordered;
+  };
+
   const restoreMathisTargets = () => {
     if (!mathisCollapsedTargets.length) {
       return;
@@ -1394,11 +1588,17 @@
     if (!mathisCollapsedTargets.length) {
       return Promise.resolve();
     }
-    const order = shuffleArray(mathisCollapsedTargets);
+    const order = getMathisRestoreOrder();
+    if (!order.length) {
+      mathisCollapsedTargets = [];
+      return Promise.resolve();
+    }
+    const timelineWindow = Math.min(3600, 1200 + order.length * 1.9);
     return new Promise((resolve) => {
       let restoredCount = 0;
       order.forEach((element, index) => {
-        const delay = index * 130 + Math.random() * 90;
+        const progress = order.length > 1 ? index / (order.length - 1) : 0;
+        const delay = progress * timelineWindow + Math.random() * 70;
         window.setTimeout(() => {
           const previousVisibility = element.dataset.mathisPrevVisibility;
           if (typeof previousVisibility !== 'undefined') {
@@ -1422,7 +1622,7 @@
               mathisCollapsedTargets = [];
               resolve();
             }
-          }, 520);
+          }, 420);
         }, delay);
       });
     });
@@ -1437,6 +1637,7 @@
       if (!options.skipRestore) {
         restoreMathisTargets();
       }
+      cleanupMathisFragments();
       unlockMathisScroll();
       if (!options.silent) {
         setSearchStatus('Retour à la réalité des clubs français.', 'info');
@@ -1475,37 +1676,138 @@
   };
 
   const gatherMathisTargets = () => {
-    const selectors = [
-      'body > *:not(script):not(style):not(noscript)',
-      '.cm-header',
-      '.cm-nav-desktop',
-      '.cm-nav-mobile',
-      '.clubs-page > *',
-      '.clubs-results-wrapper > *',
-      '.clubs-list > *',
-      '.clubs-options',
-      '.clubs-search-block',
+    if (typeof document === 'undefined' || !document.body) {
+      return [];
+    }
+    const overlay = document.getElementById(MATHIS_TAKEOVER_ID);
+    const blockedTags = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'LINK', 'META', 'HEAD', 'TITLE', 'HTML', 'BODY', 'TEMPLATE']);
+    const preferredSelectors = [
+      'p',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'li',
+      'blockquote',
+      'pre',
+      'code',
+      'figure',
+      'figcaption',
+      'dt',
+      'dd',
+      'table',
+      'thead',
+      'tbody',
+      'tfoot',
+      'tr',
+      'th',
+      'td',
       '.club-row',
-    ];
-    const collection = new Set();
-    selectors.forEach((selector) => {
-      document.querySelectorAll(selector).forEach((node) => {
-        if (!node || node.id === MATHIS_TAKEOVER_ID) {
-          return;
-        }
-        if (node.closest(`#${MATHIS_TAKEOVER_ID}`)) {
-          return;
-        }
-        collection.add(node);
-      });
+      '.club-card',
+      '.clubs-options *',
+      '.clubs-search-block *',
+      '.cm-header *',
+      '.cm-footer *',
+      'a',
+      'button',
+      'label',
+      'input',
+      'textarea',
+      'select',
+      'option',
+      'summary',
+      'details',
+      'img',
+      'picture',
+      'video',
+      'audio',
+      'svg',
+      'canvas',
+      'iframe',
+    ]
+      .map((selector) => selector.trim())
+      .filter(Boolean)
+      .join(', ');
+    const buckets = new Map();
+    const registerElement = (element) => {
+      if (!element) {
+        return;
+      }
+      const depth = getMathisElementDepth(element);
+      if (!buckets.has(depth)) {
+        buckets.set(depth, []);
+      }
+      buckets.get(depth).push(element);
+    };
+    const allElements = Array.from(document.body.querySelectorAll('*'));
+    allElements.forEach((element) => {
+      if (!element) {
+        return;
+      }
+      if (element === overlay || element.closest(`#${MATHIS_TAKEOVER_ID}`)) {
+        return;
+      }
+      const tagName = element.tagName ? element.tagName.toUpperCase() : '';
+      if (!tagName || blockedTags.has(tagName)) {
+        return;
+      }
+      const svgAncestor = element.closest('svg');
+      if (svgAncestor && svgAncestor !== element) {
+        return;
+      }
+      const isLeaf = element.childElementCount === 0;
+      const isPreferred = preferredSelectors ? element.matches(preferredSelectors) : false;
+      if (isLeaf || isPreferred) {
+        registerElement(element);
+      }
     });
-    const rawTargets = Array.from(collection).filter((element) => element && element !== document.body && element !== document.documentElement);
-    const filteredTargets = rawTargets.filter(
-      (element, index, array) => !array.some((other, otherIndex) => otherIndex !== index && other.contains(element))
-    );
-    return filteredTargets.length
-      ? filteredTargets
-      : Array.from(document.body.children).filter((element) => element.tagName !== 'SCRIPT' && element.tagName !== 'STYLE' && element.id !== MATHIS_TAKEOVER_ID);
+    const seen = new Set();
+    const orderedTargets = [];
+    Array.from(buckets.keys())
+      .sort((a, b) => b - a)
+      .forEach((depth) => {
+        const bucket = shuffleArray(buckets.get(depth));
+        bucket.forEach((element) => {
+          if (!seen.has(element)) {
+            seen.add(element);
+            orderedTargets.push(element);
+          }
+        });
+      });
+    gatherMathisFallbackContainers().forEach((element) => {
+      if (!seen.has(element)) {
+        seen.add(element);
+        orderedTargets.push(element);
+      }
+    });
+    const leftovers = [];
+    allElements.forEach((element) => {
+      if (!element || seen.has(element)) {
+        return;
+      }
+      if (element === overlay || element.closest(`#${MATHIS_TAKEOVER_ID}`)) {
+        return;
+      }
+      const tagName = element.tagName ? element.tagName.toUpperCase() : '';
+      if (!tagName || blockedTags.has(tagName)) {
+        return;
+      }
+      leftovers.push({ element, depth: getMathisElementDepth(element) });
+    });
+    leftovers
+      .sort((a, b) => b.depth - a.depth)
+      .forEach(({ element }) => {
+        if (!seen.has(element)) {
+          seen.add(element);
+          orderedTargets.push(element);
+        }
+      });
+    if (orderedTargets.length) {
+      return orderedTargets;
+    }
+    return Array.from(document.body.children).filter((element) => element.tagName !== 'SCRIPT' && element.tagName !== 'STYLE' && element.id !== MATHIS_TAKEOVER_ID);
   };
 
   const collapseMathisTargets = (targets) => {
@@ -1513,12 +1815,14 @@
     if (!valid.length) {
       return Promise.resolve();
     }
-    const order = shuffleArray(valid);
+    const order = valid.slice();
     mathisCollapsedTargets = order.slice();
+    const timelineWindow = Math.min(4200, 1400 + order.length * 2.2);
     return new Promise((resolve) => {
       let completed = 0;
       order.forEach((element, index) => {
-        const startDelay = index * 140 + Math.random() * 110;
+        const progress = order.length > 1 ? index / (order.length - 1) : 0;
+        const startDelay = progress * timelineWindow + Math.random() * 90;
         window.setTimeout(() => {
           if (!mathisSequenceActive) {
             completed += 1;
@@ -1535,7 +1839,7 @@
           requestAnimationFrame(() => {
             element.classList.add('is-mathis-collapsing');
           });
-          const hideDelay = 280 + Math.random() * 160;
+          const hideDelay = 280 + Math.random() * 140;
           window.setTimeout(() => {
             if (!mathisSequenceActive) {
               completed += 1;
@@ -1639,6 +1943,7 @@
   const startMathisSequence = (overlay) => {
     mathisSequenceActive = true;
     mathisExitStarted = false;
+    prepareMathisFragments(overlay);
     const targets = gatherMathisTargets();
     collapseMathisTargets(targets).then(() => {
       if (!mathisSequenceActive) {
