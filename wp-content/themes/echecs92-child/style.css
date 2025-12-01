@@ -4369,7 +4369,7 @@ body.mathis-mode .mathis-fragment{
   margin: -50px 0;
 }
 .clubs-page--france .clubs-map-section{
-  margin:32px 0;
+  margin:-30px 0 32px;
 }
 .clubs-map__container{
   border:1px solid #d6dbe7;
