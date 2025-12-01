@@ -279,6 +279,7 @@
   const distanceFields = document.getElementById('clubs-distance-fields');
   const distanceToggle = document.getElementById('clubs-distance-toggle');
   const distanceHeader = document.querySelector('.clubs-distance__intro');
+  const clubsPageShell = document.querySelector('.clubs-page');
 
   const updateClearButtons = () => {
     if (resetButton && searchInput) {
@@ -1097,6 +1098,17 @@
     updateTotalCounter();
   };
 
+  const toggleGeolocErrorLayout = (active) => {
+    if (!clubsPageShell) {
+      return;
+    }
+    if (active) {
+      clubsPageShell.classList.add('has-geoloc-error');
+    } else {
+      clubsPageShell.classList.remove('has-geoloc-error');
+    }
+  };
+
   const setStatusNode = (node, message, tone) => {
     if (!node) {
       return;
@@ -1113,6 +1125,7 @@
     state.locationMessage = message || '';
     setStatusNode(locationStatus, message, tone);
     setStatusNode(geolocStatus, message, tone);
+    toggleGeolocErrorLayout(Boolean(message && tone === 'error'));
     updateTotalCounter();
   };
 
