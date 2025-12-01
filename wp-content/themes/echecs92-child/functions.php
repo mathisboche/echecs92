@@ -70,6 +70,7 @@ add_action('wp_enqueue_scripts', function () {
     $is_fr_listing = is_page('clubs') || is_page_template('page-clubs.html');
 
     $needs_leaflet = $is_92_map || $is_fr_map || $is_92_detail || $is_fr_detail || $is_fr_listing;
+    $needs_markercluster = $is_fr_map || $is_fr_listing;
 
     if ($needs_leaflet) {
         wp_enqueue_style(
@@ -87,6 +88,33 @@ add_action('wp_enqueue_scripts', function () {
         );
     }
 
+    if ($needs_markercluster) {
+        wp_enqueue_style(
+            'leaflet-markercluster',
+            'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css',
+            ['leaflet'],
+            '1.5.3'
+        );
+        wp_enqueue_style(
+            'leaflet-markercluster-default',
+            'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css',
+            ['leaflet-markercluster'],
+            '1.5.3'
+        );
+        wp_enqueue_script(
+            'leaflet-markercluster',
+            'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js',
+            ['leaflet'],
+            '1.5.3',
+            true
+        );
+    }
+
+    $fr_map_deps = ['leaflet'];
+    if ($needs_markercluster) {
+        $fr_map_deps[] = 'leaflet-markercluster';
+    }
+
     if ($is_92_map) {
         wp_enqueue_script(
             'echecs92-clubs-map',
@@ -101,7 +129,7 @@ add_action('wp_enqueue_scripts', function () {
         wp_enqueue_script(
             'echecs92-clubs-map-france',
             get_stylesheet_directory_uri() . '/assets/js/clubs-map-france.js',
-            ['leaflet'],
+            $fr_map_deps,
             wp_get_theme()->get('Version'),
             true
         );

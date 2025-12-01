@@ -4402,6 +4402,21 @@ body.mathis-mode .mathis-fragment{
 .clubs-map__status[data-tone="error"]{
   color:#b91c1c;
 }
+.leaflet-container .marker-cluster-small,
+.leaflet-container .marker-cluster-medium,
+.leaflet-container .marker-cluster-large{
+  background:rgba(29,78,216,0.12);
+  border:1px solid rgba(29,78,216,0.35);
+}
+.leaflet-container .marker-cluster div{
+  background:#1d4ed8;
+  color:#ffffff;
+  font-weight:700;
+  box-shadow:0 10px 30px rgba(15,23,42,0.14);
+}
+.leaflet-container .marker-cluster span{
+  color:#ffffff;
+}
 .club-map-section{
   margin-top:32px;
   display:flex;

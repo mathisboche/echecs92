@@ -1132,7 +1132,16 @@
         maxZoom: 18,
       }).addTo(map);
 
-      const markersLayer = L.layerGroup().addTo(map);
+      const markersLayer =
+        typeof L.markerClusterGroup === 'function'
+          ? L.markerClusterGroup({
+              showCoverageOnHover: false,
+              spiderfyOnMaxZoom: true,
+              maxClusterRadius: 60,
+              chunkedLoading: true,
+              disableClusteringAtZoom: 14,
+            }).addTo(map)
+          : L.layerGroup().addTo(map);
       let hasFittedView = false;
 
       const renderMarkers = (list, { refit = false } = {}) => {
@@ -1145,7 +1154,11 @@
           marker.bindPopup(createPopupContent(club), {
             keepInView: true,
           });
-          marker.addTo(markersLayer);
+          if (typeof markersLayer.addLayer === 'function') {
+            markersLayer.addLayer(marker);
+          } else {
+            marker.addTo(markersLayer);
+          }
           bounds.extend([coords.lat, coords.lng]);
         });
         if (bounds.isValid() && (refit || !hasFittedView)) {
