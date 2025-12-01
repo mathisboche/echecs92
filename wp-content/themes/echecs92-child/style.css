@@ -2669,13 +2669,14 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 }
 .person-card{
   display:flex;
-  align-items:flex-start;
-  gap:12px;
-  flex-direction:row;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  text-align:center;
 }
 .person-card__photo{
-  width:72px;
-  height:72px;
+  width:80px;
+  height:80px;
   border-radius:50%;
   object-fit:cover;
   background:#e2e8f0;
@@ -2685,7 +2686,8 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .person-card__body{
   display:flex;
   flex-direction:column;
-  gap:4px;
+  gap:2px;
+  align-items:center;
 }
 .person-card__role{
   margin:0;
@@ -2708,11 +2710,6 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .person-card__name a:hover,
 .person-card__name a:focus-visible{
   text-decoration:underline;
-}
-.person-card__bio{
-  margin:4px 0 0;
-  font-size:14px;
-  color:#475569;
 }
 
 @media (max-width:1023px){
