@@ -460,6 +460,14 @@
     }
   };
 
+  const syncPrimarySearchValue = (value) => {
+    if (!searchInput) {
+      return;
+    }
+    searchInput.value = value != null ? value : '';
+    updateClearButtons();
+  };
+
   const dismissMobileSearchKeyboard = () => {
     if (!searchInput || !isMobileViewport()) {
       return;
@@ -1312,9 +1320,10 @@
 
   const clearSearchQuery = (options = {}) => {
     const silent = Boolean(options.silent);
+    const keepInput = Boolean(options.keepInput);
     state.query = '';
     state.pendingQuery = '';
-    if (searchInput) {
+    if (searchInput && !keepInput) {
       searchInput.value = '';
     }
     updateClearButtons();
@@ -2152,7 +2161,10 @@
       if (searchInput) {
         searchInput.value = initialQueryParam;
       }
-      await performSearch({ suppressJump: true, quiet: true });
+      if (locationInput) {
+        locationInput.value = initialQueryParam;
+      }
+      await handleLocationSubmit({ quiet: true, fromPrimary: true, triggerButton: searchButton });
       applied = true;
     }
     if (initialSortParam) {
@@ -2170,6 +2182,11 @@
     }
     if (!applied && initialLocParam && locationInput) {
       locationInput.value = initialLocParam;
+      if (searchInput) {
+        searchInput.value = initialLocParam;
+      }
+      await handleLocationSubmit({ quiet: true, fromPrimary: true, triggerButton: searchButton });
+      applied = true;
     }
     return applied;
   };
@@ -3528,6 +3545,7 @@
     if (locationInput) {
       locationInput.value = '';
     }
+    syncPrimarySearchValue('');
     setLocationStatus(silent ? '' : 'Localisation effacée.', 'info');
     updateClearButtons();
     if (!skipSearch) {
@@ -3545,6 +3563,7 @@
       options = eventOrOptions;
     }
     const quiet = options.quiet === true || state.restoreMode;
+    const actionButton = options.triggerButton || locationApplyButton;
     if (!locationInput) {
       return;
     }
@@ -3563,14 +3582,14 @@
       state.sortMode = 'default';
       updateSortButtons();
     }
-    clearSearchQuery({ silent: true });
+    clearSearchQuery({ silent: true, keepInput: true });
     if (!quiet) {
       setLocationStatus(`Recherche de ${raw}…`, 'info');
     } else {
       setLocationStatus('', 'info');
     }
     const actionStartedAt = Date.now();
-    const releaseButton = quiet ? () => {} : beginButtonWait(locationApplyButton, 'Recherche…');
+    const releaseButton = quiet ? () => {} : beginButtonWait(actionButton, 'Recherche…');
     const overlayLabel = raw ? `Recherche autour de ${raw}…` : 'Recherche en cours…';
     const releaseOverlay = quiet ? () => {} : showLoadingOverlay(overlayLabel);
     const releaseLocationUi = (() => {
@@ -3661,6 +3680,7 @@
       if (locationInput) {
         locationInput.value = decoratedLabel || raw;
       }
+      syncPrimarySearchValue(decoratedLabel || raw);
 
       expandOptionsPanel();
       ensureDistanceSectionOpen();
@@ -3791,6 +3811,7 @@
               if (locationInput) {
                 locationInput.value = decoratedLabel || place?.label || '';
               }
+              syncPrimarySearchValue(decoratedLabel || place?.label || '');
 
               expandOptionsPanel();
               ensureDistanceSectionOpen();
@@ -3832,6 +3853,25 @@
     } catch (error) {
       handleGeolocError(error);
     }
+  };
+
+  const submitPrimaryLocationSearch = () => {
+    if (!searchInput) {
+      return;
+    }
+    const raw = searchInput.value.trim();
+    if (tryHandleSecretCommand(raw)) {
+      return;
+    }
+    if (!raw) {
+      handleLocationClear({ suppressJump: true });
+      return;
+    }
+    if (locationInput && locationInput !== searchInput) {
+      locationInput.value = raw;
+    }
+    dismissMobileSearchKeyboard();
+    void handleLocationSubmit({ fromPrimary: true, triggerButton: searchButton });
   };
 
   const adaptClubRecord = (raw) => {
@@ -4160,6 +4200,11 @@
       return;
     }
 
+    if (state.distanceMode && state.distanceReference) {
+      totalCounter.textContent = `distances depuis ${state.distanceReference}.`;
+      return;
+    }
+
     pendingTotalCounterText = null;
     totalCounterPlaceholderActive = false;
     totalCounter.classList.remove('is-deferred');
@@ -4306,28 +4351,26 @@
         const savedUi = hasInitialParams || reopenResultsRequested ? consumeListUiState() : null;
         const urlRestored = await applyInitialUrlState();
         let restored = urlRestored;
+        const savedPrimaryValue = savedUi ? savedUi.location || savedUi.query || '' : '';
 
         if (!restored && savedUi) {
           if (searchInput) {
-            searchInput.value = savedUi.query || '';
+            searchInput.value = savedPrimaryValue;
           }
           if (locationInput) {
-            locationInput.value = savedUi.location || '';
+            locationInput.value = savedPrimaryValue;
           }
           if (savedUi.sortMode) {
             state.sortMode = savedUi.sortMode;
             updateSortButtons();
           }
-          if (savedUi.distanceMode && savedUi.location) {
+          if (savedPrimaryValue) {
             try {
-              await handleLocationSubmit({ preventDefault() {}, quiet: true });
+              await handleLocationSubmit({ quiet: true, fromPrimary: true, triggerButton: searchButton });
               restored = true;
             } catch {
               restored = false;
             }
-          } else if (savedUi.query) {
-            await performSearch({ suppressJump: true, forceJump: false, quiet: true });
-            restored = true;
           }
           if (restored && savedUi.sortMode && savedUi.sortMode !== 'default' && !state.distanceMode) {
             state.sortMode = savedUi.sortMode;
@@ -4406,12 +4449,7 @@
         if (searchButton.getAttribute('aria-busy') === 'true') {
           return;
         }
-        const raw = searchInput ? searchInput.value.trim() : '';
-        if (!raw) {
-          return;
-        }
-        dismissMobileSearchKeyboard();
-        void performSearch({ showBusy: true });
+        submitPrimaryLocationSearch();
       });
     }
     resetButton?.addEventListener('click', resetSearch);
@@ -4420,18 +4458,10 @@
       searchInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
           event.preventDefault();
-          if (tryHandleSecretCommand(searchInput.value)) {
-            return;
-          }
           if (searchButton && searchButton.getAttribute('aria-busy') === 'true') {
             return;
           }
-          const raw = searchInput.value.trim();
-          if (!raw) {
-            return;
-          }
-          dismissMobileSearchKeyboard();
-          void performSearch({ showBusy: true });
+          submitPrimaryLocationSearch();
         }
       });
     }

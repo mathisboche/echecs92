@@ -53,16 +53,17 @@
 
     <div class="clubs-search-panel__layout">
       <div class="clubs-search-panel__group clubs-search-panel__group--primary">
-        <p class="clubs-search-panel__title">Recherche</p>
+        <p class="clubs-search-panel__title">Ville ou code postal</p>
         <div class="clubs-input-wrap">
           <input
             id="clubs-search"
             class="clubs-input clubs-search-panel__input"
             type="search"
-            placeholder="Nom du club ou ville…"
-            aria-label="Rechercher un club ou une ville"
-            autocomplete="off"
+            placeholder="Ville ou code postal…"
+            aria-label="Saisissez une ville ou un code postal pour afficher les distances"
+            autocomplete="postal-code"
             enterkeyhint="search"
+            list="clubs-location-suggestions"
           >
           <button id="clubs-search-clear" class="clubs-input__clear" type="button" aria-label="Effacer la recherche" hidden></button>
           <button
