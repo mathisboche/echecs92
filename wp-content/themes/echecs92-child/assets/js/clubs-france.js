@@ -384,10 +384,14 @@
               '';
             const commune = formatCommune(cityRaw || result.display_name || '');
             const display = [postalCode, commune].filter(Boolean).join(' — ') || result.display_name || query;
+            const latitude = Number.parseFloat(result.lat);
+            const longitude = Number.parseFloat(result.lon);
             return {
               display,
               postalCode,
               commune,
+              latitude: Number.isFinite(latitude) ? latitude : null,
+              longitude: Number.isFinite(longitude) ? longitude : null,
               search: normaliseForSearch(`${postalCode || ''} ${commune || ''}`),
             };
           })
@@ -477,10 +481,15 @@
       locationInput.value = label;
     }
     syncPrimarySearchValue(label);
+    locationSuggestionCoords = suggestion && suggestion.latitude && suggestion.longitude ? suggestion : null;
     closeLocationSuggestions();
     const trigger =
       options.triggerButton || (locationSuggestionsAnchor === searchInput ? searchButton : locationApplyButton);
-    void handleLocationSubmit({ triggerButton: trigger, fromPrimary: trigger === searchButton });
+    void handleLocationSubmit({
+      triggerButton: trigger,
+      fromPrimary: trigger === searchButton,
+      prefilledCoords: locationSuggestionCoords,
+    });
   };
 
   const renderLocationSuggestions = (entries, anchor, options = {}) => {
@@ -639,8 +648,9 @@
   const locationRemoteSuggestionCache = new Map();
   let locationRemoteTimer = null;
   let locationRemoteController = null;
-  const LOCATION_REMOTE_DEBOUNCE_MS = 180;
-  const LOCATION_REMOTE_TIMEOUT_MS = 1400;
+  const LOCATION_REMOTE_DEBOUNCE_MS = 160;
+  const LOCATION_REMOTE_TIMEOUT_MS = 2400;
+  let locationSuggestionCoords = null;
   const distanceGroup = document.querySelector('[data-mobile-collapsible]');
   const distanceFields = document.getElementById('clubs-distance-fields');
   const distanceToggle = document.getElementById('clubs-distance-toggle');
@@ -874,6 +884,7 @@
     if (!target || (target !== searchInput && target !== locationInput)) {
       return;
     }
+    locationSuggestionCoords = null;
     openLocationSuggestions(target.value, target, {
       triggerButton: target === searchInput ? searchButton : locationApplyButton,
     });
@@ -898,6 +909,7 @@
     if (!target || (target !== searchInput && target !== locationInput)) {
       return;
     }
+    locationSuggestionCoords = null;
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
       if (!locationSuggestionsOpen) {
@@ -4023,6 +4035,7 @@
       options = eventOrOptions;
     }
     const quiet = options.quiet === true || state.restoreMode;
+    const prefilledCoords = options.prefilledCoords || locationSuggestionCoords;
     const actionButton = options.triggerButton || locationApplyButton;
     if (!locationInput) {
       return;
@@ -4034,6 +4047,7 @@
       handleLocationClear();
       return;
     }
+    locationSuggestionCoords = null;
 
     if (!quiet) {
       deferResultsRendering();
@@ -4100,6 +4114,16 @@
     try {
       const looksLikeAddress = looksLikeDetailedAddress(effectiveRaw);
       let coords = null;
+      if (prefilledCoords && Number.isFinite(prefilledCoords.latitude) && Number.isFinite(prefilledCoords.longitude)) {
+        coords = {
+          latitude: Number(prefilledCoords.latitude),
+          longitude: Number(prefilledCoords.longitude),
+          label: prefilledCoords.display || prefilledCoords.commune || prefilledCoords.postalCode || raw,
+          postalCode: prefilledCoords.postalCode || '',
+          commune: prefilledCoords.commune || '',
+          source: 'suggestion',
+        };
+      }
       if (looksLikeAddress) {
         try {
           coords = await geocodePlace(effectiveRaw);
