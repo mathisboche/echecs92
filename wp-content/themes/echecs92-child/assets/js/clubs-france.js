@@ -398,9 +398,6 @@
     if (!hasQuery) {
       return locationSuggestionsIndex.slice(0, LOCATION_SUGGESTIONS_LIMIT);
     }
-    if (normalised && normalised.length < 2 && !numericQuery) {
-      return [];
-    }
     const scored = [];
     locationSuggestionsIndex.forEach((entry) => {
       const score = scoreLocationSuggestion(entry, normalised, numericQuery);
@@ -416,6 +413,53 @@
       return a.entry.display.localeCompare(b.entry.display, 'fr', { sensitivity: 'base' });
     });
     return scored.slice(0, LOCATION_SUGGESTIONS_LIMIT).map((item) => item.entry);
+  };
+
+  const resolveSuggestionCoordinates = (suggestion) => {
+    if (!suggestion) {
+      return null;
+    }
+    const lat = Number.parseFloat(suggestion.latitude ?? suggestion.lat);
+    const lng = Number.parseFloat(suggestion.longitude ?? suggestion.lng);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { latitude: lat, longitude: lng, label: suggestion.display || suggestion.commune || '', postalCode: suggestion.postalCode || '' };
+    }
+    if (suggestion.postalCode) {
+      const coords = getPostalCoordinates(suggestion.postalCode) || getDeptFallbackCoordinates(suggestion.postalCode);
+      if (coords) {
+        return { latitude: coords.lat, longitude: coords.lng, label: coords.label || suggestion.commune || '', postalCode: coords.postalCode || suggestion.postalCode };
+      }
+    }
+    if (suggestion.commune) {
+      const coords = getCommuneCoordinatesByName(suggestion.commune);
+      if (coords) {
+        return { latitude: coords.lat, longitude: coords.lng, label: coords.label || suggestion.commune, postalCode: coords.postalCode || suggestion.postalCode || '' };
+      }
+    }
+    return null;
+  };
+
+  const pickBestSuggestion = (rawQuery) => {
+    const matches = getLocationSuggestionsForQuery(rawQuery);
+    if (!matches.length) {
+      return null;
+    }
+    const postal = normalisePostalCodeValue(rawQuery);
+    const communeKey = normaliseCommuneForCompare(rawQuery);
+    let fallback = matches[0];
+    for (let i = 0; i < matches.length; i += 1) {
+      const entry = matches[i];
+      if (postal && entry.postalCode === postal) {
+        return { suggestion: entry, coords: resolveSuggestionCoordinates(entry) };
+      }
+      if (communeKey && entry.commune && normaliseCommuneForCompare(entry.commune) === communeKey) {
+        return { suggestion: entry, coords: resolveSuggestionCoordinates(entry) };
+      }
+      if (i === 0) {
+        fallback = entry;
+      }
+    }
+    return { suggestion: fallback, coords: resolveSuggestionCoordinates(fallback) };
   };
 
   const fetchRemoteLocationSuggestions = () => Promise.resolve([]);
@@ -479,12 +523,8 @@
       locationInput.value = label;
     }
     syncPrimarySearchValue(label);
-    const suggestionLat = Number.parseFloat(suggestion.latitude ?? suggestion.lat);
-    const suggestionLng = Number.parseFloat(suggestion.longitude ?? suggestion.lng);
-    locationSuggestionCoords =
-      Number.isFinite(suggestionLat) && Number.isFinite(suggestionLng)
-        ? { ...suggestion, latitude: suggestionLat, longitude: suggestionLng }
-        : null;
+    const resolved = resolveSuggestionCoordinates(suggestion);
+    locationSuggestionCoords = resolved ? { ...suggestion, ...resolved } : null;
     closeLocationSuggestions();
     const trigger =
       options.triggerButton || (locationSuggestionsAnchor === searchInput ? searchButton : locationApplyButton);
@@ -555,9 +595,8 @@
     if (!host || !anchor) {
       return;
     }
-    const typed = buildTypedLocationSuggestion(query);
     const localMatches = getLocationSuggestionsForQuery(query);
-    const initialList = dedupeLocationSuggestions([typed, ...localMatches]);
+    const initialList = dedupeLocationSuggestions(localMatches);
     renderLocationSuggestions(initialList, anchor, options);
   };
 
@@ -3947,40 +3986,55 @@
 
     updateStatusIfCurrent('Recherche en cours…', 'info');
 
-    const arrondissementPostal = deriveParisArrPostal(trimmed);
-    const searchQuery = arrondissementPostal || trimmed;
-    const displayQuery = arrondissementPostal || trimmed;
-    const meta = applySearch(searchQuery, { displayQuery });
+    const picked = pickBestSuggestion(trimmed);
+    const suggestion = picked?.suggestion || null;
+    const coords = picked?.coords || null;
     if (abortIfStale()) {
       return;
     }
 
-    if (!meta.hasQuery) {
-      if (state.distanceMode) {
-        handleLocationClear();
-      }
+    if (!suggestion) {
       finalizeSearch(() => {
-        updateStatusIfCurrent('Tous les clubs sont affichés.', 'info');
-      });
+        updateStatusIfCurrent('Choisissez une suggestion de ville ou code postal.', 'error');
+      }, { skipScroll: true });
       return;
     }
 
-    if (meta.total > 0) {
-      const label =
-        meta.total === 1
-          ? `1 club correspond à "${meta.rawQuery}".`
-          : `${meta.total} clubs correspondent à "${meta.rawQuery}".`;
+    if (!coords) {
       finalizeSearch(() => {
-        updateStatusIfCurrent(label, 'info');
-      });
+        updateStatusIfCurrent("Coordonnées indisponibles pour cette suggestion.", 'error');
+      }, { skipScroll: true });
       return;
     }
+
+    const displayLabel = formatLocationLabel(suggestion.commune, suggestion.postalCode, suggestion.display || trimmed);
+    const baseLabel = toDistanceReferenceLabel(displayLabel, coords.postalCode, { type: 'location' });
+    const referenceContext = deriveReferenceContext(displayLabel, coords, 'location');
+    const decoratedLabel = decorateReferenceLabel(baseLabel, referenceContext.type);
+
+    if (locationInput) {
+      locationInput.value = decoratedLabel || displayLabel || trimmed;
+    }
+    syncPrimarySearchValue(decoratedLabel || displayLabel || trimmed);
+
+    searchRequestId += 1;
+    const meta = runDistanceSearch({
+      latitude: coords.latitude ?? coords.lat,
+      longitude: coords.longitude ?? coords.lng,
+      label: decoratedLabel,
+      query: trimmed,
+      referencePostalCode: referenceContext.postalCode,
+      referenceCommune: referenceContext.commune,
+      referenceType: referenceContext.type,
+    });
 
     finalizeSearch(() => {
-      updateStatusIfCurrent(
-        `Aucun club ne correspond à "${meta.rawQuery}". Vous pouvez essayer la recherche par distance via le bloc "Autour de moi".`,
-        'error'
-      );
+      if (meta.finite > 0) {
+        const reference = meta.label || decoratedLabel || displayLabel || trimmed;
+        updateStatusIfCurrent(`Clubs triés par distance depuis ${reference}.`, 'info');
+      } else {
+        updateStatusIfCurrent('Impossible de calculer les distances pour cette localisation.', 'error');
+      }
     });
   };
 
@@ -4054,8 +4108,6 @@
     }
     const raw = locationInput.value.trim();
     const effectiveRaw = stripSelfPositionSuffix(raw);
-    const numericQuery = effectiveRaw.replace(/\D/g, '');
-    const looksLikePostal = /^\d{5}$/.test(numericQuery);
     closeLocationSuggestions();
     if (!raw) {
       handleLocationClear();
@@ -4126,12 +4178,11 @@
     };
 
     try {
-      const looksLikeAddress = looksLikeDetailedAddress(effectiveRaw);
-      const looksLikeCityName = LOOKS_LIKE_CITY.test(effectiveRaw);
-      const allowRemoteGeocode = looksLikeAddress || looksLikeCityName || looksLikePostal;
-      let coords = null;
       const prefilledLat = Number.parseFloat(prefilledCoords?.latitude ?? prefilledCoords?.lat);
       const prefilledLng = Number.parseFloat(prefilledCoords?.longitude ?? prefilledCoords?.lng);
+      let suggestion = null;
+      let coords = null;
+
       if (Number.isFinite(prefilledLat) && Number.isFinite(prefilledLng)) {
         coords = {
           latitude: prefilledLat,
@@ -4141,34 +4192,12 @@
           commune: prefilledCoords.commune || '',
           source: 'suggestion',
         };
-      }
-      if (looksLikeAddress) {
-        try {
-          coords = await geocodePlace(effectiveRaw);
-        } catch {
-          coords = null;
-        }
-      }
-      if (!coords) {
-        coords = lookupLocalCoordinates(effectiveRaw);
-      }
-      if (!coords && looksLikePostal) {
-        const deptFallback = getDeptFallbackCoordinates(numericQuery);
-        if (deptFallback) {
-          coords = {
-            latitude: deptFallback.lat,
-            longitude: deptFallback.lng,
-            label: deptFallback.label,
-            postalCode: deptFallback.postalCode || numericQuery,
-            source: 'dept-fallback',
-          };
-        }
-      }
-      if (!coords && allowRemoteGeocode) {
-        try {
-          coords = await geocodePlace(effectiveRaw);
-        } catch {
-          coords = null;
+        suggestion = prefilledCoords;
+      } else {
+        const picked = pickBestSuggestion(effectiveRaw);
+        if (picked) {
+          suggestion = picked.suggestion || null;
+          coords = picked.coords || null;
         }
       }
 
@@ -4176,26 +4205,32 @@
         return;
       }
 
-      if (!coords) {
+      if (!suggestion) {
         finalizeLocationSearch(() => {
-          setLocationStatus('Localisation introuvable. Essayez un autre nom de ville ou code postal.', 'error');
+          setLocationStatus('Choisissez une suggestion de ville ou code postal.', 'error');
+          setSearchStatus('Choisissez une suggestion de ville ou code postal.', 'error');
         });
         return;
       }
 
-      const referenceType = looksLikeAddress ? 'address' : 'location';
-      const baseLabel = toDistanceReferenceLabel(
-        coords.label || formatCommune(effectiveRaw) || effectiveRaw || raw,
-        coords.postalCode,
-        { type: referenceType }
-      );
-      const referenceContext = deriveReferenceContext(effectiveRaw || raw, coords, referenceType);
+      if (!coords) {
+        finalizeLocationSearch(() => {
+          setLocationStatus('Coordonnées indisponibles pour cette suggestion.', 'error');
+          setSearchStatus('Coordonnées indisponibles pour cette suggestion.', 'error');
+        });
+        return;
+      }
+
+      const displayLabel = formatLocationLabel(suggestion.commune, suggestion.postalCode, suggestion.display || raw);
+      const referenceType = 'location';
+      const baseLabel = toDistanceReferenceLabel(displayLabel, coords.postalCode, { type: referenceType });
+      const referenceContext = deriveReferenceContext(displayLabel, coords, referenceType);
       const decoratedLabel = decorateReferenceLabel(baseLabel, referenceContext.type);
 
       if (locationInput) {
-        locationInput.value = decoratedLabel || raw;
+        locationInput.value = decoratedLabel || displayLabel || raw;
       }
-      syncPrimarySearchValue(decoratedLabel || raw);
+      syncPrimarySearchValue(decoratedLabel || displayLabel || raw);
 
       expandOptionsPanel();
       ensureDistanceSectionOpen();
