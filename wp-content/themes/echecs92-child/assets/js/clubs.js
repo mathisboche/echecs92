@@ -2911,7 +2911,7 @@ const handleLocationSubmit = async (event) => {
       }
     }
     if (state.distanceMode && state.distanceReference) {
-      parts.push(`distances depuis ${state.distanceReference}`);
+      parts.push(`Distances depuis ${state.distanceReference}`);
     }
     if (activeLicenseSort) {
       parts.push(activeLicenseSort.counterLabel);
