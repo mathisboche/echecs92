@@ -231,7 +231,10 @@
         postalCode: postal || entry.postalCode || entry.code || '',
         commune: city || entry.commune || '',
         display: entry.display || entry.label || [postal, city].filter(Boolean).join(' — ') || postal || city,
-        search: entry.search || normaliseForSearch(`${postal || ''} ${city || ''}`.trim()),
+        search: entry.search || normaliseForSearch(`${commune || ''} ${postal || ''}`.trim()),
+        searchAlt:
+          entry.searchAlt ||
+          (commune || postal ? normaliseForSearch(`${postal || ''} ${commune || ''}`.trim()) : ''),
       };
       if (!Number.isFinite(candidate.latitude) && Number.isFinite(candidate.lat)) {
         candidate.latitude = Number(candidate.lat);
@@ -273,6 +276,7 @@
       postalCode: postal,
       commune: commune && commune.toLowerCase() !== postal ? commune : '',
       search: normaliseForSearch(trimmed),
+      searchAlt: normaliseForSearch(`${commune || ''} ${postal || ''}`.trim()),
       kind: 'typed',
     };
     if (localCoords && Number.isFinite(localCoords.lat) && Number.isFinite(localCoords.lng)) {
@@ -311,9 +315,10 @@
         parts.push(commune);
       }
       const display = parts.join(' — ') || commune || postal;
-      const search = normaliseForSearch(`${postal} ${commune}`);
+      const search = normaliseForSearch(`${commune} ${postal}`.trim());
+      const searchAlt = normaliseForSearch(`${postal} ${commune}`.trim());
       const coords = resolveClubDistanceCoordinates(club);
-      const entry = { display, postalCode: postal, commune, search };
+      const entry = { display, postalCode: postal, commune, search, searchAlt };
       if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
         entry.latitude = Number(coords.lat);
         entry.longitude = Number(coords.lng);
@@ -324,16 +329,47 @@
     locationSuggestionsIndex = index;
   };
 
+  const getSuggestionSearchFields = (entry) => {
+    const fields = new Set();
+    const add = (value) => {
+      const v = normaliseForSearch(value || '');
+      if (v) {
+        fields.add(v);
+      }
+    };
+    if (entry.search) {
+      add(entry.search);
+    }
+    if (entry.searchAlt) {
+      add(entry.searchAlt);
+    } else {
+      add(`${entry.commune || ''} ${entry.postalCode || ''}`);
+      add(`${entry.postalCode || ''} ${entry.commune || ''}`);
+    }
+    if (entry.commune) {
+      add(entry.commune);
+    }
+    if (entry.postalCode) {
+      add(entry.postalCode);
+    }
+    return Array.from(fields);
+  };
+
   const scoreLocationSuggestion = (entry, normalisedQuery, numericQuery) => {
     let score = 0;
+    const searchFields = getSuggestionSearchFields(entry);
     if (numericQuery && entry.postalCode && entry.postalCode.startsWith(numericQuery)) {
       score += 80 - Math.min(30, (entry.postalCode.length - numericQuery.length) * 6);
     }
     if (normalisedQuery) {
-      if (entry.search.startsWith(normalisedQuery)) {
+      const startsWithMatch = searchFields.some((value) => value.startsWith(normalisedQuery));
+      const containsMatch = searchFields.some((value) => !value.startsWith(normalisedQuery) && value.includes(normalisedQuery));
+      if (startsWithMatch) {
         score += 60;
-      } else if (entry.search.includes(normalisedQuery)) {
+      } else if (containsMatch) {
         score += 35;
+      } else {
+        return 0;
       }
     }
     if (!normalisedQuery && !numericQuery) {
@@ -359,12 +395,6 @@
     locationSuggestionsIndex.forEach((entry) => {
       const score = scoreLocationSuggestion(entry, normalised, numericQuery);
       if (score <= 0) {
-        return;
-      }
-      if (normalised && entry.search && !entry.search.startsWith(normalised)) {
-        return;
-      }
-      if (numericQuery && (!entry.postalCode || !entry.postalCode.startsWith(numericQuery))) {
         return;
       }
       scored.push({ entry, score });
