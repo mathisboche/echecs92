@@ -206,8 +206,16 @@
   };
 
   const dedupeLocationSuggestions = (entries) => {
-    const seen = new Set();
-    const list = [];
+    const bestByKey = new Map();
+    const hasCoords = (item) => {
+      if (!item) {
+        return false;
+      }
+      const lat = Number.parseFloat(item.latitude ?? item.lat);
+      const lng = Number.parseFloat(item.longitude ?? item.lng);
+      return Number.isFinite(lat) && Number.isFinite(lng);
+    };
+
     (entries || []).forEach((entry) => {
       if (!entry) {
         return;
@@ -218,19 +226,30 @@
       if (!key.trim()) {
         return;
       }
-      if (seen.has(key)) {
-        return;
-      }
-      seen.add(key);
-      list.push({
+      const candidate = {
         ...entry,
         postalCode: postal || entry.postalCode || entry.code || '',
         commune: city || entry.commune || '',
         display: entry.display || entry.label || [postal, city].filter(Boolean).join(' — ') || postal || city,
         search: entry.search || normaliseForSearch(`${postal || ''} ${city || ''}`.trim()),
-      });
+      };
+      if (!Number.isFinite(candidate.latitude) && Number.isFinite(candidate.lat)) {
+        candidate.latitude = Number(candidate.lat);
+      }
+      if (!Number.isFinite(candidate.longitude) && Number.isFinite(candidate.lng)) {
+        candidate.longitude = Number(candidate.lng);
+      }
+      const existing = bestByKey.get(key);
+      if (!existing) {
+        bestByKey.set(key, candidate);
+        return;
+      }
+      if (!hasCoords(existing) && hasCoords(candidate)) {
+        bestByKey.set(key, candidate);
+      }
     });
-    return list;
+
+    return Array.from(bestByKey.values());
   };
 
   const buildTypedLocationSuggestion = (query) => {
@@ -240,6 +259,7 @@
     }
     const postal = normalisePostalCodeValue(trimmed);
     const commune = formatCommune(trimmed);
+    const localCoords = lookupLocalCoordinates(trimmed) || getDeptFallbackCoordinates(postal);
     const displayParts = [];
     if (commune) {
       displayParts.push(commune);
@@ -248,13 +268,25 @@
       displayParts.push(`(${postal})`);
     }
     const display = displayParts.length ? displayParts.join(' ') : trimmed;
-    return {
+    const suggestion = {
       display,
       postalCode: postal,
       commune: commune && commune.toLowerCase() !== postal ? commune : '',
       search: normaliseForSearch(trimmed),
       kind: 'typed',
     };
+    if (localCoords && Number.isFinite(localCoords.lat) && Number.isFinite(localCoords.lng)) {
+      suggestion.latitude = localCoords.lat;
+      suggestion.longitude = localCoords.lng;
+    } else if (
+      localCoords &&
+      Number.isFinite(localCoords.latitude) &&
+      Number.isFinite(localCoords.longitude)
+    ) {
+      suggestion.latitude = localCoords.latitude;
+      suggestion.longitude = localCoords.longitude;
+    }
+    return suggestion;
   };
 
   const buildLocationSuggestionIndex = (clubs) => {
@@ -280,7 +312,13 @@
       }
       const display = parts.join(' — ') || commune || postal;
       const search = normaliseForSearch(`${postal} ${commune}`);
-      index.push({ display, postalCode: postal, commune, search });
+      const coords = resolveClubDistanceCoordinates(club);
+      const entry = { display, postalCode: postal, commune, search };
+      if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
+        entry.latitude = Number(coords.lat);
+        entry.longitude = Number(coords.lng);
+      }
+      index.push(entry);
     });
     index.sort((a, b) => a.display.localeCompare(b.display, 'fr', { sensitivity: 'base' }));
     locationSuggestionsIndex = index;
@@ -408,7 +446,12 @@
       locationInput.value = label;
     }
     syncPrimarySearchValue(label);
-    locationSuggestionCoords = suggestion && suggestion.latitude && suggestion.longitude ? suggestion : null;
+    const suggestionLat = Number.parseFloat(suggestion.latitude ?? suggestion.lat);
+    const suggestionLng = Number.parseFloat(suggestion.longitude ?? suggestion.lng);
+    locationSuggestionCoords =
+      Number.isFinite(suggestionLat) && Number.isFinite(suggestionLng)
+        ? { ...suggestion, latitude: suggestionLat, longitude: suggestionLng }
+        : null;
     closeLocationSuggestions();
     const trigger =
       options.triggerButton || (locationSuggestionsAnchor === searchInput ? searchButton : locationApplyButton);
@@ -2946,10 +2989,33 @@
     const postalMatches = raw.match(/\b(\d{5})\b/g);
     if (postalMatches) {
       for (let i = 0; i < postalMatches.length; i += 1) {
-        const coords = getPostalCoordinates(postalMatches[i]);
+        const code = postalMatches[i];
+        const coords = getPostalCoordinates(code);
         if (coords) {
           return { latitude: coords.lat, longitude: coords.lng, label: coords.label, postalCode: coords.postalCode };
         }
+        const deptFallback = getDeptFallbackCoordinates(code);
+        if (deptFallback) {
+          return {
+            latitude: deptFallback.lat,
+            longitude: deptFallback.lng,
+            label: deptFallback.label,
+            postalCode: deptFallback.postalCode || code,
+          };
+        }
+      }
+    }
+
+    const numericOnly = raw.replace(/\D/g, '');
+    if (!postalMatches && numericOnly && numericOnly.length >= 2 && numericOnly.length <= 3 && numericOnly === raw) {
+      const deptFallback = getDeptFallbackCoordinates(numericOnly);
+      if (deptFallback) {
+        return {
+          latitude: deptFallback.lat,
+          longitude: deptFallback.lng,
+          label: deptFallback.label,
+          postalCode: deptFallback.postalCode || numericOnly,
+        };
       }
     }
 
@@ -3936,6 +4002,8 @@
     }
     const raw = locationInput.value.trim();
     const effectiveRaw = stripSelfPositionSuffix(raw);
+    const numericQuery = effectiveRaw.replace(/\D/g, '');
+    const looksLikePostal = /^\d{5}$/.test(numericQuery);
     closeLocationSuggestions();
     if (!raw) {
       handleLocationClear();
@@ -4008,12 +4076,14 @@
     try {
       const looksLikeAddress = looksLikeDetailedAddress(effectiveRaw);
       const looksLikeCityName = LOOKS_LIKE_CITY.test(effectiveRaw);
-      const allowRemoteGeocode = looksLikeAddress || looksLikeCityName;
+      const allowRemoteGeocode = looksLikeAddress || looksLikeCityName || looksLikePostal;
       let coords = null;
-      if (prefilledCoords && Number.isFinite(prefilledCoords.latitude) && Number.isFinite(prefilledCoords.longitude)) {
+      const prefilledLat = Number.parseFloat(prefilledCoords?.latitude ?? prefilledCoords?.lat);
+      const prefilledLng = Number.parseFloat(prefilledCoords?.longitude ?? prefilledCoords?.lng);
+      if (Number.isFinite(prefilledLat) && Number.isFinite(prefilledLng)) {
         coords = {
-          latitude: Number(prefilledCoords.latitude),
-          longitude: Number(prefilledCoords.longitude),
+          latitude: prefilledLat,
+          longitude: prefilledLng,
           label: prefilledCoords.display || prefilledCoords.commune || prefilledCoords.postalCode || raw,
           postalCode: prefilledCoords.postalCode || '',
           commune: prefilledCoords.commune || '',
@@ -4029,6 +4099,18 @@
       }
       if (!coords) {
         coords = lookupLocalCoordinates(effectiveRaw);
+      }
+      if (!coords && looksLikePostal) {
+        const deptFallback = getDeptFallbackCoordinates(numericQuery);
+        if (deptFallback) {
+          coords = {
+            latitude: deptFallback.lat,
+            longitude: deptFallback.lng,
+            label: deptFallback.label,
+            postalCode: deptFallback.postalCode || numericQuery,
+            source: 'dept-fallback',
+          };
+        }
       }
       if (!coords && allowRemoteGeocode) {
         try {
