@@ -326,18 +326,15 @@
     return scored.slice(0, LOCATION_SUGGESTIONS_LIMIT).map((item) => item.entry);
   };
 
-  const fetchRemoteLocationSuggestions = (query) => {
+  const fetchRemoteLocationSuggestions = (query, options = {}) => {
     const key = normalise(query).replace(/\s+/g, ' ').trim();
     if (!key || key.length < 2) {
       return Promise.resolve([]);
     }
-    const cached = locationRemoteSuggestionCache.get(key);
-    if (cached) {
-      if (typeof cached.then === 'function') {
-        return cached;
-      }
-      return Promise.resolve(cached);
+    if (locationRemoteSuggestionCache.has(key)) {
+      return Promise.resolve(locationRemoteSuggestionCache.get(key));
     }
+    const controller = options.controller || new AbortController();
     const params = new URLSearchParams({
       format: 'json',
       addressdetails: '1',
@@ -345,11 +342,23 @@
       countrycodes: 'fr',
       q: query,
     });
-    const request = fetch(`${GEOCODE_ENDPOINT}?${params.toString()}`, {
+    const timeout = typeof options.timeoutMs === 'number' ? options.timeoutMs : LOCATION_REMOTE_TIMEOUT_MS;
+    const timeoutId =
+      timeout > 0
+        ? setTimeout(() => {
+            try {
+              controller.abort();
+            } catch {
+              // ignore abort issues
+            }
+          }, timeout)
+        : null;
+    return fetch(`${GEOCODE_ENDPOINT}?${params.toString()}`, {
       headers: {
         Accept: 'application/json',
         'User-Agent': 'echecs92-clubs-fr/1.0 (contact@echecs92.com)',
       },
+      signal: controller.signal,
     })
       .then((response) => {
         if (!response.ok) {
@@ -388,11 +397,13 @@
         return deduped;
       })
       .catch(() => {
-        locationRemoteSuggestionCache.set(key, []);
         return [];
+      })
+      .finally(() => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
       });
-    locationRemoteSuggestionCache.set(key, request);
-    return request;
   };
 
   const positionLocationSuggestions = (anchor) => {
@@ -413,6 +424,18 @@
     }
     if (locationSuggestionsAnchor && typeof locationSuggestionsAnchor.setAttribute === 'function') {
       locationSuggestionsAnchor.setAttribute('aria-expanded', 'false');
+    }
+    if (locationRemoteTimer) {
+      clearTimeout(locationRemoteTimer);
+      locationRemoteTimer = null;
+    }
+    if (locationRemoteController) {
+      try {
+        locationRemoteController.abort();
+      } catch {
+        // ignore abort errors
+      }
+      locationRemoteController = null;
     }
     locationSuggestionsHost.hidden = true;
     locationSuggestionsHost.dataset.open = 'false';
@@ -515,21 +538,39 @@
     const localMatches = getLocationSuggestionsForQuery(query);
     const initialList = dedupeLocationSuggestions([typed, ...localMatches]);
     renderLocationSuggestions(initialList, anchor, options);
+    if (locationRemoteTimer) {
+      clearTimeout(locationRemoteTimer);
+      locationRemoteTimer = null;
+    }
+    if (locationRemoteController) {
+      try {
+        locationRemoteController.abort();
+      } catch {
+        // ignore abort issues
+      }
+      locationRemoteController = null;
+    }
     if (!query || query.trim().length < 2) {
       return;
     }
     const requestId = ++locationSuggestionsRequestId;
-    fetchRemoteLocationSuggestions(query)
-      .then((remote) => {
-        if (requestId !== locationSuggestionsRequestId) {
-          return;
-        }
-        const merged = dedupeLocationSuggestions([typed, ...(remote || []), ...localMatches]);
-        renderLocationSuggestions(merged, anchor, options);
+    locationRemoteTimer = setTimeout(() => {
+      locationRemoteController = new AbortController();
+      fetchRemoteLocationSuggestions(query, {
+        controller: locationRemoteController,
+        timeoutMs: LOCATION_REMOTE_TIMEOUT_MS,
       })
-      .catch(() => {
-        /* ignore remote suggestion failures */
-      });
+        .then((remote) => {
+          if (requestId !== locationSuggestionsRequestId) {
+            return;
+          }
+          const merged = dedupeLocationSuggestions([typed, ...(remote || []), ...localMatches]);
+          renderLocationSuggestions(merged, anchor, options);
+        })
+        .catch(() => {
+          /* ignore remote suggestion failures */
+        });
+    }, LOCATION_REMOTE_DEBOUNCE_MS);
   };
 
   const getDeptFallbackCoordinates = (postalCode) => {
@@ -596,6 +637,10 @@
   let locationSuggestionsOpen = false;
   let locationSuggestionsRequestId = 0;
   const locationRemoteSuggestionCache = new Map();
+  let locationRemoteTimer = null;
+  let locationRemoteController = null;
+  const LOCATION_REMOTE_DEBOUNCE_MS = 180;
+  const LOCATION_REMOTE_TIMEOUT_MS = 1400;
   const distanceGroup = document.querySelector('[data-mobile-collapsible]');
   const distanceFields = document.getElementById('clubs-distance-fields');
   const distanceToggle = document.getElementById('clubs-distance-toggle');
