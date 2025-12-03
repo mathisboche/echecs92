@@ -178,6 +178,7 @@
     '75014': { label: 'Paris 14e', lat: 48.8323, lng: 2.325 },
     '75015': { label: 'Paris 15e', lat: 48.8419, lng: 2.3034 },
     '75016': { label: 'Paris 16e', lat: 48.8602, lng: 2.27 },
+    '75116': { label: 'Paris 16e', lat: 48.8602, lng: 2.27 },
     '75017': { label: 'Paris 17e', lat: 48.8876, lng: 2.3079 },
     '75018': { label: 'Paris 18e', lat: 48.8913, lng: 2.344 },
     '75019': { label: 'Paris 19e', lat: 48.8896, lng: 2.3772 },
@@ -221,7 +222,7 @@
         return;
       }
       const postal = normalisePostalCodeValue(entry.postalCode || entry.postcode || entry.code);
-      const city = formatCommune(entry.commune || entry.city || entry.label || entry.display || '');
+      const city = formatCommuneWithPostal(entry.commune || entry.city || entry.label || entry.display || '', postal);
       const key = `${postal || ''}|${normaliseCommuneForCompare(city || entry.display || '')}`;
       if (!key.trim()) {
         return;
@@ -256,7 +257,7 @@
   };
 
   const formatLocationLabel = (commune, postalCode, fallback = '') => {
-    const city = formatCommune(commune || '');
+    const city = formatCommuneWithPostal(commune || '', postalCode);
     const postal = normalisePostalCodeValue(postalCode);
     if (city && postal) {
       return `${city} (${postal})`;
@@ -283,17 +284,18 @@
       return null;
     }
     const localCoords = lookupLocalCoordinates(trimmed) || getDeptFallbackCoordinates(postal);
+    const derivedPostal = postal || localCoords?.postalCode || '';
     if (!commune && localCoords && localCoords.label) {
-      commune = formatCommune(localCoords.label);
+      commune = localCoords.label;
     }
-    const displayParts = [];
-    const display = formatLocationLabel(commune, postal, trimmed);
+    const formattedCommune = formatCommuneWithPostal(commune || '', derivedPostal);
+    const display = formatLocationLabel(formattedCommune, derivedPostal, trimmed);
     const suggestion = {
       display,
-      postalCode: postal,
-      commune: commune && commune.toLowerCase() !== postal ? commune : '',
+      postalCode: derivedPostal,
+      commune: formattedCommune && formattedCommune.toLowerCase() !== derivedPostal ? formattedCommune : '',
       search: normaliseForSearch(trimmed),
-      searchAlt: normaliseForSearch(`${commune || ''} ${postal || ''}`.trim()),
+      searchAlt: normaliseForSearch(`${formattedCommune || ''} ${derivedPostal || ''}`.trim()),
       kind: 'typed',
     };
     if (localCoords && Number.isFinite(localCoords.lat) && Number.isFinite(localCoords.lng)) {
@@ -315,7 +317,7 @@
     const index = [];
     (clubs || []).forEach((club) => {
       const postal = normalisePostalCodeValue(club.postalCode || '');
-      const commune = formatCommune(club.commune || '');
+      const commune = formatCommuneWithPostal(club.commune || '', postal || club.postalCode);
       if (!postal && !commune) {
         return;
       }
@@ -389,16 +391,16 @@
   };
 
   const getLocationSuggestionsForQuery = (rawQuery) => {
-    if (!locationSuggestionsIndex.length) {
-      return [];
-    }
     const normalised = normaliseForSearch(rawQuery);
     const numericQuery = (rawQuery || '').replace(/\D/g, '');
     const hasQuery = Boolean(normalised || numericQuery);
-    if (!hasQuery) {
-      return locationSuggestionsIndex.slice(0, LOCATION_SUGGESTIONS_LIMIT);
-    }
+    const typed = buildTypedLocationSuggestion(rawQuery);
     const scored = [];
+    if (!hasQuery) {
+      const base = locationSuggestionsIndex.slice(0, LOCATION_SUGGESTIONS_LIMIT);
+      const combined = typed ? [typed, ...base] : base;
+      return dedupeLocationSuggestions(combined).slice(0, LOCATION_SUGGESTIONS_LIMIT);
+    }
     locationSuggestionsIndex.forEach((entry) => {
       const score = scoreLocationSuggestion(entry, normalised, numericQuery);
       if (score <= 0) {
@@ -412,7 +414,9 @@
       }
       return a.entry.display.localeCompare(b.entry.display, 'fr', { sensitivity: 'base' });
     });
-    return scored.slice(0, LOCATION_SUGGESTIONS_LIMIT).map((item) => item.entry);
+    const ranked = scored.slice(0, LOCATION_SUGGESTIONS_LIMIT).map((item) => item.entry);
+    const combined = typed ? [typed, ...ranked] : ranked;
+    return dedupeLocationSuggestions(combined).slice(0, LOCATION_SUGGESTIONS_LIMIT);
   };
 
   const resolveSuggestionCoordinates = (suggestion) => {
@@ -839,15 +843,40 @@
     };
   };
 
+  let searchClearLockCount = 0;
+  let locationClearLockCount = 0;
+
   const updateClearButtons = () => {
     if (resetButton && searchInput) {
       const hasValue = (searchInput.value || '').trim().length > 0;
-      resetButton.hidden = !hasValue;
+      const locked = searchClearLockCount > 0;
+      resetButton.hidden = locked || !hasValue;
     }
     if (locationClearButton && locationInput) {
       const hasValue = (locationInput.value || '').trim().length > 0;
-      locationClearButton.hidden = !hasValue;
+      const locked = locationClearLockCount > 0;
+      locationClearButton.hidden = locked || !hasValue;
     }
+  };
+
+  const lockSearchClear = () => {
+    searchClearLockCount += 1;
+    updateClearButtons();
+  };
+
+  const unlockSearchClear = () => {
+    searchClearLockCount = Math.max(0, searchClearLockCount - 1);
+    updateClearButtons();
+  };
+
+  const lockLocationClear = () => {
+    locationClearLockCount += 1;
+    updateClearButtons();
+  };
+
+  const unlockLocationClear = () => {
+    locationClearLockCount = Math.max(0, locationClearLockCount - 1);
+    updateClearButtons();
   };
 
   const syncPrimarySearchValue = (value) => {
@@ -859,15 +888,20 @@
   };
 
   const dismissMobileSearchKeyboard = () => {
-    if (!searchInput || !isMobileViewport()) {
-      return;
-    }
     if (typeof document === 'undefined') {
       return;
     }
     const active = document.activeElement;
-    if (active === searchInput && typeof searchInput.blur === 'function') {
-      searchInput.blur();
+    [searchInput, locationInput].forEach((input) => {
+      if (input && typeof input.blur === 'function' && active === input) {
+        input.blur();
+      }
+    });
+    if (active && active !== document.body && typeof active.blur === 'function') {
+      const tag = active.tagName ? active.tagName.toLowerCase() : '';
+      if (tag === 'input' || tag === 'textarea') {
+        active.blur();
+      }
     }
   };
 
@@ -2676,12 +2710,21 @@
     return applied;
   };
 
-  const beginButtonWait = (button, busyLabel) => {
+  const beginButtonWait = (button, busyLabel, options = {}) => {
     if (!button) {
       return () => {};
     }
     if (button.getAttribute('aria-busy') === 'true') {
       return () => {};
+    }
+    const lockClear = options.lockClearButtons === true;
+    const shouldLockSearch = lockClear && button === searchButton;
+    const shouldLockLocation = lockClear && button === locationApplyButton;
+    if (shouldLockSearch) {
+      lockSearchClear();
+    }
+    if (shouldLockLocation) {
+      lockLocationClear();
     }
     const previousHtml = button.innerHTML;
     const previousMinWidth = button.style.minWidth;
@@ -2696,6 +2739,12 @@
     button.disabled = true;
     button.setAttribute('aria-busy', 'true');
     return () => {
+      if (shouldLockSearch) {
+        unlockSearchClear();
+      }
+      if (shouldLockLocation) {
+        unlockLocationClear();
+      }
       button.innerHTML = previousHtml;
       if (hadExplicitMinWidth) {
         button.style.minWidth = previousMinWidth;
@@ -2757,10 +2806,17 @@
       return null;
     }
     const entry = COMMUNE_COORDINATES_BY_NAME[key];
-    if (!entry) {
-      return null;
+    if (entry) {
+      return { postalCode: entry.postalCode, lat: entry.lat, lng: entry.lng, label: entry.label };
     }
-    return { postalCode: entry.postalCode, lat: entry.lat, lng: entry.lng, label: entry.label };
+    const parisPostal = extractParisPostal(value);
+    if (parisPostal) {
+      const coords = getPostalCoordinates(parisPostal);
+      if (coords) {
+        return { postalCode: coords.postalCode, lat: coords.lat, lng: coords.lng, label: coords.label };
+      }
+    }
+    return null;
   };
 
   const buildAcronym = (value) => {
@@ -2955,6 +3011,42 @@
     return formatted ? formatted.toLowerCase() : '';
   };
 
+  const getParisArrondissementFromPostal = (postalCode) => {
+    const code = normalisePostalCodeValue(postalCode);
+    if (!code || code.length !== 5 || !code.startsWith('75')) {
+      return null;
+    }
+    if (code === '75116') {
+      return 16;
+    }
+    const arr = Number.parseInt(code.slice(3), 10);
+    if (!Number.isFinite(arr) || arr < 1 || arr > 20) {
+      return null;
+    }
+    return arr;
+  };
+
+  const formatParisArrondissementLabel = (postalCode) => {
+    const arr = getParisArrondissementFromPostal(postalCode);
+    if (!arr) {
+      return '';
+    }
+    const suffix = arr === 1 ? 'er' : 'e';
+    return `Paris ${arr}${suffix}`;
+  };
+
+  const formatCommuneWithPostal = (commune, postalCode) => {
+    const base = formatCommune(commune || '');
+    const parisLabel = formatParisArrondissementLabel(postalCode);
+    if (parisLabel) {
+      const looksNumeric = /^\d/.test(base);
+      if (!base || base.toLowerCase().startsWith('paris') || looksNumeric) {
+        return parisLabel;
+      }
+    }
+    return base;
+  };
+
   const LOOKS_LIKE_CITY = /^[\p{L}\s'’-]{3,}$/u;
 
   const deriveReferenceContext = (rawInput, coords = {}, type = '') => {
@@ -3034,11 +3126,17 @@
     return formatted.replace(/\s+/g, ' ').trim();
   };
 
-  const formatGeocodeLabel = (place) => {
+  const formatGeocodeLabel = (place, postalCodeOverride) => {
     if (!place || typeof place !== 'object') {
       return '';
     }
     const { address = {}, display_name: displayName = '' } = place;
+    const postalCodeRaw = postalCodeOverride || address.postcode || '';
+    const postalCode = postalCodeRaw.split(';')[0].trim();
+    const parisArr = formatParisArrondissementLabel(postalCode);
+    if (parisArr) {
+      return parisArr;
+    }
     const localityRaw =
       address.city ||
       address.town ||
@@ -3094,6 +3192,14 @@
             postalCode: deptFallback.postalCode || code,
           };
         }
+      }
+    }
+
+    const parisPostal = extractParisPostal(raw);
+    if (parisPostal) {
+      const coords = getPostalCoordinates(parisPostal);
+      if (coords) {
+        return { latitude: coords.lat, longitude: coords.lng, label: coords.label, postalCode: coords.postalCode };
       }
     }
 
@@ -3464,9 +3570,9 @@
         if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
           return null;
         }
-        const label = formatGeocodeLabel(result);
         const postalCodeRaw = result?.address?.postcode || '';
         const postalCode = postalCodeRaw.split(';')[0].trim();
+        const label = formatGeocodeLabel(result, postalCode);
         return {
           latitude,
           longitude,
@@ -3602,9 +3708,9 @@
         if (!payload) {
           return null;
         }
-        const label = formatGeocodeLabel(payload) || '';
         const postalCodeRaw = payload?.address?.postcode || '';
         const postalCode = postalCodeRaw.split(';')[0].trim();
+        const label = formatGeocodeLabel(payload, postalCode) || '';
         return {
           label,
           postalCode,
@@ -3902,7 +4008,7 @@
       if (!shouldShowBusy) {
         return () => {};
       }
-      const release = beginButtonWait(searchButton);
+      const release = beginButtonWait(searchButton, '', { lockClearButtons: true });
       let released = false;
       return () => {
         if (released) {
@@ -4108,6 +4214,7 @@
     }
     const raw = locationInput.value.trim();
     const effectiveRaw = stripSelfPositionSuffix(raw);
+    dismissMobileSearchKeyboard();
     closeLocationSuggestions();
     if (!raw) {
       handleLocationClear();
@@ -4130,7 +4237,7 @@
       setLocationStatus('', 'info');
     }
     const actionStartedAt = Date.now();
-    const releaseButton = quiet ? () => {} : beginButtonWait(actionButton, 'Recherche…');
+    const releaseButton = quiet ? () => {} : beginButtonWait(actionButton, 'Recherche…', { lockClearButtons: true });
     const overlayLabel = raw ? `Recherche autour de ${raw}…` : 'Recherche en cours…';
     const releaseOverlay = quiet ? () => {} : showLoadingOverlay(overlayLabel);
     const releaseLocationUi = (() => {
@@ -4440,14 +4547,15 @@
     const secondaryAddress = raw.siege || raw.siege_social || raw.address2 || '';
     const secondaryParts = extractAddressParts(secondaryAddress);
     const communeRaw = raw.commune || raw.ville || addressParts.city || secondaryParts.city || '';
-    const commune = formatCommune(communeRaw);
+    const baseCommune = formatCommune(communeRaw);
     const postalCode = raw.code_postal || raw.postal_code || addressParts.postalCode || secondaryParts.postalCode || '';
+    const commune = formatCommuneWithPostal(baseCommune, postalCode);
     const slugSource = name || commune || postalCode || primaryAddress || secondaryAddress;
     const standardAddress = buildStandardAddress(
       primaryAddress,
       secondaryAddress,
       postalCode,
-      commune || addressParts.city || secondaryParts.city || ''
+      commune || baseCommune || addressParts.city || secondaryParts.city || ''
     );
     const id = raw.id || slugify(slugSource) || 'club';
 
@@ -4752,8 +4860,11 @@
       return;
     }
 
-    if (state.distanceMode && state.distanceReference) {
-      totalCounter.textContent = `distances depuis ${state.distanceReference}.`;
+    const distanceLabel =
+      state.distanceMode && state.distanceReference ? `Distances depuis ${state.distanceReference}` : '';
+
+    if (distanceLabel) {
+      totalCounter.textContent = distanceLabel;
       return;
     }
 
@@ -4773,15 +4884,17 @@
 
     if (!filtered) {
       const parts = ['Aucun club trouvé', `${total} au total`];
-      if (state.distanceMode && state.distanceReference) {
-        parts.splice(1, 0, `distances depuis ${state.distanceReference}`);
+      if (distanceLabel) {
+        parts.splice(1, 0, distanceLabel);
       }
       if (activeLicenseSort) {
         parts.push(activeLicenseSort.counterLabel);
       } else if (state.sortMode === 'alpha') {
         parts.push('ordre alphabétique');
       }
-      totalCounter.textContent = `${parts.join(' · ')}.`;
+      const sentence = parts.join(' · ');
+      const appendPeriod = !distanceLabel;
+      totalCounter.textContent = appendPeriod ? `${sentence}.` : sentence;
       return;
     }
 
@@ -4794,15 +4907,17 @@
         parts.push(`${visible} affiché${visible > 1 ? 's' : ''}`);
       }
     }
-    if (state.distanceMode && state.distanceReference) {
-      parts.push(`distances depuis ${state.distanceReference}`);
+    if (distanceLabel) {
+      parts.push(distanceLabel);
     }
     if (activeLicenseSort) {
       parts.push(activeLicenseSort.counterLabel);
     } else if (state.sortMode === 'alpha') {
       parts.push('ordre alphabétique');
     }
-    totalCounter.textContent = `${parts.join(' · ')}.`;
+    const sentence = parts.join(' · ');
+    const appendPeriod = !distanceLabel;
+    totalCounter.textContent = appendPeriod ? `${sentence}.` : sentence;
   }
 
   const renderResults = (options = {}) => {
