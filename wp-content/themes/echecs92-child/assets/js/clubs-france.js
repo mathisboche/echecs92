@@ -205,6 +205,50 @@
     return locationSuggestionsHost;
   };
 
+  const dedupeLocationSuggestions = (entries) => {
+    const seen = new Set();
+    const list = [];
+    (entries || []).forEach((entry) => {
+      if (!entry) {
+        return;
+      }
+      const postal = normalisePostalCodeValue(entry.postalCode || entry.postcode || entry.code);
+      const city = formatCommune(entry.commune || entry.city || entry.label || entry.display || '');
+      const key = `${postal || ''}|${normaliseCommuneForCompare(city || entry.display || '')}`;
+      if (!key.trim()) {
+        return;
+      }
+      if (seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      list.push({
+        ...entry,
+        postalCode: postal || entry.postalCode || entry.code || '',
+        commune: city || entry.commune || '',
+        display: entry.display || entry.label || [postal, city].filter(Boolean).join(' — ') || postal || city,
+        search: entry.search || normaliseForSearch(`${postal || ''} ${city || ''}`.trim()),
+      });
+    });
+    return list;
+  };
+
+  const buildTypedLocationSuggestion = (query) => {
+    const trimmed = (query || '').trim();
+    if (!trimmed) {
+      return null;
+    }
+    const postal = normalisePostalCodeValue(trimmed);
+    const commune = formatCommune(trimmed);
+    return {
+      display: trimmed,
+      postalCode: postal,
+      commune: commune && commune.toLowerCase() !== postal ? commune : '',
+      search: normaliseForSearch(trimmed),
+      kind: 'typed',
+    };
+  };
+
   const buildLocationSuggestionIndex = (clubs) => {
     const seen = new Set();
     const index = [];
@@ -282,6 +326,75 @@
     return scored.slice(0, LOCATION_SUGGESTIONS_LIMIT).map((item) => item.entry);
   };
 
+  const fetchRemoteLocationSuggestions = (query) => {
+    const key = normalise(query).replace(/\s+/g, ' ').trim();
+    if (!key || key.length < 2) {
+      return Promise.resolve([]);
+    }
+    const cached = locationRemoteSuggestionCache.get(key);
+    if (cached) {
+      if (typeof cached.then === 'function') {
+        return cached;
+      }
+      return Promise.resolve(cached);
+    }
+    const params = new URLSearchParams({
+      format: 'json',
+      addressdetails: '1',
+      limit: '8',
+      countrycodes: 'fr',
+      q: query,
+    });
+    const request = fetch(`${GEOCODE_ENDPOINT}?${params.toString()}`, {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'echecs92-clubs-fr/1.0 (contact@echecs92.com)',
+      },
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((payload) => {
+        if (!Array.isArray(payload)) {
+          return [];
+        }
+        const mapped = payload
+          .map((result) => {
+            const postalRaw = (result.address?.postcode || '').split(';')[0] || '';
+            const postalCode = normalisePostalCodeValue(postalRaw);
+            const cityRaw =
+              result.address?.city ||
+              result.address?.town ||
+              result.address?.village ||
+              result.address?.municipality ||
+              result.address?.locality ||
+              result.address?.hamlet ||
+              '';
+            const commune = formatCommune(cityRaw || result.display_name || '');
+            const display = [postalCode, commune].filter(Boolean).join(' — ') || result.display_name || query;
+            return {
+              display,
+              postalCode,
+              commune,
+              search: normaliseForSearch(`${postalCode || ''} ${commune || ''}`),
+            };
+          })
+          .filter((entry) => entry.postalCode || entry.commune || entry.display);
+        const deduped = dedupeLocationSuggestions(mapped);
+        locationRemoteSuggestionCache.set(key, deduped);
+        return deduped;
+      })
+      .catch(() => {
+        locationRemoteSuggestionCache.set(key, []);
+        return [];
+      });
+    locationRemoteSuggestionCache.set(key, request);
+    return request;
+  };
+
   const positionLocationSuggestions = (anchor) => {
     if (!locationSuggestionsHost || !anchor || typeof anchor.getBoundingClientRect !== 'function') {
       return;
@@ -308,6 +421,7 @@
     locationSuggestionsCurrent = [];
     locationSuggestionsActiveIndex = -1;
     locationSuggestionsAnchor = null;
+    locationSuggestionsRequestId += 1;
   };
 
   const highlightLocationSuggestion = (index) => {
@@ -346,12 +460,12 @@
     void handleLocationSubmit({ triggerButton: trigger, fromPrimary: trigger === searchButton });
   };
 
-  const openLocationSuggestions = (query, anchor, options = {}) => {
+  const renderLocationSuggestions = (entries, anchor, options = {}) => {
     const host = ensureLocationSuggestionsHost();
-    if (!host || !anchor || !locationSuggestionsIndex.length) {
+    if (!host || !anchor) {
       return;
     }
-    const matches = getLocationSuggestionsForQuery(query);
+    const matches = dedupeLocationSuggestions(entries || []);
     locationSuggestionsCurrent = matches;
     if (!matches.length) {
       closeLocationSuggestions();
@@ -368,7 +482,7 @@
       code.className = 'clubs-suggestions__code';
       code.textContent = suggestion.postalCode || suggestion.display;
       item.appendChild(code);
-      if (suggestion.commune) {
+      if (suggestion.commune && suggestion.commune.toLowerCase() !== suggestion.postalCode?.toLowerCase()) {
         const city = document.createElement('span');
         city.className = 'clubs-suggestions__city';
         city.textContent = suggestion.commune;
@@ -390,6 +504,32 @@
     host.dataset.open = 'true';
     positionLocationSuggestions(anchor);
     highlightLocationSuggestion(locationSuggestionsCurrent.length ? 0 : -1);
+  };
+
+  const openLocationSuggestions = (query, anchor, options = {}) => {
+    const host = ensureLocationSuggestionsHost();
+    if (!host || !anchor) {
+      return;
+    }
+    const typed = buildTypedLocationSuggestion(query);
+    const localMatches = getLocationSuggestionsForQuery(query);
+    const initialList = dedupeLocationSuggestions([typed, ...localMatches]);
+    renderLocationSuggestions(initialList, anchor, options);
+    if (!query || query.trim().length < 2) {
+      return;
+    }
+    const requestId = ++locationSuggestionsRequestId;
+    fetchRemoteLocationSuggestions(query)
+      .then((remote) => {
+        if (requestId !== locationSuggestionsRequestId) {
+          return;
+        }
+        const merged = dedupeLocationSuggestions([typed, ...(remote || []), ...localMatches]);
+        renderLocationSuggestions(merged, anchor, options);
+      })
+      .catch(() => {
+        /* ignore remote suggestion failures */
+      });
   };
 
   const getDeptFallbackCoordinates = (postalCode) => {
@@ -454,6 +594,8 @@
   let locationSuggestionsAnchor = null;
   let locationSuggestionsActiveIndex = -1;
   let locationSuggestionsOpen = false;
+  let locationSuggestionsRequestId = 0;
+  const locationRemoteSuggestionCache = new Map();
   const distanceGroup = document.querySelector('[data-mobile-collapsible]');
   const distanceFields = document.getElementById('clubs-distance-fields');
   const distanceToggle = document.getElementById('clubs-distance-toggle');
