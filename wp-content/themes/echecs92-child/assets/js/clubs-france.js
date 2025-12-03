@@ -255,22 +255,39 @@
     return Array.from(bestByKey.values());
   };
 
+  const formatLocationLabel = (commune, postalCode, fallback = '') => {
+    const city = formatCommune(commune || '');
+    const postal = normalisePostalCodeValue(postalCode);
+    if (city && postal) {
+      return `${city} (${postal})`;
+    }
+    if (city) {
+      return city;
+    }
+    if (postal) {
+      return postal;
+    }
+    return fallback || '';
+  };
+
   const buildTypedLocationSuggestion = (query) => {
     const trimmed = (query || '').trim();
     if (!trimmed) {
       return null;
     }
     const postal = normalisePostalCodeValue(trimmed);
-    const commune = formatCommune(trimmed);
+    let commune = formatCommune(trimmed);
+    const numericOnly = /^\d+$/.test(trimmed);
+    if (numericOnly && (!postal || postal.length < 4)) {
+      // Ignore too-short numeric prefixes (e.g., departement code only) to avoid noisy suggestions.
+      return null;
+    }
     const localCoords = lookupLocalCoordinates(trimmed) || getDeptFallbackCoordinates(postal);
+    if (!commune && localCoords && localCoords.label) {
+      commune = formatCommune(localCoords.label);
+    }
     const displayParts = [];
-    if (commune) {
-      displayParts.push(commune);
-    }
-    if (postal) {
-      displayParts.push(`(${postal})`);
-    }
-    const display = displayParts.length ? displayParts.join(' ') : trimmed;
+    const display = formatLocationLabel(commune, postal, trimmed);
     const suggestion = {
       display,
       postalCode: postal,
@@ -307,14 +324,7 @@
         return;
       }
       seen.add(key);
-      const parts = [];
-      if (postal) {
-        parts.push(postal);
-      }
-      if (commune) {
-        parts.push(commune);
-      }
-      const display = parts.join(' — ') || commune || postal;
+      const display = formatLocationLabel(commune, postal);
       const search = normaliseForSearch(`${commune} ${postal}`.trim());
       const searchAlt = normaliseForSearch(`${postal} ${commune}`.trim());
       const coords = resolveClubDistanceCoordinates(club);
@@ -464,14 +474,7 @@
     if (!suggestion) {
       return;
     }
-    const labelParts = [];
-    if (suggestion.commune) {
-      labelParts.push(suggestion.commune);
-    }
-    if (suggestion.postalCode) {
-      labelParts.push(`(${suggestion.postalCode})`);
-    }
-    const label = labelParts.length ? labelParts.join(' ') : suggestion.display || suggestion.commune || suggestion.postalCode || '';
+    const label = formatLocationLabel(suggestion.commune, suggestion.postalCode, suggestion.display);
     if (locationInput) {
       locationInput.value = label;
     }
@@ -505,6 +508,7 @@
     }
     host.innerHTML = '';
     matches.forEach((suggestion, index) => {
+      const label = formatLocationLabel(suggestion.commune, suggestion.postalCode, suggestion.display);
       const item = document.createElement('button');
       item.type = 'button';
       item.className = 'clubs-suggestions__item';
@@ -512,14 +516,20 @@
       item.dataset.index = `${index}`;
       const code = document.createElement('span');
       code.className = 'clubs-suggestions__code';
-      code.textContent = suggestion.commune
-        ? suggestion.commune
-        : suggestion.postalCode || suggestion.display;
+      code.textContent = suggestion.commune || suggestion.postalCode || label;
       item.appendChild(code);
-      if (suggestion.postalCode) {
+      if (suggestion.commune && suggestion.postalCode) {
         const city = document.createElement('span');
         city.className = 'clubs-suggestions__city';
         city.textContent = `(${suggestion.postalCode})`;
+        item.appendChild(city);
+      } else if (!suggestion.commune && suggestion.postalCode) {
+        // Postal-only: keep single column to avoid duplicate parentheses.
+        code.textContent = suggestion.postalCode;
+      } else if (label && label !== code.textContent) {
+        const city = document.createElement('span');
+        city.className = 'clubs-suggestions__city';
+        city.textContent = label;
         item.appendChild(city);
       }
       item.addEventListener('click', (event) => {
