@@ -2890,7 +2890,7 @@ const handleLocationSubmit = async (event) => {
     if (!filtered) {
       const parts = [`Aucun club trouvé`, `${total} au total`];
       if (state.distanceMode && state.distanceReference) {
-        parts.splice(1, 0, `distances depuis ${state.distanceReference}`);
+        parts.splice(1, 0, `Distances depuis ${state.distanceReference}`);
       }
       if (activeLicenseSort) {
         parts.push(activeLicenseSort.counterLabel);
