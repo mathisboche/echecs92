@@ -2857,7 +2857,19 @@
     return components.join(', ').trim();
   };
 
-  const normalisePostalCodeValue = (value) => (value ? value.toString().trim() : '');
+  const normalisePostalCodeValue = (value) => {
+    if (value == null) {
+      return '';
+    }
+    const digits = value.toString().replace(/\D/g, '').trim();
+    if (!digits) {
+      return '';
+    }
+    if (digits.length < 2 || digits.length > 5) {
+      return '';
+    }
+    return digits;
+  };
 
   const normaliseCommuneForCompare = (value) => {
     const formatted = formatCommune(value || '');
