@@ -436,6 +436,7 @@
         latitude: lat,
         longitude: lng,
         label: suggestion.display || suggestion.commune || '',
+        commune: suggestion.commune || '',
         postalCode: postalCode || suggestion.postalCode || '',
       };
     }
@@ -446,6 +447,7 @@
           latitude: coords.lat,
           longitude: coords.lng,
           label: coords.label || suggestion.commune || '',
+          commune: suggestion.commune || '',
           postalCode: coords.postalCode || postalCode,
         };
       }
@@ -453,7 +455,13 @@
     if (suggestion.commune) {
       const coords = getCommuneCoordinatesByName(suggestion.commune);
       if (coords) {
-        return { latitude: coords.lat, longitude: coords.lng, label: coords.label || suggestion.commune, postalCode: coords.postalCode || suggestion.postalCode || '' };
+        return {
+          latitude: coords.lat,
+          longitude: coords.lng,
+          label: coords.label || suggestion.commune,
+          commune: suggestion.commune,
+          postalCode: coords.postalCode || suggestion.postalCode || '',
+        };
       }
     }
     return null;
@@ -2702,8 +2710,8 @@
       if (locationInput) {
         locationInput.value = initialQueryParam;
       }
-      await handleLocationSubmit({ quiet: true, fromPrimary: true, triggerButton: searchButton });
-      applied = true;
+      const result = await handleLocationSubmit({ quiet: true, fromPrimary: true, triggerButton: searchButton });
+      applied = Boolean(result && result.ok);
     }
     if (initialSortParam) {
       const normalized =
@@ -2723,8 +2731,8 @@
       if (searchInput) {
         searchInput.value = initialLocParam;
       }
-      await handleLocationSubmit({ quiet: true, fromPrimary: true, triggerButton: searchButton });
-      applied = true;
+      const result = await handleLocationSubmit({ quiet: true, fromPrimary: true, triggerButton: searchButton });
+      applied = Boolean(result && result.ok);
     }
     return applied;
   };
@@ -3067,6 +3075,21 @@
     return formatted ? formatted.toLowerCase() : '';
   };
 
+  const normaliseReferenceCommune = (value, postalCode = '') => {
+    if (!value) {
+      return '';
+    }
+    const postal = normalisePostalCodeValue(postalCode);
+    let cleaned = value.replace(/\(\s*\d{4,5}\s*\)/g, ' ');
+    if (postal) {
+      const postalPattern = new RegExp(`\\b${postal}\\b`, 'gi');
+      cleaned = cleaned.replace(postalPattern, ' ');
+    }
+    cleaned = cleaned.replace(/\b\d{4,5}\b/g, ' ');
+    cleaned = cleaned.replace(/\s+/g, ' ').trim();
+    return normaliseCommuneForCompare(cleaned);
+  };
+
   const getParisArrondissementFromPostal = (postalCode) => {
     const code = normalisePostalCodeValue(postalCode);
     if (!code || code.length !== 5 || !code.startsWith('75')) {
@@ -3117,13 +3140,15 @@
     const addressParts = extractAddressParts(rawInput || '');
     const postal = coords.postalCode || addressParts.postalCode || '';
     const communeCandidate =
+      coords.commune ||
+      coords.city ||
       coords.label ||
       addressParts.city ||
       rawInput ||
       '';
     return {
       postalCode: normalisePostalCodeValue(postal),
-      commune: normaliseCommuneForCompare(communeCandidate),
+      commune: normaliseReferenceCommune(communeCandidate, postal),
       type,
     };
   };
@@ -3138,12 +3163,12 @@
     return baseLabel;
   };
 
-  const isClubOnsite = (club) => {
-    if (!state.distanceMode) {
+  const isClubOnsiteWithReference = (club, referencePostal, referenceCommune) => {
+    if (!club) {
       return false;
     }
-    const refPostal = state.distanceReferencePostal;
-    const refCommune = state.distanceReferenceCommune;
+    const refPostal = normalisePostalCodeValue(referencePostal);
+    const refCommune = normaliseReferenceCommune(referenceCommune, refPostal);
     const clubPostal = normalisePostalCodeValue(club.postalCode);
     const clubCommune = normaliseCommuneForCompare(club.commune);
 
@@ -3160,6 +3185,13 @@
       return true;
     }
     return false;
+  };
+
+  const isClubOnsite = (club) => {
+    if (!state.distanceMode) {
+      return false;
+    }
+    return isClubOnsiteWithReference(club, state.distanceReferencePostal, state.distanceReferenceCommune);
   };
 
   const looksLikeDetailedAddress = (value) => {
@@ -3580,7 +3612,8 @@
       return { text: '', tone: 'default' };
     }
     if (distanceKm < 0.05) {
-      return { text: 'sur place', tone: 'onsite' };
+      const meters = Math.max(10, Math.round(distanceKm * 1000));
+      return { text: `${meters} m`, tone: 'default' };
     }
     if (distanceKm < 1) {
       return { text: `${(distanceKm * 1000).toFixed(0)} m`, tone: 'default' };
@@ -3641,6 +3674,7 @@
           latitude,
           longitude,
           label,
+          commune: label || '',
           postalCode,
         };
       })
@@ -3666,7 +3700,7 @@
     }
     const postalCode = place.postalCode || place.postcode || '';
     const label = place.label || '';
-    return { lat, lng, postalCode, label };
+    return { lat, lng, postalCode, label, commune: place.commune || label || '' };
   };
 
   const geocodeClubIfNeeded = async (club) => {
@@ -3777,6 +3811,7 @@
         const label = formatGeocodeLabel(payload, postalCode) || '';
         return {
           label,
+          commune: label || '',
           postalCode,
         };
       })
@@ -3971,13 +4006,15 @@
   }) => {
     const lat = Number.parseFloat(latitude);
     const lng = Number.parseFloat(longitude);
+    const referencePostal = normalisePostalCodeValue(referencePostalCode);
+    const referenceCommuneKey = normaliseReferenceCommune(referenceCommune, referencePostal);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       state.filtered = [];
       state.visibleCount = 0;
       state.distanceMode = true;
       state.distanceReference = label || query || '';
-      state.distanceReferencePostal = normalisePostalCodeValue(referencePostalCode);
-      state.distanceReferenceCommune = normaliseCommuneForCompare(referenceCommune);
+      state.distanceReferencePostal = referencePostal;
+      state.distanceReferenceCommune = referenceCommuneKey;
       state.distanceReferenceType = referenceType || '';
       renderResults();
       updateTotalCounter();
@@ -3986,28 +4023,34 @@
 
     const scored = state.clubs.map((club) => {
       const coords = resolveClubDistanceCoordinates(club);
-      if (!coords) {
-        return { club, distance: Number.POSITIVE_INFINITY };
-      }
-      const distance = haversineKm(lat, lng, coords.lat, coords.lng);
-      return { club, distance };
+      const hasCoords = coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng);
+      const distance = hasCoords ? haversineKm(lat, lng, coords.lat, coords.lng) : Number.POSITIVE_INFINITY;
+      const onsite = isClubOnsiteWithReference(club, referencePostal, referenceCommuneKey);
+      return { club, distance, onsite };
     });
 
     scored.sort((a, b) => {
+      if (a.onsite !== b.onsite) {
+        return a.onsite ? -1 : 1;
+      }
+      if (a.onsite && b.onsite) {
+        const totalA = getLicenseCount(a.club, 'total');
+        const totalB = getLicenseCount(b.club, 'total');
+        if (totalB !== totalA) {
+          return totalB - totalA;
+        }
+        return a.club.name.localeCompare(b.club.name, 'fr', { sensitivity: 'base' });
+      }
       const aFinite = Number.isFinite(a.distance);
       const bFinite = Number.isFinite(b.distance);
       if (aFinite && bFinite) {
-        const onsiteA = a.distance < 0.05;
-        const onsiteB = b.distance < 0.05;
-        if (onsiteA && onsiteB) {
-          const totalA = getLicenseCount(a.club, 'total');
-          const totalB = getLicenseCount(b.club, 'total');
-          if (totalB !== totalA) {
-            return totalB - totalA;
-          }
-        }
         if (a.distance !== b.distance) {
           return a.distance - b.distance;
+        }
+        const totalA = getLicenseCount(a.club, 'total');
+        const totalB = getLicenseCount(b.club, 'total');
+        if (totalB !== totalA) {
+          return totalB - totalA;
         }
         return a.club.name.localeCompare(b.club.name, 'fr', { sensitivity: 'base' });
       }
@@ -4033,8 +4076,8 @@
     state.filtered = scored.map((entry) => entry.club);
     state.distanceMode = true;
     state.distanceReference = label || query || '';
-    state.distanceReferencePostal = normalisePostalCodeValue(referencePostalCode);
-    state.distanceReferenceCommune = normaliseCommuneForCompare(referenceCommune);
+    state.distanceReferencePostal = referencePostal;
+    state.distanceReferenceCommune = referenceCommuneKey;
     state.distanceReferenceType = referenceType || '';
     state.query = '';
     state.visibleCount = Math.min(VISIBLE_RESULTS_DEFAULT, state.filtered.length);
@@ -4274,15 +4317,17 @@
     const prefilledCoords = options.prefilledCoords || locationSuggestionCoords;
     const actionButton = options.triggerButton || locationApplyButton;
     if (!locationInput) {
-      return;
+      return { ok: false, reason: 'no-input' };
     }
+    let result = { ok: false };
     const raw = locationInput.value.trim();
     const effectiveRaw = stripSelfPositionSuffix(raw);
     dismissMobileSearchKeyboard();
     closeLocationSuggestions();
     if (!raw) {
       handleLocationClear();
-      return;
+      result = { ok: false, cleared: true };
+      return result;
     }
     locationSuggestionCoords = null;
 
@@ -4373,7 +4418,8 @@
       }
 
       if (requestId !== locationRequestId) {
-        return;
+        result = { ok: false, reason: 'stale' };
+        return result;
       }
 
       if (!suggestion) {
@@ -4381,7 +4427,8 @@
           setLocationStatus('Choisissez une suggestion de ville ou code postal.', 'error');
           setSearchStatus('Choisissez une suggestion de ville ou code postal.', 'error');
         });
-        return;
+        result = { ok: false, reason: 'no-suggestion' };
+        return result;
       }
 
       if (!coords) {
@@ -4389,7 +4436,8 @@
           setLocationStatus('Coordonnées indisponibles pour cette suggestion.', 'error');
           setSearchStatus('Coordonnées indisponibles pour cette suggestion.', 'error');
         });
-        return;
+        result = { ok: false, reason: 'no-coordinates' };
+        return result;
       }
 
       const displayLabel = formatLocationLabel(suggestion.commune, suggestion.postalCode, suggestion.display || raw);
@@ -4417,6 +4465,8 @@
         referenceType: referenceContext.type,
       });
 
+      const success = meta && meta.total > 0;
+      result = { ok: success, meta };
       if (meta.finite > 0) {
         const reference = meta.label || decoratedLabel || raw;
         finalizeLocationSearch(() => {
@@ -4431,6 +4481,7 @@
     } finally {
       releaseLocationUi();
     }
+    return result;
   };
 
   const handleUseGeolocation = () => {
@@ -4816,12 +4867,6 @@
     cardLink.appendChild(header);
 
     const displayAddress = club.addressDisplay || club.address || club.siege || '';
-    if (displayAddress) {
-      const address = document.createElement('p');
-      address.className = 'club-row__address';
-      address.textContent = displayAddress;
-      cardLink.appendChild(address);
-    }
 
     const footer = document.createElement('div');
     footer.className = 'club-row__footer';
@@ -5099,8 +5144,8 @@
           }
           if (savedPrimaryValue) {
             try {
-              await handleLocationSubmit({ quiet: true, fromPrimary: true, triggerButton: searchButton });
-              restored = true;
+              const result = await handleLocationSubmit({ quiet: true, fromPrimary: true, triggerButton: searchButton });
+              restored = Boolean(result && result.ok);
             } catch {
               restored = false;
             }
