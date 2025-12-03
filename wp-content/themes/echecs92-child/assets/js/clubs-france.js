@@ -240,8 +240,16 @@
     }
     const postal = normalisePostalCodeValue(trimmed);
     const commune = formatCommune(trimmed);
+    const displayParts = [];
+    if (commune) {
+      displayParts.push(commune);
+    }
+    if (postal) {
+      displayParts.push(`(${postal})`);
+    }
+    const display = displayParts.length ? displayParts.join(' ') : trimmed;
     return {
-      display: trimmed,
+      display,
       postalCode: postal,
       commune: commune && commune.toLowerCase() !== postal ? commune : '',
       search: normaliseForSearch(trimmed),
@@ -302,14 +310,20 @@
     }
     const normalised = normaliseForSearch(rawQuery);
     const numericQuery = (rawQuery || '').replace(/\D/g, '');
-    const pool = normalised || numericQuery ? locationSuggestionsIndex : locationSuggestionsIndex.slice(0, 200);
+    const hasQuery = Boolean(normalised || numericQuery);
+    if (!hasQuery) {
+      return locationSuggestionsIndex.slice(0, LOCATION_SUGGESTIONS_LIMIT);
+    }
+    if (normalised && normalised.length < 2 && !numericQuery) {
+      return [];
+    }
     const scored = [];
-    pool.forEach((entry) => {
+    locationSuggestionsIndex.forEach((entry) => {
       const score = scoreLocationSuggestion(entry, normalised, numericQuery);
-      if (score <= 0 && (normalised || numericQuery)) {
+      if (score <= 0) {
         return;
       }
-      if (normalised && !entry.search.includes(normalised)) {
+      if (normalised && entry.search && !entry.search.startsWith(normalised)) {
         return;
       }
       if (numericQuery && (!entry.postalCode || !entry.postalCode.startsWith(numericQuery))) {
@@ -326,89 +340,7 @@
     return scored.slice(0, LOCATION_SUGGESTIONS_LIMIT).map((item) => item.entry);
   };
 
-  const fetchRemoteLocationSuggestions = (query, options = {}) => {
-    const key = normalise(query).replace(/\s+/g, ' ').trim();
-    if (!key || key.length < 2) {
-      return Promise.resolve([]);
-    }
-    if (locationRemoteSuggestionCache.has(key)) {
-      return Promise.resolve(locationRemoteSuggestionCache.get(key));
-    }
-    const controller = options.controller || new AbortController();
-    const params = new URLSearchParams({
-      format: 'json',
-      addressdetails: '1',
-      limit: '8',
-      countrycodes: 'fr',
-      q: query,
-    });
-    const timeout = typeof options.timeoutMs === 'number' ? options.timeoutMs : LOCATION_REMOTE_TIMEOUT_MS;
-    const timeoutId =
-      timeout > 0
-        ? setTimeout(() => {
-            try {
-              controller.abort();
-            } catch {
-              // ignore abort issues
-            }
-          }, timeout)
-        : null;
-    return fetch(`${GEOCODE_ENDPOINT}?${params.toString()}`, {
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': 'echecs92-clubs-fr/1.0 (contact@echecs92.com)',
-      },
-      signal: controller.signal,
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        return response.json();
-      })
-      .then((payload) => {
-        if (!Array.isArray(payload)) {
-          return [];
-        }
-        const mapped = payload
-          .map((result) => {
-            const postalRaw = (result.address?.postcode || '').split(';')[0] || '';
-            const postalCode = normalisePostalCodeValue(postalRaw);
-            const cityRaw =
-              result.address?.city ||
-              result.address?.town ||
-              result.address?.village ||
-              result.address?.municipality ||
-              result.address?.locality ||
-              result.address?.hamlet ||
-              '';
-            const commune = formatCommune(cityRaw || result.display_name || '');
-            const display = [postalCode, commune].filter(Boolean).join(' — ') || result.display_name || query;
-            const latitude = Number.parseFloat(result.lat);
-            const longitude = Number.parseFloat(result.lon);
-            return {
-              display,
-              postalCode,
-              commune,
-              latitude: Number.isFinite(latitude) ? latitude : null,
-              longitude: Number.isFinite(longitude) ? longitude : null,
-              search: normaliseForSearch(`${postalCode || ''} ${commune || ''}`),
-            };
-          })
-          .filter((entry) => entry.postalCode || entry.commune || entry.display);
-        const deduped = dedupeLocationSuggestions(mapped);
-        locationRemoteSuggestionCache.set(key, deduped);
-        return deduped;
-      })
-      .catch(() => {
-        return [];
-      })
-      .finally(() => {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
-      });
-  };
+  const fetchRemoteLocationSuggestions = () => Promise.resolve([]);
 
   const positionLocationSuggestions = (anchor) => {
     if (!locationSuggestionsHost || !anchor || typeof anchor.getBoundingClientRect !== 'function') {
@@ -428,18 +360,6 @@
     }
     if (locationSuggestionsAnchor && typeof locationSuggestionsAnchor.setAttribute === 'function') {
       locationSuggestionsAnchor.setAttribute('aria-expanded', 'false');
-    }
-    if (locationRemoteTimer) {
-      clearTimeout(locationRemoteTimer);
-      locationRemoteTimer = null;
-    }
-    if (locationRemoteController) {
-      try {
-        locationRemoteController.abort();
-      } catch {
-        // ignore abort errors
-      }
-      locationRemoteController = null;
     }
     locationSuggestionsHost.hidden = true;
     locationSuggestionsHost.dataset.open = 'false';
@@ -476,7 +396,14 @@
     if (!suggestion) {
       return;
     }
-    const label = suggestion.display || suggestion.commune || suggestion.postalCode || '';
+    const labelParts = [];
+    if (suggestion.commune) {
+      labelParts.push(suggestion.commune);
+    }
+    if (suggestion.postalCode) {
+      labelParts.push(`(${suggestion.postalCode})`);
+    }
+    const label = labelParts.length ? labelParts.join(' ') : suggestion.display || suggestion.commune || suggestion.postalCode || '';
     if (locationInput) {
       locationInput.value = label;
     }
@@ -512,12 +439,14 @@
       item.dataset.index = `${index}`;
       const code = document.createElement('span');
       code.className = 'clubs-suggestions__code';
-      code.textContent = suggestion.postalCode || suggestion.display;
+      code.textContent = suggestion.commune
+        ? suggestion.commune
+        : suggestion.postalCode || suggestion.display;
       item.appendChild(code);
-      if (suggestion.commune && suggestion.commune.toLowerCase() !== suggestion.postalCode?.toLowerCase()) {
+      if (suggestion.postalCode) {
         const city = document.createElement('span');
         city.className = 'clubs-suggestions__city';
-        city.textContent = suggestion.commune;
+        city.textContent = `(${suggestion.postalCode})`;
         item.appendChild(city);
       }
       item.addEventListener('click', (event) => {
@@ -547,39 +476,6 @@
     const localMatches = getLocationSuggestionsForQuery(query);
     const initialList = dedupeLocationSuggestions([typed, ...localMatches]);
     renderLocationSuggestions(initialList, anchor, options);
-    if (locationRemoteTimer) {
-      clearTimeout(locationRemoteTimer);
-      locationRemoteTimer = null;
-    }
-    if (locationRemoteController) {
-      try {
-        locationRemoteController.abort();
-      } catch {
-        // ignore abort issues
-      }
-      locationRemoteController = null;
-    }
-    if (!query || query.trim().length < 2) {
-      return;
-    }
-    const requestId = ++locationSuggestionsRequestId;
-    locationRemoteTimer = setTimeout(() => {
-      locationRemoteController = new AbortController();
-      fetchRemoteLocationSuggestions(query, {
-        controller: locationRemoteController,
-        timeoutMs: LOCATION_REMOTE_TIMEOUT_MS,
-      })
-        .then((remote) => {
-          if (requestId !== locationSuggestionsRequestId) {
-            return;
-          }
-          const merged = dedupeLocationSuggestions([typed, ...(remote || []), ...localMatches]);
-          renderLocationSuggestions(merged, anchor, options);
-        })
-        .catch(() => {
-          /* ignore remote suggestion failures */
-        });
-    }, LOCATION_REMOTE_DEBOUNCE_MS);
   };
 
   const getDeptFallbackCoordinates = (postalCode) => {
@@ -645,10 +541,6 @@
   let locationSuggestionsActiveIndex = -1;
   let locationSuggestionsOpen = false;
   let locationSuggestionsRequestId = 0;
-  const locationRemoteSuggestionCache = new Map();
-  let locationRemoteTimer = null;
-  let locationRemoteController = null;
-  const LOCATION_REMOTE_DEBOUNCE_MS = 160;
   const LOCATION_REMOTE_TIMEOUT_MS = 2400;
   let locationSuggestionCoords = null;
   const distanceGroup = document.querySelector('[data-mobile-collapsible]');
@@ -2929,6 +2821,8 @@
     return formatted ? formatted.toLowerCase() : '';
   };
 
+  const LOOKS_LIKE_CITY = /^[\p{L}\s'’-]{3,}$/u;
+
   const deriveReferenceContext = (rawInput, coords = {}, type = '') => {
     const addressParts = extractAddressParts(rawInput || '');
     const postal = coords.postalCode || addressParts.postalCode || '';
@@ -4113,6 +4007,8 @@
 
     try {
       const looksLikeAddress = looksLikeDetailedAddress(effectiveRaw);
+      const looksLikeCityName = LOOKS_LIKE_CITY.test(effectiveRaw);
+      const allowRemoteGeocode = looksLikeAddress || looksLikeCityName;
       let coords = null;
       if (prefilledCoords && Number.isFinite(prefilledCoords.latitude) && Number.isFinite(prefilledCoords.longitude)) {
         coords = {
@@ -4134,7 +4030,7 @@
       if (!coords) {
         coords = lookupLocalCoordinates(effectiveRaw);
       }
-      if (!coords && !looksLikeAddress) {
+      if (!coords && allowRemoteGeocode) {
         try {
           coords = await geocodePlace(effectiveRaw);
         } catch {
