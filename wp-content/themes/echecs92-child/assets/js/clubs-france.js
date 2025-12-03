@@ -178,6 +178,7 @@
     '75014': { label: 'Paris 14e', lat: 48.8323, lng: 2.325 },
     '75015': { label: 'Paris 15e', lat: 48.8419, lng: 2.3034 },
     '75016': { label: 'Paris 16e', lat: 48.8602, lng: 2.27 },
+    '75116': { label: 'Paris 16e', lat: 48.8602, lng: 2.27 },
     '75017': { label: 'Paris 17e', lat: 48.8876, lng: 2.3079 },
     '75018': { label: 'Paris 18e', lat: 48.8913, lng: 2.344 },
     '75019': { label: 'Paris 19e', lat: 48.8896, lng: 2.3772 },
@@ -270,6 +271,42 @@
     return fallback || '';
   };
 
+  const formatParisArrName = (number) => {
+    if (!Number.isFinite(number)) {
+      return '';
+    }
+    if (number === 1) {
+      return 'Paris 1er';
+    }
+    return `Paris ${number}e`;
+  };
+
+  const PARIS_ARR_SUGGESTIONS = (() => {
+    const entries = [];
+    Object.entries(POSTAL_COORDINATES).forEach(([code, data]) => {
+      if (!/^75\d{3}$/.test(code)) {
+        return;
+      }
+      const arrNum = Number.parseInt(code.slice(-2), 10);
+      if (!Number.isFinite(arrNum) || arrNum < 1 || arrNum > 20) {
+        return;
+      }
+      const name = formatParisArrName(arrNum);
+      const display = formatLocationLabel(name, code);
+      entries.push({
+        display,
+        postalCode: code,
+        commune: name,
+        search: normaliseForSearch(`${name} ${code}`),
+        searchAlt: normaliseForSearch(`${code} ${name}`),
+        latitude: data.lat,
+        longitude: data.lng,
+        _kind: 'paris',
+      });
+    });
+    return entries;
+  })();
+
   const buildTypedLocationSuggestion = (query) => {
     const trimmed = (query || '').trim();
     if (!trimmed) {
@@ -335,6 +372,14 @@
       }
       index.push(entry);
     });
+    PARIS_ARR_SUGGESTIONS.forEach((entry) => {
+      const key = `${entry.postalCode}|${normaliseCommuneForCompare(entry.commune)}`;
+      if (seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      index.push({ ...entry });
+    });
     index.sort((a, b) => a.display.localeCompare(b.display, 'fr', { sensitivity: 'base' }));
     locationSuggestionsIndex = index;
   };
@@ -368,8 +413,20 @@
   const scoreLocationSuggestion = (entry, normalisedQuery, numericQuery) => {
     let score = 0;
     const searchFields = getSuggestionSearchFields(entry);
-    if (numericQuery && entry.postalCode && entry.postalCode.startsWith(numericQuery)) {
-      score += 80 - Math.min(30, (entry.postalCode.length - numericQuery.length) * 6);
+    if (numericQuery && entry.postalCode) {
+      const entryPostal = normalisePostalCodeValue(entry.postalCode);
+      const aliasPostal = normalizeParisPostalAlias(entryPostal);
+      const queryAlias = normalizeParisPostalAlias(numericQuery);
+      const matchesPostal =
+        (entryPostal && entryPostal.startsWith(numericQuery)) ||
+        (numericQuery && numericQuery.startsWith(entryPostal)) ||
+        (aliasPostal && aliasPostal.startsWith(numericQuery)) ||
+        (entryPostal && queryAlias && entryPostal.startsWith(queryAlias)) ||
+        (aliasPostal && queryAlias && aliasPostal.startsWith(queryAlias));
+      if (!matchesPostal) {
+        return 0;
+      }
+      score += 80 - Math.min(30, (entryPostal.length - numericQuery.length) * 6);
     }
     if (normalisedQuery) {
       const startsWithMatch = searchFields.some((value) => value.startsWith(normalisedQuery));
@@ -425,7 +482,10 @@
       return { latitude: lat, longitude: lng, label: suggestion.display || suggestion.commune || '', postalCode: suggestion.postalCode || '' };
     }
     if (suggestion.postalCode) {
-      const coords = getPostalCoordinates(suggestion.postalCode) || getDeptFallbackCoordinates(suggestion.postalCode);
+      const coords =
+        getPostalCoordinates(suggestion.postalCode) ||
+        getPostalCoordinates(normalizeParisPostalAlias(suggestion.postalCode)) ||
+        getDeptFallbackCoordinates(suggestion.postalCode);
       if (coords) {
         return { latitude: coords.lat, longitude: coords.lng, label: coords.label || suggestion.commune || '', postalCode: coords.postalCode || suggestion.postalCode };
       }
@@ -445,11 +505,16 @@
       return null;
     }
     const postal = normalisePostalCodeValue(rawQuery);
+    const postalAlias = normalizeParisPostalAlias(postal);
     const communeKey = normaliseCommuneForCompare(rawQuery);
     let fallback = matches[0];
     for (let i = 0; i < matches.length; i += 1) {
       const entry = matches[i];
-      if (postal && entry.postalCode === postal) {
+      const entryPostal = normalisePostalCodeValue(entry.postalCode);
+      if (postal && entryPostal === postal) {
+        return { suggestion: entry, coords: resolveSuggestionCoordinates(entry) };
+      }
+      if (postalAlias && entryPostal === postalAlias) {
         return { suggestion: entry, coords: resolveSuggestionCoordinates(entry) };
       }
       if (communeKey && entry.commune && normaliseCommuneForCompare(entry.commune) === communeKey) {
@@ -2737,11 +2802,21 @@
     if (!postalCode) {
       return null;
     }
-    const key = postalCode.toString().trim();
+    const keyRaw = postalCode.toString().trim();
+    if (!keyRaw) {
+      return null;
+    }
+    const key = normalisePostalCodeValue(keyRaw);
     if (!key) {
       return null;
     }
-    const entry = POSTAL_COORDINATES[key];
+    let entry = POSTAL_COORDINATES[key];
+    if (!entry) {
+      const alias = normalizeParisPostalAlias(key);
+      if (alias && alias !== key && POSTAL_COORDINATES[alias]) {
+        entry = POSTAL_COORDINATES[alias];
+      }
+    }
     if (!entry) {
       return null;
     }
@@ -2946,6 +3021,17 @@
     }
     if (digits.length < 2 || digits.length > 5) {
       return '';
+    }
+    return digits;
+  };
+
+  const normalizeParisPostalAlias = (postal) => {
+    const digits = normalisePostalCodeValue(postal);
+    if (!digits) {
+      return '';
+    }
+    if (/^751\d{2}$/.test(digits)) {
+      return `750${digits.slice(3)}`;
     }
     return digits;
   };
