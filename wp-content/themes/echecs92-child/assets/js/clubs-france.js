@@ -281,6 +281,20 @@
     return `Paris ${number}e`;
   };
 
+  const deriveParisCommuneLabel = (postalCode, communeValue) => {
+    const baseCommune = formatCommune(communeValue || '');
+    const postal = normalizeParisPostalAlias(postalCode);
+    if (!postal || !/^750\d{2}$/.test(postal)) {
+      return baseCommune;
+    }
+    const arrNum = Number.parseInt(postal.slice(-2), 10);
+    if (!Number.isFinite(arrNum) || arrNum < 1 || arrNum > 20) {
+      return baseCommune;
+    }
+    const arrName = formatParisArrName(arrNum);
+    return arrName || baseCommune || 'Paris';
+  };
+
   const PARIS_ARR_SUGGESTIONS = (() => {
     const entries = [];
     Object.entries(POSTAL_COORDINATES).forEach(([code, data]) => {
@@ -933,6 +947,21 @@
     const active = document.activeElement;
     if (active === searchInput && typeof searchInput.blur === 'function') {
       searchInput.blur();
+    }
+  };
+
+  const dismissAllKeyboards = () => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    [searchInput, locationInput].forEach((el) => {
+      if (el && typeof el.blur === 'function') {
+        el.blur();
+      }
+    });
+    const active = document.activeElement;
+    if (active && typeof active.blur === 'function') {
+      active.blur();
     }
   };
 
@@ -3973,6 +4002,7 @@
     const actionStartedAt = Date.now();
     const raw = searchInput ? searchInput.value : '';
     const trimmed = (raw || '').trim();
+    dismissAllKeyboards();
     updateClearButtons();
     if (tryHandleSecretCommand(raw)) {
       return;
@@ -4193,6 +4223,7 @@
       return;
     }
     const raw = locationInput.value.trim();
+    dismissAllKeyboards();
     const effectiveRaw = stripSelfPositionSuffix(raw);
     closeLocationSuggestions();
     if (!raw) {
@@ -4526,7 +4557,7 @@
     const secondaryAddress = raw.siege || raw.siege_social || raw.address2 || '';
     const secondaryParts = extractAddressParts(secondaryAddress);
     const communeRaw = raw.commune || raw.ville || addressParts.city || secondaryParts.city || '';
-    const commune = formatCommune(communeRaw);
+    const commune = deriveParisCommuneLabel(raw.code_postal || raw.postal_code || addressParts.postalCode || secondaryParts.postalCode || '', communeRaw);
     const postalCode = raw.code_postal || raw.postal_code || addressParts.postalCode || secondaryParts.postalCode || '';
     const slugSource = name || commune || postalCode || primaryAddress || secondaryAddress;
     const standardAddress = buildStandardAddress(
@@ -4839,7 +4870,7 @@
     }
 
     if (state.distanceMode && state.distanceReference) {
-      totalCounter.textContent = `distances depuis ${state.distanceReference}.`;
+      totalCounter.textContent = `Distances depuis ${state.distanceReference}`;
       return;
     }
 
@@ -4860,7 +4891,7 @@
     if (!filtered) {
       const parts = ['Aucun club trouvé', `${total} au total`];
       if (state.distanceMode && state.distanceReference) {
-        parts.splice(1, 0, `distances depuis ${state.distanceReference}`);
+        parts.splice(1, 0, `Distances depuis ${state.distanceReference}`);
       }
       if (activeLicenseSort) {
         parts.push(activeLicenseSort.counterLabel);
@@ -4881,7 +4912,7 @@
       }
     }
     if (state.distanceMode && state.distanceReference) {
-      parts.push(`distances depuis ${state.distanceReference}`);
+      parts.push(`Distances depuis ${state.distanceReference}`);
     }
     if (activeLicenseSort) {
       parts.push(activeLicenseSort.counterLabel);
