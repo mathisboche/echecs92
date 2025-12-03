@@ -4103,23 +4103,33 @@
     updateStatusIfCurrent('Recherche en cours…', 'info');
 
     const picked = pickBestSuggestion(trimmed);
-    const suggestion = picked?.suggestion || null;
-    const coords = picked?.coords || null;
+    let suggestion = picked?.suggestion || null;
+    let coords = picked?.coords || null;
     if (abortIfStale()) {
       return;
     }
 
-    if (!suggestion) {
-      finalizeSearch(() => {
-        updateStatusIfCurrent('Choisissez une suggestion de ville ou code postal.', 'error');
-      }, { skipScroll: true });
-      return;
+    if (!suggestion || !coords) {
+      const fallbackCoords = lookupLocalCoordinates(trimmed);
+      if (fallbackCoords) {
+        suggestion = suggestion || {
+          display: formatLocationLabel(fallbackCoords.label, fallbackCoords.postalCode, trimmed),
+          postalCode: fallbackCoords.postalCode || '',
+          commune: fallbackCoords.label || '',
+        };
+        coords = fallbackCoords;
+      }
     }
 
-    if (!coords) {
+    if (!suggestion || !coords) {
+      const meta = applySearch(trimmed);
       finalizeSearch(() => {
-        updateStatusIfCurrent("Coordonnées indisponibles pour cette suggestion.", 'error');
-      }, { skipScroll: true });
+        if (meta.total > 0) {
+          updateStatusIfCurrent(`Clubs correspondant à "${meta.rawQuery}".`, 'info');
+        } else {
+          updateStatusIfCurrent(`Aucun club ne correspond à "${meta.rawQuery}".`, 'error');
+        }
+      });
       return;
     }
 
@@ -4320,6 +4330,18 @@
 
       if (requestId !== locationRequestId) {
         return;
+      }
+
+      if (!suggestion || !coords) {
+        const fallbackCoords = lookupLocalCoordinates(effectiveRaw);
+        if (fallbackCoords) {
+          suggestion = suggestion || {
+            display: formatLocationLabel(fallbackCoords.label, fallbackCoords.postalCode, effectiveRaw),
+            postalCode: fallbackCoords.postalCode || '',
+            commune: fallbackCoords.label || '',
+          };
+          coords = fallbackCoords;
+        }
       }
 
       if (!suggestion) {
