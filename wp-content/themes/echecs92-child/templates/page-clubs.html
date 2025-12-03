@@ -40,13 +40,18 @@
             inputmode="search"
             enterkeyhint="search"
             autocomplete="postal-code"
-            list="clubs-location-suggestions"
             placeholder="Ville ou code postal…"
             aria-label="Ville ou code postal pour trier par distance"
           >
           <button id="clubs-location-clear" class="clubs-input__clear" type="button" aria-label="Effacer la localisation" hidden></button>
         </div>
-        <datalist id="clubs-location-suggestions"></datalist>
+        <div
+          id="clubs-location-suggestions"
+          class="clubs-suggestions"
+          role="listbox"
+          aria-label="Suggestions de villes et codes postaux"
+          hidden
+        ></div>
         <p id="clubs-location-status" class="clubs-location__status" role="status" aria-live="polite"></p>
       </div>
     </div>
@@ -63,7 +68,6 @@
             aria-label="Saisissez une ville ou un code postal pour afficher les distances"
             autocomplete="postal-code"
             enterkeyhint="search"
-            list="clubs-location-suggestions"
           >
           <button id="clubs-search-clear" class="clubs-input__clear" type="button" aria-label="Effacer la recherche" hidden></button>
           <button

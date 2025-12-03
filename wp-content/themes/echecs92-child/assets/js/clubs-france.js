@@ -195,28 +195,201 @@
     '95': { label: "Val-d'Oise", lat: 49.036, lng: 2.063 }, // Cergy
   };
 
-  const populateLocationSuggestions = () => {
-    if (!locationDatalist) {
-      return;
+  const ensureLocationSuggestionsHost = () => {
+    if (!locationSuggestionsHost || !document.body) {
+      return null;
     }
+    if (locationSuggestionsHost.parentElement !== document.body) {
+      document.body.appendChild(locationSuggestionsHost);
+    }
+    return locationSuggestionsHost;
+  };
+
+  const buildLocationSuggestionIndex = (clubs) => {
     const seen = new Set();
-    const addOption = (value, label) => {
-      const key = value ? value.toString().trim() : '';
-      if (!key || seen.has(key)) {
+    const index = [];
+    (clubs || []).forEach((club) => {
+      const postal = normalisePostalCodeValue(club.postalCode || '');
+      const commune = formatCommune(club.commune || '');
+      if (!postal && !commune) {
+        return;
+      }
+      const key = `${postal}|${normaliseCommuneForCompare(commune)}`;
+      if (seen.has(key)) {
         return;
       }
       seen.add(key);
-      const option = document.createElement('option');
-      option.value = key;
-      option.label = label || key;
-      locationDatalist.appendChild(option);
-    };
-    Object.entries(POSTAL_COORDINATES).forEach(([postal, info]) => {
-      addOption(postal, `${postal} — ${info.label}`);
+      const parts = [];
+      if (postal) {
+        parts.push(postal);
+      }
+      if (commune) {
+        parts.push(commune);
+      }
+      const display = parts.join(' — ') || commune || postal;
+      const search = normaliseForSearch(`${postal} ${commune}`);
+      index.push({ display, postalCode: postal, commune, search });
     });
-    Object.entries(DEPT_FALLBACK_COORDS).forEach(([postal, info]) => {
-      addOption(postal, `${postal} — ${info.label}`);
+    index.sort((a, b) => a.display.localeCompare(b.display, 'fr', { sensitivity: 'base' }));
+    locationSuggestionsIndex = index;
+  };
+
+  const scoreLocationSuggestion = (entry, normalisedQuery, numericQuery) => {
+    let score = 0;
+    if (numericQuery && entry.postalCode && entry.postalCode.startsWith(numericQuery)) {
+      score += 80 - Math.min(30, (entry.postalCode.length - numericQuery.length) * 6);
+    }
+    if (normalisedQuery) {
+      if (entry.search.startsWith(normalisedQuery)) {
+        score += 60;
+      } else if (entry.search.includes(normalisedQuery)) {
+        score += 35;
+      }
+    }
+    if (!normalisedQuery && !numericQuery) {
+      score = 10;
+    }
+    return score - Math.min(6, entry.display.length / 50);
+  };
+
+  const getLocationSuggestionsForQuery = (rawQuery) => {
+    if (!locationSuggestionsIndex.length) {
+      return [];
+    }
+    const normalised = normaliseForSearch(rawQuery);
+    const numericQuery = (rawQuery || '').replace(/\D/g, '');
+    const pool = normalised || numericQuery ? locationSuggestionsIndex : locationSuggestionsIndex.slice(0, 200);
+    const scored = [];
+    pool.forEach((entry) => {
+      const score = scoreLocationSuggestion(entry, normalised, numericQuery);
+      if (score <= 0 && (normalised || numericQuery)) {
+        return;
+      }
+      if (normalised && !entry.search.includes(normalised)) {
+        return;
+      }
+      if (numericQuery && (!entry.postalCode || !entry.postalCode.startsWith(numericQuery))) {
+        return;
+      }
+      scored.push({ entry, score });
     });
+    scored.sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      return a.entry.display.localeCompare(b.entry.display, 'fr', { sensitivity: 'base' });
+    });
+    return scored.slice(0, LOCATION_SUGGESTIONS_LIMIT).map((item) => item.entry);
+  };
+
+  const positionLocationSuggestions = (anchor) => {
+    if (!locationSuggestionsHost || !anchor || typeof anchor.getBoundingClientRect !== 'function') {
+      return;
+    }
+    const rect = anchor.getBoundingClientRect();
+    const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    const scrollX = window.scrollX || document.documentElement.scrollLeft || 0;
+    locationSuggestionsHost.style.minWidth = `${rect.width}px`;
+    locationSuggestionsHost.style.top = `${rect.bottom + scrollY + 4}px`;
+    locationSuggestionsHost.style.left = `${rect.left + scrollX}px`;
+  };
+
+  const closeLocationSuggestions = () => {
+    if (!locationSuggestionsHost) {
+      return;
+    }
+    if (locationSuggestionsAnchor && typeof locationSuggestionsAnchor.setAttribute === 'function') {
+      locationSuggestionsAnchor.setAttribute('aria-expanded', 'false');
+    }
+    locationSuggestionsHost.hidden = true;
+    locationSuggestionsHost.dataset.open = 'false';
+    locationSuggestionsHost.innerHTML = '';
+    locationSuggestionsOpen = false;
+    locationSuggestionsCurrent = [];
+    locationSuggestionsActiveIndex = -1;
+    locationSuggestionsAnchor = null;
+  };
+
+  const highlightLocationSuggestion = (index) => {
+    if (!locationSuggestionsOpen || !locationSuggestionsHost) {
+      return;
+    }
+    const items = Array.from(locationSuggestionsHost.querySelectorAll('.clubs-suggestions__item'));
+    if (!items.length) {
+      return;
+    }
+    const bounded = ((index % items.length) + items.length) % items.length;
+    items.forEach((item, idx) => {
+      const isActive = idx === bounded;
+      item.classList.toggle('is-active', isActive);
+      item.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    locationSuggestionsActiveIndex = bounded;
+    const activeNode = items[bounded];
+    if (activeNode && typeof activeNode.scrollIntoView === 'function') {
+      activeNode.scrollIntoView({ block: 'nearest' });
+    }
+  };
+
+  const applyLocationSuggestion = (suggestion, options = {}) => {
+    if (!suggestion) {
+      return;
+    }
+    const label = suggestion.display || suggestion.commune || suggestion.postalCode || '';
+    if (locationInput) {
+      locationInput.value = label;
+    }
+    syncPrimarySearchValue(label);
+    closeLocationSuggestions();
+    const trigger =
+      options.triggerButton || (locationSuggestionsAnchor === searchInput ? searchButton : locationApplyButton);
+    void handleLocationSubmit({ triggerButton: trigger, fromPrimary: trigger === searchButton });
+  };
+
+  const openLocationSuggestions = (query, anchor, options = {}) => {
+    const host = ensureLocationSuggestionsHost();
+    if (!host || !anchor || !locationSuggestionsIndex.length) {
+      return;
+    }
+    const matches = getLocationSuggestionsForQuery(query);
+    locationSuggestionsCurrent = matches;
+    if (!matches.length) {
+      closeLocationSuggestions();
+      return;
+    }
+    host.innerHTML = '';
+    matches.forEach((suggestion, index) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'clubs-suggestions__item';
+      item.setAttribute('role', 'option');
+      item.dataset.index = `${index}`;
+      const code = document.createElement('span');
+      code.className = 'clubs-suggestions__code';
+      code.textContent = suggestion.postalCode || suggestion.display;
+      item.appendChild(code);
+      if (suggestion.commune) {
+        const city = document.createElement('span');
+        city.className = 'clubs-suggestions__city';
+        city.textContent = suggestion.commune;
+        item.appendChild(city);
+      }
+      item.addEventListener('click', (event) => {
+        event.preventDefault();
+        applyLocationSuggestion(suggestion, { triggerButton: options.triggerButton });
+      });
+      host.appendChild(item);
+    });
+    locationSuggestionsOpen = true;
+    locationSuggestionsAnchor = anchor;
+    if (typeof anchor.setAttribute === 'function') {
+      anchor.setAttribute('aria-expanded', 'true');
+      anchor.setAttribute('aria-controls', locationSuggestionsHost?.id || 'clubs-location-suggestions');
+    }
+    host.hidden = false;
+    host.dataset.open = 'true';
+    positionLocationSuggestions(anchor);
+    highlightLocationSuggestion(locationSuggestionsCurrent.length ? 0 : -1);
   };
 
   const getDeptFallbackCoordinates = (postalCode) => {
@@ -274,7 +447,13 @@
   const geolocButton = document.getElementById('clubs-use-geoloc');
   const locationStatus = document.getElementById('clubs-location-status');
   const geolocStatus = document.getElementById('clubs-geoloc-status');
-  const locationDatalist = document.getElementById('clubs-location-suggestions');
+  const locationSuggestionsHost = document.getElementById('clubs-location-suggestions');
+  const LOCATION_SUGGESTIONS_LIMIT = 12;
+  let locationSuggestionsIndex = [];
+  let locationSuggestionsCurrent = [];
+  let locationSuggestionsAnchor = null;
+  let locationSuggestionsActiveIndex = -1;
+  let locationSuggestionsOpen = false;
   const distanceGroup = document.querySelector('[data-mobile-collapsible]');
   const distanceFields = document.getElementById('clubs-distance-fields');
   const distanceToggle = document.getElementById('clubs-distance-toggle');
@@ -479,6 +658,99 @@
     if (active === searchInput && typeof searchInput.blur === 'function') {
       searchInput.blur();
     }
+  };
+
+  const syncLocationSuggestionsPosition = () => {
+    if (!locationSuggestionsHost) {
+      return;
+    }
+    if (locationSuggestionsOpen && locationSuggestionsAnchor) {
+      positionLocationSuggestions(locationSuggestionsAnchor);
+    }
+  };
+
+  const selectActiveLocationSuggestion = (triggerButton) => {
+    if (!locationSuggestionsCurrent.length) {
+      return false;
+    }
+    const index = locationSuggestionsActiveIndex >= 0 ? locationSuggestionsActiveIndex : 0;
+    const suggestion = locationSuggestionsCurrent[index];
+    if (!suggestion) {
+      return false;
+    }
+    applyLocationSuggestion(suggestion, { triggerButton });
+    return true;
+  };
+
+  const handleLocationSuggestionInput = (event) => {
+    const target = event?.target;
+    if (!target || (target !== searchInput && target !== locationInput)) {
+      return;
+    }
+    openLocationSuggestions(target.value, target, {
+      triggerButton: target === searchInput ? searchButton : locationApplyButton,
+    });
+  };
+
+  const handleLocationSuggestionFocus = (event) => {
+    const target = event?.target;
+    if (!target || (target !== searchInput && target !== locationInput)) {
+      return;
+    }
+    openLocationSuggestions(target.value, target, {
+      triggerButton: target === searchInput ? searchButton : locationApplyButton,
+    });
+  };
+
+  const handleLocationSuggestionBlur = () => {
+    window.setTimeout(() => closeLocationSuggestions(), 120);
+  };
+
+  const handleLocationSuggestionKeydown = (event) => {
+    const target = event?.target;
+    if (!target || (target !== searchInput && target !== locationInput)) {
+      return;
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (!locationSuggestionsOpen) {
+        openLocationSuggestions(target.value, target, {
+          triggerButton: target === searchInput ? searchButton : locationApplyButton,
+        });
+      } else {
+        const delta = event.key === 'ArrowDown' ? 1 : -1;
+        const nextIndex =
+          locationSuggestionsActiveIndex >= 0 ? locationSuggestionsActiveIndex + delta : delta > 0 ? 0 : -1;
+        highlightLocationSuggestion(nextIndex);
+      }
+      return;
+    }
+    if (event.key === 'Enter') {
+      if (locationSuggestionsOpen && locationSuggestionsCurrent.length) {
+        event.preventDefault();
+        selectActiveLocationSuggestion(target === searchInput ? searchButton : locationApplyButton);
+        return;
+      }
+    }
+    if (event.key === 'Escape') {
+      closeLocationSuggestions();
+    }
+  };
+
+  const handleDocumentPointerDown = (event) => {
+    if (!locationSuggestionsOpen || !locationSuggestionsHost) {
+      return;
+    }
+    const target = event.target;
+    if (
+      target === locationSuggestionsHost ||
+      locationSuggestionsHost.contains(target) ||
+      target === searchInput ||
+      target === locationInput
+    ) {
+      return;
+    }
+    closeLocationSuggestions();
   };
   const moreButton = document.getElementById('clubs-more-button');
   const optionsDetails = document.getElementById('clubs-options');
@@ -3546,6 +3818,7 @@
       locationInput.value = '';
     }
     syncPrimarySearchValue('');
+    closeLocationSuggestions();
     setLocationStatus(silent ? '' : 'Localisation effacée.', 'info');
     updateClearButtons();
     if (!skipSearch) {
@@ -3569,6 +3842,7 @@
     }
     const raw = locationInput.value.trim();
     const effectiveRaw = stripSelfPositionSuffix(raw);
+    closeLocationSuggestions();
     if (!raw) {
       handleLocationClear();
       return;
@@ -3720,6 +3994,7 @@
       return;
     }
 
+    closeLocationSuggestions();
     const requestId = ++locationRequestId;
     if (state.sortMode !== 'default') {
       state.sortMode = 'default';
@@ -3871,6 +4146,7 @@
       locationInput.value = raw;
     }
     dismissMobileSearchKeyboard();
+    closeLocationSuggestions();
     void handleLocationSubmit({ fromPrimary: true, triggerButton: searchButton });
   };
 
@@ -4317,7 +4593,7 @@
 
   const init = () => {
     updateClearButtons();
-    populateLocationSuggestions();
+    ensureLocationSuggestionsHost();
     loadGeocodeCache();
     initialiseLocationControls();
     syncDistanceCollapse();
@@ -4345,6 +4621,7 @@
           .map(hydrateClub)
           .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
         ensureUniqueSlugs(state.clubs);
+        buildLocationSuggestionIndex(state.clubs);
 
         const reopenResultsRequested = consumeReopenResultsFlag();
         const hasInitialParams = Boolean(initialQueryParam || initialLocParam || initialSortParam || initialOpenResults);
@@ -4454,8 +4731,17 @@
     }
     resetButton?.addEventListener('click', resetSearch);
     if (searchInput) {
-      searchInput.addEventListener('input', updateClearButtons);
+      searchInput.addEventListener('input', (event) => {
+        updateClearButtons();
+        handleLocationSuggestionInput(event);
+      });
+      searchInput.addEventListener('focus', handleLocationSuggestionFocus);
+      searchInput.addEventListener('blur', handleLocationSuggestionBlur);
       searchInput.addEventListener('keydown', (event) => {
+        handleLocationSuggestionKeydown(event);
+        if (event.defaultPrevented) {
+          return;
+        }
         if (event.key === 'Enter') {
           event.preventDefault();
           if (searchButton && searchButton.getAttribute('aria-busy') === 'true') {
@@ -4467,13 +4753,27 @@
     }
     locationApplyButton?.addEventListener('click', handleLocationSubmit);
     locationClearButton?.addEventListener('click', handleLocationClear);
-    locationInput?.addEventListener('input', updateClearButtons);
-    locationInput?.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        handleLocationSubmit(event);
-      }
-    });
+    if (locationInput) {
+      locationInput.addEventListener('input', (event) => {
+        updateClearButtons();
+        handleLocationSuggestionInput(event);
+      });
+      locationInput.addEventListener('focus', handleLocationSuggestionFocus);
+      locationInput.addEventListener('blur', handleLocationSuggestionBlur);
+      locationInput.addEventListener('keydown', (event) => {
+        handleLocationSuggestionKeydown(event);
+        if (event.defaultPrevented) {
+          return;
+        }
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          handleLocationSubmit(event);
+        }
+      });
+    }
+    window.addEventListener('resize', syncLocationSuggestionsPosition);
+    window.addEventListener('scroll', syncLocationSuggestionsPosition, true);
+    document.addEventListener('pointerdown', handleDocumentPointerDown);
     geolocButton?.addEventListener('click', handleUseGeolocation);
     highlightLocationButton?.addEventListener('click', () => {
       expandOptionsPanel();
