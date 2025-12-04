@@ -343,8 +343,7 @@
       }
       index.push(entry);
     });
-    index.sort((a, b) => a.display.localeCompare(b.display, 'fr', { sensitivity: 'base' }));
-    locationSuggestionsIndex = index;
+    setLocationSuggestionIndex(index);
   };
 
   const getSuggestionSearchFields = (entry) => {
@@ -493,7 +492,122 @@
     return { suggestion: fallback, coords: fallbackCoords || resolveSuggestionCoordinates(fallback) };
   };
 
-  const fetchRemoteLocationSuggestions = () => Promise.resolve([]);
+  const buildRemoteSuggestionCacheKey = (rawQuery) => {
+    const normalised = normaliseForSearch(rawQuery);
+    const numeric = (rawQuery || '').replace(/\D/g, '');
+    if (!normalised && !numeric) {
+      return '';
+    }
+    return `${normalised}|${numeric}`;
+  };
+
+  const adaptRemoteLocationRecords = (records) => {
+    const items = Array.isArray(records) ? records : [];
+    const suggestions = [];
+    items.forEach((item) => {
+      if (!item) {
+        return;
+      }
+      const rawCodes = Array.isArray(item.codesPostaux) ? item.codesPostaux : [];
+      const codes = rawCodes.length ? rawCodes : item.codePostal ? [item.codePostal] : [];
+      if (!codes.length) {
+        return;
+      }
+      const city = formatCommune(item.nom || item.name || '');
+      const coords = Array.isArray(item?.centre?.coordinates) ? item.centre.coordinates : [];
+      const lon = Number.parseFloat(coords[0]);
+      const lat = Number.parseFloat(coords[1]);
+      const hasCoords = Number.isFinite(lat) && Number.isFinite(lon);
+      codes.forEach((code) => {
+        const postal = canonicalizeParisPostalCode(code) || normalisePostalCodeValue(code);
+        if (!postal && !city) {
+          return;
+        }
+        const commune = formatCommuneWithPostal(city, postal);
+        const display = formatLocationLabel(commune || city, postal, city || postal || '');
+        const suggestion = {
+          display,
+          postalCode: postal || '',
+          commune,
+          search: normaliseForSearch(`${commune || ''} ${postal || ''}`.trim()),
+          searchAlt: normaliseForSearch(`${postal || ''} ${commune || ''}`.trim()),
+          source: 'remote',
+        };
+        if (hasCoords) {
+          suggestion.latitude = lat;
+          suggestion.longitude = lon;
+        }
+        suggestions.push(suggestion);
+      });
+    });
+    return dedupeLocationSuggestions(suggestions);
+  };
+
+  const shouldFetchRemoteLocationSuggestions = (rawQuery) => {
+    const trimmed = (rawQuery || '').trim();
+    if (!trimmed) {
+      return false;
+    }
+    const normalised = normaliseForSearch(trimmed);
+    const numeric = trimmed.replace(/\D/g, '');
+    if (numeric.length >= 3) {
+      return true;
+    }
+    return Boolean(normalised && normalised.length >= LOCATION_REMOTE_MIN_CHARS);
+  };
+
+  const fetchRemoteLocationSuggestions = (rawQuery) => {
+    if (!shouldFetchRemoteLocationSuggestions(rawQuery)) {
+      return Promise.resolve([]);
+    }
+    const cacheKey = buildRemoteSuggestionCacheKey(rawQuery);
+    if (cacheKey && remoteLocationSuggestionCache.has(cacheKey)) {
+      return remoteLocationSuggestionCache.get(cacheKey);
+    }
+    const trimmed = (rawQuery || '').trim();
+    const numeric = trimmed.replace(/\D/g, '');
+    const params = new URLSearchParams({
+      limit: `${LOCATION_REMOTE_LIMIT}`,
+      boost: 'population',
+      fields: LOCATION_REMOTE_FIELDS,
+    });
+    if (trimmed) {
+      params.set('nom', trimmed);
+    }
+    if (numeric.length >= 3) {
+      params.set('codePostal', numeric.slice(0, 5));
+    }
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), LOCATION_REMOTE_TIMEOUT_MS) : null;
+    const url = `${LOCATION_REMOTE_ENDPOINT}?${params.toString()}`;
+    const promise = fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: controller?.signal,
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((payload) => adaptRemoteLocationRecords(payload))
+      .catch((error) => {
+        if (controller && controller.signal && controller.signal.aborted) {
+          return [];
+        }
+        console.warn(`[clubs-fr-debug] Impossible de charger les suggestions de localisation pour "${trimmed}".`, error);
+        return [];
+      })
+      .finally(() => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      });
+    if (cacheKey) {
+      remoteLocationSuggestionCache.set(cacheKey, promise);
+    }
+    return promise;
+  };
 
   const positionLocationSuggestions = (anchor) => {
     if (!locationSuggestionsHost || !anchor || typeof anchor.getBoundingClientRect !== 'function') {
@@ -626,9 +740,21 @@
     if (!host || !anchor) {
       return;
     }
+    const requestId = ++locationSuggestionsRequestId;
     const localMatches = getLocationSuggestionsForQuery(query);
     const initialList = dedupeLocationSuggestions(localMatches);
     renderLocationSuggestions(initialList, anchor, options);
+    fetchRemoteLocationSuggestions(query)
+      .then((remote) => {
+        if (requestId !== locationSuggestionsRequestId) {
+          return;
+        }
+        if (remote && remote.length) {
+          appendLocationSuggestionsToIndex(remote);
+          renderLocationSuggestions(getLocationSuggestionsForQuery(query), anchor, options);
+        }
+      })
+      .catch(() => {});
   };
 
   const getDeptFallbackCoordinates = (postalCode) => {
@@ -688,14 +814,31 @@
   const geolocStatus = document.getElementById('clubs-geoloc-status');
   const locationSuggestionsHost = document.getElementById('clubs-location-suggestions');
   const LOCATION_SUGGESTIONS_LIMIT = 12;
+  const LOCATION_REMOTE_ENDPOINT = 'https://geo.api.gouv.fr/communes';
+  const LOCATION_REMOTE_LIMIT = Math.max(LOCATION_SUGGESTIONS_LIMIT * 3, 24);
+  const LOCATION_REMOTE_FIELDS = 'nom,centre,codesPostaux,code';
+  const LOCATION_REMOTE_MIN_CHARS = 2;
+  const LOCATION_REMOTE_TIMEOUT_MS = 2400;
+  const remoteLocationSuggestionCache = new Map();
   let locationSuggestionsIndex = [];
   let locationSuggestionsCurrent = [];
   let locationSuggestionsAnchor = null;
   let locationSuggestionsActiveIndex = -1;
   let locationSuggestionsOpen = false;
   let locationSuggestionsRequestId = 0;
-  const LOCATION_REMOTE_TIMEOUT_MS = 2400;
   let locationSuggestionCoords = null;
+  const setLocationSuggestionIndex = (entries) => {
+    const merged = dedupeLocationSuggestions(entries || []);
+    merged.sort((a, b) => a.display.localeCompare(b.display, 'fr', { sensitivity: 'base' }));
+    locationSuggestionsIndex = merged;
+  };
+
+  const appendLocationSuggestionsToIndex = (entries) => {
+    if (!entries || !entries.length) {
+      return;
+    }
+    setLocationSuggestionIndex([...(locationSuggestionsIndex || []), ...entries]);
+  };
   const distanceGroup = document.querySelector('[data-mobile-collapsible]');
   const distanceFields = document.getElementById('clubs-distance-fields');
   const distanceToggle = document.getElementById('clubs-distance-toggle');
@@ -4453,6 +4596,21 @@
         if (picked) {
           suggestion = picked.suggestion || null;
           coords = picked.coords || null;
+        }
+        if (!suggestion || !coords) {
+          const remoteSuggestions = await fetchRemoteLocationSuggestions(effectiveRaw).catch(() => []);
+          if (requestId !== locationRequestId) {
+            result = { ok: false, reason: 'stale' };
+            return result;
+          }
+          if (remoteSuggestions && remoteSuggestions.length) {
+            appendLocationSuggestionsToIndex(remoteSuggestions);
+            const pickedRemote = pickBestSuggestion(effectiveRaw);
+            if (pickedRemote) {
+              suggestion = suggestion || pickedRemote.suggestion || null;
+              coords = coords || pickedRemote.coords || null;
+            }
+          }
         }
       }
 
