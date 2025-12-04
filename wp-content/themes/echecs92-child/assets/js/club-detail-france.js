@@ -3,9 +3,10 @@
  * Loads the clubs dataset and displays the selected club based on ?id= query param.
  */
 (function () {
+  const GEO_HINTS_VERSION = '20251204';
   const DATA_MANIFEST_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france.json';
   const DATA_FALLBACK_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france/';
-  const GEO_HINTS_REMOTE_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json';
+  const GEO_HINTS_REMOTE_URL = `/wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json?v=${GEO_HINTS_VERSION}`;
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
   const detailContainer = document.getElementById('club-detail');
   const backLink = document.querySelector('[data-club-back]');
@@ -721,7 +722,7 @@
     '95': { label: "Val-d'Oise", lat: 49.036, lng: 2.063 },
   };
 
-  const GEOCODE_STORAGE_KEY = 'echecs92:club-detail-fr:geocode';
+  const GEOCODE_STORAGE_KEY = `echecs92:club-detail-fr:geocode:${GEO_HINTS_VERSION}`;
   const GEOCODE_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
   const geocodeCache = new Map();
 

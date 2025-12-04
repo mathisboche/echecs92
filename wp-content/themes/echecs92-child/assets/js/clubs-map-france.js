@@ -1,7 +1,8 @@
 (function () {
+  const GEO_HINTS_VERSION = '20251204';
   const DATA_MANIFEST_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france.json';
   const DATA_FALLBACK_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france/';
-  const GEO_HINTS_REMOTE_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json';
+  const GEO_HINTS_REMOTE_URL = `/wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json?v=${GEO_HINTS_VERSION}`;
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
   const mapElement = document.getElementById('clubs-map');
   const mapBackLink = document.querySelector('[data-clubs-map-back]');
@@ -563,12 +564,12 @@
     return { lat: entry.lat, lng: entry.lng, label: entry.label, postalCode: str };
   };
 
-  const GEOCODE_STORAGE_KEY = 'echecs92:clubs-fr:geocode';
-  const GEO_WARM_KEY = 'echecs92:clubs-fr:geocode-warm';
+  const GEOCODE_STORAGE_KEY = `echecs92:clubs-fr:geocode:${GEO_HINTS_VERSION}`;
+  const GEO_WARM_KEY = `echecs92:clubs-fr:geocode-warm:${GEO_HINTS_VERSION}`;
   const GEO_WARM_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 jours : les adresses changent rarement
   const GEOCODE_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
   const geocodeCache = new Map();
-  const GEO_HINTS_STORAGE_KEY = 'echecs92:clubs-fr:geo-hints';
+  const GEO_HINTS_STORAGE_KEY = `echecs92:clubs-fr:geo-hints:${GEO_HINTS_VERSION}`;
   const geoHintsCache = new Map();
 
   const loadGeocodeCache = () => {
