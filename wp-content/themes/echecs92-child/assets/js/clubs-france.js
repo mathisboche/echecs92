@@ -3227,7 +3227,13 @@
 
   const normaliseCommuneForCompare = (value) => {
     const formatted = formatCommune(value || '');
-    return formatted ? formatted.toLowerCase() : '';
+    if (!formatted) {
+      return '';
+    }
+    return formatted
+      .toLowerCase()
+      .replace(/[-\s]+/g, ' ')
+      .trim();
   };
 
   const normaliseReferenceCommune = (value, postalCode = '') => {
