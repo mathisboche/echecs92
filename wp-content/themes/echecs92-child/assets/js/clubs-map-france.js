@@ -695,7 +695,12 @@
     }
   };
 
+  const GEOCODE_ENABLED = false;
+
   const geocodePlace = (query, options = {}) => {
+    if (!GEOCODE_ENABLED) {
+      return Promise.resolve(null);
+    }
     const expectedPostal = (options.postalCode || '').toString().trim();
     const allowPostalMismatch = options.allowMismatch === true;
     const normalizedQuery = normalise(query).replace(/\s+/g, ' ').trim();
@@ -780,10 +785,14 @@
             if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
               return;
             }
+            const precision =
+              value.precision ||
+              (typeof value.source === 'string' && value.source.toLowerCase().includes('manual') ? 'exact' : 'geocoded');
             map.set(slug, {
               lat,
               lng,
               postalCode: value.postalCode || '',
+              precision,
             });
           });
           return map;
@@ -891,39 +900,21 @@
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
         return;
       }
+      const precision = hint.precision || 'geocoded';
       club.latitude = lat;
       club.longitude = lng;
-      club._coordPrecision = 'hint';
+      club._coordPrecision = precision;
       if (!club.postalCode && hint.postalCode) {
         club.postalCode = hint.postalCode;
       }
       const signature = buildClubSignature(club);
       if (signature) {
-        geoHintsCache.set(signature, { lat, lng, postalCode: club.postalCode || '', precision: 'hint' });
+        geoHintsCache.set(signature, { lat, lng, postalCode: club.postalCode || '', precision });
       }
     });
   };
 
-  const needsPreciseCoordinates = (club) => {
-    if (!club) {
-      return false;
-    }
-    const lat = Number.parseFloat(club.latitude ?? club.lat);
-    const lng = Number.parseFloat(club.longitude ?? club.lng ?? club.lon);
-    const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
-    const precision = club._coordPrecision || (hasCoords ? 'exact' : 'unknown');
-    if (!hasCoords) {
-      return true;
-    }
-    if (precision === 'exact' || precision === 'geocoded') {
-      return false;
-    }
-    // Paris: même si on a un hint, on force un géocodage précis pour éviter les amas au centre d'arrondissement.
-    if (isParisPostal(club.postalCode)) {
-      return true;
-    }
-    return false;
-  };
+  const needsPreciseCoordinates = () => false;
 
   const geocodeClubsBatch = async (clubs, options = {}) => {
     const items = Array.isArray(clubs) ? clubs : [];
@@ -1375,38 +1366,6 @@
       setTimeout(() => {
         map.invalidateSize();
       }, 100);
-
-      const lastWarmTs = loadGeocodeWarmTs();
-      const shouldWarm = !Number.isFinite(lastWarmTs) || Date.now() - lastWarmTs > GEO_WARM_MAX_AGE_MS;
-      const needsGeocode = shouldWarm ? clubs.filter((club) => needsPreciseCoordinates(club)) : [];
-      if (needsGeocode.length) {
-        updateStatus('Affinage des coordonnées des clubs…', 'info');
-        geocodeClubsBatch(needsGeocode, { limit: 80, delayMs: 80, concurrency: 6 })
-          .then((geocodedCount) => {
-            if (!geocodedCount) {
-              return;
-            }
-            const updatedFeatures = buildFeaturesFromClubs(clubs);
-            if (!updatedFeatures.length) {
-              updateStatus('Impossible de positionner les clubs sur la carte.', 'error');
-              return;
-            }
-            renderMarkers(updatedFeatures, { refit: !features.length });
-            const filteredOutAfter = clubs.length - updatedFeatures.length;
-            const suffix =
-              filteredOutAfter > 0
-                ? ` (coordonnées exactes uniquement, ${filteredOutAfter} filtré${filteredOutAfter > 1 ? 's' : ''})`
-                : ' (coordonnées exactes)';
-            updateStatus(
-              `${updatedFeatures.length} club${updatedFeatures.length > 1 ? 's' : ''} affiché${updatedFeatures.length > 1 ? 's' : ''} sur la carte${suffix}.`,
-              'success'
-            );
-            persistGeocodeWarmTs();
-          })
-          .catch(() => {
-            // ignore errors, initial status already set
-          });
-      }
     })
     .catch(() => {
       updateStatus('Impossible de charger la carte pour le moment. Veuillez réessayer plus tard.', 'error');

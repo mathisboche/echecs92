@@ -5,6 +5,7 @@
 (function () {
   const DATA_MANIFEST_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france.json';
   const DATA_FALLBACK_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france/';
+  const GEO_HINTS_REMOTE_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json';
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
   const CLUBS_UI_STATE_KEY = 'echecs92:clubs-fr:ui';
   const REOPEN_RESULTS_FLAG_KEY = 'echecs92:clubs-fr:reopen-results';
@@ -126,6 +127,67 @@
     }
     return datasetPromise;
   };
+
+  let staticGeoHintsPromise = null;
+  const loadStaticGeoHints = () => {
+    if (!staticGeoHintsPromise) {
+      staticGeoHintsPromise = fetchJson(GEO_HINTS_REMOTE_URL)
+        .then((payload) => {
+          const hints = payload && typeof payload === 'object' ? payload.hints || {} : {};
+          const map = new Map();
+          Object.entries(hints).forEach(([slug, value]) => {
+            if (!value || typeof value !== 'object') {
+              return;
+            }
+            const lat = Number.parseFloat(value.lat);
+            const lng = Number.parseFloat(value.lng);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+              return;
+            }
+            const precision =
+              value.precision ||
+              (typeof value.source === 'string' && value.source.toLowerCase().includes('manual') ? 'exact' : 'geocoded');
+            map.set(slug, {
+              lat,
+              lng,
+              postalCode: value.postalCode || '',
+              precision,
+            });
+          });
+          return map;
+        })
+        .catch(() => new Map());
+    }
+    return staticGeoHintsPromise;
+  };
+
+  const applyStaticHints = (clubs, hints) => {
+    if (!(hints instanceof Map) || !hints.size) {
+      return;
+    }
+    clubs.forEach((club) => {
+      const key = club.slug || club.id || '';
+      if (!key || !hints.has(key)) {
+        return;
+      }
+      const hint = hints.get(key);
+      const lat = Number.parseFloat(hint.lat);
+      const lng = Number.parseFloat(hint.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return;
+      }
+      club.latitude = lat;
+      club.longitude = lng;
+      club._coordPrecision = hint.precision || 'geocoded';
+      if (!club.postalCode && hint.postalCode) {
+        club.postalCode = hint.postalCode;
+      }
+      if (Object.prototype.hasOwnProperty.call(club, '_distanceCoords')) {
+        delete club._distanceCoords;
+      }
+    });
+  };
+
   const POSTAL_COORDINATES = {
     '92000': { label: 'Nanterre', lat: 48.8927825, lng: 2.2073652 },
     '92100': { label: 'Boulogne-Billancourt', lat: 48.837494, lng: 2.2378546 },
@@ -5325,13 +5387,14 @@
 
     state.restoreMode = true;
     const releaseInitOverlay = showLoadingOverlay('Chargement des clubs…');
-    loadFranceClubsDataset()
-      .then(async (payload) => {
+    Promise.all([loadFranceClubsDataset(), loadStaticGeoHints()])
+      .then(async ([payload, staticHints]) => {
         const data = Array.isArray(payload) ? payload : [];
         state.clubs = data
           .map(hydrateClub)
           .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
         ensureUniqueSlugs(state.clubs);
+        applyStaticHints(state.clubs, staticHints);
         buildLocationSuggestionIndex(state.clubs);
 
         const reopenResultsRequested = consumeReopenResultsFlag();
@@ -5370,15 +5433,6 @@
           updateSortButtons();
           applySortMode({ skipScroll: true, delay: false, quiet: true });
         }
-        // Enrichir progressivement les clubs sans coordonnées précises.
-        geocodeClubsBatch(state.clubs, { limit: 200, delayMs: 120, concurrency: 6 }).then((count) => {
-          if (count > 0) {
-            state.filtered = state.filtered.slice();
-            renderResults({ force: true });
-            updateTotalCounter();
-          }
-        });
-
         if (!restored) {
           if (getActiveLicenseSort() || state.sortMode === 'alpha') {
             applySortMode({ skipScroll: true, delay: false, quiet: true });
