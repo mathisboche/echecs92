@@ -193,6 +193,11 @@
 
   const normaliseCommuneKey = (value) => normalise(value).replace(/[^a-z0-9]/g, '');
 
+  const COORD_PRECISION_ALLOWED = {
+    exact: true,
+    hint: true,
+  };
+
   const formatCommune = (value) => {
     if (!value) {
       return '';
@@ -266,6 +271,39 @@
       return '';
     }
     return Math.abs(n >>> 0).toString(36);
+  };
+
+  const getParisArrondissementFromPostal = (postalCode) => {
+    const code = (postalCode || '').toString().trim();
+    if (!/^75\d{3}$/.test(code)) {
+      return null;
+    }
+    const arr = Number.parseInt(code.slice(3), 10);
+    if (!Number.isFinite(arr) || arr < 1 || arr > 20) {
+      return null;
+    }
+    return arr;
+  };
+
+  const formatParisArrondissementLabel = (postalCode) => {
+    const arr = getParisArrondissementFromPostal(postalCode);
+    if (!arr) {
+      return '';
+    }
+    const suffix = arr === 1 ? 'er' : 'e';
+    return `Paris ${arr}${suffix}`;
+  };
+
+  const formatCommuneWithPostal = (commune, postalCode) => {
+    const base = formatCommune(commune || '');
+    const parisLabel = formatParisArrondissementLabel(postalCode);
+    if (parisLabel) {
+      const looksNumeric = /^\d/.test(base);
+      if (!base || base.toLowerCase().startsWith('paris') || looksNumeric) {
+        return parisLabel;
+      }
+    }
+    return base;
   };
 
   const buildShortSlugBase = (club) => {
@@ -791,6 +829,7 @@
       }
       club.latitude = lat;
       club.longitude = lng;
+      club._coordPrecision = 'hint';
       if (!club.postalCode && hint.postalCode) {
         club.postalCode = hint.postalCode;
       }
@@ -999,17 +1038,20 @@
         if (hint.postalCode && !club.postalCode) {
           club.postalCode = hint.postalCode;
         }
+        club._coordPrecision = 'hint';
       }
     }
 
     const directLat = Number.parseFloat(club.latitude ?? club.lat);
     const directLng = Number.parseFloat(club.longitude ?? club.lng ?? club.lon);
     if (Number.isFinite(directLat) && Number.isFinite(directLng)) {
+      const precision = club._coordPrecision || 'exact';
       return {
         lat: directLat,
         lng: directLng,
         label: club.commune || club.addressStandard || club.address || club.name || '',
         postalCode: club.postalCode || '',
+        precision,
       };
     }
 
@@ -1021,6 +1063,7 @@
           lng: addressFallback.longitude,
           label: addressFallback.label || club.addressStandard,
           postalCode: addressFallback.postalCode || '',
+          precision: 'approx',
         };
       }
     }
@@ -1028,7 +1071,7 @@
     if (club.commune) {
       const coords = getCommuneCoordinatesByName(club.commune);
       if (coords) {
-        return { lat: coords.lat, lng: coords.lng, label: coords.label, postalCode: coords.postalCode };
+        return { lat: coords.lat, lng: coords.lng, label: coords.label, postalCode: coords.postalCode, precision: 'commune' };
       }
     }
 
@@ -1036,7 +1079,7 @@
     for (let i = 0; i < postalCandidates.length; i += 1) {
       const coords = getPostalCoordinates(postalCandidates[i]);
       if (coords) {
-        return { lat: coords.lat, lng: coords.lng, label: coords.label, postalCode: coords.postalCode };
+        return { lat: coords.lat, lng: coords.lng, label: coords.label, postalCode: coords.postalCode, precision: 'postal' };
       }
     }
 
@@ -1044,7 +1087,7 @@
     if (parisPostal) {
       const coords = getPostalCoordinates(parisPostal);
       if (coords) {
-        return { lat: coords.lat, lng: coords.lng, label: coords.label, postalCode: coords.postalCode };
+        return { lat: coords.lat, lng: coords.lng, label: coords.label, postalCode: coords.postalCode, precision: 'postal' };
       }
     }
 
@@ -1056,6 +1099,7 @@
           lng: addressFallback.longitude,
           label: addressFallback.label || club.addressStandard,
           postalCode: addressFallback.postalCode || '',
+          precision: 'approx',
         };
       }
     }
@@ -1068,6 +1112,7 @@
           lng: fallback.longitude,
           label: fallback.label || club.commune,
           postalCode: fallback.postalCode || '',
+          precision: 'commune',
         };
       }
     }
@@ -1079,7 +1124,7 @@
     const list = [];
     (Array.isArray(clubs) ? clubs : []).forEach((club) => {
       const coords = resolveClubCoordinates(club);
-      if (coords) {
+      if (coords && COORD_PRECISION_ALLOWED[coords.precision]) {
         list.push({ club, coords });
       }
     });
@@ -1105,13 +1150,27 @@
     return `${normalized}${encodeURIComponent(slug)}/`;
   };
 
-  const createPopupContent = (club) => {
+  const formatPrecisionLabel = (precision) => {
+    if (precision === 'exact') {
+      return 'Précision : adresse exacte';
+    }
+    if (precision === 'hint') {
+      return 'Précision : point validé';
+    }
+    return '';
+  };
+
+  const createPopupContent = (club, coords) => {
     const lines = [`<strong>${club.name}</strong>`];
     if (club.commune) {
       lines.push(club.commune);
     }
     if (club.addressDisplay) {
       lines.push(club.addressDisplay);
+    }
+    const precisionLabel = formatPrecisionLabel(coords?.precision);
+    if (precisionLabel) {
+      lines.push(`<span class="clubs-map__precision">${precisionLabel}</span>`);
     }
     const detailUrl = getClubDetailUrl(club);
     lines.push(`<a class="clubs-map__detail-link" href="${detailUrl}">Voir la fiche</a>`);
@@ -1191,7 +1250,7 @@
           const marker = L.marker([coords.lat, coords.lng], {
             title: club.name,
           });
-          marker.bindPopup(createPopupContent(club), {
+          marker.bindPopup(createPopupContent(club, coords), {
             keepInView: true,
           });
           if (typeof markersLayer.addLayer === 'function') {
@@ -1211,51 +1270,26 @@
         }
       };
 
+      const filteredOut = clubs.length - features.length;
       if (features.length) {
         renderMarkers(features, { refit: true });
+        const suffix =
+          filteredOut > 0
+            ? ` (coordonnées exactes uniquement, ${filteredOut} filtré${filteredOut > 1 ? 's' : ''})`
+            : ' (coordonnées exactes)';
         updateStatus(
-          `${features.length} club${features.length > 1 ? 's' : ''} affiché${features.length > 1 ? 's' : ''} sur la carte.`,
+          `${features.length} club${features.length > 1 ? 's' : ''} affiché${features.length > 1 ? 's' : ''} sur la carte${suffix}.`,
           'success'
         );
       } else {
-        updateStatus('Localisation des clubs en cours…', 'info');
+        updateStatus('Aucun club avec coordonnées exactes à afficher pour le moment.', 'error');
       }
 
       setTimeout(() => {
         map.invalidateSize();
       }, 100);
 
-      const missingCoords = clubs.filter(
-        (club) =>
-          !Number.isFinite(Number.parseFloat(club.latitude)) ||
-          !Number.isFinite(Number.parseFloat(club.longitude))
-      );
-
-      geocodeClubsBatch(missingCoords, { limit: 220, delayMs: 120, concurrency: 6 })
-        .then((geocodedCount) => {
-          if (!geocodedCount && features.length) {
-            return;
-          }
-          const updatedFeatures = buildFeaturesFromClubs(clubs);
-          if (!updatedFeatures.length) {
-            updateStatus('Impossible de positionner les clubs sur la carte.', 'error');
-            return;
-          }
-          const gained = updatedFeatures.length - features.length;
-          const shouldRefit = !features.length && updatedFeatures.length > 0;
-          if (geocodedCount || gained > 0 || shouldRefit) {
-            renderMarkers(updatedFeatures, { refit: shouldRefit });
-          }
-          updateStatus(
-            `${updatedFeatures.length} club${updatedFeatures.length > 1 ? 's' : ''} affiché${updatedFeatures.length > 1 ? 's' : ''} sur la carte${geocodedCount ? ' (coordonnées affinées)' : ''}.`,
-            'success'
-          );
-        })
-        .catch(() => {
-          if (!features.length) {
-            updateStatus('Impossible de positionner les clubs sur la carte.', 'error');
-          }
-        });
+      // Pas de géocodage automatique : seuls les clubs disposant de coordonnées exactes ou validées sont affichés.
     })
     .catch(() => {
       updateStatus('Impossible de charger la carte pour le moment. Veuillez réessayer plus tard.', 'error');
