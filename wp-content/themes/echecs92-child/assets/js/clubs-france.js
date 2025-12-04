@@ -249,6 +249,10 @@
         bestByKey.set(key, candidate);
         return;
       }
+      if (!existing.hasClub && candidate.hasClub) {
+        bestByKey.set(key, candidate);
+        return;
+      }
       if (!hasCoords(existing) && hasCoords(candidate)) {
         bestByKey.set(key, candidate);
       }
@@ -336,7 +340,7 @@
       const search = normaliseForSearch(`${commune} ${postal}`.trim());
       const searchAlt = normaliseForSearch(`${postal} ${commune}`.trim());
       const coords = resolveClubDistanceCoordinates(club);
-      const entry = { display, postalCode: postal, commune, search, searchAlt };
+      const entry = { display, postalCode: postal, commune, search, searchAlt, source: 'club', hasClub: true };
       if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
         entry.latitude = Number(coords.lat);
         entry.longitude = Number(coords.lng);
@@ -391,6 +395,9 @@
     }
     if (!normalisedQuery && !numericQuery) {
       score = 10;
+    }
+    if (score > 0 && entry.hasClub) {
+      score += 25;
     }
     return score - Math.min(6, entry.display.length / 50);
   };
