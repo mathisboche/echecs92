@@ -195,6 +195,7 @@
 
   const COORD_PRECISION_ALLOWED = {
     exact: true,
+    geocoded: true,
     hint: true,
   };
 
@@ -219,6 +220,47 @@
     const base = normalise(value)
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
+    return base;
+  };
+
+  const getParisArrondissementFromPostal = (postalCode) => {
+    const code = (postalCode || '').toString().trim();
+    if (!/^75\d{3}$/.test(code)) {
+      return null;
+    }
+    const arr = Number.parseInt(code.slice(3), 10);
+    if (!Number.isFinite(arr) || arr < 1 || arr > 20) {
+      return null;
+    }
+    return arr;
+  };
+
+  const formatParisArrondissementLabel = (postalCode) => {
+    const arr = getParisArrondissementFromPostal(postalCode);
+    if (!arr) {
+      return '';
+    }
+    const suffix = arr === 1 ? 'er' : 'e';
+    return `Paris ${arr}${suffix}`;
+  };
+
+  const isParisPostal = (postalCode) => {
+    const code = (postalCode || '').toString().trim();
+    if (code === '75116') {
+      return true;
+    }
+    return /^75\d{3}$/.test(code);
+  };
+
+  const formatCommuneWithPostal = (commune, postalCode) => {
+    const base = formatCommune(commune || '');
+    const parisLabel = formatParisArrondissementLabel(postalCode);
+    if (parisLabel) {
+      const looksNumeric = /^\d/.test(base);
+      if (!base || base.toLowerCase().startsWith('paris') || looksNumeric) {
+        return parisLabel;
+      }
+    }
     return base;
   };
 
@@ -732,10 +774,7 @@
     if (!club || typeof club !== 'object') {
       return false;
     }
-    const hasCoords =
-      Number.isFinite(Number.parseFloat(club.latitude)) &&
-      Number.isFinite(Number.parseFloat(club.longitude));
-    if (hasCoords) {
+    if (!needsPreciseCoordinates(club)) {
       return false;
     }
     const postalCandidates = collectPostalCodes(club);
@@ -760,6 +799,7 @@
           if (place) {
             club.latitude = place.lat;
             club.longitude = place.lng;
+            club._coordPrecision = 'geocoded';
             if (!club.postalCode && place.postalCode) {
               club.postalCode = place.postalCode;
             }
@@ -838,6 +878,27 @@
         geoHintsCache.set(signature, { lat, lng, postalCode: club.postalCode || '' });
       }
     });
+  };
+
+  const needsPreciseCoordinates = (club) => {
+    if (!club) {
+      return false;
+    }
+    const lat = Number.parseFloat(club.latitude ?? club.lat);
+    const lng = Number.parseFloat(club.longitude ?? club.lng ?? club.lon);
+    const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
+    const precision = club._coordPrecision || (hasCoords ? 'exact' : 'unknown');
+    if (!hasCoords) {
+      return true;
+    }
+    if (precision === 'exact' || precision === 'geocoded') {
+      return false;
+    }
+    // Paris: même si on a un hint, on force un géocodage précis pour éviter les amas au centre d'arrondissement.
+    if (isParisPostal(club.postalCode)) {
+      return true;
+    }
+    return false;
   };
 
   const geocodeClubsBatch = async (clubs, options = {}) => {
@@ -1124,7 +1185,9 @@
     const list = [];
     (Array.isArray(clubs) ? clubs : []).forEach((club) => {
       const coords = resolveClubCoordinates(club);
-      if (coords && COORD_PRECISION_ALLOWED[coords.precision]) {
+      const precision = coords?.precision || 'unknown';
+      const isParisHint = precision === 'hint' && isParisPostal(club.postalCode);
+      if (coords && COORD_PRECISION_ALLOWED[precision] && !isParisHint) {
         list.push({ club, coords });
       }
     });
@@ -1289,7 +1352,34 @@
         map.invalidateSize();
       }, 100);
 
-      // Pas de géocodage automatique : seuls les clubs disposant de coordonnées exactes ou validées sont affichés.
+      const needsGeocode = clubs.filter((club) => needsPreciseCoordinates(club));
+      if (needsGeocode.length) {
+        updateStatus('Affinage des coordonnées des clubs…', 'info');
+        geocodeClubsBatch(needsGeocode, { limit: 180, delayMs: 90, concurrency: 6 })
+          .then((geocodedCount) => {
+            if (!geocodedCount) {
+              return;
+            }
+            const updatedFeatures = buildFeaturesFromClubs(clubs);
+            if (!updatedFeatures.length) {
+              updateStatus('Impossible de positionner les clubs sur la carte.', 'error');
+              return;
+            }
+            renderMarkers(updatedFeatures, { refit: !features.length });
+            const filteredOutAfter = clubs.length - updatedFeatures.length;
+            const suffix =
+              filteredOutAfter > 0
+                ? ` (coordonnées exactes uniquement, ${filteredOutAfter} filtré${filteredOutAfter > 1 ? 's' : ''})`
+                : ' (coordonnées exactes)';
+            updateStatus(
+              `${updatedFeatures.length} club${updatedFeatures.length > 1 ? 's' : ''} affiché${updatedFeatures.length > 1 ? 's' : ''} sur la carte${suffix}.`,
+              'success'
+            );
+          })
+          .catch(() => {
+            // ignore errors, initial status already set
+          });
+      }
     })
     .catch(() => {
       updateStatus('Impossible de charger la carte pour le moment. Veuillez réessayer plus tard.', 'error');

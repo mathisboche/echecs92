@@ -356,7 +356,7 @@ function cdje92_render_contact_form() {
     ];
 
     $messages = [
-        'success' => __('Votre message a bien été envoyé. Une réponse vous sera apportée sous 48 heures ouvrées.', 'echecs92-child'),
+        'success' => __('Votre message a bien été envoyé. Une réponse  sera apportée sous 48 heures ouvrées.', 'echecs92-child'),
         'error'   => [
             'invalid_nonce' => __('Une erreur est survenue. Merci de réessayer.', 'echecs92-child'),
             'incomplete'    => __('Merci de renseigner les champs obligatoires.', 'echecs92-child'),
