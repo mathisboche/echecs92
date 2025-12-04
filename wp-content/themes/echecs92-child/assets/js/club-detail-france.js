@@ -453,6 +453,39 @@
 
   const normaliseCommuneKey = (value) => normalise(value).replace(/[^a-z0-9]/g, '');
 
+  const getParisArrondissementFromPostal = (postalCode) => {
+    const code = (postalCode || '').toString().trim();
+    if (!/^75\d{3}$/.test(code)) {
+      return null;
+    }
+    const arr = Number.parseInt(code.slice(3), 10);
+    if (!Number.isFinite(arr) || arr < 1 || arr > 20) {
+      return null;
+    }
+    return arr;
+  };
+
+  const formatParisArrondissementLabel = (postalCode) => {
+    const arr = getParisArrondissementFromPostal(postalCode);
+    if (!arr) {
+      return '';
+    }
+    const suffix = arr === 1 ? 'er' : 'e';
+    return `Paris ${arr}${suffix}`;
+  };
+
+  const formatCommuneWithPostal = (commune, postalCode) => {
+    const base = formatCommune(commune || '');
+    const parisLabel = formatParisArrondissementLabel(postalCode);
+    if (parisLabel) {
+      const looksNumeric = /^\d/.test(base);
+      if (!base || base.toLowerCase().startsWith('paris') || looksNumeric) {
+        return parisLabel;
+      }
+    }
+    return base;
+  };
+
   const POSTAL_COORDINATES = {
     '92000': { label: 'Nanterre', lat: 48.8927825, lng: 2.2073652 },
     '92100': { label: 'Boulogne-Billancourt', lat: 48.837494, lng: 2.2378546 },
