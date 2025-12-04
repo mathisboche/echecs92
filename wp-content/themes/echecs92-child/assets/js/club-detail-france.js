@@ -973,16 +973,17 @@
     const secondaryAddress = raw.siege || raw.siege_social || raw.address2 || '';
     const secondaryParts = extractAddressParts(secondaryAddress);
     const communeRaw = raw.commune || raw.ville || addressParts.city || secondaryParts.city || '';
-    const commune = formatCommune(communeRaw);
+    const baseCommune = formatCommune(communeRaw);
     const postalCode = raw.code_postal || raw.postal_code || addressParts.postalCode || secondaryParts.postalCode || '';
+    const commune = formatCommuneWithPostal(baseCommune, postalCode);
     const standardAddress = buildStandardAddress(
       primaryAddress,
       secondaryAddress,
       postalCode,
-      commune || addressParts.city || secondaryParts.city || ''
+      commune || baseCommune || addressParts.city || secondaryParts.city || ''
     );
-    const slugSource = commune || name || postalCode || primaryAddress || secondaryAddress;
-    const id = raw.id || slugify(name || slugSource) || 'club';
+    const slugSource = name || commune || postalCode || primaryAddress || secondaryAddress;
+    const id = raw.id || slugify(slugSource) || 'club';
 
     const rawSite = raw.site || raw.website || '';
     let site = rawSite;
@@ -1019,6 +1020,7 @@
       address: primaryAddress || secondaryAddress || '',
       siege: secondaryAddress || '',
       addressStandard: standardAddress,
+      addressDisplay: standardAddress || primaryAddress || secondaryAddress || '',
       phone: raw.telephone || raw.phone || '',
       email: raw.email || '',
       site,
@@ -1029,8 +1031,6 @@
       notes: raw.notes || '',
       fiche_ffe: raw.fiche_ffe || '',
       tags: Array.isArray(raw.tags) ? raw.tags : [],
-      addressStandard: standardAddress,
-      addressDisplay: standardAddress || primaryAddress || secondaryAddress || '',
       latitude,
       longitude,
       licenses: {

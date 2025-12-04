@@ -644,7 +644,7 @@
     if (!entry) {
       return null;
     }
-    return { postalCode: str, lat: entry.lat, lng: entry.lng, label: entry.label };
+    return { postalCode: str, lat: entry.lat, lng: entry.lng, label: entry.label, precision: 'department' };
   };
 
   const GEOCODE_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
@@ -2821,7 +2821,7 @@
     if (!entry) {
       return null;
     }
-    return { postalCode: key, lat: entry.lat, lng: entry.lng, label: entry.label };
+    return { postalCode: key, lat: entry.lat, lng: entry.lng, label: entry.label, precision: 'postal' };
   };
 
   const getCommuneCoordinatesByName = (value) => {
@@ -2834,13 +2834,25 @@
     }
     const entry = COMMUNE_COORDINATES_BY_NAME[key];
     if (entry) {
-      return { postalCode: entry.postalCode, lat: entry.lat, lng: entry.lng, label: entry.label };
+      return {
+        postalCode: entry.postalCode,
+        lat: entry.lat,
+        lng: entry.lng,
+        label: entry.label,
+        precision: 'commune',
+      };
     }
     const parisPostal = extractParisPostal(value);
     if (parisPostal) {
       const coords = getPostalCoordinates(parisPostal);
       if (coords) {
-        return { postalCode: coords.postalCode, lat: coords.lat, lng: coords.lng, label: coords.label };
+        return {
+          postalCode: coords.postalCode,
+          lat: coords.lat,
+          lng: coords.lng,
+          label: coords.label,
+          precision: coords.precision || 'postal',
+        };
       }
     }
     return null;
@@ -3277,7 +3289,13 @@
         const code = postalMatches[i];
         const coords = getPostalCoordinates(code);
         if (coords) {
-          return { latitude: coords.lat, longitude: coords.lng, label: coords.label, postalCode: coords.postalCode };
+          return {
+            latitude: coords.lat,
+            longitude: coords.lng,
+            label: coords.label,
+            postalCode: coords.postalCode,
+            precision: coords.precision || 'postal',
+          };
         }
         const deptFallback = getDeptFallbackCoordinates(code);
         if (deptFallback) {
@@ -3286,6 +3304,7 @@
             longitude: deptFallback.lng,
             label: deptFallback.label,
             postalCode: deptFallback.postalCode || code,
+            precision: deptFallback.precision || 'department',
           };
         }
       }
@@ -3295,7 +3314,13 @@
     if (parisPostal) {
       const coords = getPostalCoordinates(parisPostal);
       if (coords) {
-        return { latitude: coords.lat, longitude: coords.lng, label: coords.label, postalCode: coords.postalCode };
+        return {
+          latitude: coords.lat,
+          longitude: coords.lng,
+          label: coords.label,
+          postalCode: coords.postalCode,
+          precision: coords.precision || 'postal',
+        };
       }
     }
 
@@ -3308,6 +3333,7 @@
           longitude: deptFallback.lng,
           label: deptFallback.label,
           postalCode: deptFallback.postalCode || numericOnly,
+          precision: deptFallback.precision || 'department',
         };
       }
     }
@@ -3333,7 +3359,13 @@
     for (const candidate of candidates) {
       const coords = getCommuneCoordinatesByName(candidate);
       if (coords) {
-        return { latitude: coords.lat, longitude: coords.lng, label: coords.label, postalCode: coords.postalCode };
+        return {
+          latitude: coords.lat,
+          longitude: coords.lng,
+          label: coords.label,
+          postalCode: coords.postalCode,
+          precision: coords.precision || 'commune',
+        };
       }
     }
 
@@ -3411,6 +3443,7 @@
         lat: directLat,
         lng: directLng,
         label: club.commune || club.address || club.name || '',
+        precision: 'exact',
       };
       club._distanceCoords = coords;
       return coords;
@@ -3419,7 +3452,7 @@
     if (club.commune) {
       const coords = getCommuneCoordinatesByName(club.commune);
       if (coords) {
-        club._distanceCoords = coords;
+        club._distanceCoords = { ...coords, precision: coords.precision || 'commune' };
         return coords;
       }
     }
@@ -3428,7 +3461,7 @@
     for (let i = 0; i < postalCandidates.length; i += 1) {
       const coords = getPostalCoordinates(postalCandidates[i]);
       if (coords) {
-        club._distanceCoords = coords;
+        club._distanceCoords = { ...coords, precision: coords.precision || 'postal' };
         return coords;
       }
     }
@@ -3437,8 +3470,8 @@
     for (let i = 0; i < postalCandidates.length; i += 1) {
       const deptCoords = getDeptFallbackCoordinates(postalCandidates[i]);
       if (deptCoords) {
-        club._distanceCoords = deptCoords;
-        return deptCoords;
+        club._distanceCoords = { ...deptCoords, precision: deptCoords.precision || 'department' };
+        return club._distanceCoords;
       }
     }
 
@@ -3459,6 +3492,7 @@
           lat: addressFallback.latitude,
           lng: addressFallback.longitude,
           label: addressFallback.label || club.addressStandard,
+          precision: addressFallback.precision || 'approx',
         };
         return club._distanceCoords;
       }
@@ -3472,6 +3506,7 @@
           lat: fallback.latitude,
           lng: fallback.longitude,
           label: fallback.label || club.commune,
+          precision: fallback.precision || 'approx',
         };
         return club._distanceCoords;
       }
@@ -4024,7 +4059,11 @@
     const scored = state.clubs.map((club) => {
       const coords = resolveClubDistanceCoordinates(club);
       const hasCoords = coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng);
-      const distance = hasCoords ? haversineKm(lat, lng, coords.lat, coords.lng) : Number.POSITIVE_INFINITY;
+      const usesDeptFallback = coords && coords.precision === 'department';
+      let distance = hasCoords ? haversineKm(lat, lng, coords.lat, coords.lng) : Number.POSITIVE_INFINITY;
+      if (usesDeptFallback && distance < 1) {
+        distance = Number.POSITIVE_INFINITY;
+      }
       const onsite = isClubOnsiteWithReference(club, referencePostal, referenceCommuneKey);
       return { club, distance, onsite };
     });
