@@ -721,8 +721,36 @@
     '95': { label: "Val-d'Oise", lat: 49.036, lng: 2.063 },
   };
 
+  const GEOCODE_STORAGE_KEY = 'echecs92:club-detail-fr:geocode';
   const GEOCODE_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
   const geocodeCache = new Map();
+
+  const loadGeocodeCache = () => {
+    try {
+      const raw = window.localStorage.getItem(GEOCODE_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        Object.entries(parsed).forEach(([key, value]) => geocodeCache.set(key, value));
+      }
+    } catch {
+      // ignore storage errors
+    }
+  };
+
+  const persistGeocodeCache = () => {
+    try {
+      const obj = {};
+      geocodeCache.forEach((value, key) => {
+        obj[key] = value;
+      });
+      window.localStorage.setItem(GEOCODE_STORAGE_KEY, JSON.stringify(obj));
+    } catch {
+      // ignore storage errors
+    }
+  };
 
   const geocodePlace = (query) => {
     const key = normalise(query).replace(/\s+/g, ' ').trim();
@@ -779,6 +807,7 @@
       .catch(() => null)
       .then((result) => {
         geocodeCache.set(key, result);
+        persistGeocodeCache();
         return result;
       });
 
@@ -1391,5 +1420,6 @@
     }
   }
 
+  loadGeocodeCache();
   init();
 })();
