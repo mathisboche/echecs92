@@ -217,6 +217,39 @@
     return base;
   };
 
+  const getParisArrondissementFromPostal = (postalCode) => {
+    const code = (postalCode || '').toString().trim();
+    if (!/^75\d{3}$/.test(code)) {
+      return null;
+    }
+    const arr = Number.parseInt(code.slice(3), 10);
+    if (!Number.isFinite(arr) || arr < 1 || arr > 20) {
+      return null;
+    }
+    return arr;
+  };
+
+  const formatParisArrondissementLabel = (postalCode) => {
+    const arr = getParisArrondissementFromPostal(postalCode);
+    if (!arr) {
+      return '';
+    }
+    const suffix = arr === 1 ? 'er' : 'e';
+    return `Paris ${arr}${suffix}`;
+  };
+
+  const formatCommuneWithPostal = (commune, postalCode) => {
+    const base = formatCommune(commune || '');
+    const parisLabel = formatParisArrondissementLabel(postalCode);
+    if (parisLabel) {
+      const looksNumeric = /^\d/.test(base);
+      if (!base || base.toLowerCase().startsWith('paris') || looksNumeric) {
+        return parisLabel;
+      }
+    }
+    return base;
+  };
+
   const hashStringToInt = (value) => {
     const str = value || '';
     let hash = 2166136261 >>> 0; // FNV-1a seed
@@ -896,16 +929,17 @@
     const secondaryAddress = raw.siege || raw.siege_social || raw.address2 || '';
     const secondaryParts = extractAddressParts(secondaryAddress);
     const communeRaw = raw.commune || raw.ville || addressParts.city || secondaryParts.city || '';
-    const commune = formatCommune(communeRaw);
+    const baseCommune = formatCommune(communeRaw);
     const postalCode = raw.code_postal || raw.postal_code || addressParts.postalCode || secondaryParts.postalCode || '';
+    const commune = formatCommuneWithPostal(baseCommune, postalCode);
     const standardAddress = buildStandardAddress(
       primaryAddress,
       secondaryAddress,
       postalCode,
-      commune || addressParts.city || secondaryParts.city || ''
+      commune || baseCommune || addressParts.city || secondaryParts.city || ''
     );
-    const slugSource = commune || name || postalCode || primaryAddress || secondaryAddress;
-    const id = raw.id || slugify(name || slugSource) || 'club';
+    const slugSource = name || commune || postalCode || primaryAddress || secondaryAddress;
+    const id = raw.id || slugify(slugSource) || 'club';
 
     const toFloat = (value) => {
       if (value == null || value === '') {
@@ -936,6 +970,7 @@
       latitude,
       longitude,
       slug: '',
+      _communeSlug: slugify(commune || baseCommune || ''),
       departmentCode:
         raw.departmentCode ||
         raw.department_code ||
@@ -1056,7 +1091,7 @@
       return '#';
     }
     const base = detailBase || '';
-    const slug = club.slug || club.id || slugify(club.name || '');
+    const slug = club.slug || club._communeSlug || club.id || slugify(club.name || '');
     if (!base) {
       return `?club=${encodeURIComponent(slug)}`;
     }
