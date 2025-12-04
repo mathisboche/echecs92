@@ -5,20 +5,33 @@
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
   const mapElement = document.getElementById('clubs-map');
   const mapBackLink = document.querySelector('[data-clubs-map-back]');
-  if (!mapElement || typeof L === 'undefined') {
+  if (!mapElement) {
     return;
   }
 
   let manifestPromise = null;
   let datasetPromise = null;
 
-  const fetchJson = (url) =>
-    fetch(url, { headers: { Accept: 'application/json' } }).then((response) => {
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return response.json();
-    });
+  const FETCH_TIMEOUT_MS = 8000;
+  const fetchJson = (url) => {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId =
+      controller && Number.isFinite(FETCH_TIMEOUT_MS) && FETCH_TIMEOUT_MS > 0
+        ? setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+        : null;
+    return fetch(url, { headers: { Accept: 'application/json' }, signal: controller?.signal })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .finally(() => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      });
+  };
 
   const loadManifest = () => {
     if (!manifestPromise) {
@@ -264,39 +277,6 @@
     return base;
   };
 
-  const getParisArrondissementFromPostal = (postalCode) => {
-    const code = (postalCode || '').toString().trim();
-    if (!/^75\d{3}$/.test(code)) {
-      return null;
-    }
-    const arr = Number.parseInt(code.slice(3), 10);
-    if (!Number.isFinite(arr) || arr < 1 || arr > 20) {
-      return null;
-    }
-    return arr;
-  };
-
-  const formatParisArrondissementLabel = (postalCode) => {
-    const arr = getParisArrondissementFromPostal(postalCode);
-    if (!arr) {
-      return '';
-    }
-    const suffix = arr === 1 ? 'er' : 'e';
-    return `Paris ${arr}${suffix}`;
-  };
-
-  const formatCommuneWithPostal = (commune, postalCode) => {
-    const base = formatCommune(commune || '');
-    const parisLabel = formatParisArrondissementLabel(postalCode);
-    if (parisLabel) {
-      const looksNumeric = /^\d/.test(base);
-      if (!base || base.toLowerCase().startsWith('paris') || looksNumeric) {
-        return parisLabel;
-      }
-    }
-    return base;
-  };
-
   const hashStringToInt = (value) => {
     const str = value || '';
     let hash = 2166136261 >>> 0; // FNV-1a seed
@@ -313,39 +293,6 @@
       return '';
     }
     return Math.abs(n >>> 0).toString(36);
-  };
-
-  const getParisArrondissementFromPostal = (postalCode) => {
-    const code = (postalCode || '').toString().trim();
-    if (!/^75\d{3}$/.test(code)) {
-      return null;
-    }
-    const arr = Number.parseInt(code.slice(3), 10);
-    if (!Number.isFinite(arr) || arr < 1 || arr > 20) {
-      return null;
-    }
-    return arr;
-  };
-
-  const formatParisArrondissementLabel = (postalCode) => {
-    const arr = getParisArrondissementFromPostal(postalCode);
-    if (!arr) {
-      return '';
-    }
-    const suffix = arr === 1 ? 'er' : 'e';
-    return `Paris ${arr}${suffix}`;
-  };
-
-  const formatCommuneWithPostal = (commune, postalCode) => {
-    const base = formatCommune(commune || '');
-    const parisLabel = formatParisArrondissementLabel(postalCode);
-    if (parisLabel) {
-      const looksNumeric = /^\d/.test(base);
-      if (!base || base.toLowerCase().startsWith('paris') || looksNumeric) {
-        return parisLabel;
-      }
-    }
-    return base;
   };
 
   const buildShortSlugBase = (club) => {
@@ -1281,10 +1228,31 @@
       ? window.cdjeSpinner.show('Chargement de la carte…')
       : () => {};
 
+  const waitForLeaflet = () =>
+    new Promise((resolve, reject) => {
+      if (typeof L !== 'undefined') {
+        resolve(true);
+        return;
+      }
+      const started = Date.now();
+      const check = setInterval(() => {
+        if (typeof L !== 'undefined') {
+          clearInterval(check);
+          resolve(true);
+          return;
+        }
+        if (Date.now() - started > 8000) {
+          clearInterval(check);
+          reject(new Error('leaflet-unavailable'));
+        }
+      }, 80);
+    });
+
   loadGeocodeCache();
   loadGeoHintsCache();
 
-  Promise.all([loadFranceClubsDataset(), loadStaticGeoHints()])
+  waitForLeaflet()
+    .then(() => Promise.all([loadFranceClubsDataset(), loadStaticGeoHints()]))
     .then(([payload, staticHints]) => {
       const data = Array.isArray(payload) ? payload : [];
       if (!data.length) {
@@ -1367,10 +1335,20 @@
         map.invalidateSize();
       }, 100);
     })
-    .catch(() => {
-      updateStatus('Impossible de charger la carte pour le moment. Veuillez réessayer plus tard.', 'error');
+    .catch((error) => {
+      console.error('[clubs-fr-map] Chargement de la carte impossible', error);
+      const code = error && typeof error.message === 'string' ? error.message : '';
+      if (code === 'leaflet-unavailable') {
+        updateStatus('Impossible de charger la carte (Leaflet indisponible). Réessayez dans un instant.', 'error');
+      } else {
+        updateStatus('Impossible de charger la carte pour le moment. Veuillez réessayer plus tard.', 'error');
+      }
     })
     .finally(() => {
-      releaseSpinner();
+      if (typeof releaseSpinner === 'function') {
+        releaseSpinner();
+      } else if (releaseSpinner && typeof releaseSpinner.hide === 'function') {
+        releaseSpinner.hide();
+      }
     });
 })();
