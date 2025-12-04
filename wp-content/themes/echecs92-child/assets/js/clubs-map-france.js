@@ -613,6 +613,8 @@
   };
 
   const GEOCODE_STORAGE_KEY = 'echecs92:clubs-fr:geocode';
+  const GEO_WARM_KEY = 'echecs92:clubs-fr:geocode-warm';
+  const GEO_WARM_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 jours : les adresses changent rarement
   const GEOCODE_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
   const geocodeCache = new Map();
   const GEO_HINTS_STORAGE_KEY = 'echecs92:clubs-fr:geo-hints';
@@ -667,6 +669,27 @@
         obj[key] = value;
       });
       window.localStorage.setItem(GEO_HINTS_STORAGE_KEY, JSON.stringify(obj));
+    } catch {
+      // ignore
+    }
+  };
+
+  const loadGeocodeWarmTs = () => {
+    try {
+      const raw = window.localStorage.getItem(GEO_WARM_KEY);
+      if (!raw) {
+        return 0;
+      }
+      const ts = Number.parseInt(raw, 10);
+      return Number.isFinite(ts) ? ts : 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  const persistGeocodeWarmTs = () => {
+    try {
+      window.localStorage.setItem(GEO_WARM_KEY, `${Date.now()}`);
     } catch {
       // ignore
     }
@@ -809,6 +832,7 @@
                 lat: club.latitude,
                 lng: club.longitude,
                 postalCode: club.postalCode || postalConstraint || '',
+                precision: 'geocoded',
               });
               persistGeoHintsCache();
             }
@@ -875,7 +899,7 @@
       }
       const signature = buildClubSignature(club);
       if (signature) {
-        geoHintsCache.set(signature, { lat, lng, postalCode: club.postalCode || '' });
+        geoHintsCache.set(signature, { lat, lng, postalCode: club.postalCode || '', precision: 'hint' });
       }
     });
   };
@@ -1099,7 +1123,7 @@
         if (hint.postalCode && !club.postalCode) {
           club.postalCode = hint.postalCode;
         }
-        club._coordPrecision = 'hint';
+        club._coordPrecision = hint.precision || 'hint';
       }
     }
 
@@ -1352,10 +1376,12 @@
         map.invalidateSize();
       }, 100);
 
-      const needsGeocode = clubs.filter((club) => needsPreciseCoordinates(club));
+      const lastWarmTs = loadGeocodeWarmTs();
+      const shouldWarm = !Number.isFinite(lastWarmTs) || Date.now() - lastWarmTs > GEO_WARM_MAX_AGE_MS;
+      const needsGeocode = shouldWarm ? clubs.filter((club) => needsPreciseCoordinates(club)) : [];
       if (needsGeocode.length) {
         updateStatus('Affinage des coordonnées des clubs…', 'info');
-        geocodeClubsBatch(needsGeocode, { limit: 180, delayMs: 90, concurrency: 6 })
+        geocodeClubsBatch(needsGeocode, { limit: 80, delayMs: 80, concurrency: 6 })
           .then((geocodedCount) => {
             if (!geocodedCount) {
               return;
@@ -1375,6 +1401,7 @@
               `${updatedFeatures.length} club${updatedFeatures.length > 1 ? 's' : ''} affiché${updatedFeatures.length > 1 ? 's' : ''} sur la carte${suffix}.`,
               'success'
             );
+            persistGeocodeWarmTs();
           })
           .catch(() => {
             // ignore errors, initial status already set
