@@ -210,6 +210,10 @@
     exact: true,
     geocoded: true,
     hint: true,
+    postal: true,
+    commune: true,
+    approx: true,
+    department: true,
   };
 
   const formatCommune = (value) => {
@@ -1321,14 +1325,14 @@
         renderMarkers(features, { refit: true });
         const suffix =
           filteredOut > 0
-            ? ` (coordonnées exactes uniquement, ${filteredOut} filtré${filteredOut > 1 ? 's' : ''})`
-            : ' (coordonnées exactes)';
+            ? ` (${filteredOut} club${filteredOut > 1 ? 's' : ''} sans coordonnées exploitables)`
+            : ' (toutes les coordonnées disponibles)';
         updateStatus(
           `${features.length} club${features.length > 1 ? 's' : ''} affiché${features.length > 1 ? 's' : ''} sur la carte${suffix}.`,
           'success'
         );
       } else {
-        updateStatus('Aucun club avec coordonnées exactes à afficher pour le moment.', 'error');
+        updateStatus('Aucun club positionné pour le moment.', 'error');
       }
 
       setTimeout(() => {
