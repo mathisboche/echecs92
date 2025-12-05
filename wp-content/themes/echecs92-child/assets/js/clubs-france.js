@@ -2042,6 +2042,17 @@
     mapCtaLink.addEventListener('auxclick', handleIntent);
   };
 
+  const notifyMapFocus = (detail) => {
+    if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') {
+      return;
+    }
+    try {
+      window.dispatchEvent(new CustomEvent('clubs:focus-location', { detail }));
+    } catch (error) {
+      // ignore dispatch errors
+    }
+  };
+
   const setSearchStatus = (message, tone = 'info') => {
     state.statusMessage = message || '';
     updateTotalCounter();
@@ -4265,6 +4276,7 @@
     const referencePostal = normalisePostalCodeValue(referencePostalCode);
     const referenceCommuneKey = normaliseReferenceCommune(referenceCommune, referencePostal);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      notifyMapFocus({ reset: true, source: 'clubs-france' });
       state.filtered = [];
       state.visibleCount = 0;
       state.distanceMode = true;
@@ -4276,6 +4288,16 @@
       updateTotalCounter();
       return { total: 0, finite: 0, label: state.distanceReference };
     }
+
+    notifyMapFocus({
+      lat,
+      lng,
+      label: label || query || '',
+      postalCode: referencePostal,
+      commune: referenceCommuneKey,
+      type: referenceType || 'location',
+      source: 'clubs-france',
+    });
 
     const scored = state.clubs.map((club) => {
       const coords = resolveClubDistanceCoordinates(club);
@@ -4444,6 +4466,7 @@
     if (!trimmed) {
       updateStatusIfCurrent('Recherche en cours…', 'info');
       const meta = applySearch('');
+      notifyMapFocus({ reset: true, source: 'clubs-france' });
       if (abortIfStale()) {
         return;
       }
@@ -4557,6 +4580,7 @@
     }
     syncPrimarySearchValue('');
     closeLocationSuggestions();
+    notifyMapFocus({ reset: true, source: 'clubs-france' });
     setLocationStatus(silent ? '' : 'Localisation effacée.', 'info');
     updateClearButtons();
     if (!skipSearch) {

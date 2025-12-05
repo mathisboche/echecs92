@@ -186,6 +186,81 @@
     }
   }
 
+  let mapInstance = null;
+  let markersLayer = null;
+  let mapFeatures = [];
+  let fullBounds = null;
+  let hasFittedView = false;
+  let pendingMapFocus = null;
+
+  const clampZoom = (value, fallback = 12) => {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed)) {
+      return fallback;
+    }
+    return Math.min(16, Math.max(3, parsed));
+  };
+
+  const normaliseFocusDetail = (detail) => {
+    if (!detail || typeof detail !== 'object') {
+      return null;
+    }
+    if (detail.reset) {
+      return { reset: true };
+    }
+    const lat = Number.parseFloat(detail.lat ?? detail.latitude);
+    const lng = Number.parseFloat(detail.lng ?? detail.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return null;
+    }
+    return {
+      lat,
+      lng,
+      zoom: clampZoom(detail.zoom, 12),
+      label: detail.label || detail.display || detail.commune || '',
+    };
+  };
+
+  const focusMapOnLocation = (detail) => {
+    const normalized = normaliseFocusDetail(detail);
+    if (!normalized) {
+      pendingMapFocus = null;
+      return;
+    }
+    if (!mapInstance) {
+      pendingMapFocus = normalized;
+      return;
+    }
+    if (normalized.reset) {
+      if (fullBounds && fullBounds.isValid && fullBounds.isValid()) {
+        mapInstance.fitBounds(fullBounds, { padding: [32, 32], maxZoom: 14 });
+        hasFittedView = true;
+      }
+      return;
+    }
+    const target = [normalized.lat, normalized.lng];
+    const zoom = clampZoom(normalized.zoom, mapInstance.getZoom ? mapInstance.getZoom() : 12);
+    try {
+      mapInstance.flyTo(target, zoom, { duration: 0.65 });
+    } catch (error) {
+      mapInstance.setView(target, zoom);
+    }
+    hasFittedView = true;
+  };
+
+  const flushPendingMapFocus = () => {
+    if (!pendingMapFocus) {
+      return;
+    }
+    const detail = pendingMapFocus;
+    pendingMapFocus = null;
+    focusMapOnLocation(detail);
+  };
+
+  window.addEventListener('clubs:focus-location', (event) => {
+    focusMapOnLocation(event?.detail || {});
+  });
+
   const updateStatus = (message, tone = 'info') => {
     if (!statusElement) {
       return;
@@ -1269,9 +1344,9 @@
       ensureUniqueSlugs(clubs);
       applyStaticHints(clubs, staticHints);
 
-      const features = buildFeaturesFromClubs(clubs);
+      mapFeatures = buildFeaturesFromClubs(clubs);
 
-      const map = L.map(mapElement, {
+      mapInstance = L.map(mapElement, {
         zoomControl: true,
         scrollWheelZoom: true,
       });
@@ -1280,9 +1355,9 @@
         attribution:
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 18,
-      }).addTo(map);
+      }).addTo(mapInstance);
 
-      const markersLayer =
+      markersLayer =
         typeof L.markerClusterGroup === 'function'
           ? L.markerClusterGroup({
               showCoverageOnHover: false,
@@ -1290,9 +1365,8 @@
               maxClusterRadius: 60,
               chunkedLoading: true,
               disableClusteringAtZoom: 14,
-            }).addTo(map)
-          : L.layerGroup().addTo(map);
-      let hasFittedView = false;
+            }).addTo(mapInstance)
+          : L.layerGroup().addTo(mapInstance);
 
       const renderMarkers = (list, { refit = false } = {}) => {
         markersLayer.clearLayers();
@@ -1311,28 +1385,33 @@
           }
           bounds.extend([coords.lat, coords.lng]);
         });
+        if (bounds.isValid()) {
+          fullBounds = bounds;
+        }
         if (bounds.isValid() && (refit || !hasFittedView)) {
           if (list.length === 1) {
-            map.setView(bounds.getCenter(), 13);
+            mapInstance.setView(bounds.getCenter(), 13);
           } else {
-            map.fitBounds(bounds, { padding: [32, 32], maxZoom: 14 });
+            mapInstance.fitBounds(bounds, { padding: [32, 32], maxZoom: 14 });
           }
           hasFittedView = true;
         }
       };
 
-      if (features.length) {
-        renderMarkers(features, { refit: true });
+      if (mapFeatures.length) {
+        renderMarkers(mapFeatures, { refit: true });
         updateStatus(
-          `${features.length} club${features.length > 1 ? 's' : ''} affiché${features.length > 1 ? 's' : ''} sur la carte.`,
+          `${mapFeatures.length} club${mapFeatures.length > 1 ? 's' : ''} affiché${mapFeatures.length > 1 ? 's' : ''} sur la carte.`,
           'success'
         );
       } else {
         updateStatus('Aucun club positionné pour le moment.', 'error');
       }
 
+      flushPendingMapFocus();
       setTimeout(() => {
-        map.invalidateSize();
+        mapInstance.invalidateSize();
+        flushPendingMapFocus();
       }, 100);
     })
     .catch((error) => {
