@@ -343,42 +343,30 @@
     if (!trimmed) {
       return null;
     }
-    const postal = normalisePostalCodeValue(trimmed);
-    let commune = formatCommune(trimmed);
     const numericOnly = /^\d+$/.test(trimmed);
-    if (numericOnly && (!postal || postal.length < 4)) {
-      // Ignore too-short numeric prefixes (e.g., departement code only) to avoid noisy suggestions.
+    const postal = normalisePostalCodeValue(trimmed);
+    if (!numericOnly || !postal || postal.length < 4) {
+      // Limite aux codes postaux complets pour éviter les saisies libres non proposées.
       return null;
     }
-    const localCoords = lookupLocalCoordinates(trimmed) || getDeptFallbackCoordinates(postal);
-    const derivedPostal =
-      canonicalizeParisPostalCode(postal || localCoords?.postalCode || '') ||
-      postal ||
-      localCoords?.postalCode ||
-      '';
-    if (!commune && localCoords && localCoords.label) {
-      commune = localCoords.label;
+    const coords = getPostalCoordinates(postal) || getDeptFallbackCoordinates(postal);
+    const derivedPostal = canonicalizeParisPostalCode(coords?.postalCode || postal);
+    const formattedCommune = formatCommuneWithPostal(coords?.label || '', derivedPostal);
+    const display = formatLocationLabel(formattedCommune, derivedPostal, '');
+    if (!display) {
+      return null;
     }
-    const formattedCommune = formatCommuneWithPostal(commune || '', derivedPostal);
-    const display = formatLocationLabel(formattedCommune, derivedPostal, trimmed);
     const suggestion = {
       display,
       postalCode: derivedPostal,
       commune: formattedCommune && formattedCommune.toLowerCase() !== derivedPostal ? formattedCommune : '',
-      search: normaliseForSearch(trimmed),
-      searchAlt: normaliseForSearch(`${formattedCommune || ''} ${derivedPostal || ''}`.trim()),
+      search: normaliseForSearch(`${formattedCommune || ''} ${derivedPostal || ''}`.trim()),
+      searchAlt: normaliseForSearch(`${derivedPostal || ''} ${formattedCommune || ''}`.trim()),
       kind: 'typed',
     };
-    if (localCoords && Number.isFinite(localCoords.lat) && Number.isFinite(localCoords.lng)) {
-      suggestion.latitude = localCoords.lat;
-      suggestion.longitude = localCoords.lng;
-    } else if (
-      localCoords &&
-      Number.isFinite(localCoords.latitude) &&
-      Number.isFinite(localCoords.longitude)
-    ) {
-      suggestion.latitude = localCoords.latitude;
-      suggestion.longitude = localCoords.longitude;
+    if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
+      suggestion.latitude = coords.lat;
+      suggestion.longitude = coords.lng;
     }
     return suggestion;
   };
