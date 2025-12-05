@@ -1321,15 +1321,10 @@
         }
       };
 
-      const filteredOut = clubs.length - features.length;
       if (features.length) {
         renderMarkers(features, { refit: true });
-        const suffix =
-          filteredOut > 0
-            ? ` (${filteredOut} club${filteredOut > 1 ? 's' : ''} sans coordonnées exploitables)`
-            : ' (toutes les coordonnées disponibles)';
         updateStatus(
-          `${features.length} club${features.length > 1 ? 's' : ''} affiché${features.length > 1 ? 's' : ''} sur la carte${suffix}.`,
+          `${features.length} club${features.length > 1 ? 's' : ''} affiché${features.length > 1 ? 's' : ''} sur la carte.`,
           'success'
         );
       } else {
