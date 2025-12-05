@@ -1266,6 +1266,7 @@
   let mobileResultsOpen = false;
   let pageScrollBeforeResults = 0;
   let resultsHistoryPushed = false;
+  let suppressFocusAnimation = false;
 
   const deferResultsRendering = (options = {}) => {
     const placeholder =
@@ -2079,7 +2080,7 @@
     mapFocusQueue = null;
   };
 
-  const shouldAnimateFocus = () => !isMobileViewport() && !state.restoreMode;
+  const shouldAnimateFocus = () => !isMobileViewport() && !state.restoreMode && !suppressFocusAnimation;
 
   const toggleGeolocErrorLayout = (active) => {
     if (!clubsPageShell) {
@@ -4403,6 +4404,9 @@
     const forceJump = Boolean(options.forceJump);
     const requestedMinDelay = Number.isFinite(options.minDelay) ? options.minDelay : null;
     const isQuiet = options.quiet === true || state.restoreMode;
+    if (!isQuiet && !state.restoreMode) {
+      suppressFocusAnimation = false;
+    }
     const actionStartedAt = Date.now();
     const raw = searchInput ? searchInput.value : '';
     const trimmed = (raw || '').trim();
@@ -4627,6 +4631,9 @@
     }
     let focusRequestId = null;
     const quiet = options.quiet === true || state.restoreMode;
+    if (!quiet && !state.restoreMode) {
+      suppressFocusAnimation = false;
+    }
     const prefilledCoords = options.prefilledCoords || locationSuggestionCoords;
     const actionButton = options.triggerButton || locationApplyButton;
     if (!locationInput) {
@@ -4804,11 +4811,11 @@
         finalizeLocationSearch(() => {
           setLocationStatus('', 'info');
           setSearchStatus('', 'info');
-        }, { scroll: true });
+        }, { scroll: true, focusRequestId });
       } else {
         finalizeLocationSearch(() => {
           setLocationStatus('Impossible de calculer les distances pour cette localisation.', 'error');
-        });
+        }, { focusRequestId });
       }
     } finally {
       releaseLocationUi();
@@ -4822,6 +4829,10 @@
       ensureDistanceSectionOpen();
       setLocationStatus('Géolocalisation indisponible sur cet appareil.', 'error');
       return;
+    }
+
+    if (!state.restoreMode) {
+      suppressFocusAnimation = false;
     }
 
     closeLocationSuggestions();
@@ -5464,6 +5475,7 @@
         const savedUi = hasInitialParams || reopenResultsRequested ? consumeListUiState() : null;
         const urlRestored = await applyInitialUrlState();
         let restored = urlRestored;
+        suppressFocusAnimation = reopenResultsRequested;
         const savedPrimaryValue = savedUi ? savedUi.location || savedUi.query || '' : '';
 
         if (!restored && savedUi) {
