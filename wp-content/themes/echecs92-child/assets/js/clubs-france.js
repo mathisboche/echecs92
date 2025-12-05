@@ -3451,21 +3451,27 @@
     if (!club) {
       return false;
     }
-    const refPostal = normalisePostalCodeValue(referencePostal);
+    const refPostalRaw = normalisePostalCodeValue(referencePostal);
+    const clubPostalRaw = normalisePostalCodeValue(club.postalCode);
+    const refPostal = canonicalizeParisPostalCode(refPostalRaw) || refPostalRaw;
+    const clubPostal = canonicalizeParisPostalCode(clubPostalRaw) || clubPostalRaw;
     const refCommune = normaliseReferenceCommune(referenceCommune, refPostal);
-    const clubPostal = normalisePostalCodeValue(club.postalCode);
     const clubCommune = normaliseCommuneForCompare(club.commune);
 
-    const isParis = (communeKey) => communeKey === 'paris';
-    if (isParis(refCommune)) {
-      // Pour Paris, on ne considère "sur place" que si le code postal est identique (arrondissement).
-      return Boolean(refPostal && clubPostal && refPostal === clubPostal);
+    if (refPostal && clubPostal) {
+      if (refPostal === clubPostal) {
+        return true;
+      }
+      // Autorise les communes à codes multiples (ex: Paris 16e avec 75016/75116) quand l'intitulé correspond.
+      if (refCommune && clubCommune && refCommune === clubCommune) {
+        const sameDepartment = refPostal.slice(0, 2) === clubPostal.slice(0, 2);
+        if (sameDepartment) {
+          return true;
+        }
+      }
+      return false;
     }
 
-    if (refPostal && clubPostal) {
-      // Si les deux codes postaux sont connus, il faut une correspondance exacte pour éviter les homonymes.
-      return clubPostal === refPostal;
-    }
     if (refCommune && clubCommune && clubCommune === refCommune) {
       return true;
     }
