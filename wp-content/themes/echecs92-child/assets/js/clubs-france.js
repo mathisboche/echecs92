@@ -345,12 +345,18 @@
     }
     const numericOnly = /^\d+$/.test(trimmed);
     const postal = normalisePostalCodeValue(trimmed);
-    if (!numericOnly || !postal || postal.length < 4) {
-      // Limite aux codes postaux complets pour éviter les saisies libres non proposées.
+    if (!numericOnly || !postal || postal.length !== 5) {
+      // Uniquement des codes postaux complets connus.
       return null;
     }
-    const coords = getPostalCoordinates(postal) || getDeptFallbackCoordinates(postal);
-    const derivedPostal = canonicalizeParisPostalCode(coords?.postalCode || postal);
+    const canonicalPostal = canonicalizeParisPostalCode(postal) || postal;
+    const coords =
+      getPostalCoordinates(canonicalPostal) ||
+      (canonicalPostal !== postal ? getPostalCoordinates(postal) : null);
+    if (!coords) {
+      return null;
+    }
+    const derivedPostal = canonicalPostal;
     const formattedCommune = formatCommuneWithPostal(coords?.label || '', derivedPostal);
     const display = formatLocationLabel(formattedCommune, derivedPostal, '');
     if (!display) {
