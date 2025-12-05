@@ -2058,6 +2058,27 @@
     updateTotalCounter();
   };
 
+  let mapFocusQueue = null;
+  const queueMapFocus = (detail, requestId = null) => {
+    if (!detail) {
+      mapFocusQueue = null;
+      return;
+    }
+    mapFocusQueue = { detail, requestId: Number.isFinite(requestId) ? requestId : null };
+  };
+
+  const flushQueuedMapFocus = (requestId = null) => {
+    if (!mapFocusQueue) {
+      return;
+    }
+    const hasRequestGuard = mapFocusQueue.requestId != null && requestId != null;
+    if (hasRequestGuard && mapFocusQueue.requestId !== requestId) {
+      return;
+    }
+    notifyMapFocus(mapFocusQueue.detail);
+    mapFocusQueue = null;
+  };
+
   const toggleGeolocErrorLayout = (active) => {
     if (!clubsPageShell) {
       return;
@@ -4276,7 +4297,7 @@
     const referencePostal = normalisePostalCodeValue(referencePostalCode);
     const referenceCommuneKey = normaliseReferenceCommune(referenceCommune, referencePostal);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      notifyMapFocus({ reset: true, source: 'clubs-france' });
+      queueMapFocus({ reset: true, source: 'clubs-france' }, searchRequestId);
       state.filtered = [];
       state.visibleCount = 0;
       state.distanceMode = true;
@@ -4289,7 +4310,7 @@
       return { total: 0, finite: 0, label: state.distanceReference };
     }
 
-    notifyMapFocus({
+    queueMapFocus({
       lat,
       lng,
       label: label || query || '',
@@ -4297,7 +4318,7 @@
       commune: referenceCommuneKey,
       type: referenceType || 'location',
       source: 'clubs-france',
-    });
+    }, searchRequestId);
 
     const scored = state.clubs.map((club) => {
       const coords = resolveClubDistanceCoordinates(club);
@@ -4442,19 +4463,20 @@
       const behavior = extra.behavior;
       const margin = extra.margin;
       const run = () => {
-        if (requestId === searchRequestId) {
+      if (requestId === searchRequestId) {
         if (typeof finalizer === 'function') {
           finalizer();
         }
         flushDeferredResultsRendering();
         persistListUiState();
         syncUrlState();
+        flushQueuedMapFocus(requestId);
         if (shouldScroll) {
           jumpToResults({ behavior, margin });
         }
-        }
-        releaseSearchFeedback();
-      };
+      }
+      releaseSearchFeedback();
+    };
       scheduleAfterMinimumDelay(actionStartedAt, run, minDelay);
     };
 
@@ -4466,7 +4488,7 @@
     if (!trimmed) {
       updateStatusIfCurrent('Recherche en cours…', 'info');
       const meta = applySearch('');
-      notifyMapFocus({ reset: true, source: 'clubs-france' });
+      queueMapFocus({ reset: true, source: 'clubs-france' }, requestId);
       if (abortIfStale()) {
         return;
       }
@@ -4580,7 +4602,10 @@
     }
     syncPrimarySearchValue('');
     closeLocationSuggestions();
-    notifyMapFocus({ reset: true, source: 'clubs-france' });
+    queueMapFocus({ reset: true, source: 'clubs-france' });
+    if (skipSearch) {
+      flushQueuedMapFocus();
+    }
     setLocationStatus(silent ? '' : 'Localisation effacée.', 'info');
     updateClearButtons();
     if (!skipSearch) {
@@ -4597,6 +4622,7 @@
     } else if (eventOrOptions && typeof eventOrOptions === 'object') {
       options = eventOrOptions;
     }
+    let focusRequestId = null;
     const quiet = options.quiet === true || state.restoreMode;
     const prefilledCoords = options.prefilledCoords || locationSuggestionCoords;
     const actionButton = options.triggerButton || locationApplyButton;
@@ -4669,6 +4695,9 @@
         flushDeferredResultsRendering();
         persistListUiState();
         syncUrlState();
+        if (typeof flushQueuedMapFocus === 'function') {
+          flushQueuedMapFocus(focusRequestId);
+        }
         if (shouldScroll) {
           jumpToResults();
         }
@@ -4754,6 +4783,7 @@
       ensureDistanceSectionOpen();
 
       searchRequestId += 1;
+      const focusRequestId = searchRequestId;
       const meta = runDistanceSearch({
         latitude: coords.latitude ?? coords.lat,
         longitude: coords.longitude ?? coords.lng,
@@ -4829,6 +4859,7 @@
         flushDeferredResultsRendering();
         persistListUiState();
         syncUrlState();
+        flushQueuedMapFocus(options.focusRequestId);
         if (shouldScroll) {
           jumpToResults();
         }
@@ -4889,6 +4920,7 @@
               ensureDistanceSectionOpen();
 
               searchRequestId += 1;
+              const focusRequestId = searchRequestId;
               const meta = runDistanceSearch({
                 latitude,
                 longitude,
@@ -4904,11 +4936,11 @@
                 finalizeGeolocSearch(() => {
                   setLocationStatus('', 'info');
                   setSearchStatus('', 'info');
-                }, { scroll: true });
+                }, { scroll: true, focusRequestId });
               } else {
                 finalizeGeolocSearch(() => {
                   setLocationStatus('Impossible de calculer les distances pour cette localisation.', 'error');
-                });
+                }, { focusRequestId });
               }
             })
             .finally(() => {
