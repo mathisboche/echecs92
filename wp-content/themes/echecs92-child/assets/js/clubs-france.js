@@ -468,6 +468,7 @@
     const normalised = normaliseForSearch(rawQuery);
     const numericQuery = (rawQuery || '').replace(/\D/g, '');
     const hasQuery = Boolean(normalised || numericQuery);
+    const typedSuggestion = buildTypedLocationSuggestion(rawQuery);
     const scored = [];
     if (!hasQuery) {
       return dedupeLocationSuggestions(locationSuggestionsIndex.slice(0, LOCATION_SUGGESTIONS_LIMIT)).slice(
@@ -482,6 +483,13 @@
       }
       scored.push({ entry, score });
     });
+    if (typedSuggestion) {
+      const typedScore = scoreLocationSuggestion(typedSuggestion, normalised, numericQuery);
+      const effectiveScore = typedScore > 0 ? typedScore : hasQuery ? 1 : 0;
+      if (effectiveScore > 0) {
+        scored.push({ entry: typedSuggestion, score: effectiveScore });
+      }
+    }
     scored.sort((a, b) => {
       if (b.score !== a.score) {
         return b.score - a.score;
@@ -3299,8 +3307,8 @@
     if (!formatted) {
       return '';
     }
-    return formatted
-      .toLowerCase()
+    return normalise(formatted)
+      .replace(/['’`]/g, ' ')
       .replace(/[-\s]+/g, ' ')
       .trim();
   };
