@@ -2812,8 +2812,7 @@
     ['debugfr', () => toggleDebugMode()],
     [':sansdebug', () => setDebugMode(false)],
     [':debugmode', () => setDebugMode(true)],
-    ['mathisboche.com', () => showMathisBocheSpectacle()],
-    ['mb', () => showMathisBocheSpectacle()],
+    ['mtbh', () => showMathisBocheSpectacle()],
   ]);
 
   const updateSortButtons = () => {
@@ -3873,11 +3872,15 @@
     if (!trimmed) {
       return false;
     }
+    const normalized = trimmed.toLowerCase();
     const handler = findSecretCommandHandler(trimmed);
     if (!handler) {
       return false;
     }
-    const result = handler({ immediate: Boolean(options.immediate), query: trimmed }) || null;
+    if (handler === showMathisBocheSpectacle && normalized !== 'mtbh') {
+      return false;
+    }
+    const result = handler({ immediate: Boolean(options.immediate), query: trimmed, normalized }) || null;
     if (searchInput) {
       searchInput.value = '';
     }
