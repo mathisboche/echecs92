@@ -245,7 +245,7 @@
         mapInstance.fitBounds(fullBounds, {
           padding: [32, 32],
           maxZoom: 14,
-          animate: normalized.animate,
+          animate: normalized.animate && !isMobileViewport(),
         });
         hasFittedView = true;
       }
@@ -263,7 +263,7 @@
         mapInstance.setView(target, zoom, options);
       }
     } else {
-      mapInstance.setView(target, zoom);
+      mapInstance.setView(target, zoom, { animate: false });
     }
     hasFittedView = true;
   };
