@@ -4580,6 +4580,14 @@ body.mathis-mode .mathis-fragment{
     margin-bottom:16px;
   }
 }
+@media (max-width:640px){
+  .clubs-page--france{
+    padding-bottom:36px;
+  }
+  .clubs-page--france .clubs-map-section{
+    margin-bottom:8px;
+  }
+}
 .clubs-map__container{
   border:1px solid #d6dbe7;
   border-radius:12px;
