@@ -3410,8 +3410,9 @@
       return Boolean(refPostal && clubPostal && refPostal === clubPostal);
     }
 
-    if (refPostal && clubPostal && clubPostal === refPostal) {
-      return true;
+    if (refPostal && clubPostal) {
+      // Si les deux codes postaux sont connus, il faut une correspondance exacte pour éviter les homonymes.
+      return clubPostal === refPostal;
     }
     if (refCommune && clubCommune && clubCommune === refCommune) {
       return true;
