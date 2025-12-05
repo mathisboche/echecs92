@@ -850,6 +850,7 @@
   const detailBase = resultsEl?.dataset?.detailBase || '';
   const resultsShell = document.getElementById('clubs-results-shell');
   const resultsCloseButton = document.getElementById('clubs-results-close');
+  const searchBlock = document.querySelector('.clubs-search-block');
   const DEFAULT_RESULTS_SCROLL_MARGIN = 24;
   const parseScrollMargin = (value) => {
     if (value == null || value === '') {
@@ -872,6 +873,19 @@
       return window.innerWidth <= 820;
     }
     return false;
+  };
+
+  const scrollToSearchBlock = (options = {}) => {
+    const target = searchBlock || searchInput || resultsShell || resultsEl;
+    if (!target || typeof target.scrollIntoView !== 'function') {
+      return;
+    }
+    const behavior = options.behavior || 'smooth';
+    try {
+      target.scrollIntoView({ behavior, block: 'start', inline: 'nearest' });
+    } catch {
+      target.scrollIntoView({ block: 'start' });
+    }
   };
 
   const searchInput = document.getElementById('clubs-search');
@@ -1466,6 +1480,7 @@
     }
     const fromPopstate = options.fromPopstate === true;
     const viaUser = options.viaUser === true;
+    const smoothToSearch = viaUser && !isMobileViewport();
     if (viaUser && resultsHistoryPushed && canUseHistory) {
       // Laisse le navigateur revenir à l'entrée précédente (sans la liste ouverte).
       window.history.back();
@@ -1477,9 +1492,11 @@
     if (typeof document !== 'undefined' && document.body) {
       document.body.classList.remove('clubs-results-open');
     }
-    if (typeof window !== 'undefined' && Number.isFinite(pageScrollBeforeResults)) {
+    if (smoothToSearch) {
+      scrollToSearchBlock({ behavior: 'smooth' });
+    } else if (typeof window !== 'undefined' && Number.isFinite(pageScrollBeforeResults)) {
       try {
-        window.scrollTo({ top: pageScrollBeforeResults, behavior: 'auto' });
+        window.scrollTo({ top: pageScrollBeforeResults, behavior: 'smooth' });
       } catch {
         window.scrollTo(0, pageScrollBeforeResults || 0);
       }
