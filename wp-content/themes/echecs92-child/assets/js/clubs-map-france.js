@@ -192,6 +192,7 @@
   let fullBounds = null;
   let hasFittedView = false;
   let pendingMapFocus = null;
+  let mapReady = false;
 
   const clampZoom = (value, fallback = 12) => {
     const parsed = Number.parseInt(value, 10);
@@ -227,7 +228,7 @@
       pendingMapFocus = null;
       return;
     }
-    if (!mapInstance) {
+    if (!mapInstance || !mapReady) {
       pendingMapFocus = normalized;
       return;
     }
@@ -1408,9 +1409,9 @@
         updateStatus('Aucun club positionné pour le moment.', 'error');
       }
 
-      flushPendingMapFocus();
       setTimeout(() => {
         mapInstance.invalidateSize();
+        mapReady = true;
         flushPendingMapFocus();
       }, 100);
     })
