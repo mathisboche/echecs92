@@ -4572,6 +4572,14 @@ body.mathis-mode .mathis-fragment{
 .clubs-page.has-geoloc-error .clubs-map-section{
   margin:12px 0 32px;
 }
+@media (max-width:959px){
+  .clubs-page--france{
+    padding-bottom:48px;
+  }
+  .clubs-page--france .clubs-map-section{
+    margin-bottom:16px;
+  }
+}
 .clubs-map__container{
   border:1px solid #d6dbe7;
   border-radius:12px;
