@@ -2079,6 +2079,8 @@
     mapFocusQueue = null;
   };
 
+  const shouldAnimateFocus = () => !isMobileViewport() && !state.restoreMode;
+
   const toggleGeolocErrorLayout = (active) => {
     if (!clubsPageShell) {
       return;
@@ -4297,7 +4299,7 @@
     const referencePostal = normalisePostalCodeValue(referencePostalCode);
     const referenceCommuneKey = normaliseReferenceCommune(referenceCommune, referencePostal);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      queueMapFocus({ reset: true, source: 'clubs-france' }, searchRequestId);
+      queueMapFocus({ reset: true, source: 'clubs-france', animate: true }, searchRequestId);
       state.filtered = [];
       state.visibleCount = 0;
       state.distanceMode = true;
@@ -4318,6 +4320,7 @@
       commune: referenceCommuneKey,
       type: referenceType || 'location',
       source: 'clubs-france',
+      animate: shouldAnimateFocus(),
     }, searchRequestId);
 
     const scored = state.clubs.map((club) => {
@@ -4488,7 +4491,7 @@
     if (!trimmed) {
       updateStatusIfCurrent('Recherche en cours…', 'info');
       const meta = applySearch('');
-      queueMapFocus({ reset: true, source: 'clubs-france' }, requestId);
+      queueMapFocus({ reset: true, source: 'clubs-france', animate: true }, requestId);
       if (abortIfStale()) {
         return;
       }
@@ -4602,7 +4605,7 @@
     }
     syncPrimarySearchValue('');
     closeLocationSuggestions();
-    queueMapFocus({ reset: true, source: 'clubs-france' });
+    queueMapFocus({ reset: true, source: 'clubs-france', animate: true });
     if (skipSearch) {
       flushQueuedMapFocus();
     }

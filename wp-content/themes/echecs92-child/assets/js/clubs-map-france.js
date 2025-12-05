@@ -194,6 +194,13 @@
   let pendingMapFocus = null;
   let mapReady = false;
 
+  const isMobileViewport = () => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return false;
+    }
+    return window.matchMedia('(max-width: 820px)').matches;
+  };
+
   const clampZoom = (value, fallback = 12) => {
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed)) {
@@ -207,7 +214,7 @@
       return null;
     }
     if (detail.reset) {
-      return { reset: true };
+      return { reset: true, animate: detail.animate === true };
     }
     const lat = Number.parseFloat(detail.lat ?? detail.latitude);
     const lng = Number.parseFloat(detail.lng ?? detail.longitude);
@@ -219,6 +226,7 @@
       lng,
       zoom: clampZoom(detail.zoom, 12),
       label: detail.label || detail.display || detail.commune || '',
+      animate: detail.animate === true,
     };
   };
 
@@ -234,16 +242,27 @@
     }
     if (normalized.reset) {
       if (fullBounds && fullBounds.isValid && fullBounds.isValid()) {
-        mapInstance.fitBounds(fullBounds, { padding: [32, 32], maxZoom: 14 });
+        mapInstance.fitBounds(fullBounds, {
+          padding: [32, 32],
+          maxZoom: 14,
+          animate: normalized.animate,
+        });
         hasFittedView = true;
       }
       return;
     }
     const target = [normalized.lat, normalized.lng];
     const zoom = clampZoom(normalized.zoom, mapInstance.getZoom ? mapInstance.getZoom() : 12);
-    try {
-      mapInstance.flyTo(target, zoom, { duration: 0.65 });
-    } catch (error) {
+    const animate = normalized.animate && !isMobileViewport();
+    const duration = animate ? 0.65 : 0;
+    const options = { animate, duration };
+    if (animate) {
+      try {
+        mapInstance.flyTo(target, zoom, options);
+      } catch (error) {
+        mapInstance.setView(target, zoom, options);
+      }
+    } else {
       mapInstance.setView(target, zoom);
     }
     hasFittedView = true;
