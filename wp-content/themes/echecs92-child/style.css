@@ -4439,6 +4439,22 @@ body.mathis-mode .mathis-fragment{
   color:#047857;
   background:#d1fae5;
 }
+.club-row__distance[data-tone="licenses"]{
+  color:#0f172a;
+  background:#e2e8f0;
+}
+.club-row__badges{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  align-self:flex-start;
+  order:-1;
+}
+.club-row__badges .club-row__distance{
+  margin-left:0;
+  order:initial;
+}
 .club-row__card:hover .club-row__distance[data-tone="onsite"],
 .club-row__card:focus-visible .club-row__distance[data-tone="onsite"]{
   text-decoration:underline;
@@ -4492,6 +4508,14 @@ body.mathis-mode .mathis-fragment{
     margin-left:auto;
     margin-bottom:0;
     margin-top:0;
+  }
+  .club-row__badges{
+    margin-left:auto;
+    align-self:center;
+    order:initial;
+  }
+  .club-row__badges .club-row__distance{
+    margin-left:0;
   }
 }
 

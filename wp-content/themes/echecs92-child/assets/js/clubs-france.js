@@ -5208,31 +5208,54 @@
       heading.appendChild(communeNode);
     }
 
+    const badges = document.createElement('div');
+    badges.className = 'club-row__badges';
+    let hasBadges = false;
+
+    const appendBadge = (text, tone) => {
+      if (!text) {
+        return;
+      }
+      const badgeNode = document.createElement('span');
+      badgeNode.className = 'club-row__distance';
+      if (tone && tone !== 'default') {
+        badgeNode.dataset.tone = tone;
+      }
+      badgeNode.textContent = text;
+      badges.appendChild(badgeNode);
+      hasBadges = true;
+    };
+
     const onsite = isClubOnsite(club);
     if (state.distanceMode && (Number.isFinite(club.distanceKm) || onsite)) {
       const distanceInfo = formatDistanceLabel(club.distanceKm, { onsite });
       if (distanceInfo.text) {
-        const distanceNode = document.createElement('span');
-        distanceNode.className = 'club-row__distance';
-        if (distanceInfo.tone && distanceInfo.tone !== 'default') {
-          distanceNode.dataset.tone = distanceInfo.tone;
-        }
-        distanceNode.textContent = distanceInfo.text;
-        header.appendChild(distanceNode);
+        appendBadge(distanceInfo.text, distanceInfo.tone);
       }
-    } else {
+    }
+
+    const hasLicenseData =
+      Number.isFinite(club.totalLicenses) ||
+      Number.isFinite(club.licenses?.A) ||
+      Number.isFinite(club.licenses?.B);
+
+    if (hasLicenseData) {
       const licenseSort = getActiveLicenseSort();
-      if (licenseSort) {
-        const count = getLicenseCount(club, licenseSort.valueKey);
-        const badgeText = typeof licenseSort.formatBadge === 'function' ? licenseSort.formatBadge(count, club) : `${count} lic.`;
-        if (badgeText) {
-          const licenseNode = document.createElement('span');
-          licenseNode.className = 'club-row__distance';
-          licenseNode.dataset.tone = 'licenses';
-          licenseNode.textContent = badgeText;
-          header.appendChild(licenseNode);
-        }
+      const licenseValueKey = licenseSort ? licenseSort.valueKey : 'total';
+      const licenseValue = getLicenseCount(club, licenseValueKey);
+      const licenseBadgeText =
+        typeof licenseSort?.formatBadge === 'function'
+          ? licenseSort.formatBadge(licenseValue, club)
+          : Number.isFinite(licenseValue)
+          ? `${licenseValue} lic.`
+          : '';
+      if (licenseBadgeText) {
+        appendBadge(licenseBadgeText, 'licenses');
       }
+    }
+
+    if (hasBadges) {
+      header.appendChild(badges);
     }
 
     cardLink.appendChild(header);
