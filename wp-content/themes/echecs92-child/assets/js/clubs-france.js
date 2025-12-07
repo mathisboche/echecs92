@@ -4861,11 +4861,11 @@
       updateSortButtons();
     }
     clearSearchQuery({ silent: true, keepInput: true });
-    if (!quiet) {
-      setLocationStatus(`Recherche de ${raw}…`, 'info');
-    } else {
-      setLocationStatus('', 'info');
-    }
+//    if (!quiet) {
+//      setLocationStatus(`Recherche de ${raw}…`, 'info');
+//    } else {
+//      setLocationStatus('', 'info');
+//    }
     const actionStartedAt = Date.now();
     const releaseButton = quiet ? () => {} : beginButtonWait(actionButton, 'Recherche…', { lockClearButtons: true });
     const overlayLabel = raw ? `Recherche autour de ${raw}…` : 'Recherche en cours…';
