@@ -1721,7 +1721,7 @@
     distanceReferencePostal: '',
     distanceReferenceCommune: '',
     distanceReferenceType: '',
-    sortMode: 'default',
+    sortMode: 'licenses',
     statusMessage: '',
     locationMessage: '',
     restoreMode: false,
