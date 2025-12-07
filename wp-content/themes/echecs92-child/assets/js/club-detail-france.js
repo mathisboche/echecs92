@@ -6,6 +6,9 @@
   const GEO_HINTS_VERSION = '20251205';
   const DATA_MANIFEST_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france.json';
   const DATA_FALLBACK_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france/';
+  const FFE_MANIFEST_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france-ffe.json';
+  const FFE_FALLBACK_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france-ffe/';
+  const FFE_URL_BASE = 'https://www.echecs.asso.fr/FicheClub.aspx?Ref=';
   const GEO_HINTS_REMOTE_URL = `/wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json?v=${GEO_HINTS_VERSION}`;
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
   const detailContainer = document.getElementById('club-detail');
@@ -45,6 +48,51 @@
     const base = (entry.basePath || basePath || DATA_FALLBACK_BASE_PATH || '').replace(/\/+$/u, '');
     const file = entry.file.replace(/^\/+/u, '');
     return `${base}/${file}`;
+  };
+
+  let ffeManifestPromise = null;
+  const loadFfeManifest = () => {
+    if (!ffeManifestPromise) {
+      ffeManifestPromise = fetchJson(FFE_MANIFEST_URL)
+        .then((payload) => {
+          const basePath = payload?.basePath || FFE_FALLBACK_BASE_PATH;
+          const departments = Array.isArray(payload?.departments) ? payload.departments : [];
+          return { basePath, departments };
+        })
+        .catch(() => ({ basePath: FFE_FALLBACK_BASE_PATH, departments: [] }));
+    }
+    return ffeManifestPromise;
+  };
+
+  const fetchDepartmentFfeRefs = async (entry, manifestMeta) => {
+    const url = buildDeptUrl(entry, manifestMeta.basePath);
+    if (!url) {
+      return [];
+    }
+    try {
+      const payload = await fetchJson(url);
+      return Array.isArray(payload) ? payload : [];
+    } catch (error) {
+      console.warn(`[club-detail-fr] FFE refs indisponibles pour ${entry.code || '?'} (${url}).`, error);
+      return [];
+    }
+  };
+
+  let ffeRefsPromise = null;
+  const loadFfeRefs = () => {
+    if (!ffeRefsPromise) {
+      ffeRefsPromise = loadFfeManifest().then(async (manifestMeta) => {
+        const departments = manifestMeta.departments || [];
+        if (!departments.length) {
+          return [];
+        }
+        const chunks = await Promise.all(
+          departments.map((entry) => fetchDepartmentFfeRefs(entry, manifestMeta))
+        );
+        return chunks.flat();
+      });
+    }
+    return ffeRefsPromise;
   };
 
   const annotateClub = (club, entry) => ({
@@ -350,6 +398,89 @@
       club.longitude = lng;
       if (!club.postalCode && hint.postalCode) {
         club.postalCode = hint.postalCode;
+      }
+    });
+  };
+
+  const sanitiseFfeRef = (value) => {
+    const str = (value || '').toString().trim();
+    if (!str) {
+      return '';
+    }
+    const match = str.match(/(\d{2,})$/);
+    return match ? match[1] : '';
+  };
+
+  const buildFfeLookupKey = (name, postalCode, commune) => {
+    const normalizedName = normalise(name || '').replace(/[^a-z0-9]/g, '');
+    const normalizedCity = normalise(commune || '').replace(/[^a-z0-9]/g, '');
+    const normalizedPostal = (postalCode || '').toString().trim();
+    if (!normalizedName && !normalizedCity && !normalizedPostal) {
+      return '';
+    }
+    return [normalizedName || 'club', normalizedPostal || '00000', normalizedCity || ''].join('|');
+  };
+
+  const buildFfeLookup = (entries) => {
+    const bySlug = new Map();
+    const byKey = new Map();
+    (Array.isArray(entries) ? entries : []).forEach((entry) => {
+      const ref = sanitiseFfeRef(entry.ref || entry.ffe_ref || entry.fiche_ffe || entry.ffeRef);
+      if (!ref) {
+        return;
+      }
+      const slug = entry.slug || entry.id || '';
+      if (slug && !bySlug.has(slug)) {
+        bySlug.set(slug, ref);
+      }
+      const key = buildFfeLookupKey(
+        entry.name || '',
+        entry.postalCode || entry.postal_code || '',
+        entry.commune || entry.city || ''
+      );
+      if (key && !byKey.has(key)) {
+        byKey.set(key, ref);
+      }
+    });
+    return { bySlug, byKey };
+  };
+
+  const applyFfeRefs = (clubs, lookup) => {
+    if (!Array.isArray(clubs) || !lookup) {
+      return;
+    }
+    const applyRef = (club, refCandidate) => {
+      const ref = sanitiseFfeRef(refCandidate);
+      if (!ref) {
+        return false;
+      }
+      club.ffeRef = ref;
+      club.fiche_ffe = `${FFE_URL_BASE}${encodeURIComponent(ref)}`;
+      return true;
+    };
+    clubs.forEach((club) => {
+      if (!club || typeof club !== 'object') {
+        return;
+      }
+      const existingUrl =
+        club.fiche_ffe && /^https?:/i.test(club.fiche_ffe) ? club.fiche_ffe : '';
+      const slugKey = club.slug || club.id || '';
+      if (slugKey && lookup.bySlug && lookup.bySlug.has(slugKey)) {
+        if (applyRef(club, lookup.bySlug.get(slugKey))) {
+          return;
+        }
+      }
+      const lookupKey = buildFfeLookupKey(club.name, club.postalCode, club.commune);
+      if (lookupKey && lookup.byKey && lookup.byKey.has(lookupKey)) {
+        if (applyRef(club, lookup.byKey.get(lookupKey))) {
+          return;
+        }
+      }
+      if (applyRef(club, club.ffeRef || club.fiche_ffe)) {
+        return;
+      }
+      if (existingUrl) {
+        club.fiche_ffe = existingUrl;
       }
     });
   };
@@ -1075,6 +1206,7 @@
     const longitude =
       toFloat(raw.longitude ?? raw.lng ?? raw.lon ?? raw.location?.longitude ?? raw.location?.lng) ??
       null;
+    const initialFfeRef = sanitiseFfeRef(raw.ffe_ref ?? raw.ffeRef ?? raw.fiche_ffe);
 
     return {
       id,
@@ -1092,6 +1224,7 @@
       publics: raw.publics || '',
       tarifs: raw.tarifs || '',
       notes: raw.notes || '',
+      ffeRef: initialFfeRef,
       fiche_ffe: raw.fiche_ffe || '',
       tags: Array.isArray(raw.tags) ? raw.tags : [],
       latitude,
@@ -1314,7 +1447,10 @@
     }
 
     const resources = createSection('Ressources');
-    appendDetail(resources.list, 'Fiche FFE', club.fiche_ffe, {
+    const ficheFfeUrl =
+      club.fiche_ffe ||
+      (club.ffeRef ? `${FFE_URL_BASE}${encodeURIComponent(club.ffeRef)}` : '');
+    appendDetail(resources.list, 'Fiche FFE', ficheFfeUrl, {
       type: 'link',
       label: 'Consulter la fiche FFE',
     });
@@ -1389,11 +1525,13 @@
       typeof window !== 'undefined' && window.cdjeSpinner && typeof window.cdjeSpinner.show === 'function'
         ? window.cdjeSpinner.show('Chargement du club…')
         : () => {};
-    Promise.all([loadFranceClubsDataset(), loadStaticGeoHints()])
-      .then(async ([data, staticHints]) => {
+    Promise.all([loadFranceClubsDataset(), loadStaticGeoHints(), loadFfeRefs()])
+      .then(async ([data, staticHints, ffeRefs]) => {
+        const ffeLookup = buildFfeLookup(ffeRefs);
         const clubs = (Array.isArray(data) ? data : []).map(hydrateClub);
         ensureUniqueSlugs(clubs);
         applyStaticHints(clubs, staticHints);
+        applyFfeRefs(clubs, ffeLookup);
         const club = clubs.find((entry) => entry.slug === clubSlug || entry.id === clubSlug);
         if (!club) {
           renderMessage(detailContainer.dataset.emptyMessage || 'Club introuvable.');
