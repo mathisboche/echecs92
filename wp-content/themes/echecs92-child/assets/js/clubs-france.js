@@ -323,6 +323,32 @@
     return Array.from(bestByKey.values());
   };
 
+  const classifyDisplayWeight = (value) => {
+    const trimmed = (value || '').toString().trim();
+    if (!trimmed) {
+      return 3;
+    }
+    const first = trimmed[0];
+    if (/\p{L}/u.test(first)) {
+      return 0;
+    }
+    if (/\d/.test(first)) {
+      return 1;
+    }
+    return 2;
+  };
+
+  const compareDisplayStrings = (a, b) => {
+    const weightA = classifyDisplayWeight(a);
+    const weightB = classifyDisplayWeight(b);
+    if (weightA !== weightB) {
+      return weightA - weightB;
+    }
+    return (a || '').localeCompare(b || '', 'fr', { sensitivity: 'base' });
+  };
+
+  const compareClubsByName = (clubA, clubB) => compareDisplayStrings(clubA?.name || '', clubB?.name || '');
+
   const formatLocationLabel = (commune, postalCode, fallback = '') => {
     const city = formatCommuneWithPostal(commune || '', postalCode);
     const postal = normalisePostalCodeValue(postalCode);
@@ -383,8 +409,13 @@
     (clubs || []).forEach((club) => {
       const basePostal = normalisePostalCodeValue(club.postalCode || '');
       const postal = canonicalizeParisPostalCode(basePostal) || basePostal;
-      const commune = formatCommuneWithPostal(club.commune || '', postal || club.postalCode);
-      if (!postal && !commune) {
+      const coords = resolveClubDistanceCoordinates(club);
+      const commune = formatCommuneWithPostal(
+        club.commune || coords?.label || '',
+        postal || club.postalCode
+      );
+      const hasCommune = Boolean(commune);
+      if (!postal && !hasCommune) {
         return;
       }
       const key = `${postal}|${normaliseCommuneForCompare(commune)}`;
@@ -393,9 +424,12 @@
       }
       seen.add(key);
       const display = formatLocationLabel(commune, postal);
+      const hasReadableLabel = Boolean(hasCommune && /\p{L}/u.test(commune));
+      if (!hasReadableLabel && (!display || display === postal)) {
+        return;
+      }
       const search = normaliseForSearch(`${commune} ${postal}`.trim());
       const searchAlt = normaliseForSearch(`${postal} ${commune}`.trim());
-      const coords = resolveClubDistanceCoordinates(club);
       const entry = { display, postalCode: postal, commune, search, searchAlt, source: 'club', hasClub: true };
       if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
         entry.latitude = Number(coords.lat);
@@ -403,7 +437,7 @@
       }
       index.push(entry);
     });
-    setLocationSuggestionIndex(index);
+    setLocationSuggestionIndex(index, { preserveRemote: true });
   };
 
   const getSuggestionSearchFields = (entry) => {
@@ -488,7 +522,7 @@
       if (b.score !== a.score) {
         return b.score - a.score;
       }
-      return a.entry.display.localeCompare(b.entry.display, 'fr', { sensitivity: 'base' });
+      return compareDisplayStrings(a.entry.display, b.entry.display);
     });
     const ranked = scored.slice(0, LOCATION_SUGGESTIONS_LIMIT).map((item) => item.entry);
     return dedupeLocationSuggestions(ranked).slice(0, LOCATION_SUGGESTIONS_LIMIT);
@@ -912,9 +946,14 @@
   let locationSuggestionsOpen = false;
   let locationSuggestionsRequestId = 0;
   let locationSuggestionCoords = null;
-  const setLocationSuggestionIndex = (entries) => {
-    const merged = dedupeLocationSuggestions(entries || []);
-    merged.sort((a, b) => a.display.localeCompare(b.display, 'fr', { sensitivity: 'base' }));
+  const setLocationSuggestionIndex = (entries, options = {}) => {
+    const preserveRemote = options.preserveRemote === true;
+    const base = Array.isArray(entries) ? entries : [];
+    const remote = preserveRemote
+      ? (locationSuggestionsIndex || []).filter((item) => item && item.source === 'remote')
+      : [];
+    const merged = dedupeLocationSuggestions([...base, ...remote]);
+    merged.sort((a, b) => compareDisplayStrings(a.display, b.display));
     locationSuggestionsIndex = merged;
   };
 
@@ -2860,7 +2899,7 @@
           if (countB !== countA) {
             return countB - countA;
           }
-          return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
+          return compareClubsByName(a, b);
         });
       state.distanceMode = false;
       state.distanceReference = '';
@@ -2877,7 +2916,7 @@
     if (state.sortMode === 'alpha') {
       const sorted = state.clubs
         .slice()
-        .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
+        .sort((a, b) => compareClubsByName(a, b));
       state.distanceMode = false;
       state.distanceReference = '';
       state.distanceReferencePostal = '';
@@ -3529,6 +3568,19 @@
     return STREET_KEYWORDS.test(raw);
   };
 
+  const looksLikeStreetName = (value) => {
+    const raw = (value || '').toString().trim();
+    if (!raw) {
+      return false;
+    }
+    const startsWithStreet =
+      /^(rue|avenue|av\.?|boulevard|bd|route|chemin|impasse|all[ée]e|voie|quai|cours|passage|square|sentier|mail|esplanade|terrasse|pont|faubourg|clos|cité|cite|hameau|lotissement|residence|résidence|allee)\b/i;
+    if (startsWithStreet.test(raw) && /\s+\S+/.test(raw)) {
+      return true;
+    }
+    return looksLikeDetailedAddress(raw);
+  };
+
   const formatCommune = (value) => {
     if (!value) {
       return '';
@@ -3605,6 +3657,8 @@
     }
     if (looksLikeDetailedAddress(value)) {
       score -= 4;
+    } else if (looksLikeStreetName(value)) {
+      score -= 3;
     }
     if (value.length >= 3) {
       score += 1;
@@ -4417,7 +4471,7 @@
         if (b.score !== a.score) {
           return b.score - a.score;
         }
-        return a.club.name.localeCompare(b.club.name, 'fr', { sensitivity: 'base' });
+        return compareClubsByName(a.club, b.club);
       });
       state.filtered = matches.map((entry) => entry.club);
     }
@@ -4493,7 +4547,7 @@
         if (totalB !== totalA) {
           return totalB - totalA;
         }
-        return a.club.name.localeCompare(b.club.name, 'fr', { sensitivity: 'base' });
+        return compareClubsByName(a.club, b.club);
       }
       const aFinite = Number.isFinite(a.distance);
       const bFinite = Number.isFinite(b.distance);
@@ -4506,7 +4560,7 @@
         if (totalB !== totalA) {
           return totalB - totalA;
         }
-        return a.club.name.localeCompare(b.club.name, 'fr', { sensitivity: 'base' });
+        return compareClubsByName(a.club, b.club);
       }
       if (aFinite) {
         return -1;
@@ -4514,7 +4568,7 @@
       if (bFinite) {
         return 1;
       }
-      return a.club.name.localeCompare(b.club.name, 'fr', { sensitivity: 'base' });
+      return compareClubsByName(a.club, b.club);
     });
 
     const finiteCount = scored.filter((entry) => Number.isFinite(entry.distance)).length;
@@ -5649,7 +5703,7 @@
         const data = Array.isArray(payload) ? payload : [];
         state.clubs = data
           .map(hydrateClub)
-          .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
+          .sort((a, b) => compareClubsByName(a, b));
         ensureUniqueSlugs(state.clubs);
         applyStaticHints(state.clubs, staticHints);
         buildLocationSuggestionIndex(state.clubs);
