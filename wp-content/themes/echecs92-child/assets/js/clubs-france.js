@@ -3212,6 +3212,19 @@
     });
   };
 
+  const parsePostalCodeFromString = (input) => {
+    const str = (input || '').toString();
+    const strict = str.match(/\b(\d{5})\b/);
+    if (strict) {
+      return strict[1];
+    }
+    const spaced = str.match(/\b(\d{2})\s*(\d{3})\b/);
+    if (spaced) {
+      return `${spaced[1]}${spaced[2]}`;
+    }
+    return '';
+  };
+
   const extractAddressParts = (value) => {
     const result = {
       full: value ? String(value).trim() : '',
@@ -3221,14 +3234,35 @@
     if (!result.full) {
       return result;
     }
-    const postalMatch = result.full.match(/\b(\d{5})\b/);
-    if (postalMatch) {
-      result.postalCode = postalMatch[1];
-      const after = result.full.slice(postalMatch.index + postalMatch[0].length).trim();
-      if (after) {
-        result.city = after.replace(/^[,;\-–—]+/, '').trim();
+
+    const cleanCity = (raw) =>
+      (raw || '')
+        .toString()
+        .replace(/\b\d{4,5}\b/g, ' ')
+        .replace(/^[,;\s-–—]+/, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const postal = parsePostalCodeFromString(result.full);
+    if (postal) {
+      result.postalCode = postal;
+      const pattern = new RegExp(`\\b${postal.slice(0, 2)}\\s*${postal.slice(2)}\\b`, 'i');
+      const match = result.full.match(pattern);
+      if (match) {
+        const idx = Number.isFinite(match.index) ? match.index : result.full.indexOf(match[0]);
+        const after = result.full.slice(idx + match[0].length).trim();
+        const before = result.full.slice(0, idx).trim();
+        if (after) {
+          result.city = cleanCity(after);
+        }
+        if (!result.city && before) {
+          const segments = before.split(/[,;]+/).map((part) => part.trim()).filter(Boolean);
+          const tail = segments.length ? segments[segments.length - 1] : before;
+          result.city = cleanCity(tail);
+        }
       }
     }
+
     if (!result.city) {
       const parts = result.full
         .split(',')
@@ -3236,7 +3270,7 @@
         .filter(Boolean);
       if (parts.length) {
         const last = parts[parts.length - 1];
-        const cleaned = last.replace(/\b\d{5}\b/g, '').trim();
+        const cleaned = cleanCity(last);
         if (cleaned) {
           result.city = cleaned;
         }
@@ -3512,6 +3546,89 @@
     return formatted.replace(/\s+/g, ' ').trim();
   };
 
+  const deriveCityFromPostal = (address, postalHint = '') => {
+    const raw = (address || '').toString();
+    if (!raw.trim()) {
+      return '';
+    }
+    const postal = parsePostalCodeFromString(raw) || normalisePostalCodeValue(postalHint);
+    if (!postal) {
+      return '';
+    }
+    const pattern = new RegExp(`\\b${postal.slice(0, 2)}\\s*${postal.slice(2)}\\b`, 'i');
+    const match = raw.match(pattern);
+    if (!match) {
+      return '';
+    }
+    const idx = Number.isFinite(match.index) ? match.index : raw.indexOf(match[0]);
+    const after = raw.slice(idx + match[0].length).trim();
+    if (after) {
+      return after.replace(/^[,;\s-–—]+/, '').trim();
+    }
+    const before = raw.slice(0, idx).trim();
+    if (!before) {
+      return '';
+    }
+    const segments = before.split(/[,;]+/).map((part) => part.trim()).filter(Boolean);
+    return (segments.length ? segments[segments.length - 1] : before).trim();
+  };
+
+  const cleanCommuneCandidate = (value, postalCode) => {
+    if (!value) {
+      return '';
+    }
+    const postal = normalisePostalCodeValue(postalCode);
+    let cleaned = value
+      .toString()
+      .replace(/\b\d{4,5}\b/g, ' ')
+      .replace(/^[,;\s-–—]+/, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (postal) {
+      const pattern = new RegExp(`\\b${postal.slice(0, 2)}\\s*${postal.slice(2)}\\b`, 'gi');
+      cleaned = cleaned.replace(pattern, ' ').trim();
+    }
+    cleaned = cleaned.replace(/^\d+\s+/, '').replace(/\s+/g, ' ').trim();
+    return formatCommune(cleaned);
+  };
+
+  const scoreCommuneCandidate = (value) => {
+    if (!value) {
+      return -Infinity;
+    }
+    let score = 0;
+    const hasDigits = /\d/.test(value);
+    if (!hasDigits) {
+      score += 4;
+    } else if (!/^paris\s*\d{1,2}/i.test(value)) {
+      score -= 2;
+    }
+    if (looksLikeDetailedAddress(value)) {
+      score -= 4;
+    }
+    if (value.length >= 3) {
+      score += 1;
+    }
+    return score;
+  };
+
+  const pickBestCommune = (candidates, postalCode) => {
+    let best = '';
+    let bestScore = -Infinity;
+    (candidates || []).forEach((raw) => {
+      const cleaned = cleanCommuneCandidate(raw, postalCode);
+      if (!cleaned) {
+        return;
+      }
+      const score = scoreCommuneCandidate(cleaned);
+      if (score > bestScore) {
+        bestScore = score;
+        best = cleaned;
+      }
+    });
+    return best || '';
+  };
+
   const formatGeocodeLabel = (place, postalCodeOverride) => {
     if (!place || typeof place !== 'object') {
       return '';
@@ -3656,6 +3773,10 @@
       codes.add(club.postalCode);
     }
     [club.address, club.siege, club.addressStandard].forEach((value) => {
+      const parsed = parsePostalCodeFromString(value || '');
+      if (parsed) {
+        codes.add(parsed);
+      }
       const matches = (value || '').match(/\b\d{5}\b/g);
       if (matches) {
         matches.forEach((code) => codes.add(code));
@@ -5032,11 +5153,25 @@
     const addressParts = extractAddressParts(primaryAddress);
     const secondaryAddress = raw.siege || raw.siege_social || raw.address2 || '';
     const secondaryParts = extractAddressParts(secondaryAddress);
-    const communeRaw = raw.commune || raw.ville || addressParts.city || secondaryParts.city || '';
-    const baseCommune = formatCommune(communeRaw);
-    const postalCode = raw.code_postal || raw.postal_code || addressParts.postalCode || secondaryParts.postalCode || '';
-    const commune = formatCommuneWithPostal(baseCommune, postalCode);
-    const slugSource = name || commune || postalCode || primaryAddress || secondaryAddress;
+    const postalCode =
+      raw.code_postal ||
+      raw.postal_code ||
+      raw.postalCode ||
+      addressParts.postalCode ||
+      secondaryParts.postalCode ||
+      '';
+    const postalForCommune = postalCode || addressParts.postalCode || secondaryParts.postalCode || '';
+    const communeCandidates = [
+      raw.commune,
+      raw.ville,
+      addressParts.city,
+      secondaryParts.city,
+      deriveCityFromPostal(primaryAddress, postalForCommune),
+      deriveCityFromPostal(secondaryAddress, postalForCommune),
+    ];
+    const baseCommune = pickBestCommune(communeCandidates, postalForCommune);
+    const commune = formatCommuneWithPostal(baseCommune, postalForCommune);
+    const slugSource = name || commune || postalForCommune || primaryAddress || secondaryAddress;
     const standardAddress = buildStandardAddress(
       primaryAddress,
       secondaryAddress,

@@ -39,6 +39,42 @@ const formatCommune = (value) => {
   return formatted.replace(/\s+/g, ' ').trim();
 };
 
+const getParisArrondissementFromPostal = (postalCode) => {
+  const code = (postalCode || '').toString().trim();
+  if (code === '75116') {
+    return 16;
+  }
+  if (!/^75\d{3}$/.test(code)) {
+    return null;
+  }
+  const arr = Number.parseInt(code.slice(3), 10);
+  if (!Number.isFinite(arr) || arr < 1 || arr > 20) {
+    return null;
+  }
+  return arr;
+};
+
+const formatParisArrondissementLabel = (postalCode) => {
+  const arr = getParisArrondissementFromPostal(postalCode);
+  if (!arr) {
+    return '';
+  }
+  const suffix = arr === 1 ? 'er' : 'e';
+  return `Paris ${arr}${suffix}`;
+};
+
+const formatCommuneWithPostal = (commune, postalCode) => {
+  const base = formatCommune(commune || '');
+  const parisLabel = formatParisArrondissementLabel(postalCode);
+  if (parisLabel) {
+    const looksNumeric = /^\d/.test(base);
+    if (!base || base.toLowerCase().startsWith('paris') || looksNumeric) {
+      return parisLabel;
+    }
+  }
+  return base;
+};
+
 const slugify = (value) => {
   const base = normalise(value)
     .replace(/[^a-z0-9]+/g, '-')
@@ -108,6 +144,19 @@ const ensureUniqueSlugs = (clubs) => {
   });
 };
 
+const parsePostalCodeFromString = (input) => {
+  const str = (input || '').toString();
+  const strict = str.match(/\b(\d{5})\b/);
+  if (strict) {
+    return strict[1];
+  }
+  const spaced = str.match(/\b(\d{2})\s*(\d{3})\b/);
+  if (spaced) {
+    return `${spaced[1]}${spaced[2]}`;
+  }
+  return '';
+};
+
 const extractAddressParts = (value) => {
   const result = {
     full: value ? String(value).trim() : '',
@@ -117,14 +166,35 @@ const extractAddressParts = (value) => {
   if (!result.full) {
     return result;
   }
-  const postalMatch = result.full.match(/\b(\d{5})\b/);
-  if (postalMatch) {
-    result.postalCode = postalMatch[1];
-    const after = result.full.slice(postalMatch.index + postalMatch[0].length).trim();
-    if (after) {
-      result.city = after.replace(/^[,;\-–—]+/, '').trim();
+
+  const cleanCity = (raw) =>
+    (raw || '')
+      .toString()
+      .replace(/\b\d{4,5}\b/g, ' ')
+      .replace(/^[,;\s-–—]+/, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const postal = parsePostalCodeFromString(result.full);
+  if (postal) {
+    result.postalCode = postal;
+    const pattern = new RegExp(`\\b${postal.slice(0, 2)}\\s*${postal.slice(2)}\\b`, 'i');
+    const match = result.full.match(pattern);
+    if (match) {
+      const idx = Number.isFinite(match.index) ? match.index : result.full.indexOf(match[0]);
+      const after = result.full.slice(idx + match[0].length).trim();
+      const before = result.full.slice(0, idx).trim();
+      if (after) {
+        result.city = cleanCity(after);
+      }
+      if (!result.city && before) {
+        const segments = before.split(/[,;]+/).map((part) => part.trim()).filter(Boolean);
+        const tail = segments.length ? segments[segments.length - 1] : before;
+        result.city = cleanCity(tail);
+      }
     }
   }
+
   if (!result.city) {
     const parts = result.full
       .split(',')
@@ -132,7 +202,7 @@ const extractAddressParts = (value) => {
       .filter(Boolean);
     if (parts.length) {
       const last = parts[parts.length - 1];
-      const cleaned = last.replace(/\b\d{5}\b/g, '').trim();
+      const cleaned = cleanCity(last);
       if (cleaned) {
         result.city = cleaned;
       }
@@ -192,12 +262,110 @@ const buildStandardAddress = (primaryAddress, secondaryAddress, postalCode, city
   return components.join(', ').trim();
 };
 
+const looksLikeDetailedAddress = (value) => {
+  const raw = (value || '').toString().trim();
+  if (!raw) {
+    return false;
+  }
+  if (!/\d/.test(raw)) {
+    return false;
+  }
+  return STREET_KEYWORDS.test(raw);
+};
+
+const deriveCityFromPostal = (address, postalHint = '') => {
+  const raw = (address || '').toString();
+  if (!raw.trim()) {
+    return '';
+  }
+  const postal = parsePostalCodeFromString(raw) || (postalHint || '').toString().replace(/\D/g, '');
+  if (!postal) {
+    return '';
+  }
+  const pattern = new RegExp(`\\b${postal.slice(0, 2)}\\s*${postal.slice(2)}\\b`, 'i');
+  const match = raw.match(pattern);
+  if (!match) {
+    return '';
+  }
+  const idx = Number.isFinite(match.index) ? match.index : raw.indexOf(match[0]);
+  const after = raw.slice(idx + match[0].length).trim();
+  if (after) {
+    return after.replace(/^[,;\s-–—]+/, '').trim();
+  }
+  const before = raw.slice(0, idx).trim();
+  if (!before) {
+    return '';
+  }
+  const segments = before.split(/[,;]+/).map((part) => part.trim()).filter(Boolean);
+  return (segments.length ? segments[segments.length - 1] : before).trim();
+};
+
+const cleanCommuneCandidate = (value, postalCode) => {
+  if (!value) {
+    return '';
+  }
+  const postal = (postalCode || '').toString().replace(/\D/g, '');
+  let cleaned = value
+    .toString()
+    .replace(/\b\d{4,5}\b/g, ' ')
+    .replace(/^[,;\s-–—]+/, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (postal) {
+    const pattern = new RegExp(`\\b${postal.slice(0, 2)}\\s*${postal.slice(2)}\\b`, 'gi');
+    cleaned = cleaned.replace(pattern, ' ').trim();
+  }
+  cleaned = cleaned.replace(/^\d+\s+/, '').replace(/\s+/g, ' ').trim();
+  return formatCommune(cleaned);
+};
+
+const scoreCommuneCandidate = (value) => {
+  if (!value) {
+    return -Infinity;
+  }
+  let score = 0;
+  const hasDigits = /\d/.test(value);
+  if (!hasDigits) {
+    score += 4;
+  } else if (!/^paris\s*\d{1,2}/i.test(value)) {
+    score -= 2;
+  }
+  if (looksLikeDetailedAddress(value)) {
+    score -= 4;
+  }
+  if (value.length >= 3) {
+    score += 1;
+  }
+  return score;
+};
+
+const pickBestCommune = (candidates, postalCode) => {
+  let best = '';
+  let bestScore = -Infinity;
+  (candidates || []).forEach((raw) => {
+    const cleaned = cleanCommuneCandidate(raw, postalCode);
+    if (!cleaned) {
+      return;
+    }
+    const score = scoreCommuneCandidate(cleaned);
+    if (score > bestScore) {
+      bestScore = score;
+      best = cleaned;
+    }
+  });
+  return best || '';
+};
+
 const collectPostalCodes = (club) => {
   const codes = new Set();
   if (club.postalCode) {
     codes.add(club.postalCode);
   }
   [club.address, club.siege, club.addressStandard].forEach((value) => {
+    const parsed = parsePostalCodeFromString(value || '');
+    if (parsed) {
+      codes.add(parsed);
+    }
     const matches = (value || '').match(/\b\d{5}\b/g);
     if (matches) {
       matches.forEach((code) => codes.add(code));
@@ -218,16 +386,31 @@ const adaptClubRecord = (raw) => {
   const addressParts = extractAddressParts(primaryAddress);
   const secondaryAddress = raw.siege || raw.siege_social || raw.address2 || '';
   const secondaryParts = extractAddressParts(secondaryAddress);
-  const communeRaw = raw.commune || raw.ville || addressParts.city || secondaryParts.city || '';
-  const commune = formatCommune(communeRaw);
-  const postalCode = raw.code_postal || raw.postal_code || addressParts.postalCode || secondaryParts.postalCode || '';
+  const postalCode =
+    raw.code_postal ||
+    raw.postal_code ||
+    raw.postalCode ||
+    addressParts.postalCode ||
+    secondaryParts.postalCode ||
+    '';
+  const postalForCommune = postalCode || addressParts.postalCode || secondaryParts.postalCode || '';
+  const communeCandidates = [
+    raw.commune,
+    raw.ville,
+    addressParts.city,
+    secondaryParts.city,
+    deriveCityFromPostal(primaryAddress, postalForCommune),
+    deriveCityFromPostal(secondaryAddress, postalForCommune),
+  ];
+  const baseCommune = pickBestCommune(communeCandidates, postalForCommune);
+  const commune = formatCommuneWithPostal(baseCommune, postalForCommune);
   const standardAddress = buildStandardAddress(
     primaryAddress,
     secondaryAddress,
     postalCode,
-    commune || addressParts.city || secondaryParts.city || ''
+    commune || baseCommune || addressParts.city || secondaryParts.city || ''
   );
-  const slugSource = commune || name || postalCode || primaryAddress || secondaryAddress;
+  const slugSource = commune || name || postalForCommune || primaryAddress || secondaryAddress;
   const id = raw.id || slugify(name || slugSource) || 'club';
 
   const toFloat = (value) => {
@@ -326,12 +509,20 @@ const geocodePlace = async (query, options = {}) => {
     countrycodes: 'fr',
     q: expectedPostal && !q.includes(expectedPostal) ? `${q} ${expectedPostal}` : q,
   });
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer =
+    controller && Number.isFinite(options.timeoutMs || 0) && (options.timeoutMs || 0) > 0
+      ? setTimeout(() => controller.abort(), options.timeoutMs)
+      : controller
+      ? setTimeout(() => controller.abort(), 15000)
+      : null;
   try {
     const response = await fetch(`${GEOCODE_ENDPOINT}?${params.toString()}`, {
       headers: {
         Accept: 'application/json',
         'User-Agent': 'echecs92-clubs-fr/1.0 (contact@echecs92.com)',
       },
+      signal: controller?.signal,
     });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
@@ -360,6 +551,10 @@ const geocodePlace = async (query, options = {}) => {
     };
   } catch (error) {
     return null;
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
   }
 };
 
@@ -424,18 +619,90 @@ const loadDepartments = async () => {
   return clubs;
 };
 
+const loadExistingHints = async (filePath) => {
+  try {
+    const raw = await fs.readFile(filePath, 'utf8');
+    const payload = JSON.parse(raw);
+    if (!payload || typeof payload !== 'object') {
+      return { meta: null, hints: {} };
+    }
+    const hints = payload.hints && typeof payload.hints === 'object' ? payload.hints : {};
+    return { meta: payload, hints };
+  } catch (error) {
+    return { meta: null, hints: {} };
+  }
+};
+
+const parseArgs = () => {
+  const args = process.argv.slice(2);
+  const options = {
+    delay: 650,
+    resume: false,
+    offset: 0,
+    limit: null,
+  };
+  args.forEach((arg) => {
+    if (arg === '--resume') {
+      options.resume = true;
+    } else if (arg.startsWith('--delay=')) {
+      const value = Number.parseInt(arg.split('=')[1], 10);
+      if (Number.isFinite(value) && value >= 0) {
+        options.delay = value;
+      }
+    } else if (arg.startsWith('--offset=')) {
+      const value = Number.parseInt(arg.split('=')[1], 10);
+      if (Number.isFinite(value) && value >= 0) {
+        options.offset = value;
+      }
+    } else if (arg.startsWith('--limit=')) {
+      const value = Number.parseInt(arg.split('=')[1], 10);
+      if (Number.isFinite(value) && value > 0) {
+        options.limit = value;
+      }
+    }
+  });
+  return options;
+};
+
 const main = async () => {
-  const DELAY_MS = 650;
-  const clubs = (await loadDepartments()).map(adaptClubRecord);
+  const options = parseArgs();
+  const DELAY_MS = options.delay;
+  const clubsAll = (await loadDepartments()).map(adaptClubRecord);
+  const clubs =
+    options.limit == null
+      ? clubsAll.slice(options.offset)
+      : clubsAll.slice(options.offset, options.offset + options.limit);
   ensureUniqueSlugs(clubs);
 
   let processed = 0;
   let geocoded = 0;
   let fallback = 0;
-  const hints = {};
+  const existing = options.resume ? await loadExistingHints(OUTPUT_PATH) : { meta: null, hints: {} };
+  const hints = { ...(existing.hints || {}) };
+  const flushHints = async () => {
+    const sortedKeys = Object.keys(hints).sort();
+    const sortedHints = {};
+    sortedKeys.forEach((key) => {
+      sortedHints[key] = hints[key];
+    });
+    const payload = {
+      version: 1,
+      generatedAt: new Date().toISOString(),
+      total: options.offset + processed,
+      hints: sortedHints,
+    };
+    await fs.writeFile(OUTPUT_PATH, `${JSON.stringify(payload, null, 2)}\n`);
+    return sortedKeys.length;
+  };
 
   for (const club of clubs) {
     processed += 1;
+    if (processed % 120 === 0 || processed === clubs.length) {
+      console.log(`→ ${processed}/${clubs.length} clubs traités…`);
+    }
+    if (hints[club.slug]) {
+      continue;
+    }
     if (Number.isFinite(club.latitude) && Number.isFinite(club.longitude)) {
       hints[club.slug] = { lat: club.latitude, lng: club.longitude, postalCode: club.postalCode || '' };
       continue;
@@ -455,24 +722,14 @@ const main = async () => {
     }
     // Be polite with the geocoding service
     await sleep(DELAY_MS);
+    if (processed % 50 === 0) {
+      await flushHints();
+    }
   }
 
-  const sortedKeys = Object.keys(hints).sort();
-  const sortedHints = {};
-  sortedKeys.forEach((key) => {
-    sortedHints[key] = hints[key];
-  });
-
-  const payload = {
-    version: 1,
-    generatedAt: new Date().toISOString(),
-    total: processed,
-    hints: sortedHints,
-  };
-
-  await fs.writeFile(OUTPUT_PATH, `${JSON.stringify(payload, null, 2)}\n`);
+  const totalKeys = await flushHints();
   console.log(`Generated ${OUTPUT_PATH}`);
-  console.log(`Clubs: ${processed}, hints: ${sortedKeys.length}, geocoded: ${geocoded}, dept fallback: ${fallback}`);
+  console.log(`Clubs: ${processed}, hints: ${totalKeys}, geocoded: ${geocoded}, dept fallback: ${fallback}`);
 };
 
 main().catch((error) => {
