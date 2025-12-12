@@ -882,6 +882,21 @@
 
   const resultsEl = document.getElementById('clubs-results');
   const detailBase = resultsEl?.dataset?.detailBase || '';
+  const normalisePathname = (value) => (value || '').replace(/\/+$/u, '') || '/';
+  const detailBasePath = (() => {
+    if (!detailBase) {
+      return null;
+    }
+    try {
+      const url = typeof window !== 'undefined' ? new URL(detailBase, window.location.origin) : null;
+      if (url) {
+        return normalisePathname(url.pathname);
+      }
+    } catch (error) {
+      // ignore URL parsing issues and fall back to the raw path
+    }
+    return normalisePathname(detailBase);
+  })();
   const resultsShell = document.getElementById('clubs-results-shell');
   const resultsCloseButton = document.getElementById('clubs-results-close');
   const searchBlock = document.querySelector('.clubs-search-block');
@@ -1573,6 +1588,28 @@
       return url.pathname + url.search + url.hash;
     } catch (error) {
       return '/clubs';
+    }
+  };
+
+  const cameFromClubsContext = () => {
+    if (typeof document === 'undefined' || !document.referrer) {
+      return false;
+    }
+    try {
+      const refUrl = new URL(document.referrer, window.location.origin);
+      if (refUrl.origin !== window.location.origin) {
+        return false;
+      }
+      const normalized = normalisePathname(refUrl.pathname);
+      if (normalized === '/clubs') {
+        return true;
+      }
+      if (detailBasePath && (normalized === detailBasePath || normalized.startsWith(`${detailBasePath}/`))) {
+        return true;
+      }
+      return /^\/club(?:\/|$)/i.test(normalized);
+    } catch (error) {
+      return false;
     }
   };
 
@@ -5708,9 +5745,10 @@
         applyStaticHints(state.clubs, staticHints);
         buildLocationSuggestionIndex(state.clubs);
 
-        const reopenResultsRequested = consumeReopenResultsFlag();
-        const hasInitialParams = Boolean(initialQueryParam || initialLocParam || initialSortParam || initialOpenResults);
-        const savedUi = hasInitialParams || reopenResultsRequested ? consumeListUiState() : null;
+        const cameFromClubsPage = cameFromClubsContext();
+        const rawReopenFlag = consumeReopenResultsFlag();
+        const reopenResultsRequested = cameFromClubsPage && rawReopenFlag;
+        const savedUi = cameFromClubsPage ? consumeListUiState() : null;
         const urlRestored = await applyInitialUrlState();
         let restored = urlRestored;
         suppressFocusAnimation = reopenResultsRequested;
