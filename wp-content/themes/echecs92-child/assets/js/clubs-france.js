@@ -372,13 +372,21 @@
     }
     const numericOnly = /^\d+$/.test(trimmed);
     const postal = normalisePostalCodeValue(trimmed);
-    if (!numericOnly || !postal || postal.length !== 5) {
-      // Uniquement des codes postaux complets connus.
+    if (!numericOnly || !postal || postal.length < 3) {
+      // On attend au moins 3 chiffres pour limiter le bruit.
       return [];
     }
     const canonicalPostal = canonicalizeParisPostalCode(postal) || postal;
-    const coords = getPostalCoordinateEntries(canonicalPostal);
-    const list = Array.isArray(coords) && coords.length ? coords : getPostalCoordinateEntries(postal);
+    const coords =
+      canonicalPostal.length === 5
+        ? getPostalCoordinateEntries(canonicalPostal)
+        : getPostalCoordinateEntriesByPrefix(canonicalPostal);
+    const list =
+      Array.isArray(coords) && coords.length
+        ? coords
+        : canonicalPostal.length === 5
+        ? getPostalCoordinateEntries(postal)
+        : getPostalCoordinateEntriesByPrefix(postal);
     if (!list.length) {
       return [];
     }
@@ -478,11 +486,30 @@
 
   const scoreLocationSuggestion = (entry, normalisedQuery, numericQuery) => {
     let score = 0;
+    const rawEntryPostal = normalisePostalCodeValue(entry?.postalCode || entry?.code || '');
+    const canonicalEntryPostal = canonicalizeParisPostalCode(rawEntryPostal) || rawEntryPostal;
+    const postalCandidates = Array.from(new Set([rawEntryPostal, canonicalEntryPostal].filter(Boolean)));
+    const numericNoLeadingZero = numericQuery ? numericQuery.replace(/^0+/, '') : '';
     const searchFields = getSuggestionSearchFields(entry);
     const compactQuery = stripSearchDelimiters(normalisedQuery);
     const compactFields = compactQuery ? searchFields.map(stripSearchDelimiters) : [];
-    if (numericQuery && entry.postalCode && entry.postalCode.startsWith(numericQuery)) {
-      score += 80 - Math.min(30, (entry.postalCode.length - numericQuery.length) * 6);
+    if (numericQuery && postalCandidates.length) {
+      for (let i = 0; i < postalCandidates.length; i += 1) {
+        const candidate = postalCandidates[i];
+        if (!candidate) {
+          continue;
+        }
+        const strippedCandidate = candidate.replace(/^0+/, '');
+        const hasDirectMatch = candidate.startsWith(numericQuery);
+        const hasStrippedMatch =
+          strippedCandidate && numericNoLeadingZero && strippedCandidate.startsWith(numericNoLeadingZero);
+        if (hasDirectMatch || hasStrippedMatch) {
+          const baseLength = hasDirectMatch ? candidate.length : strippedCandidate.length;
+          const matchLength = hasDirectMatch ? numericQuery.length : numericNoLeadingZero.length;
+          score += 80 - Math.min(30, (baseLength - matchLength) * 6);
+          break;
+        }
+      }
     }
     if (normalisedQuery) {
       const startsWithMatch =
@@ -513,12 +540,27 @@
     const numericQuery = (rawQuery || '').replace(/\D/g, '');
     const hasQuery = Boolean(normalised || numericQuery);
     const typedSuggestions = buildTypedLocationSuggestions(rawQuery);
+    const typedPostalCodes = new Set(
+      (typedSuggestions || [])
+        .map((item) => normalisePostalCodeValue(item?.postalCode || item?.code || ''))
+        .filter(Boolean)
+    );
+    const numericOnlyInput = /^\d+$/.test((rawQuery || '').trim());
+    const normalisedPostalInput = normalisePostalCodeValue(rawQuery);
+    const needsExtendedLimit =
+      numericOnlyInput &&
+      typedSuggestions &&
+      typedSuggestions.length > 0 &&
+      typedPostalCodes.size === 1 &&
+      (normalisedPostalInput
+        ? typedPostalCodes.has(normalisedPostalInput) || typedPostalCodes.has(`0${normalisedPostalInput}`)
+        : true);
+    const effectiveLimit = needsExtendedLimit
+      ? Math.max(LOCATION_SUGGESTIONS_LIMIT, typedSuggestions.length)
+      : LOCATION_SUGGESTIONS_LIMIT;
     const scored = [];
     if (!hasQuery) {
-      return dedupeLocationSuggestions(locationSuggestionsIndex.slice(0, LOCATION_SUGGESTIONS_LIMIT)).slice(
-        0,
-        LOCATION_SUGGESTIONS_LIMIT
-      );
+      return dedupeLocationSuggestions(locationSuggestionsIndex.slice(0, effectiveLimit)).slice(0, effectiveLimit);
     }
     locationSuggestionsIndex.forEach((entry) => {
       const score = scoreLocationSuggestion(entry, normalised, numericQuery);
@@ -543,8 +585,8 @@
       }
       return compareDisplayStrings(a.entry.display, b.entry.display);
     });
-    const ranked = scored.slice(0, LOCATION_SUGGESTIONS_LIMIT).map((item) => item.entry);
-    return dedupeLocationSuggestions(ranked).slice(0, LOCATION_SUGGESTIONS_LIMIT);
+    const ranked = scored.slice(0, effectiveLimit).map((item) => item.entry);
+    return dedupeLocationSuggestions(ranked).slice(0, effectiveLimit);
   };
 
   const resolveSuggestionCoordinates = (suggestion) => {
@@ -3301,6 +3343,39 @@
       }
     }
     return [];
+  };
+
+  const getPostalCoordinateEntriesByPrefix = (postalPrefix) => {
+    const prefix = normalisePostalCodeValue(postalPrefix);
+    if (!prefix) {
+      return [];
+    }
+    if (prefix.length === 5) {
+      return getPostalCoordinateEntries(prefix);
+    }
+    const prefixes = new Set([prefix]);
+    if (prefix.length <= 4 && prefix[0] !== '0') {
+      prefixes.add(`0${prefix}`);
+    }
+    const matches = [];
+    const seen = new Set();
+    const prefixList = Array.from(prefixes);
+    postalCoordinatesIndex.forEach((entries, code) => {
+      const hasPrefix = prefixList.some((candidate) => code && code.startsWith(candidate));
+      if (!hasPrefix) {
+        return;
+      }
+      entries.forEach((entry) => {
+        const record = { ...entry, postalCode: entry.postalCode || code };
+        const key = `${record.postalCode}|${record.label}|${record.lat}|${record.lng}`;
+        if (seen.has(key)) {
+          return;
+        }
+        seen.add(key);
+        matches.push(record);
+      });
+    });
+    return matches;
   };
 
   const getCommuneCoordinatesByName = (value) => {
