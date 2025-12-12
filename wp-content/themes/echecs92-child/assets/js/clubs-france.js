@@ -469,12 +469,18 @@
   const scoreLocationSuggestion = (entry, normalisedQuery, numericQuery) => {
     let score = 0;
     const searchFields = getSuggestionSearchFields(entry);
+    const compactQuery = stripSearchDelimiters(normalisedQuery);
+    const compactFields = compactQuery ? searchFields.map(stripSearchDelimiters) : [];
     if (numericQuery && entry.postalCode && entry.postalCode.startsWith(numericQuery)) {
       score += 80 - Math.min(30, (entry.postalCode.length - numericQuery.length) * 6);
     }
     if (normalisedQuery) {
-      const startsWithMatch = searchFields.some((value) => value.startsWith(normalisedQuery));
-      const containsMatch = searchFields.some((value) => !value.startsWith(normalisedQuery) && value.includes(normalisedQuery));
+      const startsWithMatch =
+        searchFields.some((value) => value.startsWith(normalisedQuery)) ||
+        (compactQuery && compactFields.some((value) => value.startsWith(compactQuery)));
+      const containsMatch =
+        searchFields.some((value) => !value.startsWith(normalisedQuery) && value.includes(normalisedQuery)) ||
+        (compactQuery && compactFields.some((value) => !value.startsWith(compactQuery) && value.includes(compactQuery)));
       if (startsWithMatch) {
         score += 60;
       } else if (containsMatch) {
@@ -3136,6 +3142,9 @@
       .replace(/[^a-z0-9\s]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
+
+  // Compact form used to make searches resilient to missing hyphens/spaces.
+  const stripSearchDelimiters = (value) => (value || '').replace(/[-\s]+/g, '');
 
   const normaliseCommuneKey = (value) => normalise(value).replace(/[^a-z0-9]/g, '');
 
