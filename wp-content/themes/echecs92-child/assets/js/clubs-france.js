@@ -4759,10 +4759,40 @@
     updateStatusIfCurrent('Recherche en cours…', 'info');
 
     const picked = pickBestSuggestion(trimmed);
-    const suggestion = picked?.suggestion || null;
-    const coords = picked?.coords || null;
+    let suggestion = picked?.suggestion || null;
+    let coords = picked?.coords || null;
     if (abortIfStale()) {
       return;
+    }
+
+    if ((!suggestion || !coords) && shouldFetchRemoteLocationSuggestions(trimmed)) {
+      const remoteSuggestions = await fetchRemoteLocationSuggestions(trimmed).catch(() => []);
+      if (abortIfStale()) {
+        return;
+      }
+      if (remoteSuggestions && remoteSuggestions.length) {
+        appendLocationSuggestionsToIndex(remoteSuggestions);
+        const refreshed = pickBestSuggestion(trimmed);
+        suggestion = suggestion || refreshed?.suggestion || null;
+        coords = coords || refreshed?.coords || null;
+      }
+    }
+
+    if (!coords && (suggestion?.postalCode || suggestion?.commune)) {
+      const postal = suggestion.postalCode ? canonicalizeParisPostalCode(suggestion.postalCode) || suggestion.postalCode : '';
+      const fallbackCoords =
+        getPostalCoordinates(postal) ||
+        getDeptFallbackCoordinates(postal) ||
+        (suggestion.commune ? getCommuneCoordinatesByName(suggestion.commune) : null);
+      if (fallbackCoords) {
+        coords = {
+          latitude: fallbackCoords.lat,
+          longitude: fallbackCoords.lng,
+          label: fallbackCoords.label || suggestion.commune || suggestion.display || trimmed,
+          commune: suggestion.commune || fallbackCoords.label || '',
+          postalCode: fallbackCoords.postalCode || postal || '',
+        };
+      }
     }
 
     if (!suggestion) {
