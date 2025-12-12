@@ -3967,8 +3967,8 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   align-items:flex-start;
   justify-content:flex-start;
   gap:8px;
-  padding:0;
-  margin:0 0 16px;
+  padding:8px 0 16px;
+  margin:0;
   position:sticky;
   top:0;
   background:#ffffff;
