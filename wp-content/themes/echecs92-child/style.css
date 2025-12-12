@@ -3964,7 +3964,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 }
 .clubs-results-shell__header{
   display:flex;
-  align-items:flex-start;
+  align-items:center;
   justify-content:flex-start;
   gap:8px;
   padding:8px 0 16px;
@@ -3986,11 +3986,14 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   align-self:flex-start;
   border:none;
   background:none;
-  color:inherit;
+  color:#0f172a;
   padding:0;
   display:inline-flex;
   align-items:center;
   gap:8px;
+  font-size:14px;
+  font-weight:600;
+  text-decoration:underline;
 }
 @media (max-width:820px){
   .clubs-results-shell__close{
