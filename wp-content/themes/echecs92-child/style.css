@@ -3965,7 +3965,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .clubs-results-shell__header{
   display:flex;
   align-items:center;
-  justify-content:flex-start;
+  justify-content:center;
   gap:8px;
   padding:8px 0 16px;
   margin:0;
@@ -3983,7 +3983,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   font-weight:700;
 }
 .clubs-results-shell__close{
-  align-self:flex-start;
+  align-self:auto;
   border:none;
   background:none;
   color:#0f172a;
