@@ -3964,16 +3964,14 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 }
 .clubs-results-shell__header{
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   justify-content:flex-start;
-  gap:12px;
-  padding:12px 16px 14px;
-  margin-left:-16px;
-  margin-right:-16px;
+  gap:8px;
+  padding:0;
+  margin:0 0 16px;
   position:sticky;
   top:0;
   background:#ffffff;
-  margin-bottom:12px;
   z-index:3;
 }
 .clubs-results-shell__eyebrow{
@@ -3986,28 +3984,26 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 }
 .clubs-results-shell__close{
   align-self:flex-start;
-  border:1px solid #d7deec;
-  background:#f6f8fc;
-  color:#0f172a;
-  border-radius:12px;
-  padding:8px 14px;
-  font-weight:700;
+  border:none;
+  background:none;
+  color:inherit;
+  padding:0;
   display:inline-flex;
   align-items:center;
-  position:sticky;
-  left:0;
+  gap:8px;
 }
 @media (max-width:820px){
   .clubs-results-shell__close{
-    padding:12px 16px;
-    min-height:44px;
+    padding:0;
+    min-height:auto;
   }
 }
 .clubs-results-shell__close:hover,
 .clubs-results-shell__close:focus-visible{
-  background:#f6f8fc;
-  color:#0f172a;
-  border-color:#d7deec;
+  background:none;
+  color:#1d4ed8;
+  border:none;
+  outline:none;
 }
 .clubs-results-shell.is-active{
   transform:translateX(0);
