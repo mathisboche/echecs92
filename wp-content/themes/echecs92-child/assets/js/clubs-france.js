@@ -3820,7 +3820,7 @@
       parsedPartialDigits <= 20
         ? cleanedPartialDigits
         : '';
-    const parisPostalOrder = PARIS_ARR_POSTAL_CODES.slice().reverse();
+    const parisPostalOrder = PARIS_ARR_POSTAL_CODES.slice();
     const suggestions = [];
     parisPostalOrder.forEach((postal) => {
       const existing = bestByPostal.get(postal);
@@ -3844,12 +3844,12 @@
       }
       suggestions.push(suggestion);
     });
-    // Prioritize hinted arrondissements while keeping a descending default order (20 -> 1).
+    // Prioritize hinted arrondissements while keeping an ascending default order (1 -> 20).
     const scoreParisSuggestion = (entry) => {
       const arr = getParisArrondissementFromPostal(entry.postalCode) || 0;
       const arrStr = arr.toString();
       const arrStrPadded = arr.toString().padStart(2, '0');
-      let score = arr;
+      let score = 100 - arr;
       if (hintedArr && arr === hintedArr) {
         score += 200;
       }
@@ -3869,7 +3869,7 @@
         const arrA = getParisArrondissementFromPostal(a.entry.postalCode) || 0;
         const arrB = getParisArrondissementFromPostal(b.entry.postalCode) || 0;
         if (arrA !== arrB) {
-          return arrB - arrA;
+          return arrA - arrB;
         }
         return a.index - b.index;
       })
