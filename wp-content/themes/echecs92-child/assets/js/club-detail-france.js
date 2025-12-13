@@ -367,6 +367,7 @@
     byBase.forEach((entries, base) => {
       if (entries.length === 1) {
         entries[0].slug = base;
+        entries[0]._communeSlug = slugify(entries[0].commune || '');
         return;
       }
       const sorted = entries
@@ -375,8 +376,46 @@
       sorted.forEach((entry, idx) => {
         const suffix = idx === 0 ? '' : `-${toBase36(idx + 1)}`;
         entry.club.slug = `${base}${suffix}`;
+        entry.club._communeSlug = slugify(entry.club.commune || '');
       });
     });
+  };
+
+  const buildClubLookup = (clubs) => {
+    const map = new Map();
+    (clubs || []).forEach((club) => {
+      if (!club || typeof club !== 'object') {
+        return;
+      }
+      const aliases = new Set([
+        club.slug,
+        club.id,
+        club._communeSlug,
+        slugify(club.name || ''),
+        slugify(club.commune || ''),
+      ]);
+      aliases.forEach((alias) => {
+        const key = (alias || '').toString().trim().toLowerCase();
+        if (key && !map.has(key)) {
+          map.set(key, club);
+        }
+      });
+    });
+    return map;
+  };
+
+  const findClubBySlug = (slug, lookup) => {
+    if (!slug) {
+      return null;
+    }
+    const key = slug.toString().trim().toLowerCase();
+    if (!key) {
+      return null;
+    }
+    if (lookup && lookup.has(key)) {
+      return lookup.get(key);
+    }
+    return null;
   };
 
   const applyStaticHints = (clubs, hints) => {
@@ -1678,7 +1717,8 @@
         ensureUniqueSlugs(clubs);
         applyStaticHints(clubs, staticHints);
         applyFfeRefs(clubs, ffeLookup);
-        const club = clubs.find((entry) => entry.slug === clubSlug || entry.id === clubSlug);
+        const lookup = buildClubLookup(clubs);
+        const club = findClubBySlug(clubSlug, lookup) || null;
         if (!club) {
           renderMessage(detailContainer.dataset.emptyMessage || 'Club introuvable.');
           return;
