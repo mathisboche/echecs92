@@ -3727,6 +3727,8 @@
   };
 
   const LOOKS_LIKE_CITY = /^[\p{L}\s'’-]{3,}$/u;
+  const COMMUNE_SCHEDULE_KEYWORDS = /\b(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\b/i;
+  const COMMUNE_VENUE_KEYWORDS = /\b(salle|mairie|gymnase|espace|centre|complexe|maison|mediath[eé]que|biblioth[eé]que)\b/i;
 
   const deriveReferenceContext = (rawInput, coords = {}, type = '') => {
     const addressParts = extractAddressParts(rawInput || '');
@@ -3880,43 +3882,67 @@
     return formatCommune(cleaned);
   };
 
-  const scoreCommuneCandidate = (value) => {
+  const scoreCommuneCandidate = (value, options = {}) => {
     if (!value) {
       return -Infinity;
     }
+    const trimmed = value.toString().trim();
+    if (!trimmed) {
+      return -Infinity;
+    }
+    const postalLabel = options.postalLabel || '';
+    const postalKey = postalLabel ? normaliseCommuneForCompare(postalLabel) : '';
+    const valueKey = normaliseCommuneForCompare(trimmed);
     let score = 0;
-    const hasDigits = /\d/.test(value);
+    if (postalKey && valueKey && postalKey === valueKey) {
+      score += 6;
+    }
+    const hasDigits = /\d/.test(trimmed);
     if (!hasDigits) {
       score += 4;
-    } else if (!/^paris\s*\d{1,2}/i.test(value)) {
+    } else if (!/^paris\s*\d{1,2}/i.test(trimmed)) {
       score -= 2;
     }
-    if (looksLikeDetailedAddress(value)) {
+    if (looksLikeDetailedAddress(trimmed)) {
       score -= 4;
-    } else if (looksLikeStreetName(value)) {
+    } else if (looksLikeStreetName(trimmed)) {
       score -= 3;
     }
-    if (value.length >= 3) {
+    if (COMMUNE_SCHEDULE_KEYWORDS.test(trimmed)) {
+      score -= 6;
+    }
+    if (COMMUNE_VENUE_KEYWORDS.test(trimmed)) {
+      score -= 2;
+    }
+    if (/[,;]+/.test(trimmed)) {
+      score -= 1;
+    }
+    if (trimmed.split(/\s+/).length >= 6) {
+      score -= 1;
+    }
+    if (trimmed.length >= 3) {
       score += 1;
     }
     return score;
   };
 
   const pickBestCommune = (candidates, postalCode) => {
-    let best = '';
-    let bestScore = -Infinity;
+    const postalCoords = getPostalCoordinates(postalCode) || null;
+    const postalLabel = postalCoords ? formatCommuneWithPostal(postalCoords.label || '', postalCode) : '';
+    let best = postalLabel || '';
+    let bestScore = best ? scoreCommuneCandidate(best, { postalLabel }) : -Infinity;
     (candidates || []).forEach((raw) => {
       const cleaned = cleanCommuneCandidate(raw, postalCode);
       if (!cleaned) {
         return;
       }
-      const score = scoreCommuneCandidate(cleaned);
+      const score = scoreCommuneCandidate(cleaned, { postalLabel });
       if (score > bestScore) {
         bestScore = score;
         best = cleaned;
       }
     });
-    return best || '';
+    return best || postalLabel || '';
   };
 
   const formatGeocodeLabel = (place, postalCodeOverride) => {
