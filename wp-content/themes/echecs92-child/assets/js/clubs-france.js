@@ -801,7 +801,8 @@
     locationSuggestionsHost.style.left = `${rect.left + scrollX}px`;
   };
 
-  const closeLocationSuggestions = () => {
+  const closeLocationSuggestions = (options = {}) => {
+    const preserveRequestId = options.preserveRequestId === true;
     if (!locationSuggestionsHost) {
       return;
     }
@@ -815,7 +816,9 @@
     locationSuggestionsCurrent = [];
     locationSuggestionsActiveIndex = -1;
     locationSuggestionsAnchor = null;
-    locationSuggestionsRequestId += 1;
+    if (!preserveRequestId) {
+      locationSuggestionsRequestId += 1;
+    }
   };
 
   const highlightLocationSuggestion = (index) => {
@@ -868,7 +871,7 @@
     const matches = dedupeLocationSuggestions(entries || []);
     locationSuggestionsCurrent = matches;
     if (!matches.length) {
-      closeLocationSuggestions();
+      closeLocationSuggestions({ preserveRequestId: options.preserveRequestIdOnEmpty === true });
       return;
     }
     host.innerHTML = '';
@@ -923,7 +926,7 @@
     const requestId = ++locationSuggestionsRequestId;
     const localMatches = getLocationSuggestionsForQuery(query);
     const initialList = dedupeLocationSuggestions(localMatches);
-    renderLocationSuggestions(initialList, anchor, options);
+    renderLocationSuggestions(initialList, anchor, { ...options, preserveRequestIdOnEmpty: true });
     fetchRemoteLocationSuggestions(query)
       .then((remote) => {
         if (requestId !== locationSuggestionsRequestId) {
