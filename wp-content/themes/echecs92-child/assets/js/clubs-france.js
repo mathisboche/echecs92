@@ -538,6 +538,7 @@
   const getLocationSuggestionsForQuery = (rawQuery) => {
     const normalised = normaliseForSearch(rawQuery);
     const communeQuery = normaliseCommuneForCompare(rawQuery);
+    const looksLikeParisQuery = communeQuery === 'paris' || communeQuery.startsWith('paris ');
     const numericQuery = (rawQuery || '').replace(/\D/g, '');
     const hasQuery = Boolean(normalised || numericQuery);
     const typedSuggestions = buildTypedLocationSuggestions(rawQuery);
@@ -556,6 +557,10 @@
       (normalisedPostalInput
         ? typedPostalCodes.has(normalisedPostalInput) || typedPostalCodes.has(`0${normalisedPostalInput}`)
         : true);
+    if (looksLikeParisQuery) {
+      const parisSource = dedupeLocationSuggestions([...(locationSuggestionsIndex || []), ...(typedSuggestions || [])]);
+      return buildParisArrondissementSuggestions(parisSource);
+    }
     let effectiveLimit = needsExtendedLimit
       ? Math.max(LOCATION_SUGGESTIONS_LIMIT, typedSuggestions.length)
       : LOCATION_SUGGESTIONS_LIMIT;
@@ -586,24 +591,6 @@
       }
       return compareDisplayStrings(a.entry.display, b.entry.display);
     });
-    const looksLikeParisQuery = communeQuery === 'paris' || communeQuery.startsWith('paris ');
-    if (looksLikeParisQuery) {
-      // Ne pas tronquer les arrondissements parisiens quand on tape "Paris".
-      const parisMatches = scored.filter(({ entry }) => {
-        if (!entry) {
-          return false;
-        }
-        const communeKey = normaliseCommuneForCompare(entry.commune || entry.display || '');
-        if (communeKey === 'paris' || communeKey.startsWith('paris ')) {
-          return true;
-        }
-        const postal = canonicalizeParisPostalCode(entry.postalCode || entry.code || entry.postcode || '');
-        return Boolean(postal && postal.startsWith('75'));
-      });
-      if (parisMatches.length > effectiveLimit) {
-        effectiveLimit = parisMatches.length;
-      }
-    }
     const ranked = scored.slice(0, effectiveLimit).map((item) => item.entry);
     return dedupeLocationSuggestions(ranked).slice(0, effectiveLimit);
   };
@@ -3731,6 +3718,92 @@
     }
     const suffix = arr === 1 ? 'er' : 'e';
     return `Paris ${arr}${suffix}`;
+  };
+
+  const PARIS_ARR_POSTAL_CODES = [
+    '75001',
+    '75002',
+    '75003',
+    '75004',
+    '75005',
+    '75006',
+    '75007',
+    '75008',
+    '75009',
+    '75010',
+    '75011',
+    '75012',
+    '75013',
+    '75014',
+    '75015',
+    '75016',
+    '75017',
+    '75018',
+    '75019',
+    '75020',
+  ];
+
+  const buildParisArrondissementSuggestions = (entries = []) => {
+    const hasCoords = (item) => {
+      if (!item) {
+        return false;
+      }
+      const lat = Number.parseFloat(item.latitude ?? item.lat);
+      const lng = Number.parseFloat(item.longitude ?? item.lng);
+      return Number.isFinite(lat) && Number.isFinite(lng);
+    };
+    const bestByPostal = new Map();
+    (entries || []).forEach((entry) => {
+      if (!entry) {
+        return;
+      }
+      const postal = canonicalizeParisPostalCode(entry.postalCode || entry.code || entry.postcode || '');
+      const arr = getParisArrondissementFromPostal(postal);
+      if (!postal || !arr) {
+        return;
+      }
+      const label = formatParisArrondissementLabel(postal) || 'Paris';
+      const candidate = {
+        ...entry,
+        postalCode: postal,
+        commune: label,
+        display: entry.display || label,
+        search: entry.search || normaliseForSearch(`${label} ${postal}`.trim()),
+        searchAlt: entry.searchAlt || normaliseForSearch(`${postal} ${label}`.trim()),
+      };
+      const existing = bestByPostal.get(postal);
+      if (
+        !existing ||
+        (!existing.hasClub && candidate.hasClub) ||
+        (!hasCoords(existing) && hasCoords(candidate))
+      ) {
+        bestByPostal.set(postal, candidate);
+      }
+    });
+    const suggestions = [];
+    PARIS_ARR_POSTAL_CODES.forEach((postal) => {
+      const existing = bestByPostal.get(postal);
+      if (existing) {
+        suggestions.push(existing);
+        return;
+      }
+      const coords = getPostalCoordinates(postal) || getDeptFallbackCoordinates(postal);
+      const label = formatParisArrondissementLabel(postal) || 'Paris';
+      const suggestion = {
+        display: label,
+        commune: label,
+        postalCode: postal,
+        search: normaliseForSearch(`${label} ${postal}`.trim()),
+        searchAlt: normaliseForSearch(`${postal} ${label}`.trim()),
+        source: 'paris-override',
+      };
+      if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
+        suggestion.latitude = coords.lat;
+        suggestion.longitude = coords.lng;
+      }
+      suggestions.push(suggestion);
+    });
+    return suggestions;
   };
 
   const formatCommuneWithPostal = (commune, postalCode) => {
