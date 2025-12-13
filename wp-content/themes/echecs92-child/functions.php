@@ -196,6 +196,11 @@ add_action('template_redirect', function () {
         wp_redirect(trailingslashit(home_url('/club/' . $slug)) . $query_string, 301);
         exit;
     }
+
+    if (preg_match('#^/gouvernance/?$#i', $normalized)) {
+        wp_redirect(home_url('/comite/gouvernance/') . $query_string, 301);
+        exit;
+    }
 });
 
 add_filter('redirect_canonical', function ($redirect_url, $requested_url) {
