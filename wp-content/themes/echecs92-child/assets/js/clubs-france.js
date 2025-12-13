@@ -612,7 +612,8 @@
       };
     }
     if (postalCode) {
-      const coords = getPostalCoordinates(postalCode) || getDeptFallbackCoordinates(postalCode);
+      const coords =
+        getPostalCoordinates(postalCode, suggestion.commune) || getDeptFallbackCoordinates(postalCode);
       if (coords) {
         return {
           latitude: coords.lat,
@@ -3320,14 +3321,27 @@
     return postalCoordinatesPromise;
   };
 
-  const getPostalCoordinates = (postalCode) => {
+  const getPostalCoordinates = (postalCode, preferredCommune = '') => {
     const entries = getPostalCoordinateEntries(postalCode);
     if (!entries.length) {
       return null;
     }
-    const best = entries[0];
-    const postal = best.postalCode || normalisePostalCodeValue(postalCode);
-    return { postalCode: postal, lat: best.lat, lng: best.lng, label: best.label, precision: 'postal' };
+    const targetKey = normaliseCommuneForCompare(preferredCommune);
+    const best =
+      targetKey &&
+      entries.find((entry) => {
+        const label = formatCommuneWithPostal(entry?.label || '', postalCode);
+        return label && normaliseCommuneForCompare(label) === targetKey;
+      });
+    const selected = best || entries[0];
+    const postal = selected.postalCode || normalisePostalCodeValue(postalCode);
+    return {
+      postalCode: postal,
+      lat: selected.lat,
+      lng: selected.lng,
+      label: selected.label,
+      precision: 'postal',
+    };
   };
 
   const getPostalCoordinateEntries = (postalCode) => {
@@ -3404,7 +3418,7 @@
     }
     const parisPostal = extractParisPostal(value);
     if (parisPostal) {
-      const coords = getPostalCoordinates(parisPostal);
+      const coords = getPostalCoordinates(parisPostal, value);
       if (coords) {
         return {
           postalCode: coords.postalCode,
@@ -4019,22 +4033,44 @@
   };
 
   const pickBestCommune = (candidates, postalCode) => {
-    const postalCoords = getPostalCoordinates(postalCode) || null;
-    const postalLabel = postalCoords ? formatCommuneWithPostal(postalCoords.label || '', postalCode) : '';
-    let best = postalLabel || '';
-    let bestScore = best ? scoreCommuneCandidate(best, { postalLabel }) : -Infinity;
-    (candidates || []).forEach((raw) => {
+    const postalEntries = getPostalCoordinateEntries(postalCode);
+    const postalLabels = postalEntries
+      .map((entry) => formatCommuneWithPostal(entry?.label || '', postalCode))
+      .filter(Boolean);
+    const postalKeys = new Set(postalLabels.map(normaliseCommuneForCompare).filter(Boolean));
+    const postalLabel = postalLabels[0] || '';
+
+    let bestPostalMatch = '';
+    let bestPostalScore = -Infinity;
+    let bestOverall = '';
+    let bestOverallScore = -Infinity;
+
+    const consider = (raw) => {
       const cleaned = cleanCommuneCandidate(raw, postalCode);
       if (!cleaned) {
         return;
       }
       const score = scoreCommuneCandidate(cleaned, { postalLabel });
-      if (score > bestScore) {
-        bestScore = score;
-        best = cleaned;
+      const key = normaliseCommuneForCompare(cleaned);
+      if (postalKeys.has(key) && score > bestPostalScore) {
+        bestPostalScore = score;
+        bestPostalMatch = cleaned;
       }
-    });
-    return best || postalLabel || '';
+      if (score > bestOverallScore) {
+        bestOverallScore = score;
+        bestOverall = cleaned;
+      }
+    };
+
+    (candidates || []).forEach(consider);
+
+    if (bestPostalMatch) {
+      return bestPostalMatch;
+    }
+    if (bestOverall) {
+      return bestOverall;
+    }
+    return postalLabel || '';
   };
 
   const formatGeocodeLabel = (place, postalCodeOverride) => {
@@ -4266,7 +4302,7 @@
 
     const postalCandidates = collectPostalCodes(club);
     for (let i = 0; i < postalCandidates.length; i += 1) {
-      const coords = getPostalCoordinates(postalCandidates[i]);
+      const coords = getPostalCoordinates(postalCandidates[i], club.commune);
       if (coords) {
         club._distanceCoords = { ...coords, precision: coords.precision || 'postal' };
         return coords;
@@ -4284,7 +4320,7 @@
 
     const parisPostal = deriveParisPostalFromClub(club);
     if (parisPostal) {
-      const coords = getPostalCoordinates(parisPostal);
+      const coords = getPostalCoordinates(parisPostal, club.commune);
       if (coords) {
         club._distanceCoords = coords;
         return coords;
@@ -5089,7 +5125,7 @@
     if (!coords && (suggestion?.postalCode || suggestion?.commune)) {
       const postal = suggestion.postalCode ? canonicalizeParisPostalCode(suggestion.postalCode) || suggestion.postalCode : '';
       const fallbackCoords =
-        getPostalCoordinates(postal) ||
+        getPostalCoordinates(postal, suggestion.commune) ||
         getDeptFallbackCoordinates(postal) ||
         (suggestion.commune ? getCommuneCoordinatesByName(suggestion.commune) : null);
       if (fallbackCoords) {
