@@ -537,6 +537,7 @@
 
   const getLocationSuggestionsForQuery = (rawQuery) => {
     const normalised = normaliseForSearch(rawQuery);
+    const communeQuery = normaliseCommuneForCompare(rawQuery);
     const numericQuery = (rawQuery || '').replace(/\D/g, '');
     const hasQuery = Boolean(normalised || numericQuery);
     const typedSuggestions = buildTypedLocationSuggestions(rawQuery);
@@ -555,7 +556,7 @@
       (normalisedPostalInput
         ? typedPostalCodes.has(normalisedPostalInput) || typedPostalCodes.has(`0${normalisedPostalInput}`)
         : true);
-    const effectiveLimit = needsExtendedLimit
+    let effectiveLimit = needsExtendedLimit
       ? Math.max(LOCATION_SUGGESTIONS_LIMIT, typedSuggestions.length)
       : LOCATION_SUGGESTIONS_LIMIT;
     const scored = [];
@@ -585,6 +586,24 @@
       }
       return compareDisplayStrings(a.entry.display, b.entry.display);
     });
+    const looksLikeParisQuery = communeQuery === 'paris' || communeQuery.startsWith('paris ');
+    if (looksLikeParisQuery) {
+      // Ne pas tronquer les arrondissements parisiens quand on tape "Paris".
+      const parisMatches = scored.filter(({ entry }) => {
+        if (!entry) {
+          return false;
+        }
+        const communeKey = normaliseCommuneForCompare(entry.commune || entry.display || '');
+        if (communeKey === 'paris' || communeKey.startsWith('paris ')) {
+          return true;
+        }
+        const postal = canonicalizeParisPostalCode(entry.postalCode || entry.code || entry.postcode || '');
+        return Boolean(postal && postal.startsWith('75'));
+      });
+      if (parisMatches.length > effectiveLimit) {
+        effectiveLimit = parisMatches.length;
+      }
+    }
     const ranked = scored.slice(0, effectiveLimit).map((item) => item.entry);
     return dedupeLocationSuggestions(ranked).slice(0, effectiveLimit);
   };
