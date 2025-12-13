@@ -611,6 +611,10 @@
       cleaned = cleaned.replace(pattern, ' ').trim();
     }
     cleaned = cleaned.replace(/^\d+\s+/, '').replace(/\s+/g, ' ').trim();
+    const looksStreety = STREET_KEYWORDS.test(cleaned) && (/\d/.test(cleaned) || cleaned.split(/\s+/).length >= 3);
+    if (looksStreety) {
+      return '';
+    }
     return formatCommune(cleaned);
   };
 
