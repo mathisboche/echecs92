@@ -538,8 +538,11 @@
   const getLocationSuggestionsForQuery = (rawQuery) => {
     const normalised = normaliseForSearch(rawQuery);
     const communeQuery = normaliseCommuneForCompare(rawQuery);
-    const looksLikeParisQuery = communeQuery === 'paris' || communeQuery.startsWith('paris ');
     const numericQuery = (rawQuery || '').replace(/\D/g, '');
+    const looksLikeParisQuery = communeQuery === 'paris' || communeQuery.startsWith('paris ');
+    const parisPostalFromQuery = extractParisPostal(rawQuery);
+    const looksLikeParisPostal = numericQuery.startsWith('75');
+    const wantsParisSuggestions = looksLikeParisQuery || looksLikeParisPostal || Boolean(parisPostalFromQuery);
     const hasQuery = Boolean(normalised || numericQuery);
     const typedSuggestions = buildTypedLocationSuggestions(rawQuery);
     const typedPostalCodes = new Set(
@@ -557,9 +560,13 @@
       (normalisedPostalInput
         ? typedPostalCodes.has(normalisedPostalInput) || typedPostalCodes.has(`0${normalisedPostalInput}`)
         : true);
-    if (looksLikeParisQuery) {
+    if (wantsParisSuggestions) {
       const parisSource = dedupeLocationSuggestions([...(locationSuggestionsIndex || []), ...(typedSuggestions || [])]);
-      return buildParisArrondissementSuggestions(parisSource);
+      return buildParisArrondissementSuggestions(parisSource, {
+        query: rawQuery,
+        numericQuery,
+        postalHint: parisPostalFromQuery,
+      });
     }
     let effectiveLimit = needsExtendedLimit
       ? Math.max(LOCATION_SUGGESTIONS_LIMIT, typedSuggestions.length)
@@ -3757,7 +3764,7 @@
     '75020',
   ];
 
-  const buildParisArrondissementSuggestions = (entries = []) => {
+  const buildParisArrondissementSuggestions = (entries = [], options = {}) => {
     const hasCoords = (item) => {
       if (!item) {
         return false;
@@ -3794,8 +3801,28 @@
         bestByPostal.set(postal, candidate);
       }
     });
+    const rawParisQuery = (options.query || '').toString();
+    const numericParisQuery = (options.numericQuery || '').replace(/\D/g, '');
+    const canonicalPostalHint =
+      canonicalizeParisPostalCode(options.postalHint || extractParisPostal(rawParisQuery) || '') || '';
+    const hintedArr = getParisArrondissementFromPostal(canonicalPostalHint);
+    const parisNumberMatch = rawParisQuery.match(/paris[^0-9]{0,3}(\d{1,2})/i);
+    const partialDigitsFromText = parisNumberMatch && parisNumberMatch[1] ? parisNumberMatch[1] : '';
+    const partialDigitsFromNumeric =
+      numericParisQuery.startsWith('75') && numericParisQuery.length > 2 ? numericParisQuery.slice(2, 4) : '';
+    const rawPartial = partialDigitsFromText || partialDigitsFromNumeric;
+    const cleanedPartialDigits = rawPartial.replace(/\D/g, '').replace(/^0+/, '');
+    const parsedPartialDigits = Number.parseInt(cleanedPartialDigits, 10);
+    const partialArrDigits =
+      cleanedPartialDigits &&
+      Number.isFinite(parsedPartialDigits) &&
+      parsedPartialDigits >= 1 &&
+      parsedPartialDigits <= 20
+        ? cleanedPartialDigits
+        : '';
+    const parisPostalOrder = PARIS_ARR_POSTAL_CODES.slice().reverse();
     const suggestions = [];
-    PARIS_ARR_POSTAL_CODES.forEach((postal) => {
+    parisPostalOrder.forEach((postal) => {
       const existing = bestByPostal.get(postal);
       if (existing) {
         suggestions.push(existing);
@@ -3817,7 +3844,36 @@
       }
       suggestions.push(suggestion);
     });
-    return suggestions;
+    // Prioritize hinted arrondissements while keeping a descending default order (20 -> 1).
+    const scoreParisSuggestion = (entry) => {
+      const arr = getParisArrondissementFromPostal(entry.postalCode) || 0;
+      const arrStr = arr.toString();
+      const arrStrPadded = arr.toString().padStart(2, '0');
+      let score = arr;
+      if (hintedArr && arr === hintedArr) {
+        score += 200;
+      }
+      if (partialArrDigits && (arrStr.startsWith(partialArrDigits) || arrStrPadded.startsWith(partialArrDigits))) {
+        score += 120 - Math.min(40, partialArrDigits.length * 15);
+      }
+      return score;
+    };
+    return suggestions
+      .map((entry, index) => ({ entry, index }))
+      .sort((a, b) => {
+        const scoreA = scoreParisSuggestion(a.entry);
+        const scoreB = scoreParisSuggestion(b.entry);
+        if (scoreA !== scoreB) {
+          return scoreB - scoreA;
+        }
+        const arrA = getParisArrondissementFromPostal(a.entry.postalCode) || 0;
+        const arrB = getParisArrondissementFromPostal(b.entry.postalCode) || 0;
+        if (arrA !== arrB) {
+          return arrB - arrA;
+        }
+        return a.index - b.index;
+      })
+      .map((item) => item.entry);
   };
 
   const formatCommuneWithPostal = (commune, postalCode) => {
