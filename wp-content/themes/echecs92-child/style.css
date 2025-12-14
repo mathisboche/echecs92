@@ -2677,7 +2677,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .docs-grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-  gap:14px;
+  gap:12px;
   margin-top:14px;
 }
 .doc-card{
@@ -2688,10 +2688,10 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   grid-template-columns:auto 1fr;
   align-items:center;
   gap:14px;
-  padding:14px 16px;
-  background:linear-gradient(135deg,rgba(11,46,76,0.08),rgba(11,46,76,0.02));
-  border:1px solid rgba(11,46,76,0.16);
-  border-radius:14px;
+  padding:12px 14px;
+  background:#ffffff;
+  border:1px solid rgba(11,46,76,0.1);
+  border-radius:12px;
   box-shadow:none;
   overflow:hidden;
   isolation:isolate;
@@ -2703,9 +2703,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   left:0;
   top:0;
   bottom:0;
-  width:6px;
+  width:4px;
   background:var(--doc-accent);
-  opacity:0.9;
+  opacity:0.8;
   border-radius:12px 0 0 12px;
 }
 .doc-card__icon{
@@ -2714,7 +2714,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   width:46px;
   height:46px;
   border-radius:50%;
-  background:var(--doc-accent-soft);
+  background:rgba(11,46,76,0.08);
   color:var(--doc-accent);
   display:grid;
   place-items:center;
@@ -2729,7 +2729,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   z-index:1;
   display:flex;
   flex-direction:column;
-  gap:8px;
+  gap:6px;
   min-width:0;
 }
 .doc-card__top{
@@ -2744,8 +2744,8 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   gap:6px;
   padding:6px 12px;
   border-radius:12px;
-  background:#ffffff;
-  border:1px solid rgba(0,0,0,0.08);
+  background:rgba(11,46,76,0.06);
+  border:1px solid rgba(11,46,76,0.12);
   color:#0f172a;
   font-size:12px;
   font-weight:700;
@@ -2760,11 +2760,11 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   background:var(--doc-accent);
 }
 .doc-chip--year{
-  background:rgba(0,0,0,0.05);
+  background:rgba(0,0,0,0.04);
 }
 .doc-card__title{
   margin:0;
-  font-size:20px;
+  font-size:18px;
   color:#0f172a;
 }
 .doc-card__meta{
@@ -2777,26 +2777,26 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   display:flex;
   flex-wrap:wrap;
   gap:10px;
-  margin-top:4px;
-  align-items:stretch;
-  width:100%;
+  margin-top:2px;
+  align-items:center;
+  width:auto;
 }
 .doc-card__btn{
   display:inline-flex;
   align-items:center;
   justify-content:center;
   gap:8px;
-  padding:9px 14px;
-  border-radius:999px;
-  background:var(--doc-accent);
+  padding:8px 12px;
+  border-radius:10px;
+  background:#0f172a;
   color:#ffffff;
   text-decoration:none;
-  font-weight:700;
-  font-size:14px;
+  font-weight:650;
+  font-size:13px;
   box-shadow:none;
   transition:none;
-  flex:1 1 0;
-  min-width:150px;
+  flex:0 0 auto;
+  min-width:0;
   text-align:center;
 }
 .doc-card__btn:focus-visible{
@@ -2814,8 +2814,8 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   text-decoration:none;
   background:rgba(11,46,76,0.08);
   transition:none;
-  flex:1 1 0;
-  min-width:150px;
+  flex:0 0 auto;
+  min-width:0;
   text-align:center;
 }
 .doc-card[data-doc-type="report"]{
@@ -2990,7 +2990,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   }
   .doc-card__btn,
   .doc-card__link{
-    width:100%;
+    width:auto;
     justify-content:center;
   }
   .committee-callout{
