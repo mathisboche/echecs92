@@ -2487,7 +2487,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   box-sizing:border-box;
   display:flex;
   flex-direction:column;
-  gap:48px;
+  gap:10px;
 }
 .committee-hero{
   position:relative;
@@ -2947,7 +2947,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 @media (max-width:767px){
   .committee{
     padding:40px 18px 56px;
-    gap:32px;
+    gap:0px;
   }
   .committee-hero__title{
     font-size:26px;
