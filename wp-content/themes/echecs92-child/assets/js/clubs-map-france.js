@@ -602,10 +602,35 @@
     return parts[0];
   };
 
+  const stripLocalityNoise = (street, postalCode, city) => {
+    let result = (street || '').trim();
+    if (!result) {
+      return '';
+    }
+    if (postalCode) {
+      const postalPattern = new RegExp(`\\b${postalCode}\\b`, 'gi');
+      result = result.replace(postalPattern, ' ');
+    }
+    const formattedCity = formatCommune(city);
+    if (formattedCity) {
+      const escapedCity = formattedCity.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const cityPatterns = [
+        new RegExp(`^${escapedCity}\\s*[,:;\\-–—]?\\s*`, 'i'),
+        new RegExp(`\\s*[,:;\\-–—]?\\s*${escapedCity}$`, 'i'),
+      ];
+      cityPatterns.forEach((pattern) => {
+        result = result.replace(pattern, ' ');
+      });
+    }
+    result = result.replace(/^[,;\-–—\s]+|[,;\-–—\s]+$/g, '');
+    return result.replace(/\s+/g, ' ').trim();
+  };
+
   const buildStandardAddress = (primaryAddress, secondaryAddress, postalCode, city) => {
-    const street =
+    const rawStreet =
       simplifyStreetSegment(primaryAddress) || simplifyStreetSegment(secondaryAddress) || '';
     const formattedCity = formatCommune(city);
+    const street = stripLocalityNoise(rawStreet, postalCode, formattedCity);
     const components = [];
     if (street) {
       components.push(street);
