@@ -4192,6 +4192,8 @@
     let bestPostalScore = -Infinity;
     let bestOverall = '';
     let bestOverallScore = -Infinity;
+    let bestPostalExtension = '';
+    let bestPostalExtensionScore = -Infinity;
 
     const consider = (raw) => {
       const cleaned = cleanCommuneCandidate(raw, postalCode);
@@ -4204,6 +4206,14 @@
         bestPostalScore = score;
         bestPostalMatch = cleaned;
       }
+      const extendsPostal =
+        postalKeys.size > 0 &&
+        key &&
+        Array.from(postalKeys).some((postalKey) => key.startsWith(postalKey) && key.length > postalKey.length);
+      if (extendsPostal && score > bestPostalExtensionScore) {
+        bestPostalExtensionScore = score;
+        bestPostalExtension = cleaned;
+      }
       if (score > bestOverallScore) {
         bestOverallScore = score;
         bestOverall = cleaned;
@@ -4212,6 +4222,9 @@
 
     (candidates || []).forEach(consider);
 
+    if (bestPostalExtension) {
+      return bestPostalExtension;
+    }
     if (bestPostalMatch) {
       return bestPostalMatch;
     }
