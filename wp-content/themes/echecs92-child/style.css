@@ -2664,11 +2664,10 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   text-decoration:none;
 }
 .docs-section{
-  background:#f7f9fc;
-  border:1px solid #dce6f3;
-  border-radius:16px;
-  padding:20px 20px;
-  box-shadow:none;
+  background:transparent;
+  border:none;
+  border-radius:0;
+  padding:8px 0;
 }
 .docs-section .committee-section__header{
   border-bottom:none;
@@ -2772,6 +2771,8 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   flex-wrap:wrap;
   gap:10px;
   margin-top:4px;
+  align-items:stretch;
+  width:100%;
 }
 .doc-card__btn{
   display:inline-flex;
@@ -2787,6 +2788,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   font-size:14px;
   box-shadow:none;
   transition:none;
+  flex:1 1 0;
+  min-width:140px;
+  text-align:center;
 }
 .doc-card__btn:focus-visible{
   outline:2px solid rgba(11,46,76,0.35);
@@ -2803,6 +2807,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   text-decoration:none;
   background:rgba(11,46,76,0.08);
   transition:none;
+  flex:1 1 0;
+  min-width:140px;
+  text-align:center;
 }
 .doc-card[data-doc-type="report"]{
   --doc-accent:#0b8067;
