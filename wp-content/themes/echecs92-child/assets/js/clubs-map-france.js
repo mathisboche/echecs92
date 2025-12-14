@@ -1,8 +1,9 @@
 (function () {
-  const GEO_HINTS_VERSION = '20251218';
+  const GEO_HINTS_VERSION = '20250201';
   const DATA_MANIFEST_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france.json';
   const DATA_FALLBACK_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france/';
   const GEO_HINTS_REMOTE_URL = `/wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json?v=${GEO_HINTS_VERSION}`;
+  const POSTAL_COORDINATES_DATA_URL = '/wp-content/themes/echecs92-child/assets/data/postal-coordinates-fr.json';
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
   const mapElement = document.getElementById('clubs-map');
   const mapBackLink = document.querySelector('[data-clubs-map-back]');
@@ -924,7 +925,7 @@
     return null;
   };
 
-  const POSTAL_COORDINATES = {
+  const POSTAL_COORDINATES_SEED = {
     '92000': { label: 'Nanterre', lat: 48.8927825, lng: 2.2073652 },
     '92100': { label: 'Boulogne-Billancourt', lat: 48.837494, lng: 2.2378546 },
     '92110': { label: 'Clichy', lat: 48.9027893, lng: 2.3093052 },
@@ -980,6 +981,127 @@
     '75018': { label: 'Paris 18e', lat: 48.8913, lng: 2.344 },
     '75019': { label: 'Paris 19e', lat: 48.8896, lng: 2.3772 },
     '75020': { label: 'Paris 20e', lat: 48.8674, lng: 2.3984 },
+  };
+
+  const postalCoordinatesIndex = new Map();
+  const communeCoordinatesByName = new Map();
+
+  const addCommuneCoordinate = (label, postalCode, lat, lng) => {
+    const key = normaliseCommuneKey(label);
+    if (!key) {
+      return;
+    }
+    if (!communeCoordinatesByName.has(key)) {
+      communeCoordinatesByName.set(key, { postalCode: postalCode || '', lat, lng, label });
+    }
+  };
+
+  const addPostalCoordinateEntry = (postalCode, entry = {}) => {
+    const code = (postalCode || entry.postalCode || entry.code || entry.postcode || '').toString().trim();
+    if (!code) {
+      return;
+    }
+    const lat = Number.parseFloat(entry.lat ?? entry.latitude ?? (Array.isArray(entry) ? entry[1] : null));
+    const lng = Number.parseFloat(entry.lng ?? entry.lon ?? entry.longitude ?? (Array.isArray(entry) ? entry[2] : null));
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return;
+    }
+    const label = (entry.label ?? entry.commune ?? (Array.isArray(entry) ? entry[3] : '') ?? '').toString();
+    const record = { postalCode: code, lat, lng, label };
+    if (!postalCoordinatesIndex.has(code)) {
+      postalCoordinatesIndex.set(code, []);
+    }
+    postalCoordinatesIndex.get(code).push(record);
+    if (label && label !== code) {
+      addCommuneCoordinate(label, code, lat, lng);
+    }
+  };
+
+  const seedPostalCoordinateEntries = (entries) => {
+    (entries || []).forEach((entry) => {
+      if (!entry) {
+        return;
+      }
+      if (Array.isArray(entry)) {
+        const [postalCode, lat, lng, label] = entry;
+        addPostalCoordinateEntry(postalCode, { lat, lng, label });
+        return;
+      }
+      addPostalCoordinateEntry(entry.postalCode || entry.code || entry.postcode, entry);
+    });
+  };
+
+  seedPostalCoordinateEntries(
+    Object.entries(POSTAL_COORDINATES_SEED).map(([postalCode, value]) => ({
+      postalCode,
+      ...value,
+    }))
+  );
+
+  let postalCoordinatesPromise = null;
+  const loadPostalCoordinates = () => {
+    if (postalCoordinatesPromise) {
+      return postalCoordinatesPromise;
+    }
+    postalCoordinatesPromise = fetchJson(POSTAL_COORDINATES_DATA_URL)
+      .then((payload) => {
+        let entries = [];
+        if (Array.isArray(payload)) {
+          entries = payload;
+        } else if (payload && Array.isArray(payload.entries)) {
+          entries = payload.entries;
+        } else if (payload && typeof payload === 'object') {
+          entries = Object.entries(payload).map(([postalCode, value]) => ({ postalCode, ...value }));
+        }
+        seedPostalCoordinateEntries(entries);
+        return postalCoordinatesIndex;
+      })
+      .catch((error) => {
+        console.warn('[clubs-fr-map] Impossible de charger les coordonnées postales.', error);
+        return postalCoordinatesIndex;
+      });
+    return postalCoordinatesPromise;
+  };
+
+  const getPostalCoordinateEntries = (postalCode) => {
+    const key = (postalCode || '').toString().trim();
+    if (!key) {
+      return [];
+    }
+    const entries = postalCoordinatesIndex.get(key);
+    return entries ? entries.slice() : [];
+  };
+
+  const getPostalCoordinates = (postalCode, preferredCommune = '') => {
+    const entries = getPostalCoordinateEntries(postalCode);
+    if (!entries.length) {
+      return null;
+    }
+    const targetKey = normaliseCommuneForCompare(preferredCommune);
+    const best =
+      targetKey &&
+      entries.find((entry) => {
+        const label = formatCommuneWithPostal(entry?.label || '', postalCode);
+        return label && normaliseCommuneForCompare(label) === targetKey;
+      });
+    const selected = best || entries[0];
+    const label = formatCommuneWithPostal(selected.label || '', postalCode) || selected.label;
+    return { postalCode: selected.postalCode || postalCode, lat: selected.lat, lng: selected.lng, label };
+  };
+
+  const getCommuneCoordinatesByName = (value) => {
+    if (!value) {
+      return null;
+    }
+    const key = normaliseCommuneKey(value);
+    if (!key) {
+      return null;
+    }
+    const entry = communeCoordinatesByName.get(key);
+    if (!entry) {
+      return null;
+    }
+    return { postalCode: entry.postalCode, lat: entry.lat, lng: entry.lng, label: entry.label };
   };
 
   const DEPT_FALLBACK_COORDS = {
@@ -1343,48 +1465,6 @@
     return processed;
   };
 
-  const COMMUNE_COORDINATES_BY_NAME = Object.entries(POSTAL_COORDINATES).reduce(
-    (acc, [postalCode, info]) => {
-      const key = normaliseCommuneKey(info.label);
-      if (key && !acc[key]) {
-        acc[key] = { postalCode, lat: info.lat, lng: info.lng, label: info.label };
-      }
-      return acc;
-    },
-    {}
-  );
-
-  const getPostalCoordinates = (postalCode, preferredCommune = '') => {
-    if (!postalCode) {
-      return null;
-    }
-    const key = postalCode.toString().trim();
-    if (!key) {
-      return null;
-    }
-    const entry = POSTAL_COORDINATES[key];
-    if (!entry) {
-      return null;
-    }
-    const label = formatCommuneWithPostal(preferredCommune || entry.label || '', key) || entry.label;
-    return { postalCode: key, lat: entry.lat, lng: entry.lng, label };
-  };
-
-  const getCommuneCoordinatesByName = (value) => {
-    if (!value) {
-      return null;
-    }
-    const key = normaliseCommuneKey(value);
-    if (!key) {
-      return null;
-    }
-    const entry = COMMUNE_COORDINATES_BY_NAME[key];
-    if (!entry) {
-      return null;
-    }
-    return { postalCode: entry.postalCode, lat: entry.lat, lng: entry.lng, label: entry.label };
-  };
-
   const lookupLocalCoordinates = (query) => {
     const raw = (query || '').toString().trim();
     if (!raw) {
@@ -1719,7 +1799,7 @@
   loadGeoHintsCache();
 
   waitForLeaflet()
-    .then(() => Promise.all([loadFranceClubsDataset(), loadStaticGeoHints()]))
+    .then(() => Promise.all([loadFranceClubsDataset(), loadStaticGeoHints(), loadPostalCoordinates()]))
     .then(([payload, staticHints]) => {
       const data = Array.isArray(payload) ? payload : [];
       if (!data.length) {

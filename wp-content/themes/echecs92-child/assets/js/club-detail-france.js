@@ -3,7 +3,7 @@
  * Loads the clubs dataset and displays the selected club based on ?id= query param.
  */
 (function () {
-  const GEO_HINTS_VERSION = '20251218';
+  const GEO_HINTS_VERSION = '20250201';
   const DATA_MANIFEST_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france.json';
   const DATA_FALLBACK_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france/';
   const FFE_MANIFEST_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france-ffe.json';
