@@ -622,14 +622,38 @@
         result = result.replace(pattern, ' ');
       });
     }
+    const postal = (postalCode || '').toString();
+    if (/^75\d{3}$/.test(postal)) {
+      const arrondissementOnly = /^(?:[,;\s\-–—]*)\d{1,2}(?:er|e|eme|ème)?(?:\s*arr(?:\.|t|ondissement)?)?(?:[,;\s\-–—]*)$/i;
+      if (arrondissementOnly.test(result)) {
+        result = '';
+      }
+    }
     result = result.replace(/^[,;\-–—\s]+|[,;\-–—\s]+$/g, '');
     return result.replace(/\s+/g, ' ').trim();
+  };
+
+  const normalizeCityForPostal = (city, postalCode) => {
+    const formatted = formatCommune(city);
+    if (!formatted) {
+      return '';
+    }
+    const postal = (postalCode || '').toString();
+    const looksParisPostal = /^75\d{3}$/.test(postal);
+    if (looksParisPostal && /^Paris\b/i.test(formatted)) {
+      const suffix = formatted.replace(/^Paris\b\s*/i, '');
+      const arrondissementPattern = /^(?:\d{1,2}(?:er|e|eme|ème)?)(?:\s*arr(?:\.|t|ondissement)?)?$/i;
+      if (!suffix || arrondissementPattern.test(suffix)) {
+        return 'Paris';
+      }
+    }
+    return formatted;
   };
 
   const buildStandardAddress = (primaryAddress, secondaryAddress, postalCode, city) => {
     const rawStreet =
       simplifyStreetSegment(primaryAddress) || simplifyStreetSegment(secondaryAddress) || '';
-    const formattedCity = formatCommune(city);
+    const formattedCity = normalizeCityForPostal(city, postalCode);
     const street = stripLocalityNoise(rawStreet, postalCode, formattedCity);
     const components = [];
     if (street) {
