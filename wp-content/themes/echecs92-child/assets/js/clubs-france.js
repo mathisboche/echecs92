@@ -1825,6 +1825,8 @@
     }
   };
 
+  const DEFAULT_SORT_MODE = 'licenses';
+
   const state = {
     clubs: [],
     filtered: [],
@@ -1836,7 +1838,7 @@
     distanceReferencePostal: '',
     distanceReferenceCommune: '',
     distanceReferenceType: '',
-    sortMode: 'licenses',
+    sortMode: DEFAULT_SORT_MODE,
     statusMessage: '',
     locationMessage: '',
     restoreMode: false,
@@ -3186,7 +3188,7 @@
       state.distanceReferenceType = '';
       state.filtered = state.clubs.slice();
       state.visibleCount = Math.min(VISIBLE_RESULTS_DEFAULT, state.filtered.length);
-      void performSearch({ forceJump: true, minDelay: sortDelay });
+      void performSearch({ forceJump: true, minDelay: sortDelay, desiredSortMode: 'default' });
       syncUrlState();
       releaseTriggerButton();
       return;
@@ -3218,11 +3220,13 @@
       applied = Boolean(result && result.ok);
     }
     if (initialSortParam) {
-      const normalized =
-        LICENSE_SORT_CONFIGS[initialSortParam] || initialSortParam === 'alpha'
-          ? initialSortParam
-          : 'default';
-      if (normalized !== 'default') {
+      let normalized = DEFAULT_SORT_MODE;
+      if (LICENSE_SORT_CONFIGS[initialSortParam]) {
+        normalized = initialSortParam;
+      } else if (initialSortParam === 'alpha' || initialSortParam === 'default') {
+        normalized = initialSortParam;
+      }
+      if (normalized !== DEFAULT_SORT_MODE) {
         state.sortMode = normalized;
         updateSortButtons();
         if (applied) {
@@ -5380,6 +5384,10 @@
     const actionStartedAt = Date.now();
     const raw = searchInput ? searchInput.value : '';
     const trimmed = (raw || '').trim();
+    const explicitSortMode =
+      typeof options.desiredSortMode === 'string' && options.desiredSortMode.trim()
+        ? options.desiredSortMode.trim()
+        : null;
     updateClearButtons();
     if (tryHandleSecretCommand(raw)) {
       return;
@@ -5453,24 +5461,37 @@
         }
       }
       releaseSearchFeedback();
-    };
+      };
       scheduleAfterMinimumDelay(actionStartedAt, run, minDelay);
     };
 
-    if (state.sortMode !== 'default') {
-      state.sortMode = 'default';
+    const desiredSortMode = explicitSortMode || (trimmed ? 'default' : DEFAULT_SORT_MODE);
+    if (state.sortMode !== desiredSortMode) {
+      state.sortMode = desiredSortMode;
       updateSortButtons();
     }
 
     if (!trimmed) {
       updateStatusIfCurrent('Recherche en cours…', 'info');
-      const meta = applySearch('');
+      state.query = '';
+      state.pendingQuery = '';
+      state.clubs.forEach((club) => {
+        if (Object.prototype.hasOwnProperty.call(club, 'distanceKm')) {
+          delete club.distanceKm;
+        }
+      });
+      if (desiredSortMode === DEFAULT_SORT_MODE && getActiveLicenseSort()) {
+        applySortMode({ skipScroll: true, delay: false, quiet: true, forceScroll: false });
+      } else {
+        applySearch('');
+      }
       queueMapFocus({ reset: true, source: 'clubs-france', animate: true }, requestId);
       if (abortIfStale()) {
         return;
       }
+      const total = state.filtered.length;
       finalizeSearch(() => {
-        if (meta.total > 0) {
+        if (total > 0) {
           updateStatusIfCurrent('Tous les clubs sont affichés.', 'info');
         } else {
           updateStatusIfCurrent('Aucun club disponible pour le moment.', 'info');
@@ -5566,13 +5587,20 @@
 
   const resetSearch = () => {
     searchRequestId += 1;
-    state.sortMode = 'default';
+    state.sortMode = DEFAULT_SORT_MODE;
     updateSortButtons();
     handleLocationClear({ skipSearch: true, silent: true });
     clearSearchQuery({ silent: true });
     setLocationStatus('', 'info');
-    const meta = applySearch('');
-    if (meta.total > 0) {
+    let total = 0;
+    const sorted = applySortMode({ skipScroll: true, delay: false, quiet: true, forceScroll: false });
+    if (sorted) {
+      total = state.filtered.length;
+    } else {
+      const meta = applySearch('');
+      total = meta.total;
+    }
+    if (total > 0) {
       setSearchStatus('Recherche réinitialisée. Tous les clubs sont affichés.', 'success');
     } else {
       setSearchStatus('Aucun club disponible pour le moment.', 'info');
@@ -5616,7 +5644,7 @@
     setLocationStatus(silent ? '' : 'Localisation effacée.', 'info');
     updateClearButtons();
     if (!skipSearch) {
-      void performSearch({ suppressJump });
+      void performSearch({ suppressJump, desiredSortMode: DEFAULT_SORT_MODE });
     } else {
       syncUrlState();
     }
