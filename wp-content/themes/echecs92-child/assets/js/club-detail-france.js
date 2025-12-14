@@ -680,6 +680,72 @@
     return formatted.replace(/\s+/g, ' ').trim();
   };
 
+  const normaliseCommuneForCompare = (value) => {
+    const formatted = formatCommune(value || '');
+    if (!formatted) {
+      return '';
+    }
+    return normalise(formatted)
+      .replace(/['’`]/g, ' ')
+      .replace(/[-\s]+/g, ' ')
+      .trim();
+  };
+
+  const dedupeCommuneLabel = (value) => {
+    const raw = (value || '').toString();
+    if (!raw.trim()) {
+      return '';
+    }
+    const withoutPostal = raw.replace(/\b\d{4,5}\b/g, ' ');
+    const segments = withoutPostal
+      .split(/[,;\/]+/g)
+      .map((part) => part.replace(/^[\s-–—]+|[\s-–—]+$/g, '').trim())
+      .filter(Boolean);
+
+    const collapseRepeatedPhrase = (formatted) => {
+      const key = normaliseCommuneForCompare(formatted);
+      if (!key) {
+        return formatted;
+      }
+      const tokens = key.split(' ').filter(Boolean);
+      if (tokens.length >= 2 && tokens.length % 2 === 0) {
+        const midpoint = tokens.length / 2;
+        const first = tokens.slice(0, midpoint).join(' ');
+        const second = tokens.slice(midpoint).join(' ');
+        if (first && first === second) {
+          return formatCommune(first);
+        }
+      }
+      return formatted;
+    };
+
+    const seen = new Set();
+    const parts = [];
+    const pushSegment = (segment) => {
+      if (!segment) {
+        return;
+      }
+      const formattedSegment = collapseRepeatedPhrase(formatCommune(segment));
+      const key = normaliseCommuneForCompare(formattedSegment);
+      if (!key || seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      parts.push(formattedSegment);
+    };
+
+    if (segments.length) {
+      segments.forEach(pushSegment);
+    } else {
+      pushSegment(withoutPostal);
+    }
+
+    if (!parts.length) {
+      return '';
+    }
+    return parts.length === 1 ? parts[0] : parts.join(', ');
+  };
+
   const looksLikeDetailedAddress = (value) => {
     const raw = (value || '').toString().trim();
     if (!raw) {
@@ -1384,7 +1450,7 @@
       deriveCityFromPostal(primaryAddress, postalForCommune),
       deriveCityFromPostal(secondaryAddress, postalForCommune),
     ];
-    const baseCommune = pickBestCommune(communeCandidates, postalForCommune);
+    const baseCommune = dedupeCommuneLabel(pickBestCommune(communeCandidates, postalForCommune));
     const commune = formatCommuneWithPostal(baseCommune, postalForCommune);
     const standardAddress = buildStandardAddress(
       primaryAddress,
