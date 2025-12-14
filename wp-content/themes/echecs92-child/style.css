@@ -2676,7 +2676,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 }
 .docs-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
   gap:12px;
   margin-top:14px;
 }
@@ -2756,7 +2756,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   gap:10px;
   margin-top:2px;
   align-items:center;
-  width:100%;
+  width:auto;
 }
 .doc-card__btn{
   display:inline-flex;
@@ -2976,11 +2976,12 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   }
   .doc-card__actions{
     width:100%;
+    justify-content:flex-start;
   }
   .doc-card__btn,
   .doc-card__link{
-    width:100%;
-    justify-content:center;
+    width:auto;
+    justify-content:flex-start;
   }
   .committee-callout{
     padding:20px 20px;
