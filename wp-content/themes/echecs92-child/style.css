@@ -2689,8 +2689,8 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   align-items:center;
   gap:14px;
   padding:12px 14px;
-  background:#ffffff;
-  border:1px solid rgba(11,46,76,0.1);
+  background:#f6f6f6;
+  border:1px solid #cbd0d8;
   border-radius:12px;
   box-shadow:none;
   overflow:hidden;
@@ -2705,8 +2705,8 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   bottom:0;
   width:4px;
   background:var(--doc-accent);
-  opacity:0.8;
-  border-radius:12px 0 0 12px;
+  opacity:0.9;
+  border-radius:0;
 }
 .doc-card__icon{
   position:relative;
@@ -2732,35 +2732,12 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   gap:6px;
   min-width:0;
 }
-.doc-card__top{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  align-items:center;
-}
-.doc-chip{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  padding:6px 12px;
-  border-radius:12px;
-  background:rgba(11,46,76,0.06);
-  border:1px solid rgba(11,46,76,0.12);
-  color:#0f172a;
+.doc-card__meta{
   font-size:12px;
-  font-weight:700;
-  letter-spacing:0.04em;
+  letter-spacing:0.08em;
   text-transform:uppercase;
-}
-.doc-chip::before{
-  content:"";
-  width:6px;
-  height:6px;
-  border-radius:50%;
-  background:var(--doc-accent);
-}
-.doc-chip--year{
-  background:rgba(0,0,0,0.04);
+  color:#5b6470;
+  font-weight:700;
 }
 .doc-card__title{
   margin:0;
@@ -2779,7 +2756,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   gap:10px;
   margin-top:2px;
   align-items:center;
-  width:auto;
+  width:100%;
 }
 .doc-card__btn{
   display:inline-flex;
@@ -2787,8 +2764,8 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   justify-content:center;
   gap:8px;
   padding:8px 12px;
-  border-radius:10px;
-  background:#0f172a;
+  border-radius:8px;
+  background:#111111;
   color:#ffffff;
   text-decoration:none;
   font-weight:650;
@@ -2798,6 +2775,17 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   flex:0 0 auto;
   min-width:0;
   text-align:center;
+}
+.doc-card__btn-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:18px;
+  height:18px;
+}
+.doc-card__btn-icon svg{
+  width:18px;
+  height:18px;
 }
 .doc-card__btn:focus-visible{
   outline:2px solid rgba(11,46,76,0.35);
@@ -2809,10 +2797,11 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   gap:8px;
   padding:8px 10px;
   border-radius:10px;
-  font-weight:650;
-  color:var(--doc-accent);
-  text-decoration:none;
-  background:rgba(11,46,76,0.08);
+  font-weight:700;
+  color:#0f172a;
+  text-decoration:underline;
+  text-underline-offset:3px;
+  background:transparent;
   transition:none;
   flex:0 0 auto;
   min-width:0;
@@ -2990,7 +2979,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   }
   .doc-card__btn,
   .doc-card__link{
-    width:auto;
+    width:100%;
     justify-content:center;
   }
   .committee-callout{
