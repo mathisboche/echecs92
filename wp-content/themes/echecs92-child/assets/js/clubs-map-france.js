@@ -1506,11 +1506,10 @@
 
   const createPopupContent = (club, coords) => {
     const lines = [`<strong>${club.name}</strong>`];
-    if (club.commune) {
-      lines.push(club.commune);
-    }
     if (club.addressDisplay) {
       lines.push(club.addressDisplay);
+    } else if (club.commune) {
+      lines.push(club.commune);
     }
     const precisionLabel = formatPrecisionLabel(coords?.precision);
     if (precisionLabel) {

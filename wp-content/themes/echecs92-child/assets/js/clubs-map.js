@@ -497,11 +497,10 @@
 
   const createPopupContent = (club) => {
     const lines = [`<strong>${club.name}</strong>`];
-    if (club.commune) {
-      lines.push(club.commune);
-    }
     if (club.addressDisplay) {
       lines.push(club.addressDisplay);
+    } else if (club.commune) {
+      lines.push(club.commune);
     }
     const detailUrl = getClubDetailUrl(club);
     lines.push(`<a class="clubs-map__detail-link" href="${detailUrl}">Voir la fiche</a>`);
