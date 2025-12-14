@@ -614,7 +614,57 @@
   };
 
   const STREET_KEYWORDS =
-    /\b(rue|avenue|av\.?|boulevard|bd|place|route|chemin|impasse|all[ée]e|voie|quai|cours|passage|square|sentier|mail|esplanade|terrasse|pont|faubourg|clos|cité|cite|hameau|lotissement|residence|résidence|allee)\b/i;
+    /\b(rue|avenue|av\.?|boulevard|bd|bld|place|route|chemin|impasse|all[ée]e|voie|quai|cours|passage|square|sentier|mail|esplanade|terrasse|pont|faubourg|clos|cité|cite|hameau|lotissement|residence|résidence|allee)\b/i;
+
+  const ADDRESS_SPLIT_PATTERN = /[,;/\n]+/;
+
+  const stripAddressNotes = (segment) => {
+    if (!segment) {
+      return '';
+    }
+    return segment
+      .replace(/\bpendant\s+la\s+semaine\b.*$/gi, '')
+      .replace(/\b(?:en\s+semaine|semaine)\b.*$/gi, '')
+      .replace(/\b(?:le|du)?\s*(?:w\.?e\.?|w-?e|week[-\s]?end|weekend)\b.*$/gi, '')
+      .replace(/\(\s*(?:we|w-?e|week[-\s]?end|weekend)[^)]*\)/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/^[,;\s-–—]+|[,;\s-–—]+$/g, '')
+      .trim();
+  };
+
+  const scoreAddressSegment = (segment) => {
+    if (!segment) {
+      return -Infinity;
+    }
+    let score = 0;
+    if (STREET_KEYWORDS.test(segment)) {
+      score += 5;
+    }
+    if (/\b\d{5}\b/.test(segment)) {
+      score += 2;
+    }
+    if (/\d/.test(segment)) {
+      score += 1;
+    }
+    if (segment.length >= 10) {
+      score += 1;
+    }
+    if (/\b(?:semaine|week[-\s]?end|w-?e|w\.?e\.?)\b/i.test(segment)) {
+      score -= 2;
+    }
+    return score;
+  };
+
+  const looksLikePostalOnly = (value) => {
+    if (!value || !/\b\d{5}\b/.test(value)) {
+      return false;
+    }
+    if (STREET_KEYWORDS.test(value)) {
+      return false;
+    }
+    const withoutPostal = value.replace(/\b\d{5}\b/g, ' ').replace(/\s+/g, ' ').trim();
+    return withoutPostal && withoutPostal.split(' ').length <= 3;
+  };
 
   const simplifyStreetSegment = (value) => {
     if (!value) {
@@ -622,8 +672,8 @@
     }
     const cleaned = value.replace(/\([^)]*\)/g, ' ');
     const parts = cleaned
-      .split(/[,;/]+/)
-      .map((part) => part.trim())
+      .split(ADDRESS_SPLIT_PATTERN)
+      .map((part) => stripAddressNotes(part.trim()))
       .filter(Boolean);
     if (!parts.length) {
       return cleaned.replace(/\s+/g, ' ').trim();
@@ -631,7 +681,7 @@
     const tests = [
       (part) => /\b\d+[\p{L}]?\b/iu.test(part) && STREET_KEYWORDS.test(part),
       (part) => STREET_KEYWORDS.test(part),
-      (part) => /\b\d+[\p{L}]?\b/iu.test(part),
+      (part) => /\b\d+[\p{L}]?\b/iu.test(part) && !looksLikePostalOnly(part),
     ];
     for (const test of tests) {
       const match = parts.find((part) => test(part));
@@ -639,7 +689,8 @@
         return match.replace(/\s+/g, ' ').trim();
       }
     }
-    return parts[0];
+    const fallback = parts.find((part) => !looksLikePostalOnly(part)) || parts[0];
+    return fallback || '';
   };
 
   const buildStandardAddress = (primaryAddress, secondaryAddress, postalCode, city) => {
@@ -755,6 +806,52 @@
       return false;
     }
     return STREET_KEYWORDS.test(raw);
+  };
+
+  const normaliseAddressField = (raw) => {
+    const base = (raw || '').toString().replace(/\s+/g, ' ').trim();
+    if (!base) {
+      return { full: '', best: '', streetLike: '' };
+    }
+    const segments = base
+      .split(ADDRESS_SPLIT_PATTERN)
+      .map((part) => stripAddressNotes(part))
+      .map((part) => part.replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+
+    if (!segments.length) {
+      const fallback = stripAddressNotes(base).replace(/\s+/g, ' ').trim();
+      return {
+        full: fallback,
+        best: fallback,
+        streetLike: looksLikeDetailedAddress(fallback) ? fallback : '',
+      };
+    }
+
+    const uniqueSegments = [];
+    const seen = new Set();
+    segments.forEach((segment) => {
+      const key = segment.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueSegments.push(segment);
+      }
+    });
+
+    const scored = uniqueSegments
+      .map((segment, idx) => ({
+        segment,
+        score: scoreAddressSegment(segment),
+        order: idx,
+      }))
+      .sort((a, b) => b.score - a.score || a.order - b.order);
+
+    const best = scored[0]?.segment || uniqueSegments[0];
+    const streetCandidate =
+      scored.find((entry) => looksLikeDetailedAddress(entry.segment) || STREET_KEYWORDS.test(entry.segment))
+        ?.segment || '';
+    const orderedSegments = [best, ...uniqueSegments.filter((segment) => segment !== best)];
+    return { full: orderedSegments.join(', '), best, streetLike: streetCandidate || '' };
   };
 
   const deriveCityFromPostal = (address, postalHint = '') => {
@@ -1430,9 +1527,11 @@
       return raw;
     }
     const name = raw.nom || raw.name || '';
-    const primaryAddress = raw.adresse || raw.address || '';
-    const addressParts = extractAddressParts(primaryAddress);
-    const secondaryAddress = raw.siege || raw.siege_social || raw.address2 || '';
+    const primaryAddressMeta = normaliseAddressField(raw.adresse || raw.address || '');
+    const secondaryAddressMeta = normaliseAddressField(raw.siege || raw.siege_social || raw.address2 || '');
+    const primaryAddress = primaryAddressMeta.full;
+    const secondaryAddress = secondaryAddressMeta.full;
+    const addressParts = extractAddressParts(primaryAddress || secondaryAddress);
     const secondaryParts = extractAddressParts(secondaryAddress);
     const postalCode =
       raw.code_postal ||
@@ -1452,8 +1551,9 @@
     ];
     const baseCommune = dedupeCommuneLabel(pickBestCommune(communeCandidates, postalForCommune));
     const commune = formatCommuneWithPostal(baseCommune, postalForCommune);
+    const streetHint = primaryAddressMeta.streetLike || secondaryAddressMeta.streetLike || '';
     const standardAddress = buildStandardAddress(
-      primaryAddress,
+      streetHint,
       secondaryAddress,
       postalCode,
       commune || baseCommune || addressParts.city || secondaryParts.city || ''
