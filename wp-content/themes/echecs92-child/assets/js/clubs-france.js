@@ -3629,6 +3629,24 @@
     return '';
   };
 
+  const cleanCommuneFragment = (raw) => {
+    const base = (raw || '')
+      .toString()
+      .replace(/\b\d{4,5}\b/g, ' ')
+      .replace(/^[,;\s-–—]+/, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!base) {
+      return '';
+    }
+    const segments = base
+      .split(/[,;/]+/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    const head = segments.length ? segments[0] : base;
+    return head.replace(/^\d+\s+/, '').trim();
+  };
+
   const extractAddressParts = (value) => {
     const result = {
       full: value ? String(value).trim() : '',
@@ -3639,13 +3657,7 @@
       return result;
     }
 
-    const cleanCity = (raw) =>
-      (raw || '')
-        .toString()
-        .replace(/\b\d{4,5}\b/g, ' ')
-        .replace(/^[,;\s-–—]+/, '')
-        .replace(/\s+/g, ' ')
-        .trim();
+    const cleanCity = (raw) => cleanCommuneFragment(raw);
 
     const postal = parsePostalCodeFromString(result.full);
     if (postal) {
@@ -4257,15 +4269,17 @@
     }
     const idx = Number.isFinite(match.index) ? match.index : raw.indexOf(match[0]);
     const after = raw.slice(idx + match[0].length).trim();
-    if (after) {
-      return after.replace(/^[,;\s-–—]+/, '').trim();
+    const cleanedAfter = cleanCommuneFragment(after);
+    if (cleanedAfter) {
+      return cleanedAfter;
     }
     const before = raw.slice(0, idx).trim();
     if (!before) {
       return '';
     }
     const segments = before.split(/[,;]+/).map((part) => part.trim()).filter(Boolean);
-    return (segments.length ? segments[segments.length - 1] : before).trim();
+    const tail = segments.length ? segments[segments.length - 1] : before;
+    return cleanCommuneFragment(tail);
   };
 
   const cleanCommuneCandidate = (value, postalCode) => {
