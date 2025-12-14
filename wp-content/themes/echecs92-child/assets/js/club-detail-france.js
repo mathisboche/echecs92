@@ -387,6 +387,12 @@
       if (!club || typeof club !== 'object') {
         return;
       }
+      const legacySlugNoDept = buildShortSlugBase({
+        ...club,
+        departmentCode: '',
+        departmentSlug: '',
+        departmentName: '',
+      });
       const aliases = new Set([
         club.slug,
         club.id,
@@ -394,6 +400,9 @@
         slugify(club.name || ''),
         slugify(club.commune || ''),
       ]);
+      if (legacySlugNoDept && legacySlugNoDept !== club.slug) {
+        aliases.add(legacySlugNoDept); // Legacy fallback when department metadata was missing
+      }
       aliases.forEach((alias) => {
         const key = (alias || '').toString().trim().toLowerCase();
         if (key && !map.has(key)) {
