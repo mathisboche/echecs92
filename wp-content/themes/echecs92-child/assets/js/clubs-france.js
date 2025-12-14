@@ -4195,6 +4195,31 @@
     return formatted.replace(/\s+/g, ' ').trim();
   };
 
+  const COMMUNE_JUNK_PATTERNS = [
+    /\bidem\b.*\bsi[eè]ge\b/i,
+    /\bidem\b.*\badresse\b/i,
+    /\b(?:voir|cf\.?)\s+(?:adresse|siege)/i,
+  ];
+
+  const COMMUNE_VENUE_FRAGMENTS =
+    /\b(?:salle\s+(?:des|du|de|d')|gymnase|dojo|complexe|espace|stade|palais\s+des\s+sports|mjc|mpt|foyer|piscine|terrain|hotel\s+de\s+ville|h[ôo]tel\s+de\s+ville|mairie|maison\s+(?:des|du|de|d'))\b/i;
+
+  const stripCommuneNoise = (segment) => {
+    const trimmed = (segment || '').toString().replace(/\s+/g, ' ').trim();
+    if (!trimmed) {
+      return '';
+    }
+    const lower = trimmed.toLowerCase();
+    if (COMMUNE_JUNK_PATTERNS.some((pattern) => pattern.test(lower))) {
+      return '';
+    }
+    const hasVenueHint = COMMUNE_VENUE_FRAGMENTS.test(lower);
+    if (hasVenueHint && trimmed.split(/\s+/).length >= 3) {
+      return '';
+    }
+    return trimmed;
+  };
+
   const dedupeCommuneLabel = (value) => {
     const raw = (value || '').toString();
     if (!raw.trim()) {
@@ -4229,7 +4254,11 @@
       if (!segment) {
         return;
       }
-      const formattedSegment = collapseRepeatedPhrase(formatCommune(segment));
+      const cleanedSegment = stripCommuneNoise(segment);
+      if (!cleanedSegment) {
+        return;
+      }
+      const formattedSegment = collapseRepeatedPhrase(formatCommune(cleanedSegment));
       const key = normaliseCommuneForCompare(formattedSegment);
       if (!key || seen.has(key)) {
         return;
@@ -4250,7 +4279,18 @@
     if (parts.length === 1) {
       return parts[0];
     }
-    return parts.join(', ');
+    const scoreFn = typeof scoreCommuneCandidate === 'function' ? scoreCommuneCandidate : null;
+    if (scoreFn) {
+      const scored = parts
+        .map((segment, index) => ({
+          segment,
+          score: scoreFn(segment),
+          order: index,
+        }))
+        .sort((a, b) => b.score - a.score || a.order - b.order);
+      return scored[0]?.segment || parts[0];
+    }
+    return parts[0];
   };
 
   const deriveCityFromPostal = (address, postalHint = '') => {
@@ -4286,8 +4326,12 @@
     if (!value) {
       return '';
     }
+    const noiseFreeValue = stripCommuneNoise(value);
+    if (!noiseFreeValue) {
+      return '';
+    }
     const postal = normalisePostalCodeValue(postalCode);
-    let cleaned = value
+    let cleaned = noiseFreeValue
       .toString()
       .replace(/\b\d{4,5}\b/g, ' ')
       .replace(/^[,;\s-–—]+/, ' ')
@@ -4298,7 +4342,11 @@
       cleaned = cleaned.replace(pattern, ' ').trim();
     }
     cleaned = cleaned.replace(/^\d+\s+/, '').replace(/\s+/g, ' ').trim();
-    cleaned = dedupeCommuneLabel(cleaned) || cleaned;
+    const deduped = dedupeCommuneLabel(cleaned);
+    cleaned = deduped === undefined ? cleaned : deduped;
+    if (!cleaned) {
+      return '';
+    }
     const looksStreety = STREET_KEYWORDS.test(cleaned) && (/\d/.test(cleaned) || cleaned.split(/\s+/).length >= 3);
     if (looksStreety) {
       return '';
