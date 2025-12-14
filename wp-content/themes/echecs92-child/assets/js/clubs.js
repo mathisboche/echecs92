@@ -530,6 +530,53 @@
   let mathisExitStarted = false;
   let mathisScrollPosition = 0;
   let mathisFragmentsPrepared = false;
+  const MATHIS_VIEWPORT_MARGIN_DESKTOP = 520;
+  const MATHIS_VIEWPORT_MARGIN_MOBILE = 320;
+  const MATHIS_MAX_TARGETS_DESKTOP = 1200;
+  const MATHIS_MAX_TARGETS_MOBILE = 520;
+  const MATHIS_MAX_FRAGMENTS_DESKTOP = 2000;
+  const MATHIS_MAX_FRAGMENTS_MOBILE = 1100;
+  let mathisRectCache = null;
+
+  const resetMathisRectCache = () => {
+    mathisRectCache = typeof WeakMap === 'function' ? new WeakMap() : null;
+  };
+
+  const isMathisMobileSafari = () => {
+    if (typeof navigator === 'undefined') {
+      return false;
+    }
+    const ua = navigator.userAgent || '';
+    const isIOS = /iP(ad|hone|od)/.test(ua);
+    const isSafari = /Safari/i.test(ua) && !/(Chrome|CriOS|FxiOS|EdgiOS|OPiOS)/i.test(ua);
+    return isIOS && isSafari;
+  };
+
+  const getMathisPerfProfile = () => {
+    const constrained = isMobileViewport() || isMathisMobileSafari();
+    return {
+      viewportMargin: constrained ? MATHIS_VIEWPORT_MARGIN_MOBILE : MATHIS_VIEWPORT_MARGIN_DESKTOP,
+      targetLimit: constrained ? MATHIS_MAX_TARGETS_MOBILE : MATHIS_MAX_TARGETS_DESKTOP,
+      fragmentLimit: constrained ? MATHIS_MAX_FRAGMENTS_MOBILE : MATHIS_MAX_FRAGMENTS_DESKTOP,
+    };
+  };
+
+  const isMathisElementNearViewport = (element, viewportMargin) => {
+    if (!element || typeof element.getBoundingClientRect !== 'function' || typeof window === 'undefined') {
+      return false;
+    }
+    const cache = mathisRectCache;
+    if (cache && cache.has(element)) {
+      return cache.get(element);
+    }
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+    const rect = element.getBoundingClientRect();
+    const isNear = rect.bottom >= -viewportMargin && rect.top <= viewportHeight + viewportMargin;
+    if (cache) {
+      cache.set(element, isNear);
+    }
+    return isNear;
+  };
 
   const lockMathisScroll = () => {
     if (typeof window === 'undefined' || typeof document === 'undefined' || !document.body) {
@@ -580,11 +627,14 @@
     return depth;
   };
 
-  const prepareMathisFragments = (overlayElement) => {
+  const prepareMathisFragments = (overlayElement, options = {}) => {
     if (mathisFragmentsPrepared || typeof document === 'undefined' || !document.body) {
       return;
     }
     const overlayHost = overlayElement || document.getElementById(MATHIS_TAKEOVER_ID);
+    const viewportMargin = Number.isFinite(options.viewportMargin) ? options.viewportMargin : MATHIS_VIEWPORT_MARGIN_DESKTOP;
+    const fragmentLimit = Number.isFinite(options.fragmentLimit) ? options.fragmentLimit : MATHIS_MAX_FRAGMENTS_DESKTOP;
+    let fragmentCount = 0;
     // Avoid fragmenting text inside flex/grid containers (would stretch items when spaced out)
     const isFlexibleContext = (element) => {
       if (!element || typeof window === 'undefined' || typeof window.getComputedStyle !== 'function') {
@@ -602,7 +652,7 @@
     const SVG_NS = 'http://www.w3.org/2000/svg';
     const nodesToProcess = [];
     const visitNode = (node) => {
-      if (!node || !node.childNodes) {
+      if (!node || !node.childNodes || (fragmentLimit && fragmentCount >= fragmentLimit)) {
         return;
       }
       Array.from(node.childNodes).forEach((child) => {
@@ -621,6 +671,9 @@
             return;
           }
           if (overlayHost && (parentElement === overlayHost || parentElement.closest(`#${MATHIS_TAKEOVER_ID}`))) {
+            return;
+          }
+          if (!isMathisElementNearViewport(parentElement, viewportMargin)) {
             return;
           }
           if (isFlexibleContext(parentElement)) {
@@ -649,12 +702,18 @@
           if (overlayHost && (child === overlayHost || child.closest(`#${MATHIS_TAKEOVER_ID}`))) {
             return;
           }
+          if (!isMathisElementNearViewport(child, viewportMargin)) {
+            return;
+          }
           visitNode(child);
         }
       });
     };
     visitNode(document.body);
     nodesToProcess.forEach((textNode) => {
+      if (fragmentLimit && fragmentCount >= fragmentLimit) {
+        return;
+      }
       const parent = textNode.parentElement;
       if (!parent) {
         return;
@@ -665,13 +724,14 @@
         if (!part) {
           return;
         }
-        if (/^\s+$/.test(part)) {
+        if (/^\s+$/.test(part) || (fragmentLimit && fragmentCount >= fragmentLimit)) {
           fragment.appendChild(document.createTextNode(part));
         } else {
           const span = document.createElement('span');
           span.className = 'mathis-fragment';
           span.textContent = part;
           fragment.appendChild(span);
+          fragmentCount += 1;
         }
       });
       parent.replaceChild(fragment, textNode);
@@ -875,11 +935,14 @@
     return overlay;
   };
 
-  const gatherMathisTargets = () => {
+  const gatherMathisTargets = (options = {}) => {
     if (typeof document === 'undefined' || !document.body) {
       return [];
     }
     const overlay = document.getElementById(MATHIS_TAKEOVER_ID);
+    const viewportMargin = Number.isFinite(options.viewportMargin) ? options.viewportMargin : MATHIS_VIEWPORT_MARGIN_DESKTOP;
+    const targetLimit = Number.isFinite(options.targetLimit) ? options.targetLimit : MATHIS_MAX_TARGETS_DESKTOP;
+    const targetBudget = targetLimit > 0 ? targetLimit : Number.POSITIVE_INFINITY;
     const blockedTags = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'LINK', 'META', 'HEAD', 'TITLE', 'HTML', 'BODY', 'TEMPLATE']);
     const preferredSelectors = [
       'p',
@@ -957,6 +1020,9 @@
       if (svgAncestor && svgAncestor !== element) {
         return;
       }
+      if (!isMathisElementNearViewport(element, viewportMargin)) {
+        return;
+      }
       const isLeaf = element.childElementCount === 0;
       const isPreferred = preferredSelectors ? element.matches(preferredSelectors) : false;
       if (isLeaf || isPreferred) {
@@ -965,23 +1031,35 @@
     });
     const seen = new Set();
     const orderedTargets = [];
-    Array.from(buckets.keys())
-      .sort((a, b) => b - a)
-      .forEach((depth) => {
-        const bucket = shuffleArray(buckets.get(depth));
-        bucket.forEach((element) => {
-          if (!seen.has(element)) {
-            seen.add(element);
-            orderedTargets.push(element);
+    const sortedDepths = Array.from(buckets.keys()).sort((a, b) => b - a);
+    sortedDepths.some((depth) => {
+      const bucket = shuffleArray(buckets.get(depth));
+      for (let index = 0; index < bucket.length; index += 1) {
+        const element = bucket[index];
+        if (!seen.has(element)) {
+          seen.add(element);
+          orderedTargets.push(element);
+          if (orderedTargets.length >= targetBudget) {
+            return true;
           }
-        });
-      });
-    gatherMathisFallbackContainers().forEach((element) => {
-      if (!seen.has(element)) {
-        seen.add(element);
-        orderedTargets.push(element);
+        }
       }
+      return false;
     });
+    if (orderedTargets.length < targetBudget) {
+      gatherMathisFallbackContainers().forEach((element) => {
+        if (orderedTargets.length >= targetBudget) {
+          return;
+        }
+        if (!seen.has(element) && isMathisElementNearViewport(element, viewportMargin)) {
+          seen.add(element);
+          orderedTargets.push(element);
+        }
+      });
+    }
+    if (orderedTargets.length >= targetBudget) {
+      return orderedTargets.slice(0, targetBudget);
+    }
     const leftovers = [];
     allElements.forEach((element) => {
       if (!element || seen.has(element)) {
@@ -992,6 +1070,9 @@
       }
       const tagName = element.tagName ? element.tagName.toUpperCase() : '';
       if (!tagName || blockedTags.has(tagName)) {
+        return;
+      }
+      if (!isMathisElementNearViewport(element, viewportMargin)) {
         return;
       }
       leftovers.push({ element, depth: getMathisElementDepth(element) });
@@ -1005,9 +1086,11 @@
         }
       });
     if (orderedTargets.length) {
-      return orderedTargets;
+      return orderedTargets.slice(0, targetBudget);
     }
-    return Array.from(document.body.children).filter((element) => element.tagName !== 'SCRIPT' && element.tagName !== 'STYLE' && element.id !== MATHIS_TAKEOVER_ID);
+    return Array.from(document.body.children)
+      .filter((element) => element.tagName !== 'SCRIPT' && element.tagName !== 'STYLE' && element.id !== MATHIS_TAKEOVER_ID)
+      .slice(0, targetBudget);
   };
 
   const collapseMathisTargets = (targets) => {
@@ -1143,8 +1226,10 @@
   const startMathisSequence = (overlay) => {
     mathisSequenceActive = true;
     mathisExitStarted = false;
-    prepareMathisFragments(overlay);
-    const targets = gatherMathisTargets();
+    resetMathisRectCache();
+    const mathisPerf = getMathisPerfProfile();
+    prepareMathisFragments(overlay, mathisPerf);
+    const targets = gatherMathisTargets(mathisPerf);
     collapseMathisTargets(targets).then(() => {
       if (!mathisSequenceActive) {
         return;
