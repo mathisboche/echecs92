@@ -4086,6 +4086,64 @@
     return formatted.replace(/\s+/g, ' ').trim();
   };
 
+  const dedupeCommuneLabel = (value) => {
+    const raw = (value || '').toString();
+    if (!raw.trim()) {
+      return '';
+    }
+    const withoutPostal = raw.replace(/\b\d{4,5}\b/g, ' ');
+    const segments = withoutPostal
+      .split(/[,;\/]+/g)
+      .map((part) => part.replace(/^[\s-–—]+|[\s-–—]+$/g, '').trim())
+      .filter(Boolean);
+
+    const collapseRepeatedPhrase = (formatted) => {
+      const key = normaliseCommuneForCompare(formatted);
+      if (!key) {
+        return formatted;
+      }
+      const tokens = key.split(' ').filter(Boolean);
+      if (tokens.length >= 2 && tokens.length % 2 === 0) {
+        const midpoint = tokens.length / 2;
+        const first = tokens.slice(0, midpoint).join(' ');
+        const second = tokens.slice(midpoint).join(' ');
+        if (first && first === second) {
+          return formatCommune(first);
+        }
+      }
+      return formatted;
+    };
+
+    const seen = new Set();
+    const parts = [];
+    const pushSegment = (segment) => {
+      if (!segment) {
+        return;
+      }
+      const formattedSegment = collapseRepeatedPhrase(formatCommune(segment));
+      const key = normaliseCommuneForCompare(formattedSegment);
+      if (!key || seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      parts.push(formattedSegment);
+    };
+
+    if (segments.length) {
+      segments.forEach(pushSegment);
+    } else {
+      pushSegment(withoutPostal);
+    }
+
+    if (!parts.length) {
+      return '';
+    }
+    if (parts.length === 1) {
+      return parts[0];
+    }
+    return parts.join(', ');
+  };
+
   const deriveCityFromPostal = (address, postalHint = '') => {
     const raw = (address || '').toString();
     if (!raw.trim()) {
@@ -4129,6 +4187,7 @@
       cleaned = cleaned.replace(pattern, ' ').trim();
     }
     cleaned = cleaned.replace(/^\d+\s+/, '').replace(/\s+/g, ' ').trim();
+    cleaned = dedupeCommuneLabel(cleaned) || cleaned;
     const looksStreety = STREET_KEYWORDS.test(cleaned) && (/\d/.test(cleaned) || cleaned.split(/\s+/).length >= 3);
     if (looksStreety) {
       return '';
@@ -5804,7 +5863,7 @@
       deriveCityFromPostal(primaryAddress, postalForCommune),
       deriveCityFromPostal(secondaryAddress, postalForCommune),
     ];
-    const baseCommune = pickBestCommune(communeCandidates, postalForCommune);
+    const baseCommune = dedupeCommuneLabel(pickBestCommune(communeCandidates, postalForCommune));
     const commune = formatCommuneWithPostal(baseCommune, postalForCommune);
     const slugSource = name || commune || postalForCommune || primaryAddress || secondaryAddress;
     const standardAddress = buildStandardAddress(

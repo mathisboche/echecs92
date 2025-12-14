@@ -1645,6 +1645,61 @@
     return formatted.replace(/\s+/g, ' ').trim();
   };
 
+  const dedupeCommuneLabel = (value) => {
+    const raw = (value || '').toString();
+    if (!raw.trim()) {
+      return '';
+    }
+    const withoutPostal = raw.replace(/\b\d{4,5}\b/g, ' ');
+    const segments = withoutPostal
+      .split(/[,;\/]+/g)
+      .map((part) => part.replace(/^[\s-–—]+|[\s-–—]+$/g, '').trim())
+      .filter(Boolean);
+
+    const collapseRepeatedPhrase = (formatted) => {
+      const key = normaliseCommuneForCompare(formatted);
+      if (!key) {
+        return formatted;
+      }
+      const tokens = key.split(' ').filter(Boolean);
+      if (tokens.length >= 2 && tokens.length % 2 === 0) {
+        const midpoint = tokens.length / 2;
+        const first = tokens.slice(0, midpoint).join(' ');
+        const second = tokens.slice(midpoint).join(' ');
+        if (first && first === second) {
+          return formatCommune(first);
+        }
+      }
+      return formatted;
+    };
+
+    const seen = new Set();
+    const parts = [];
+    const pushPart = (part) => {
+      if (!part) {
+        return;
+      }
+      const formatted = collapseRepeatedPhrase(formatCommune(part));
+      const key = normaliseCommuneForCompare(formatted);
+      if (!key || seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      parts.push(formatted);
+    };
+
+    if (segments.length) {
+      segments.forEach(pushPart);
+    } else {
+      pushPart(withoutPostal);
+    }
+
+    if (!parts.length) {
+      return '';
+    }
+    return parts.length === 1 ? parts[0] : parts.join(', ');
+  };
+
   const formatGeocodeLabel = (place) => {
     if (!place || typeof place !== 'object') {
       return '';
@@ -2706,7 +2761,7 @@ const handleLocationSubmit = async (event) => {
     const secondaryAddress = raw.siege || raw.siege_social || raw.address2 || '';
     const secondaryParts = extractAddressParts(secondaryAddress);
     const communeRaw = raw.commune || raw.ville || addressParts.city || secondaryParts.city || '';
-    const commune = formatCommune(communeRaw);
+    const commune = dedupeCommuneLabel(communeRaw);
     const postalCode = raw.code_postal || raw.postal_code || addressParts.postalCode || secondaryParts.postalCode || '';
     const slugSource = name || commune || postalCode || primaryAddress || secondaryAddress;
     const standardAddress = buildStandardAddress(
