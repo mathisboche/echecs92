@@ -283,7 +283,9 @@
         return pathMatch[1];
       }
     }
-    return '';
+    const params = new URLSearchParams(window.location.search || '');
+    const fallback = params.get('id') || params.get('club') || '';
+    return fallback || '';
   };
 
   const clubSlug = deriveClubSlugFromPath();
@@ -387,11 +389,24 @@
       if (!club || typeof club !== 'object') {
         return;
       }
-      const legacySlugNoDept = buildShortSlugBase({
-        ...club,
+      const buildVariantSlug = (overrides) =>
+        buildShortSlugBase({
+          ...club,
+          ...overrides,
+        });
+      const legacySlugNoDept = buildVariantSlug({
         departmentCode: '',
         departmentSlug: '',
         departmentName: '',
+      });
+      const legacySlugNoCommune = buildVariantSlug({
+        commune: '',
+      });
+      const legacySlugNoDeptNoCommune = buildVariantSlug({
+        departmentCode: '',
+        departmentSlug: '',
+        departmentName: '',
+        commune: '',
       });
       const aliases = new Set([
         club.slug,
@@ -399,10 +414,10 @@
         club._communeSlug,
         slugify(club.name || ''),
         slugify(club.commune || ''),
+        legacySlugNoDept,
+        legacySlugNoCommune,
+        legacySlugNoDeptNoCommune,
       ]);
-      if (legacySlugNoDept && legacySlugNoDept !== club.slug) {
-        aliases.add(legacySlugNoDept); // Legacy fallback when department metadata was missing
-      }
       aliases.forEach((alias) => {
         const key = (alias || '').toString().trim().toLowerCase();
         if (key && !map.has(key)) {
