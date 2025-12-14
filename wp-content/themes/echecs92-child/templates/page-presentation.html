@@ -2,23 +2,6 @@
 
 <!-- wp:html -->
 <style>
-  .committee .reading-ui{
-    display:flex;
-    align-items:center;
-    gap:12px;
-    font-size:14px;
-    color:#1f2937;
-    margin-bottom:14px;
-    flex-wrap:wrap;
-  }
-  .committee .reading-ui__time{
-    padding:6px 10px;
-    border:1px solid #cbd5e1;
-    border-radius:12px;
-    background:#f8fafc;
-    color:#0f172a;
-    font-weight:600;
-  }
   .committee .reading-progress{
     position:sticky;
     top:0;
@@ -36,12 +19,29 @@
     background:#0b2e4c;
     transition:width 0.08s linear;
   }
+  .committee .reading-ui{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    font-size:14px;
+    color:#1f2937;
+    margin:10px 0 14px;
+    flex-wrap:wrap;
+  }
+  .committee .reading-ui__time{
+    padding:6px 10px;
+    border:1px solid #cbd5e1;
+    border-radius:12px;
+    background:#f8fafc;
+    color:#0f172a;
+    font-weight:600;
+  }
 </style>
 <div class="committee">
+  <div class="reading-progress" aria-hidden="true">
+    <div class="reading-progress__bar" data-progress-bar></div>
+  </div>
   <div class="reading-ui">
-    <div class="reading-progress" aria-hidden="true">
-      <div class="reading-progress__bar" data-progress-bar></div>
-    </div>
     <div class="reading-ui__time">Temps de lecture estimé : <span data-reading-time>—</span> min</div>
   </div>
   <div class="committee-content">
