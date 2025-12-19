@@ -6156,15 +6156,25 @@
     return club;
   };
 
+  const resolveClubSlug = (club) => {
+    if (!club) {
+      return '';
+    }
+    if (typeof club === 'string' || typeof club === 'number') {
+      return String(club);
+    }
+    return club.slug || club._communeSlug || club.id || slugify(club.name || '') || '';
+  };
+
   const getClubDetailUrl = (clubId) => {
-    if (!clubId) {
+    const slug = resolveClubSlug(clubId);
+    if (!slug) {
       return '#';
     }
     const base = detailBase || '';
     if (!base) {
-      return `?club=${encodeURIComponent(clubId)}`;
+      return `?club=${encodeURIComponent(slug)}`;
     }
-    const slug = clubId.slug || clubId._communeSlug || clubId;
     if (base.includes('?')) {
       const url = new URL(base, window.location.origin);
       const firstParam = Array.from(url.searchParams.keys())[0] || 'id';
