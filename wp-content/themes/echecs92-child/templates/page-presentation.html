@@ -107,6 +107,7 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function () {
+    var committee = document.querySelector('.committee');
     var content = document.querySelector('.committee-content');
     var timeEl = document.querySelector('[data-reading-time]');
     var bar = document.querySelector('[data-progress-bar]');
@@ -120,10 +121,21 @@
     };
 
     var setProgress = function () {
-      if (!bar) return;
+      if (!bar || !committee) return;
       var scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
-      var docHeight = document.documentElement.scrollHeight - window.innerHeight;
-      var progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      var sectionTop = committee.getBoundingClientRect().top + scrollTop;
+      var sectionHeight = committee.offsetHeight;
+      var scrollDistance = sectionHeight - window.innerHeight;
+      var progress = 0;
+
+      if (scrollDistance > 0) {
+        progress = ((scrollTop - sectionTop) / scrollDistance) * 100;
+      } else if (scrollTop >= sectionTop) {
+        progress = 100;
+      }
+
+      if (progress < 0) progress = 0;
+      if (progress > 100) progress = 100;
       bar.style.width = progress + '%';
     };
 
