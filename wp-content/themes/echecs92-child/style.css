@@ -4244,6 +4244,14 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   scroll-margin-top:var(--clubs-results-scroll-margin, var(--clubs-results-sticky-top, 24px));
 }
 @media (max-width:820px){
+  .clubs-results-shell{
+    --clubs-results-padding-offset: 6px;
+    --clubs-results-sticky-top: calc(env(safe-area-inset-top, 0px) + var(--cm-header-height, 64px) + 6px);
+    gap:8px;
+  }
+  .clubs-results-shell .clubs-results-wrapper{
+    margin-top:8px;
+  }
   .clubs-results-shell__close{
     min-height:auto;
   }
