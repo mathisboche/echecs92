@@ -4970,7 +4970,7 @@ body.mathis-mode .mathis-fragment{
   font-weight:600;
   color:#0f172a;
   text-decoration:none;
-  padding:8px 14px;
+  padding:1px 14px;
   min-height:38px;
   border-radius:999px;
   border:1px solid rgba(15,23,42,0.16);
@@ -5175,7 +5175,7 @@ body.mathis-mode .mathis-fragment{
 }
 @media (min-width:960px){
   .clubs-page{
-    padding:56px 24px 96px;
+    padding:40px 24px 96px;
   }
   .clubs-list{
     display:flex;
