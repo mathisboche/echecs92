@@ -4188,6 +4188,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   flex-direction:column;
   gap:12px;
   --clubs-results-padding-top: calc(env(safe-area-inset-top, 0px) + var(--header-height, var(--cm-header-height, 64px)));
+  --clubs-results-offset: 16px;
   --clubs-floating-top: 8px;
   padding:var(--clubs-results-padding-top) 16px 24px;
   z-index:40;
@@ -4201,7 +4202,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .clubs-results-shell::before{
   content:"";
   display:block;
-  height:0;
+  height:var(--clubs-results-offset);
   flex:0 0 auto;
 }
 @media (min-width:821px){
