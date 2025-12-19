@@ -4198,6 +4198,12 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   overflow-x:hidden;
   box-shadow:0 28px 45px rgba(15,23,42,0.18);
 }
+.clubs-results-shell::before{
+  content:"";
+  display:block;
+  height:0;
+  flex:0 0 auto;
+}
 @media (min-width:821px){
   .clubs-results-shell{
     position:static;
@@ -4208,6 +4214,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
     opacity:1;
     box-shadow:none;
     overflow:visible;
+  }
+  .clubs-results-shell::before{
+    display:none;
   }
   .clubs-results-shell__header{
     display:none;
@@ -4225,7 +4234,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   padding:0;
   margin:0;
   position:sticky;
-  top:var(--clubs-floating-top, 12px);
+  top:0;
   background:transparent;
   z-index:3;
   align-self:flex-start;
@@ -4970,7 +4979,7 @@ body.mathis-mode .mathis-fragment{
   font-weight:600;
   color:#0f172a;
   text-decoration:none;
-  padding:1px 14px;
+  padding:0px 10px;
   min-height:38px;
   border-radius:999px;
   border:1px solid rgba(15,23,42,0.16);

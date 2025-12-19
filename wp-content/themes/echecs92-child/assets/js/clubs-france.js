@@ -6153,7 +6153,7 @@
       return;
     }
     if (!raw) {
-      handleLocationClear({ suppressJump: true });
+      handleLocationClear({ suppressJump: true, silent: true });
       return;
     }
     if (locationInput && locationInput !== searchInput) {
