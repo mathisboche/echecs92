@@ -4975,7 +4975,6 @@ body.mathis-mode .mathis-fragment{
   border-radius:999px;
   border:1px solid rgba(15,23,42,0.16);
   background:#ffffff;
-  box-shadow:0 10px 25px rgba(15,23,42,0.08);
   transition:background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
 }
 .club-detail__back:hover,
@@ -4984,7 +4983,6 @@ body.mathis-mode .mathis-fragment{
   background:#f8fafc;
   border-color:rgba(15,23,42,0.24);
   outline:none;
-  box-shadow:0 12px 28px rgba(15,23,42,0.12);
 }
 .clubs-results-shell__close{
   margin-bottom:0;
@@ -5057,7 +5055,6 @@ body.mathis-mode .mathis-fragment{
   border-radius:50%;
   padding:0;
   cursor:pointer;
-  box-shadow:0 10px 25px rgba(15,23,42,0.08);
   transition:background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
   position:relative;
 }
@@ -5067,7 +5064,6 @@ body.mathis-mode .mathis-fragment{
   background:rgba(15,23,42,0.05);
   border-color:rgba(15,23,42,0.2);
   outline:none;
-  box-shadow:0 12px 28px rgba(15,23,42,0.12);
 }
 .club-share-button[data-tone="error"]{
   color:#b91c1c;
