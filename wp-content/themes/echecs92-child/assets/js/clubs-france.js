@@ -3574,10 +3574,11 @@
   };
 
   const buildShortSlugBase = (club) => {
+    const communeSeed = club._slugCommune || club.commune || '';
     const seedParts = [
       club.id || '',
       club.name || '',
-      club.commune || '',
+      communeSeed,
       club.postalCode || '',
       club.departmentCode || club.departmentSlug || club.departmentName || '',
     ];
@@ -3590,7 +3591,7 @@
   const ensureUniqueSlugs = (clubs) => {
     const byBase = new Map();
     const stableKey = (club) =>
-      `${club.id || ''}|${club.name || ''}|${club.commune || ''}|${club.postalCode || ''}|${
+      `${club.id || ''}|${club.name || ''}|${club._slugCommune || club.commune || ''}|${club.postalCode || ''}|${
         club.departmentCode || club.departmentSlug || club.departmentName || ''
       }`;
 
@@ -3606,7 +3607,7 @@
       if (entries.length === 1) {
         const club = entries[0];
         club.slug = base;
-        club._communeSlug = slugify(club.commune || '');
+        club._communeSlug = slugify(club._slugCommune || club.commune || '');
         return;
       }
       const sorted = entries
@@ -3615,7 +3616,7 @@
       sorted.forEach((entry, idx) => {
         const suffix = idx === 0 ? '' : `-${toBase36(idx + 1)}`;
         entry.club.slug = `${base}${suffix}`;
-        entry.club._communeSlug = slugify(entry.club.commune || '');
+        entry.club._communeSlug = slugify(entry.club._slugCommune || entry.club.commune || '');
       });
     });
   };
@@ -3662,6 +3663,61 @@
     }
 
     const cleanCity = (raw) => cleanCommuneFragment(raw);
+
+    const postal = parsePostalCodeFromString(result.full);
+    if (postal) {
+      result.postalCode = postal;
+      const pattern = new RegExp(`\\b${postal.slice(0, 2)}\\s*${postal.slice(2)}\\b`, 'i');
+      const match = result.full.match(pattern);
+      if (match) {
+        const idx = Number.isFinite(match.index) ? match.index : result.full.indexOf(match[0]);
+        const after = result.full.slice(idx + match[0].length).trim();
+        const before = result.full.slice(0, idx).trim();
+        if (after) {
+          result.city = cleanCity(after);
+        }
+        if (!result.city && before) {
+          const segments = before.split(/[,;]+/).map((part) => part.trim()).filter(Boolean);
+          const tail = segments.length ? segments[segments.length - 1] : before;
+          result.city = cleanCity(tail);
+        }
+      }
+    }
+
+    if (!result.city) {
+      const parts = result.full
+        .split(',')
+        .map((part) => part.trim())
+        .filter(Boolean);
+      if (parts.length) {
+        const last = parts[parts.length - 1];
+        const cleaned = cleanCity(last);
+        if (cleaned) {
+          result.city = cleaned;
+        }
+      }
+    }
+    result.city = result.city.replace(/\s+/g, ' ').trim();
+    return result;
+  };
+
+  const extractAddressPartsForSlug = (value) => {
+    const result = {
+      full: value ? String(value).trim() : '',
+      postalCode: '',
+      city: '',
+    };
+    if (!result.full) {
+      return result;
+    }
+
+    const cleanCity = (raw) =>
+      (raw || '')
+        .toString()
+        .replace(/\b\d{4,5}\b/g, ' ')
+        .replace(/^[,;\s-–—]+/, '')
+        .replace(/\s+/g, ' ')
+        .trim();
 
     const postal = parsePostalCodeFromString(result.full);
     if (postal) {
@@ -4326,6 +4382,33 @@
     return cleanCommuneFragment(tail);
   };
 
+  const deriveCityFromPostalForSlug = (address, postalHint = '') => {
+    const raw = (address || '').toString();
+    if (!raw.trim()) {
+      return '';
+    }
+    const postal = parsePostalCodeFromString(raw) || (postalHint || '').toString().replace(/\D/g, '');
+    if (!postal) {
+      return '';
+    }
+    const pattern = new RegExp(`\\b${postal.slice(0, 2)}\\s*${postal.slice(2)}\\b`, 'i');
+    const match = raw.match(pattern);
+    if (!match) {
+      return '';
+    }
+    const idx = Number.isFinite(match.index) ? match.index : raw.indexOf(match[0]);
+    const after = raw.slice(idx + match[0].length).trim();
+    if (after) {
+      return after.replace(/^[,;\s-–—]+/, '').trim();
+    }
+    const before = raw.slice(0, idx).trim();
+    if (!before) {
+      return '';
+    }
+    const segments = before.split(/[,;]+/).map((part) => part.trim()).filter(Boolean);
+    return (segments.length ? segments[segments.length - 1] : before).trim();
+  };
+
   const cleanCommuneCandidate = (value, postalCode) => {
     if (!value) {
       return '';
@@ -4351,6 +4434,29 @@
     if (!cleaned) {
       return '';
     }
+    const looksStreety = STREET_KEYWORDS.test(cleaned) && (/\d/.test(cleaned) || cleaned.split(/\s+/).length >= 3);
+    if (looksStreety) {
+      return '';
+    }
+    return formatCommune(cleaned);
+  };
+
+  const cleanCommuneCandidateForSlug = (value, postalCode) => {
+    if (!value) {
+      return '';
+    }
+    const postal = (postalCode || '').toString().replace(/\D/g, '');
+    let cleaned = value
+      .toString()
+      .replace(/\b\d{4,5}\b/g, ' ')
+      .replace(/^[,;\s-–—]+/, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (postal) {
+      const pattern = new RegExp(`\\b${postal.slice(0, 2)}\\s*${postal.slice(2)}\\b`, 'gi');
+      cleaned = cleaned.replace(pattern, ' ').trim();
+    }
+    cleaned = cleaned.replace(/^\d+\s+/, '').replace(/\s+/g, ' ').trim();
     const looksStreety = STREET_KEYWORDS.test(cleaned) && (/\d/.test(cleaned) || cleaned.split(/\s+/).length >= 3);
     if (looksStreety) {
       return '';
@@ -4397,6 +4503,26 @@
       score -= 1;
     }
     if (trimmed.length >= 3) {
+      score += 1;
+    }
+    return score;
+  };
+
+  const scoreCommuneCandidateForSlug = (value) => {
+    if (!value) {
+      return -Infinity;
+    }
+    let score = 0;
+    const hasDigits = /\d/.test(value);
+    if (!hasDigits) {
+      score += 4;
+    } else if (!/^paris\s*\d{1,2}/i.test(value)) {
+      score -= 2;
+    }
+    if (looksLikeDetailedAddress(value)) {
+      score -= 4;
+    }
+    if (value.length >= 3) {
       score += 1;
     }
     return score;
@@ -4454,6 +4580,23 @@
       return bestOverall;
     }
     return postalLabel || '';
+  };
+
+  const pickBestCommuneForSlug = (candidates, postalCode) => {
+    let best = '';
+    let bestScore = -Infinity;
+    (candidates || []).forEach((raw) => {
+      const cleaned = cleanCommuneCandidateForSlug(raw, postalCode);
+      if (!cleaned) {
+        return;
+      }
+      const score = scoreCommuneCandidateForSlug(cleaned);
+      if (score > bestScore) {
+        bestScore = score;
+        best = cleaned;
+      }
+    });
+    return best || '';
   };
 
   const formatGeocodeLabel = (place, postalCodeOverride) => {
@@ -6036,6 +6179,8 @@
     const secondaryAddress = secondaryAddressMeta.full;
     const addressParts = extractAddressParts(primaryAddress || secondaryAddress);
     const secondaryParts = extractAddressParts(secondaryAddress);
+    const slugAddressParts = extractAddressPartsForSlug(primaryAddress || secondaryAddress);
+    const slugSecondaryParts = extractAddressPartsForSlug(secondaryAddress);
     const postalCode =
       raw.code_postal ||
       raw.postal_code ||
@@ -6043,6 +6188,7 @@
       addressParts.postalCode ||
       secondaryParts.postalCode ||
       '';
+    const slugPostalForCommune = postalCode || slugAddressParts.postalCode || slugSecondaryParts.postalCode || '';
     const postalForCommune = postalCode || addressParts.postalCode || secondaryParts.postalCode || '';
     const communeCandidates = [
       raw.commune,
@@ -6054,6 +6200,16 @@
     ];
     const baseCommune = dedupeCommuneLabel(pickBestCommune(communeCandidates, postalForCommune));
     const commune = formatCommuneWithPostal(baseCommune, postalForCommune);
+    const slugCommuneCandidates = [
+      raw.commune,
+      raw.ville,
+      slugAddressParts.city,
+      slugSecondaryParts.city,
+      deriveCityFromPostalForSlug(primaryAddress, slugPostalForCommune),
+      deriveCityFromPostalForSlug(secondaryAddress, slugPostalForCommune),
+    ];
+    const slugBaseCommune = dedupeCommuneLabel(pickBestCommuneForSlug(slugCommuneCandidates, slugPostalForCommune));
+    const slugCommune = formatCommuneWithPostal(slugBaseCommune, slugPostalForCommune);
     const slugSource = name || commune || postalForCommune || primaryAddress || secondaryAddress;
     const streetHint = primaryAddressMeta.streetLike || secondaryAddressMeta.streetLike || '';
     const standardAddress = buildStandardAddress(
@@ -6116,6 +6272,7 @@
         B: toNumber(raw.licences_b ?? raw.licenses_b ?? raw.license_b),
       },
       postalCode,
+      _slugCommune: slugCommune || '',
       departmentCode:
         raw.departmentCode ||
         raw.department_code ||
@@ -6151,7 +6308,7 @@
       .filter(Boolean);
     club._nameSearch = normaliseForSearch(nameAliases.filter(Boolean).join(' '));
     club._addressSearch = normaliseForSearch(club.addressDisplay || displayAddress || '');
-    const communeSlugSource = club.commune || club.name || club.id;
+    const communeSlugSource = club._slugCommune || club.commune || club.name || club.id;
     club._communeSlug = slugify(communeSlugSource || club.id || club.name || 'club');
     return club;
   };
