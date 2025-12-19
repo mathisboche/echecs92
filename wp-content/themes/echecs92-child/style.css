@@ -4952,24 +4952,30 @@ body.mathis-mode .mathis-fragment{
   gap:24px;
   box-shadow:none;
 }
+.club-detail__actions{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin:0 0 16px;
+  position:sticky;
+  top:var(--clubs-floating-top, 12px);
+  z-index:5;
+}
 .club-detail__back{
   display:inline-flex;
   align-items:center;
   gap:8px;
-  margin:0 0 16px;
-  align-self:flex-start;
+  margin:0;
   font-size:14px;
   font-weight:600;
   color:#0f172a;
   text-decoration:none;
   padding:8px 14px;
+  min-height:38px;
   border-radius:999px;
   border:1px solid rgba(15,23,42,0.16);
   background:#ffffff;
   box-shadow:0 10px 25px rgba(15,23,42,0.08);
-  position:sticky;
-  top:var(--clubs-floating-top, 12px);
-  z-index:5;
   transition:background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
 }
 .club-detail__back:hover,
@@ -5032,12 +5038,11 @@ body.mathis-mode .mathis-fragment{
   display:flex;
   align-items:center;
   justify-content:flex-end;
-  margin-left:0;
   align-self:flex-end;
-  order:-1;
-  position:sticky;
-  top:var(--clubs-floating-top, 12px);
-  z-index:4;
+}
+.club-detail__actions .club-sheet__share{
+  align-self:center;
+  margin-left:auto;
 }
 .club-share-button{
   display:inline-flex;

@@ -14,6 +14,7 @@
   const detailContainer = document.getElementById('club-detail');
   const backLink = document.querySelector('[data-club-back]');
   const backLinkMap = document.querySelector('[data-club-back-map]');
+  const actionsContainer = document.querySelector('.club-detail__actions');
   let manifestPromise = null;
   let datasetPromise = null;
 
@@ -1780,8 +1781,16 @@
       header.appendChild(summary);
     }
 
+    if (actionsContainer) {
+      const existingShare = actionsContainer.querySelector('.club-sheet__share');
+      if (existingShare) {
+        existingShare.remove();
+      }
+      actionsContainer.appendChild(shareBlock);
+    } else {
+      sheet.appendChild(shareBlock);
+    }
     sheet.appendChild(header);
-    sheet.appendChild(shareBlock);
 
     const sections = [];
 
