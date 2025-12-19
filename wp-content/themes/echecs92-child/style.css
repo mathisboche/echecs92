@@ -2578,6 +2578,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   flex-direction:column;
   gap:16px;
 }
+.committee-section + .committee-section{
+  margin-top:16px;
+}
 .committee-section__header{
   display:flex;
   flex-direction:column;
@@ -2939,6 +2942,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
     padding:48px 24px 64px;
     gap:40px;
   }
+  .committee-section + .committee-section{
+    margin-top:0;
+  }
   .committee-hero__title{
     font-size:30px;
   }
@@ -2948,6 +2954,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   .committee{
     padding:40px 18px 56px;
     gap:0px;
+  }
+  .committee-section + .committee-section{
+    margin-top:24px;
   }
   .committee-hero__title{
     font-size:26px;
