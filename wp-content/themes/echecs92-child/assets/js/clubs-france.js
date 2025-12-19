@@ -1001,6 +1001,12 @@
     }
     return false;
   };
+  const isElementVisible = (element) => {
+    if (!element || typeof element.getClientRects !== 'function') {
+      return false;
+    }
+    return element.getClientRects().length > 0;
+  };
 
   const scrollToSearchBlock = (options = {}) => {
     const target = searchBlock || searchInput || resultsShell || resultsEl;
@@ -1647,11 +1653,11 @@
       openResultsShell();
       return;
     }
-    const target = totalCounter || resultsEl;
+    const target = isElementVisible(resultsCloseButton) ? resultsCloseButton : totalCounter || resultsEl;
     const behavior = options.behavior === 'instant' ? 'auto' : options.behavior || 'smooth';
     const marginOverride = Number.isFinite(options.margin) ? options.margin : null;
-    if (marginOverride != null && totalCounter) {
-      totalCounter.style.setProperty('--clubs-results-scroll-margin', `${marginOverride}px`);
+    if (marginOverride != null && target) {
+      target.style.setProperty('--clubs-results-scroll-margin', `${marginOverride}px`);
     }
     try {
       target.scrollIntoView({ behavior, block: 'start', inline: 'nearest' });

@@ -4187,9 +4187,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   display:flex;
   flex-direction:column;
   gap:12px;
-  --clubs-results-padding-top: calc(env(safe-area-inset-top, 0px) + var(--header-height, var(--cm-header-height, 64px)));
-  --clubs-results-offset: 16px;
-  --clubs-results-sticky-gap: 12px;
+  --clubs-results-padding-offset: 16px;
+  --clubs-results-padding-top: calc(env(safe-area-inset-top, 0px) + var(--header-height, var(--cm-header-height, 64px)) + var(--clubs-results-padding-offset));
+  --clubs-results-sticky-top: calc(env(safe-area-inset-top, 0px) + var(--header-height, var(--cm-header-height, 64px)) + 12px);
   padding:var(--clubs-results-padding-top) 16px 24px;
   z-index:40;
   transform:translateX(100%);
@@ -4199,28 +4199,18 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   overflow-x:hidden;
   box-shadow:0 28px 45px rgba(15,23,42,0.18);
 }
-.clubs-results-shell::before{
-  content:"";
-  display:block;
-  height:var(--clubs-results-offset);
-  flex:0 0 auto;
-}
 @media (min-width:821px){
   .clubs-results-shell{
     position:static;
     inset:auto;
+    --clubs-results-padding-offset: 0px;
+    --clubs-results-sticky-top: 12px;
     padding:0;
     background:transparent;
     transform:none;
     opacity:1;
     box-shadow:none;
     overflow:visible;
-  }
-  .clubs-results-shell::before{
-    display:none;
-  }
-  .clubs-results-shell__header{
-    display:none;
   }
   .clubs-results-shell.is-active{
     transform:none;
@@ -4235,7 +4225,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   padding:0;
   margin:0;
   position:sticky;
-  top:calc(var(--clubs-results-padding-top) + var(--clubs-results-sticky-gap));
+  top:var(--clubs-results-sticky-top);
   background:transparent;
   z-index:3;
   align-self:flex-start;
@@ -4251,6 +4241,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .clubs-results-shell__close{
   position:static;
   margin:0;
+  scroll-margin-top:var(--clubs-results-scroll-margin, var(--clubs-results-sticky-top, 24px));
 }
 @media (max-width:820px){
   .clubs-results-shell__close{
@@ -4284,7 +4275,7 @@ body.clubs-loading-lock{
   font-weight:600;
   color:#1d4ed8;
   margin:0;
-  scroll-margin-top:var(--clubs-results-scroll-margin,24px);
+  scroll-margin-top:var(--clubs-results-scroll-margin, var(--clubs-results-sticky-top, 24px));
 }
 .clubs-total.is-deferred{
   color:#475569;
@@ -4985,6 +4976,7 @@ body.mathis-mode .mathis-fragment{
   border-radius:999px;
   border:1px solid rgba(15,23,42,0.16);
   background:#ffffff;
+  box-shadow:none;
   transition:background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
 }
 .club-detail__back:hover,
@@ -4992,6 +4984,7 @@ body.mathis-mode .mathis-fragment{
   color:#0b2e4c;
   background:#f8fafc;
   border-color:rgba(15,23,42,0.24);
+  box-shadow:none;
   outline:none;
 }
 .clubs-results-shell__close{
@@ -5065,6 +5058,7 @@ body.mathis-mode .mathis-fragment{
   border-radius:50%;
   padding:0;
   cursor:pointer;
+  box-shadow:none;
   transition:background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
   position:relative;
 }
@@ -5073,6 +5067,7 @@ body.mathis-mode .mathis-fragment{
   color:#0b2e4c;
   background:rgba(15,23,42,0.05);
   border-color:rgba(15,23,42,0.2);
+  box-shadow:none;
   outline:none;
 }
 .club-share-button[data-tone="error"]{
