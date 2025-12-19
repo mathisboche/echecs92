@@ -3147,6 +3147,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   max-width:960px;
   margin:0 auto;
   padding:40px 16px 72px;
+  --clubs-floating-top: calc(env(safe-area-inset-top, 0px) + 12px);
   box-sizing:border-box;
 }
 .clubs-page h1{
@@ -4186,7 +4187,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   display:flex;
   flex-direction:column;
   gap:12px;
-  padding:calc(env(safe-area-inset-top,0) + var(--header-height, var(--cm-header-height,64px))) 16px 24px;
+  --clubs-results-padding-top: calc(env(safe-area-inset-top, 0px) + var(--header-height, var(--cm-header-height, 64px)));
+  --clubs-floating-top: calc(var(--clubs-results-padding-top) + 8px);
+  padding:var(--clubs-results-padding-top) 16px 24px;
   z-index:40;
   transform:translateX(100%);
   opacity:0;
@@ -4218,13 +4221,14 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   display:flex;
   align-items:center;
   justify-content:flex-start;
-  gap:0px;
-  padding:8px 0 0px;
+  gap:0;
+  padding:0;
   margin:0;
   position:sticky;
-  top:0;
-  background:#ffffff;
+  top:var(--clubs-floating-top, 12px);
+  background:transparent;
   z-index:3;
+  align-self:flex-start;
 }
 .clubs-results-shell__eyebrow{
   margin:0;
@@ -4235,29 +4239,16 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   font-weight:700;
 }
 .clubs-results-shell__close{
-  align-self:auto;
-  border:none;
-  background:none;
-  color:#0f172a;
-  padding:0;
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  font-size:14px;
-  font-weight:600;
-  text-decoration:underline;
+  position:static;
+  margin:0;
 }
 @media (max-width:820px){
   .clubs-results-shell__close{
-    padding:0;
     min-height:auto;
   }
 }
 .clubs-results-shell__close:hover,
 .clubs-results-shell__close:focus-visible{
-  background:none;
-  color:#1d4ed8;
-  border:none;
   outline:none;
 }
 .clubs-results-shell.is-active{
@@ -4965,18 +4956,32 @@ body.mathis-mode .mathis-fragment{
   display:inline-flex;
   align-items:center;
   gap:8px;
-  margin-top: 12px;
-  margin-bottom:12px;
+  margin:0 0 16px;
   align-self:flex-start;
   font-size:14px;
   font-weight:600;
   color:#0f172a;
-  text-decoration:underline;
+  text-decoration:none;
+  padding:8px 14px;
+  border-radius:999px;
+  border:1px solid rgba(15,23,42,0.16);
+  background:#ffffff;
+  box-shadow:0 10px 25px rgba(15,23,42,0.08);
+  position:sticky;
+  top:var(--clubs-floating-top, 12px);
+  z-index:5;
+  transition:background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
 }
 .club-detail__back:hover,
 .club-detail__back:focus-visible{
-  color:#1d4ed8;
+  color:#0b2e4c;
+  background:#f8fafc;
+  border-color:rgba(15,23,42,0.24);
   outline:none;
+  box-shadow:0 12px 28px rgba(15,23,42,0.12);
+}
+.clubs-results-shell__close{
+  margin-bottom:0;
 }
 .club-chip{
   display:inline-flex;
@@ -5024,9 +5029,15 @@ body.mathis-mode .mathis-fragment{
   margin:0;
 }
 .club-sheet__share{
-  margin-left:auto;
   display:flex;
   align-items:center;
+  justify-content:flex-end;
+  margin-left:0;
+  align-self:flex-end;
+  order:-1;
+  position:sticky;
+  top:var(--clubs-floating-top, 12px);
+  z-index:4;
 }
 .club-share-button{
   display:inline-flex;
@@ -5036,12 +5047,13 @@ body.mathis-mode .mathis-fragment{
   height:38px;
   font-size:0;
   color:#1f2937;
-  background:transparent;
+  background:#ffffff;
   border:1px solid rgba(15,23,42,0.14);
   border-radius:50%;
   padding:0;
   cursor:pointer;
-  transition:background-color .2s ease, border-color .2s ease, color .2s ease;
+  box-shadow:0 10px 25px rgba(15,23,42,0.08);
+  transition:background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
   position:relative;
 }
 .club-share-button:hover,
@@ -5050,6 +5062,7 @@ body.mathis-mode .mathis-fragment{
   background:rgba(15,23,42,0.05);
   border-color:rgba(15,23,42,0.2);
   outline:none;
+  box-shadow:0 12px 28px rgba(15,23,42,0.12);
 }
 .club-share-button[data-tone="error"]{
   color:#b91c1c;
@@ -5206,7 +5219,7 @@ body.mathis-mode .mathis-fragment{
     margin-top:4px;
   }
   .club-sheet__share{
-    align-self:flex-start;
-    margin-top:4px;
+    align-self:flex-end;
+    margin-top:0;
   }
 }

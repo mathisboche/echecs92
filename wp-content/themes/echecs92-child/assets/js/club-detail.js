@@ -941,7 +941,6 @@
     });
 
     shareBlock.appendChild(shareButton);
-    titleRow.appendChild(shareBlock);
     header.appendChild(titleRow);
 
     const summaryText = club.publics || club.notes;
@@ -953,6 +952,7 @@
     }
 
     sheet.appendChild(header);
+    sheet.appendChild(shareBlock);
 
     const sections = [];
 
