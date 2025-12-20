@@ -2135,9 +2135,17 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   gap:24px;
   font-family: system-ui,-apple-system,BlinkMacSystemFont,"Inter","Helvetica Neue",Arial,sans-serif;
   color:#0f172a;
+  text-align:left;
+  width:100%;
 }
 .news-simple.wp-block-group{
   margin:0;
+}
+.news-simple.is-layout-constrained > :where(:not(.alignleft,.alignright,.alignfull)),
+.news-simple .is-layout-constrained > :where(:not(.alignleft,.alignright,.alignfull)){
+  max-width:none;
+  margin-left:0;
+  margin-right:0;
 }
 .news-simple__header{
   display:flex;
@@ -2164,6 +2172,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   grid-template-columns:180px 1fr;
   gap:20px;
   align-items:start;
+  justify-items:start;
   border-bottom:1px solid #e5e7eb;
   padding-bottom:20px;
 }
@@ -2185,7 +2194,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   border-radius:10px;
   overflow:hidden;
   border:1px solid #e5e7eb;
-  background:#f8fafc url("/wp-content/themes/echecs92-child/assets/cdje92.svg") center/clamp(72px,30%,104px) no-repeat;
+  background:#f8fafc url("/wp-content/themes/echecs92-child/assets/cdje-92-square.svg") center/clamp(120px,60%,180px) no-repeat;
   aspect-ratio:4/3;
 }
 .news-simple-card__image{
@@ -2209,6 +2218,8 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   flex-direction:column;
   gap:6px;
   min-width:0;
+  width:100%;
+  margin:0;
 }
 .news-simple-card__date{
   margin:0;
@@ -2316,9 +2327,17 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   gap:24px;
   font-family: system-ui,-apple-system,BlinkMacSystemFont,"Inter","Helvetica Neue",Arial,sans-serif;
   color:#0f172a;
+  text-align:left;
+  width:100%;
 }
 .article-simple.wp-block-group{
   margin:0;
+}
+.article-simple.is-layout-constrained > :where(:not(.alignleft,.alignright,.alignfull)),
+.article-simple .is-layout-constrained > :where(:not(.alignleft,.alignright,.alignfull)){
+  max-width:none;
+  margin-left:0;
+  margin-right:0;
 }
 .article-simple__article{
   display:flex;
@@ -2369,7 +2388,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   border-radius:10px;
   overflow:hidden;
   border:1px solid #e5e7eb;
-  background:#f8fafc url("/wp-content/themes/echecs92-child/assets/cdje92.svg") center/clamp(96px,18%,160px) no-repeat;
+  background:#f8fafc url("/wp-content/themes/echecs92-child/assets/cdje-92-square.svg") center/clamp(180px,30%,240px) no-repeat;
   aspect-ratio:4/3;
 }
 .article-simple__media .article-simple__media-image,
@@ -2536,6 +2555,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   }
   .news-simple-card__media{
     border-radius:8px;
+    background-size:clamp(140px,70%,200px);
   }
   .news-simple-card__date{
     letter-spacing:.08em;
@@ -2551,6 +2571,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   }
   .article-simple__media{
     border-radius:8px;
+    background-size:clamp(200px,60%,260px);
   }
   .article-simple__nav{
     padding-top:16px;
