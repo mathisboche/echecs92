@@ -2132,7 +2132,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   padding:56px 24px 96px;
   display:flex;
   flex-direction:column;
-  gap:32px;
+  gap:24px;
   font-family: system-ui,-apple-system,BlinkMacSystemFont,"Inter","Helvetica Neue",Arial,sans-serif;
   color:#0f172a;
 }
@@ -2142,44 +2142,53 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .news-simple__header{
   display:flex;
   flex-direction:column;
-  gap:8px;
   border-bottom:1px solid #e5e7eb;
-  padding-bottom:16px;
+  padding-bottom:12px;
 }
 .news-simple__header h1{
   margin:0;
-  font-size:34px;
+  font-size:32px;
   line-height:1.2;
 }
-.news-simple__header p{
-  margin:0;
-  color:#475569;
-  font-size:16px;
-}
-.news-simple__list .wp-block-post-template{
+.news-simple__list .wp-block-post-template,
+.news-simple__samples{
   list-style:none;
   margin:0;
   padding:0;
   display:flex;
   flex-direction:column;
-  gap:32px;
+  gap:20px;
 }
 .news-simple-card{
-  display:flex;
-  flex-direction:column;
-  gap:18px;
+  display:grid;
+  grid-template-columns:180px 1fr;
+  gap:20px;
+  align-items:start;
   border-bottom:1px solid #e5e7eb;
-  padding-bottom:32px;
+  padding-bottom:20px;
 }
 .news-simple-card:last-child{
   border-bottom:none;
   padding-bottom:0;
 }
+.news-simple-card__media{
+  margin:0;
+  width:100%;
+  border-radius:10px;
+  overflow:hidden;
+  border:1px solid #e5e7eb;
+  background:#f8fafc url("/wp-content/themes/echecs92-child/assets/cdje92.svg") center/56px no-repeat;
+  aspect-ratio:4/3;
+}
 .news-simple-card__image{
   margin:0;
   width:100%;
-  border-radius:12px;
-  overflow:hidden;
+  height:100%;
+}
+.news-simple-card__image a{
+  display:block;
+  width:100%;
+  height:100%;
 }
 .news-simple-card__image img{
   width:100%;
@@ -2190,18 +2199,19 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .news-simple-card__content{
   display:flex;
   flex-direction:column;
-  gap:8px;
+  gap:6px;
+  min-width:0;
 }
 .news-simple-card__date{
   margin:0;
-  font-size:13px;
-  letter-spacing:.08em;
+  font-size:12px;
+  letter-spacing:.1em;
   text-transform:uppercase;
   color:#94a3b8;
 }
 .news-simple-card__title{
   margin:0;
-  font-size:24px;
+  font-size:20px;
   line-height:1.3;
   color:#0f172a;
 }
@@ -2216,30 +2226,37 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 }
 .news-simple-card__excerpt{
   margin:0;
-  color:#475569;
-  line-height:1.6;
+  color:#64748b;
+  font-size:14px;
+  line-height:1.5;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
 }
 .news-simple__pagination{
-  margin-top:8px;
-  padding-top:24px;
+  margin-top:4px;
+  padding-top:16px;
   border-top:1px solid #e5e7eb;
   font-weight:600;
+  font-size:14px;
 }
 .news-simple__pagination a{
-  color:#1d4ed8;
+  color:#0f172a;
   text-decoration:none;
 }
 .news-simple__pagination a:hover,
 .news-simple__pagination a:focus-visible{
-  color:#0f172a;
+  text-decoration:underline;
   outline:none;
 }
 .news-simple__empty{
   margin:0;
-  padding:32px 0;
-  color:#475569;
-  text-align:center;
-  font-weight:600;
+  padding-top:8px;
+  color:#94a3b8;
+  font-size:12px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
 }
 
 /* ---------- ARTICLE TEMPLATE ---------- */
@@ -2378,7 +2395,19 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
     padding:48px 20px 80px;
   }
   .news-simple__header h1{
-    font-size:30px;
+    font-size:28px;
+  }
+  .news-simple__list .wp-block-post-template,
+  .news-simple__samples{
+    gap:16px;
+  }
+  .news-simple-card{
+    grid-template-columns:140px 1fr;
+    gap:16px;
+    padding-bottom:16px;
+  }
+  .news-simple-card__title{
+    font-size:19px;
   }
   .article-simple{
     padding:48px 20px 80px;
@@ -2435,14 +2464,21 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
     padding:36px 16px 64px;
   }
   .news-simple__header h1{
-    font-size:28px;
+    font-size:26px;
   }
   .news-simple-card{
-    gap:14px;
-    padding-bottom:24px;
+    grid-template-columns:1fr;
+    gap:12px;
+    padding-bottom:16px;
+  }
+  .news-simple-card__media{
+    border-radius:8px;
   }
   .news-simple-card__date{
-    letter-spacing:.06em;
+    letter-spacing:.08em;
+  }
+  .news-simple-card__title{
+    font-size:18px;
   }
   .article-simple{
     padding:36px 16px 64px;

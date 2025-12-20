@@ -7,9 +7,6 @@
     <!-- wp:heading {"level":1} -->
     <h1>Actualités</h1>
     <!-- /wp:heading -->
-    <!-- wp:paragraph -->
-    <p>Les dernières informations publiées par le comité des Hauts-de-Seine.</p>
-    <!-- /wp:paragraph -->
   </div>
   <!-- /wp:group -->
 
@@ -18,12 +15,16 @@
     <!-- wp:post-template -->
       <!-- wp:group {"className":"news-simple-card","layout":{"type":"constrained"}} -->
       <div class="wp-block-group news-simple-card">
-        <!-- wp:post-featured-image {"isLink":true,"aspectRatio":"4/3","className":"news-simple-card__image"} /-->
+        <!-- wp:group {"className":"news-simple-card__media","layout":{"type":"constrained"}} -->
+        <div class="wp-block-group news-simple-card__media">
+          <!-- wp:post-featured-image {"isLink":true,"className":"news-simple-card__image"} /-->
+        </div>
+        <!-- /wp:group -->
         <!-- wp:group {"className":"news-simple-card__content","layout":{"type":"constrained"}} -->
         <div class="wp-block-group news-simple-card__content">
           <!-- wp:post-date {"format":"d.m.Y","className":"news-simple-card__date"} /-->
           <!-- wp:post-title {"isLink":true,"level":2,"className":"news-simple-card__title"} /-->
-          <!-- wp:post-excerpt {"moreText":"","excerptLength":32,"className":"news-simple-card__excerpt"} /-->
+          <!-- wp:post-excerpt {"moreText":"","excerptLength":18,"className":"news-simple-card__excerpt"} /-->
         </div>
         <!-- /wp:group -->
       </div>
@@ -37,8 +38,74 @@
 
     <!-- wp:query-no-results -->
       <!-- wp:paragraph {"className":"news-simple__empty"} -->
-      <p>Aucun article n’est disponible pour le moment.</p>
+      <p>Exemples d’actualités.</p>
       <!-- /wp:paragraph -->
+      <!-- wp:group {"className":"news-simple__samples","layout":{"type":"constrained"}} -->
+      <div class="wp-block-group news-simple__samples">
+        <!-- wp:group {"className":"news-simple-card","layout":{"type":"constrained"}} -->
+        <div class="wp-block-group news-simple-card">
+          <!-- wp:group {"className":"news-simple-card__media","layout":{"type":"constrained"}} -->
+          <div class="wp-block-group news-simple-card__media"></div>
+          <!-- /wp:group -->
+          <!-- wp:group {"className":"news-simple-card__content","layout":{"type":"constrained"}} -->
+          <div class="wp-block-group news-simple-card__content">
+            <!-- wp:paragraph {"className":"news-simple-card__date"} -->
+            <p class="news-simple-card__date">12.09.2024</p>
+            <!-- /wp:paragraph -->
+            <!-- wp:heading {"level":2,"className":"news-simple-card__title"} -->
+            <h2 class="news-simple-card__title">Rentrée des clubs du 92</h2>
+            <!-- /wp:heading -->
+            <!-- wp:paragraph {"className":"news-simple-card__excerpt"} -->
+            <p class="news-simple-card__excerpt">Inscriptions ouvertes, créneaux débutants et animations dans les clubs.</p>
+            <!-- /wp:paragraph -->
+          </div>
+          <!-- /wp:group -->
+        </div>
+        <!-- /wp:group -->
+
+        <!-- wp:group {"className":"news-simple-card","layout":{"type":"constrained"}} -->
+        <div class="wp-block-group news-simple-card">
+          <!-- wp:group {"className":"news-simple-card__media","layout":{"type":"constrained"}} -->
+          <div class="wp-block-group news-simple-card__media"></div>
+          <!-- /wp:group -->
+          <!-- wp:group {"className":"news-simple-card__content","layout":{"type":"constrained"}} -->
+          <div class="wp-block-group news-simple-card__content">
+            <!-- wp:paragraph {"className":"news-simple-card__date"} -->
+            <p class="news-simple-card__date">28.09.2024</p>
+            <!-- /wp:paragraph -->
+            <!-- wp:heading {"level":2,"className":"news-simple-card__title"} -->
+            <h2 class="news-simple-card__title">Stage départemental U12</h2>
+            <!-- /wp:heading -->
+            <!-- wp:paragraph {"className":"news-simple-card__excerpt"} -->
+            <p class="news-simple-card__excerpt">Une journée de jeu et d’analyse encadrée par des animateurs FFE.</p>
+            <!-- /wp:paragraph -->
+          </div>
+          <!-- /wp:group -->
+        </div>
+        <!-- /wp:group -->
+
+        <!-- wp:group {"className":"news-simple-card","layout":{"type":"constrained"}} -->
+        <div class="wp-block-group news-simple-card">
+          <!-- wp:group {"className":"news-simple-card__media","layout":{"type":"constrained"}} -->
+          <div class="wp-block-group news-simple-card__media"></div>
+          <!-- /wp:group -->
+          <!-- wp:group {"className":"news-simple-card__content","layout":{"type":"constrained"}} -->
+          <div class="wp-block-group news-simple-card__content">
+            <!-- wp:paragraph {"className":"news-simple-card__date"} -->
+            <p class="news-simple-card__date">05.10.2024</p>
+            <!-- /wp:paragraph -->
+            <!-- wp:heading {"level":2,"className":"news-simple-card__title"} -->
+            <h2 class="news-simple-card__title">Tournois rapides du week-end</h2>
+            <!-- /wp:heading -->
+            <!-- wp:paragraph {"className":"news-simple-card__excerpt"} -->
+            <p class="news-simple-card__excerpt">Les rendez-vous des clubs, ouverts à tous les niveaux.</p>
+            <!-- /wp:paragraph -->
+          </div>
+          <!-- /wp:group -->
+        </div>
+        <!-- /wp:group -->
+      </div>
+      <!-- /wp:group -->
     <!-- /wp:query-no-results -->
   </div>
   <!-- /wp:query -->
