@@ -3115,7 +3115,7 @@
       state.distanceReferenceCommune = '';
       state.distanceReferenceType = '';
       state.filtered = sorted;
-      state.visibleCount = state.filtered.length;
+      state.visibleCount = Math.min(VISIBLE_RESULTS_DEFAULT, state.filtered.length);
       renderResults({ resetVisible: false });
       updateTotalCounter();
       finalizeSort(activeLicenseSort.status, activeLicenseSort.metaKey || state.sortMode);
@@ -3131,7 +3131,7 @@
       state.distanceReferenceCommune = '';
       state.distanceReferenceType = '';
       state.filtered = sorted;
-      state.visibleCount = state.filtered.length;
+      state.visibleCount = Math.min(VISIBLE_RESULTS_DEFAULT, state.filtered.length);
       renderResults({ resetVisible: false });
       updateTotalCounter();
       finalizeSort('Clubs classés par ordre alphabétique.', 'alpha');
