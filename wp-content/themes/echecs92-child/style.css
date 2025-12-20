@@ -152,6 +152,8 @@ body.clubs-results-open header.wp-block-template-part{
   flex-wrap:wrap;
   gap:32px;
   justify-content:flex-start;
+  --cm-mega-col-1: 1;
+  --cm-mega-col-2: 1;
 }
 .cm-mega-column{
   min-width:220px;
@@ -166,6 +168,21 @@ body.clubs-results-open header.wp-block-template-part{
 .cm-mega-column--wide{
   min-width:320px;
   flex:1.6;
+}
+.cm-mega-panel-inner > .cm-mega-column:nth-child(1){
+  flex:var(--cm-mega-col-1, 1) 1 0;
+}
+.cm-mega-panel-inner > .cm-mega-column:nth-child(2){
+  flex:var(--cm-mega-col-2, 1) 1 0;
+}
+/* Easy submenu column ratios (adjust values per submenu) */
+.cm-nav-item[data-submenu="comite"] .cm-mega-panel-inner{
+  --cm-mega-col-1: 1;
+  --cm-mega-col-2: 1.6;
+}
+.cm-nav-item[data-submenu="clubs"] .cm-mega-panel-inner{
+  --cm-mega-col-1: 1;
+  --cm-mega-col-2: 1;
 }
 .cm-mega-title{
   font-size:13px;
@@ -412,15 +429,23 @@ body.clubs-results-open header.wp-block-template-part{
     align-self:flex-end;
   }
   .cm-header-left{
-    flex:0 0 auto;
+    flex:1 1 0;
+    min-width:0;
     padding-bottom:16px;
+  }
+  .cm-header-inner::after{
+    content:'';
+    flex:1 1 0;
+    min-width:0;
+    display:block;
   }
   .cm-nav-desktop{
     display:flex;
-    justify-content:flex-end;
+    justify-content:center;
     align-items:flex-end;
-    margin-left:auto;
-    position:static;
+    margin-left:0;
+    margin-right:0;
+    position:relative;
     width:auto;
     flex-wrap:nowrap;
   }
