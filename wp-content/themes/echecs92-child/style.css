@@ -437,7 +437,8 @@ body.clubs-results-open header.wp-block-template-part{
 
 /* ---------- 404 (page introuvable) ---------- */
 body.error404{
-  background:#f3f6fb;
+  background:#f5f5f5;
+  color:#111111;
 }
 body.error404 .wp-site-blocks{
   padding:0;
@@ -450,102 +451,44 @@ body.error404 .wp-block-html{
   margin:0;
 }
 .notfound{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:65vh;
   width:100%;
   max-width:none;
   margin:0;
-  padding:0;
+  padding:64px 24px;
 }
-.notfound__hero{
-  position:relative;
-  padding:clamp(52px,7vw,110px) clamp(24px,6vw,96px);
-  border-radius:0;
-  background:linear-gradient(135deg,#014263 0%,#00aae0 55%,#84c344 105%);
-  color:#ffffff;
-  overflow:hidden;
-  box-shadow:0 18px 38px rgba(8,21,41,0.14);
-  isolation:isolate;
-  min-height:55vh;
-}
-.notfound__hero::before,
-.notfound__hero::after{
-  content:'';
-  position:absolute;
-  border-radius:50%;
-  filter:blur(8px);
-  opacity:.65;
-  pointer-events:none;
-}
-.notfound__hero::before{
-  width:420px;
-  height:420px;
-  background:radial-gradient(circle at 40% 40%,rgba(255,255,255,0.28),transparent 60%);
-  top:-160px;
-  right:-180px;
-}
-.notfound__hero::after{
-  width:280px;
-  height:280px;
-  background:radial-gradient(circle at 60% 60%,rgba(255,255,255,0.12),transparent 65%);
-  bottom:-120px;
-  left:-60px;
-}
-.notfound__big{
-  position:absolute;
-  right:clamp(12px,4vw,26px);
-  bottom:clamp(20px,5vw,48px);
-  font-size:clamp(76px,15vw,140px);
-  font-weight:800;
-  letter-spacing:-0.04em;
-  color:rgba(255,255,255,0.14);
-  line-height:0.8;
-  text-shadow:0 10px 30px rgba(0,0,0,0.08);
-  pointer-events:none;
+.notfound__content{
+  max-width:520px;
 }
 .notfound__title{
-  margin:0 0 10px;
-  font-size:clamp(32px,5vw,46px);
-  line-height:1.05;
+  margin:0 0 12px;
+  font-size:clamp(28px,4vw,36px);
+  line-height:1.2;
+  font-weight:700;
+  letter-spacing:0.02em;
 }
 .notfound__lead{
   margin:0 0 18px;
-  color:rgba(255,255,255,0.88);
-  font-size:18px;
+  font-size:16px;
   line-height:1.6;
-  max-width:640px;
-}
-.notfound__actions{
-  display:flex;
-  flex-wrap:wrap;
-  gap:12px;
-  margin:14px 0 0;
+  color:#333333;
 }
 .notfound__link{
-  display:inline-flex;
-  align-items:center;
-  gap:12px;
-  padding:12px 0;
-  color:#ffffff;
-  text-decoration:none;
-  font-weight:760;
-  letter-spacing:.12em;
-  text-transform:uppercase;
-  border-bottom:2px solid rgba(255,255,255,0.6);
-  transition:border-color .2s ease, color .2s ease;
+  color:#111111;
+  text-decoration:underline;
+  text-underline-offset:4px;
+  text-decoration-thickness:1px;
 }
 .notfound__link:hover,
 .notfound__link:focus-visible{
-  border-color:#ffffff;
-  color:#ffffff;
-  outline:none;
-}
-@media (max-width:900px){
-  .notfound{
-    padding:0;
-  }
+  text-decoration-thickness:2px;
 }
 @media (max-width:640px){
-  .notfound__title{
-    font-size:30px;
+  .notfound{
+    padding:48px 18px;
   }
 }
 
