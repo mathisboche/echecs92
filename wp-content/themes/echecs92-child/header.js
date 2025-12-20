@@ -220,6 +220,16 @@ document.addEventListener('DOMContentLoaded', () => {
     return path.startsWith('/comite/');
   };
 
+  const isActualitesSectionPath = (path) => {
+    if (!path) {
+      return false;
+    }
+    if (path === '/actualites') {
+      return true;
+    }
+    return path.startsWith('/actualite/');
+  };
+
   const markCurrentLinks = (links) => {
     if (!links.length) {
       return;
@@ -232,6 +242,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!isCurrent && matchGroup === 'clubs' && isClubsSectionPath(currentPath)) {
         isCurrent = true;
       } else if (!isCurrent && matchGroup === 'comite' && isComiteSectionPath(currentPath)) {
+        isCurrent = true;
+      } else if (!isCurrent && matchGroup === 'actualites' && isActualitesSectionPath(currentPath)) {
         isCurrent = true;
       }
       link.classList.toggle('is-current', isCurrent);
