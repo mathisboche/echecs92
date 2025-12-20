@@ -471,4 +471,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.addEventListener('load', ensureHashVisibility);
   window.addEventListener('hashchange', ensureHashVisibility);
+
+  const setupNewsCards = () => {
+    const newsRoot = document.querySelector('.news-simple');
+    if (!newsRoot) {
+      return;
+    }
+
+    const getCardLink = (card) =>
+      card.querySelector('.news-simple-card__title a, .news-simple-card__more a, a[href]');
+    const isInteractive = (target) =>
+      target.closest('a, button, input, textarea, select, summary, label');
+
+    newsRoot.querySelectorAll('.news-simple-card').forEach((card) => {
+      if (!card.hasAttribute('tabindex')) {
+        card.setAttribute('tabindex', '0');
+      }
+      card.setAttribute('role', 'link');
+    });
+
+    newsRoot.addEventListener('click', (event) => {
+      const card = event.target.closest('.news-simple-card');
+      if (!card || !newsRoot.contains(card) || isInteractive(event.target)) {
+        return;
+      }
+      const link = getCardLink(card);
+      if (link && link.href) {
+        link.click();
+      }
+    });
+
+    newsRoot.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') {
+        return;
+      }
+      const card = event.target.closest('.news-simple-card');
+      if (!card || !newsRoot.contains(card) || event.target !== card) {
+        return;
+      }
+      event.preventDefault();
+      const link = getCardLink(card);
+      if (link && link.href) {
+        link.click();
+      }
+    });
+  };
+
+  setupNewsCards();
 });
