@@ -284,6 +284,164 @@ if (! function_exists('cdje92_register_actualites_cpt')) {
 
 add_action('init', 'cdje92_register_actualites_cpt');
 
+if (! function_exists('cdje92_seed_actualites_demo_posts')) {
+    function cdje92_seed_actualites_demo_posts() {
+        if (get_option('cdje92_demo_actualites_seeded')) {
+            return;
+        }
+
+        $existing = get_posts([
+            'post_type'              => 'actualite',
+            'posts_per_page'         => 1,
+            'post_status'            => 'any',
+            'fields'                 => 'ids',
+            'no_found_rows'          => true,
+            'update_post_meta_cache' => false,
+            'update_post_term_cache' => false,
+        ]);
+
+        if (! empty($existing)) {
+            update_option('cdje92_demo_actualites_seeded', 1);
+            return;
+        }
+
+        $author_id = get_current_user_id();
+        if (! $author_id) {
+            $admins = get_users([
+                'role'   => 'administrator',
+                'number' => 1,
+                'fields' => 'ids',
+            ]);
+            if (! empty($admins)) {
+                $author_id = (int) $admins[0];
+            }
+        }
+
+        $samples = [
+            [
+                'title'   => 'Rentrée des clubs du 92',
+                'slug'    => 'rentree-des-clubs-du-92',
+                'date'    => '2024-09-12 09:00:00',
+                'excerpt' => 'Inscriptions ouvertes, créneaux débutants et animations locales.',
+                'content' => "Inscriptions ouvertes pour la saison.\n\nCréneaux débutants et animations locales.",
+            ],
+            [
+                'title'   => 'Stage départemental U12',
+                'slug'    => 'stage-departemental-u12',
+                'date'    => '2024-09-28 09:00:00',
+                'excerpt' => "Journée de jeu et d'analyse encadrée.",
+                'content' => "Journée de jeu et d'analyse encadrée.\n\nPublic U12, places limitées.",
+            ],
+            [
+                'title'   => 'Tournois rapides du week-end',
+                'slug'    => 'tournois-rapides-du-week-end',
+                'date'    => '2024-10-05 09:00:00',
+                'excerpt' => 'Rendez-vous ouverts à tous les niveaux.',
+                'content' => "Rendez-vous ouverts à tous les niveaux.\n\nRenseignements auprès des clubs.",
+            ],
+            [
+                'title'   => 'Championnat par équipes',
+                'slug'    => 'championnat-par-equipes',
+                'date'    => '2024-10-12 09:00:00',
+                'excerpt' => 'Calendrier et groupes publiés.',
+                'content' => "Calendrier et groupes publiés.\n\nConsultez les divisions.",
+            ],
+            [
+                'title'   => 'Formation animateurs',
+                'slug'    => 'formation-animateurs',
+                'date'    => '2024-10-19 09:00:00',
+                'excerpt' => "Session d'automne pour bénévoles.",
+                'content' => "Session d'automne pour bénévoles.\n\nInscriptions ouvertes.",
+            ],
+            [
+                'title'   => 'Coupe Loubatière',
+                'slug'    => 'coupe-loubatiere',
+                'date'    => '2024-11-02 09:00:00',
+                'excerpt' => 'Inscriptions avant le 25/10.',
+                'content' => "Inscriptions avant le 25/10.\n\nRèglement disponible.",
+            ],
+            [
+                'title'   => 'Open du comité',
+                'slug'    => 'open-du-comite',
+                'date'    => '2024-11-15 09:00:00',
+                'excerpt' => 'Infos pratiques et règlement mis à jour.',
+                'content' => "Infos pratiques et règlement mis à jour.\n\nTournoi ouvert à tous.",
+            ],
+            [
+                'title'   => 'Arbitrage rapide',
+                'slug'    => 'arbitrage-rapide',
+                'date'    => '2024-11-23 09:00:00',
+                'excerpt' => 'Atelier de mise à niveau pour arbitres.',
+                'content' => "Atelier de mise à niveau pour arbitres.\n\nUne demi-journée.",
+            ],
+            [
+                'title'   => 'Noël des jeunes',
+                'slug'    => 'noel-des-jeunes',
+                'date'    => '2024-12-07 09:00:00',
+                'excerpt' => 'Blitz et animations pour les U14.',
+                'content' => "Blitz et animations pour les U14.\n\nAmbiance conviviale.",
+            ],
+            [
+                'title'   => 'Assemblée générale',
+                'slug'    => 'assemblee-generale',
+                'date'    => '2024-12-14 09:00:00',
+                'excerpt' => 'Ordre du jour et documents disponibles.',
+                'content' => "Ordre du jour et documents disponibles.\n\nParticipation des clubs.",
+            ],
+            [
+                'title'   => 'Calendrier 2025',
+                'slug'    => 'calendrier-2025',
+                'date'    => '2025-01-04 09:00:00',
+                'excerpt' => 'Dates clés des compétitions.',
+                'content' => "Dates clés des compétitions.\n\nMise à jour progressive.",
+            ],
+            [
+                'title'   => "Stages d'hiver",
+                'slug'    => 'stages-d-hiver',
+                'date'    => '2025-01-18 09:00:00',
+                'excerpt' => 'Sessions ouvertes à tous.',
+                'content' => "Sessions ouvertes à tous.\n\nFormats courts.",
+            ],
+            [
+                'title'   => 'Coupe 92',
+                'slug'    => 'coupe-92',
+                'date'    => '2025-02-01 09:00:00',
+                'excerpt' => 'Tirage et lieux annoncés.',
+                'content' => "Tirage et lieux annoncés.\n\nDéplacements organisés.",
+            ],
+            [
+                'title'   => 'Initiation écoles',
+                'slug'    => 'initiation-ecoles',
+                'date'    => '2025-02-15 09:00:00',
+                'excerpt' => 'Nouvelles interventions prévues.',
+                'content' => "Nouvelles interventions prévues.\n\nContactez le comité.",
+            ],
+        ];
+
+        foreach ($samples as $sample) {
+            $post_data = [
+                'post_type'      => 'actualite',
+                'post_status'    => 'publish',
+                'post_title'     => $sample['title'],
+                'post_name'      => $sample['slug'],
+                'post_excerpt'   => $sample['excerpt'],
+                'post_content'   => $sample['content'],
+                'post_date'      => $sample['date'],
+                'post_date_gmt'  => get_gmt_from_date($sample['date']),
+                'comment_status' => 'closed',
+            ];
+            if ($author_id) {
+                $post_data['post_author'] = $author_id;
+            }
+            wp_insert_post($post_data);
+        }
+
+        update_option('cdje92_demo_actualites_seeded', 1);
+    }
+}
+
+add_action('init', 'cdje92_seed_actualites_demo_posts', 11);
+
 add_action('after_switch_theme', function () {
     cdje92_register_actualites_cpt();
     flush_rewrite_rules();
