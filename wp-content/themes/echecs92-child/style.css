@@ -89,6 +89,7 @@ body.clubs-results-open header.wp-block-template-part{
   padding:5px 18px;
   transition:color .2s ease;
   border-radius:999px;
+  white-space:nowrap;
 }
 .cm-nav-link::after{
   content:'';
@@ -416,17 +417,27 @@ body.clubs-results-open header.wp-block-template-part{
   }
   .cm-nav-desktop{
     display:flex;
-    justify-content:center;
+    justify-content:flex-end;
     align-items:flex-end;
-    margin-left:0;
-    position:absolute;
-    left:50%;
-    bottom:var(--cm-header-inner-padding-bottom,2px);
-    transform:translateX(-50%);
+    margin-left:auto;
+    position:static;
     width:auto;
+    flex-wrap:nowrap;
   }
   .cm-burger{display:none;}
   #cm-mobile-menu{display:none !important;}
+}
+
+@media (min-width:900px) and (max-width:1100px){
+  .cm-header-inner{
+    padding-left:24px;
+    padding-right:24px;
+  }
+  .cm-nav-link{
+    font-size:14px;
+    letter-spacing:.02em;
+    padding:4px 12px;
+  }
 }
 
 @media (max-width:899px){
