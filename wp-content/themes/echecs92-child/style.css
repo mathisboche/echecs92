@@ -2133,6 +2133,8 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   display:flex;
   flex-direction:column;
   gap:24px;
+  --news-card-media-width:180px;
+  --news-card-height:140px;
   font-family: system-ui,-apple-system,BlinkMacSystemFont,"Inter","Helvetica Neue",Arial,sans-serif;
   color:#0f172a;
   text-align:left;
@@ -2175,12 +2177,20 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   flex-direction:column;
   gap:20px;
 }
+.news-simple__list .wp-block-post-template > li{
+  margin:0;
+  padding:0;
+  width:100%;
+}
 .news-simple-card{
   display:grid;
-  grid-template-columns:180px 1fr;
+  grid-template-columns:var(--news-card-media-width) minmax(0, 1fr);
   gap:20px;
-  align-items:stretch;
+  align-items:flex-start;
   justify-items:start;
+  width:100%;
+  max-width:none;
+  margin:0;
   border-bottom:1px solid #e5e7eb;
   padding-bottom:20px;
   text-align:left;
@@ -2201,6 +2211,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .news-simple-card__media{
   margin:0;
   width:100%;
+  height:var(--news-card-height);
   border-radius:10px;
   overflow:hidden;
   border:1px solid #e5e7eb;
@@ -2231,7 +2242,11 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   width:100%;
   margin:0;
   text-align:left;
-  height:100%;
+  height:var(--news-card-height);
+  min-height:var(--news-card-height);
+  max-height:var(--news-card-height);
+  overflow:hidden;
+  align-items:flex-start;
   justify-content:flex-start;
 }
 .news-simple-card__date{
@@ -2618,6 +2633,8 @@ p.news-simple-card__excerpt,
   }
   .news-simple{
     padding:48px 20px 80px;
+    --news-card-media-width:140px;
+    --news-card-height:130px;
   }
   .news-simple__header h1{
     font-size:28px;
@@ -2627,7 +2644,7 @@ p.news-simple-card__excerpt,
     gap:16px;
   }
   .news-simple-card{
-    grid-template-columns:140px 1fr;
+    grid-template-columns:var(--news-card-media-width) minmax(0, 1fr);
     gap:16px;
     padding-bottom:16px;
   }
@@ -2698,7 +2715,13 @@ p.news-simple-card__excerpt,
   }
   .news-simple-card__media{
     border-radius:8px;
+    height:auto;
     background-size:clamp(140px,70%,200px);
+  }
+  .news-simple-card__content{
+    height:auto;
+    min-height:0;
+    max-height:none;
   }
   .news-simple-card__date{
     letter-spacing:.08em;
