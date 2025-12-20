@@ -178,7 +178,7 @@ body.clubs-results-open header.wp-block-template-part{
 /* Easy submenu column ratios (adjust values per submenu) */
 .cm-nav-item[data-submenu="comite"] .cm-mega-panel-inner{
   --cm-mega-col-1: 1;
-  --cm-mega-col-2: 1;
+  --cm-mega-col-2: 1.2;
 }
 .cm-nav-item[data-submenu="clubs"] .cm-mega-panel-inner{
   --cm-mega-col-1: 1;
