@@ -2141,11 +2141,19 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .news-simple.wp-block-group{
   margin:0;
 }
+.news-simple.wp-block-group.is-layout-constrained{
+  margin-left:0;
+  margin-right:0;
+}
 .news-simple.is-layout-constrained > :where(:not(.alignleft,.alignright,.alignfull)),
 .news-simple .is-layout-constrained > :where(:not(.alignleft,.alignright,.alignfull)){
   max-width:none;
   margin-left:0;
   margin-right:0;
+}
+.news-simple .has-text-align-center,
+.news-simple .has-text-align-right{
+  text-align:left !important;
 }
 .news-simple__header{
   display:flex;
@@ -2318,13 +2326,12 @@ p.news-simple-card__excerpt,
   text-decoration:underline;
   outline:none;
 }
-.news-simple__pagination .page-numbers{
-  display:inline-flex;
+.news-simple__pagination .wp-block-query-pagination-numbers{
+  display:flex;
   align-items:center;
   gap:6px;
 }
-.news-simple__pagination .page-numbers a,
-.news-simple__pagination .page-numbers span{
+.news-simple__pagination .page-numbers{
   display:inline-flex;
   align-items:center;
   justify-content:center;
@@ -2337,14 +2344,17 @@ p.news-simple-card__excerpt,
   color:#0f172a;
   text-decoration:none;
 }
-.news-simple__pagination .page-numbers a:hover,
-.news-simple__pagination .page-numbers a:focus-visible{
+.news-simple__pagination .page-numbers:hover,
+.news-simple__pagination .page-numbers:focus-visible{
   border-color:#0f172a;
   text-decoration:none;
   outline:none;
 }
-.news-simple__pagination .page-numbers .current{
+.news-simple__pagination .page-numbers.current,
+.news-simple__pagination .page-numbers[aria-current="page"]{
   border-color:#0f172a;
+  background:#0f172a;
+  color:#ffffff;
   font-weight:700;
 }
 .news-simple__empty{
@@ -2408,11 +2418,19 @@ p.news-simple-card__excerpt,
 .article-simple.wp-block-group{
   margin:0;
 }
+.article-simple.wp-block-group.is-layout-constrained{
+  margin-left:0;
+  margin-right:0;
+}
 .article-simple.is-layout-constrained > :where(:not(.alignleft,.alignright,.alignfull)),
 .article-simple .is-layout-constrained > :where(:not(.alignleft,.alignright,.alignfull)){
   max-width:none;
   margin-left:0;
   margin-right:0;
+}
+.article-simple .has-text-align-center,
+.article-simple .has-text-align-right{
+  text-align:left !important;
 }
 .article-simple__article{
   display:flex;
@@ -2489,30 +2507,70 @@ p.news-simple-card__excerpt,
   flex-direction:column;
   gap:0;
   font-size:16px;
-  line-height:1.65;
+  line-height:1.6;
   color:#334155;
+  text-align:left;
 }
-.article-simple__content > *{
+.article-simple__content .wp-block-post-content{
+  display:flex;
+  flex-direction:column;
+  gap:0;
+  width:100%;
+  max-width:none;
+  margin-left:0;
+  margin-right:0;
+  text-align:left;
+}
+.article-simple__content .wp-block-post-content > *{
   margin:0;
+  max-width:none;
 }
-.article-simple__content > * + *{
-  margin-top:12px;
+.article-simple__content .wp-block-post-content > * + *{
+  margin-top:10px;
 }
-.article-simple__content ul,
-.article-simple__content ol{
-  padding-left:18px;
+.article-simple__content .wp-block-post-content p{
+  margin:0;
+  line-height:1.6;
 }
-.article-simple__content h2,
-.article-simple__content h3,
-.article-simple__content h4{
+.article-simple__content .wp-block-post-content h2,
+.article-simple__content .wp-block-post-content h3,
+.article-simple__content .wp-block-post-content h4{
   margin:0;
   color:#0f172a;
+  line-height:1.25;
 }
-.article-simple__content figure{
-  margin:1.6em 0;
+.article-simple__content .wp-block-post-content h2{
+  font-size:22px;
 }
-.article-simple__content figure img{
-  border-radius:12px;
+.article-simple__content .wp-block-post-content h3{
+  font-size:20px;
+}
+.article-simple__content .wp-block-post-content h4{
+  font-size:18px;
+}
+.article-simple__content .wp-block-post-content ul,
+.article-simple__content .wp-block-post-content ol{
+  margin:0;
+  padding-left:18px;
+}
+.article-simple__content .wp-block-post-content li + li{
+  margin-top:6px;
+}
+.article-simple__content .wp-block-post-content figure{
+  margin:0;
+}
+.article-simple__content .wp-block-post-content figure + figure{
+  margin-top:10px;
+}
+.article-simple__content .wp-block-post-content figure img{
+  border-radius:10px;
+}
+.article-simple__content .wp-block-post-content .alignwide,
+.article-simple__content .wp-block-post-content .alignfull{
+  margin-left:0;
+  margin-right:0;
+  width:100%;
+  max-width:100%;
 }
 .article-simple__nav{
   margin-top:8px;
