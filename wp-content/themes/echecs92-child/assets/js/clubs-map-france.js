@@ -519,6 +519,17 @@
     return '';
   };
 
+  const stripCedexSuffix = (value) => {
+    if (!value) {
+      return '';
+    }
+    return value
+      .toString()
+      .replace(/\bcedex\b(?:\s*[-/]?\s*\d{1,3})?/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
   const extractAddressParts = (value) => {
     const result = {
       full: value ? String(value).trim() : '',
@@ -530,12 +541,14 @@
     }
 
     const cleanCity = (raw) =>
-      (raw || '')
-        .toString()
-        .replace(/\b\d{4,5}\b/g, ' ')
-        .replace(/^[,;\s-–—]+/, '')
-        .replace(/\s+/g, ' ')
-        .trim();
+      stripCedexSuffix(
+        (raw || '')
+          .toString()
+          .replace(/\b\d{4,5}\b/g, ' ')
+          .replace(/^[,;\s-–—]+/, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+      );
 
     const postal = parsePostalCodeFromString(result.full);
     if (postal) {
@@ -798,14 +811,14 @@
     const idx = Number.isFinite(match.index) ? match.index : raw.indexOf(match[0]);
     const after = raw.slice(idx + match[0].length).trim();
     if (after) {
-      return after.replace(/^[,;\s-–—]+/, '').trim();
+      return stripCedexSuffix(after.replace(/^[,;\s-–—]+/, '').trim());
     }
     const before = raw.slice(0, idx).trim();
     if (!before) {
       return '';
     }
     const segments = before.split(/[,;]+/).map((part) => part.trim()).filter(Boolean);
-    return (segments.length ? segments[segments.length - 1] : before).trim();
+    return stripCedexSuffix((segments.length ? segments[segments.length - 1] : before).trim());
   };
 
   const cleanCommuneCandidate = (value, postalCode) => {
@@ -824,6 +837,7 @@
       cleaned = cleaned.replace(pattern, ' ').trim();
     }
     cleaned = cleaned.replace(/^\d+\s+/, '').replace(/\s+/g, ' ').trim();
+    cleaned = stripCedexSuffix(cleaned);
     const looksStreety = STREET_KEYWORDS.test(cleaned) && (/\d/.test(cleaned) || cleaned.split(/\s+/).length >= 3);
     if (looksStreety) {
       return '';

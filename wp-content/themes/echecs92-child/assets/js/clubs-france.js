@@ -3641,13 +3641,26 @@
     return '';
   };
 
-  const cleanCommuneFragment = (raw) => {
-    const base = (raw || '')
+  const stripCedexSuffix = (value) => {
+    if (!value) {
+      return '';
+    }
+    return value
       .toString()
-      .replace(/\b\d{4,5}\b/g, ' ')
-      .replace(/^[,;\s-–—]+/, ' ')
+      .replace(/\bcedex\b(?:\s*[-/]?\s*\d{1,3})?/gi, ' ')
       .replace(/\s+/g, ' ')
       .trim();
+  };
+
+  const cleanCommuneFragment = (raw) => {
+    const base = stripCedexSuffix(
+      (raw || '')
+        .toString()
+        .replace(/\b\d{4,5}\b/g, ' ')
+        .replace(/^[,;\s-–—]+/, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    );
     if (!base) {
       return '';
     }
@@ -3656,7 +3669,7 @@
       .map((part) => part.trim())
       .filter(Boolean);
     const head = segments.length ? segments[0] : base;
-    return head.replace(/^\d+\s+/, '').trim();
+    return stripCedexSuffix(head).replace(/^\d+\s+/, '').trim();
   };
 
   const extractAddressParts = (value) => {
@@ -3719,12 +3732,14 @@
     }
 
     const cleanCity = (raw) =>
-      (raw || '')
-        .toString()
-        .replace(/\b\d{4,5}\b/g, ' ')
-        .replace(/^[,;\s-–—]+/, '')
-        .replace(/\s+/g, ' ')
-        .trim();
+      stripCedexSuffix(
+        (raw || '')
+          .toString()
+          .replace(/\b\d{4,5}\b/g, ' ')
+          .replace(/^[,;\s-–—]+/, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+      );
 
     const postal = parsePostalCodeFromString(result.full);
     if (postal) {
@@ -3923,6 +3938,7 @@
       cleaned = cleaned.replace(postalPattern, ' ');
     }
     cleaned = cleaned.replace(/\b\d{4,5}\b/g, ' ');
+    cleaned = stripCedexSuffix(cleaned);
     cleaned = cleaned.replace(/\s+/g, ' ').trim();
     return normaliseCommuneForCompare(cleaned);
   };
@@ -4436,6 +4452,7 @@
       cleaned = cleaned.replace(pattern, ' ').trim();
     }
     cleaned = cleaned.replace(/^\d+\s+/, '').replace(/\s+/g, ' ').trim();
+    cleaned = stripCedexSuffix(cleaned);
     const deduped = dedupeCommuneLabel(cleaned);
     cleaned = deduped === undefined ? cleaned : deduped;
     if (!cleaned) {
@@ -4464,6 +4481,7 @@
       cleaned = cleaned.replace(pattern, ' ').trim();
     }
     cleaned = cleaned.replace(/^\d+\s+/, '').replace(/\s+/g, ' ').trim();
+    cleaned = stripCedexSuffix(cleaned);
     const looksStreety = STREET_KEYWORDS.test(cleaned) && (/\d/.test(cleaned) || cleaned.split(/\s+/).length >= 3);
     if (looksStreety) {
       return '';
