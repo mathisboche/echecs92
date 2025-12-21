@@ -6,6 +6,7 @@
   const DATA_URL = '/wp-content/themes/echecs92-child/assets/data/clubs.json';
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs:last-listing';
   const VISIBLE_RESULTS_DEFAULT = 12;
+  const VISIBLE_RESULTS_STEP = VISIBLE_RESULTS_DEFAULT;
   const POSTAL_COORDINATES = {
     '92000': { label: 'Nanterre', lat: 48.8927825, lng: 2.2073652 },
     '92100': { label: 'Boulogne-Billancourt', lat: 48.837494, lng: 2.2378546 },
@@ -3111,8 +3112,9 @@ const handleLocationSubmit = async (event) => {
     if (moreButton) {
       if (visible < state.filtered.length) {
         const remaining = state.filtered.length - visible;
+        const batch = Math.min(VISIBLE_RESULTS_STEP, remaining);
         moreButton.hidden = false;
-        moreButton.textContent = `Afficher ${remaining} autre${remaining > 1 ? 's' : ''} club${remaining > 1 ? 's' : ''}`;
+        moreButton.textContent = `Afficher ${batch} autre${batch > 1 ? 's' : ''} club${batch > 1 ? 's' : ''}`;
       } else {
         moreButton.hidden = true;
       }
@@ -3123,13 +3125,27 @@ const handleLocationSubmit = async (event) => {
     if (!state.filtered.length) {
       return;
     }
-    state.visibleCount = state.filtered.length;
+    const remaining = state.filtered.length - state.visibleCount;
+    if (remaining <= 0) {
+      return;
+    }
+    const increment = Math.min(VISIBLE_RESULTS_STEP, remaining);
+    state.visibleCount += increment;
     renderResults();
     updateTotalCounter();
-    if (state.query) {
-      setSearchStatus('Tous les clubs correspondants sont affichés.', 'info');
+    if (state.visibleCount >= state.filtered.length) {
+      if (state.query) {
+        setSearchStatus('Tous les clubs correspondants sont affichés.', 'info');
+      } else {
+        setSearchStatus('Tous les clubs sont affichés.', 'info');
+      }
     } else {
-      setSearchStatus('Tous les clubs sont affichés.', 'info');
+      setSearchStatus(
+        `${increment} club${increment > 1 ? 's' : ''} supplémentaire${increment > 1 ? 's' : ''} affiché${
+          increment > 1 ? 's' : ''
+        }.`,
+        'info'
+      );
     }
   };
 

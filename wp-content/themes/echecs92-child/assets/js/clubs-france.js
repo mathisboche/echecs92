@@ -11,6 +11,7 @@
   const CLUBS_UI_STATE_KEY = 'echecs92:clubs-fr:ui';
   const REOPEN_RESULTS_FLAG_KEY = 'echecs92:clubs-fr:reopen-results';
   const VISIBLE_RESULTS_DEFAULT = 12;
+  const VISIBLE_RESULTS_STEP = VISIBLE_RESULTS_DEFAULT;
   const MIN_RESULTS_SCROLL_DELAY_MS = 1100;
   const SORT_SCROLL_DELAY_MS = Math.max(180, Math.round(MIN_RESULTS_SCROLL_DELAY_MS / 4));
   const COUNTER_LOADING_TEXT = 'Recherche en cours…';
@@ -6655,8 +6656,9 @@
     if (moreButton) {
       if (visible < state.filtered.length) {
         const remaining = state.filtered.length - visible;
+        const batch = Math.min(VISIBLE_RESULTS_STEP, remaining);
         moreButton.hidden = false;
-        moreButton.textContent = `Afficher ${remaining} autre${remaining > 1 ? 's' : ''} club${remaining > 1 ? 's' : ''}`;
+        moreButton.textContent = `Afficher ${batch} autre${batch > 1 ? 's' : ''} club${batch > 1 ? 's' : ''}`;
       } else {
         moreButton.hidden = true;
       }
@@ -6668,13 +6670,27 @@
     if (!state.filtered.length) {
       return;
     }
-    state.visibleCount = state.filtered.length;
+    const remaining = state.filtered.length - state.visibleCount;
+    if (remaining <= 0) {
+      return;
+    }
+    const increment = Math.min(VISIBLE_RESULTS_STEP, remaining);
+    state.visibleCount += increment;
     renderResults();
     updateTotalCounter();
-    if (state.query) {
-      setSearchStatus('Tous les clubs correspondants sont affichés.', 'info');
+    if (state.visibleCount >= state.filtered.length) {
+      if (state.query) {
+        setSearchStatus('Tous les clubs correspondants sont affichés.', 'info');
+      } else {
+        setSearchStatus('Tous les clubs sont affichés.', 'info');
+      }
     } else {
-      setSearchStatus('Tous les clubs sont affichés.', 'info');
+      setSearchStatus(
+        `${increment} club${increment > 1 ? 's' : ''} supplémentaire${increment > 1 ? 's' : ''} affiché${
+          increment > 1 ? 's' : ''
+        }.`,
+        'info'
+      );
     }
   };
 
