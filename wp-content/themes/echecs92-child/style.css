@@ -2215,7 +2215,8 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .news-simple-card:focus-within .news-simple-card__title a{
   text-decoration:underline;
 }
-.news-simple-card:last-child{
+.news-simple__list .wp-block-post-template > li:last-child .news-simple-card,
+.news-simple__samples .news-simple-card:last-child{
   border-bottom:none;
   padding-bottom:0;
 }
