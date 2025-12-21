@@ -4912,9 +4912,10 @@ body.mathis-mode .mathis-fragment{
   width:100%;
   box-sizing:border-box;
 }
-.club-row__card:hover{
+.clubs-page .club-row__card:hover{
   border-color:#ccd8f0;
   background:#ffffff;
+  text-decoration:none;
 }
 .club-row__card:focus-visible{
   border-color:#1d4ed8;
@@ -5276,7 +5277,7 @@ body.mathis-mode .mathis-fragment{
   top:var(--clubs-floating-top, 12px);
   z-index:1200;
 }
-.club-detail__back{
+.clubs-page .club-detail__back{
   display:inline-flex;
   align-items:center;
   gap:8px;
@@ -5294,18 +5295,20 @@ body.mathis-mode .mathis-fragment{
   box-shadow:none;
   transition:background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
 }
-.club-detail__back:hover{
+.clubs-page .club-detail__back:hover{
   color:#0f172a;
   background:#ffffff;
   border-color:rgba(15,23,42,0.16);
   box-shadow:none;
+  text-decoration:none;
   outline:none;
 }
-.club-detail__back:focus-visible{
+.clubs-page .club-detail__back:focus-visible{
   color:#0b2e4c;
   background:#f8fafc;
   border-color:rgba(15,23,42,0.24);
   box-shadow:none;
+  text-decoration:none;
   outline:none;
 }
 .clubs-results-shell__close{
