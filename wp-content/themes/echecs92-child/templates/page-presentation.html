@@ -4,7 +4,7 @@
 <style>
   .committee .reading-progress{
     position:sticky;
-    top:0;
+    top:calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-height, 96px));
     left:0;
     width:100%;
     height:8px;
