@@ -13,7 +13,6 @@ header.wp-block-template-part {
   z-index: 2000;
   background:#ffffff;
   transition: transform .3s ease, box-shadow .3s ease, background-color .3s ease;
-  will-change: transform;
 }
 header.wp-block-template-part.is-hidden{
   transform: translateY(-100%);
