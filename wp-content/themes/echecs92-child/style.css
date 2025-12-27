@@ -556,6 +556,7 @@ body.cm-menu-open{
 
 :root{
   --cm-header-height:96px;
+  --cm-header-offset:var(--cm-header-height, 96px);
   --home-accent:#0b2e4c;
   --home-accent-soft:#e5edf6;
   --home-dark:#081529;
@@ -3505,7 +3506,7 @@ p.news-simple-card__excerpt,
   max-width:960px;
   margin:0 auto;
   padding:40px 16px 72px;
-  --clubs-floating-top: calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-height, 96px) + 12px);
+  --clubs-floating-top: calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-offset, 0px) + 12px);
   box-sizing:border-box;
 }
 .clubs-page h1{
@@ -4546,8 +4547,8 @@ p.news-simple-card__excerpt,
   flex-direction:column;
   gap:12px;
   --clubs-results-padding-offset: 16px;
-  --clubs-results-padding-top: calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--header-height, var(--cm-header-height, 64px)) + var(--clubs-results-padding-offset));
-  --clubs-results-sticky-top: calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--header-height, var(--cm-header-height, 64px)) + 12px);
+  --clubs-results-padding-top: calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-offset, 0px) + var(--clubs-results-padding-offset));
+  --clubs-results-sticky-top: calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-offset, 0px) + 12px);
   padding:var(--clubs-results-padding-top) 16px 24px;
   z-index:40;
   transform:translateX(100%);
@@ -4562,7 +4563,7 @@ p.news-simple-card__excerpt,
     position:static;
     inset:auto;
     --clubs-results-padding-offset: 0px;
-    --clubs-results-sticky-top: calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-height, 96px) + 12px);
+    --clubs-results-sticky-top: calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-offset, 0px) + 12px);
     padding:0;
     background:transparent;
     transform:none;
@@ -4584,6 +4585,7 @@ p.news-simple-card__excerpt,
   margin:0;
   position:sticky;
   top:var(--clubs-results-sticky-top);
+  transition:top .3s ease;
   background:transparent;
   z-index:3;
   align-self:flex-start;
@@ -4603,7 +4605,7 @@ p.news-simple-card__excerpt,
 }
 @media (max-width:820px){
   .clubs-results-shell{
-    top: calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-height, 64px));
+    top: calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-offset, 0px));
     --clubs-results-padding-offset: 6px;
     --clubs-results-sticky-top: var(--clubs-results-padding-offset);
     padding-top: var(--clubs-results-padding-offset);
@@ -5341,6 +5343,7 @@ body.mathis-mode .mathis-fragment{
   margin:0 0 30px;
   position:sticky;
   top:var(--clubs-floating-top, 12px);
+  transition:top .3s ease;
   z-index:1200;
 }
 .clubs-page .club-detail__back{

@@ -477,17 +477,29 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    const root = document.documentElement;
     let lastScrollY = window.scrollY || 0;
     let headerHeight = headerWrapper.offsetHeight;
     const scrollTolerance = 6;
     let ticking = false;
+    let isHidden = false;
+
+    const applyHeaderOffset = (hidden) => {
+      const offset = hidden ? 0 : headerHeight;
+      root.style.setProperty('--cm-header-offset', `${offset}px`);
+    };
 
     const updateHeaderHeight = () => {
       headerHeight = headerWrapper.offsetHeight;
+      if (!isHidden) {
+        applyHeaderOffset(false);
+      }
     };
 
     const setHidden = (hidden) => {
       headerWrapper.classList.toggle('is-hidden', hidden);
+      isHidden = hidden;
+      applyHeaderOffset(hidden);
     };
 
     const updateHeaderVisibility = () => {
