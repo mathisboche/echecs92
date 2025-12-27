@@ -1309,7 +1309,10 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 }
 .club-create__intro h1{
   margin:0;
-  font-size:clamp(32px,4.4vw,46px);
+  font-size:clamp(40px,6vw,64px);
+  line-height:1.05;
+  letter-spacing:-0.02em;
+  font-weight:700;
 }
 .club-create__sections{
   display:flex;
