@@ -1009,12 +1009,48 @@
     return element.getClientRects().length > 0;
   };
 
+  const getAdminBarHeight = () => {
+    if (typeof document === 'undefined') {
+      return 0;
+    }
+    const adminBar = document.getElementById('wpadminbar');
+    return adminBar ? adminBar.offsetHeight : 0;
+  };
+
+  const getHeaderHeight = () => {
+    if (typeof document === 'undefined') {
+      return 0;
+    }
+    const header = document.querySelector('header.wp-block-template-part');
+    return header ? header.offsetHeight : 0;
+  };
+
+  const scrollToTarget = (target, options = {}) => {
+    if (!target || typeof window === 'undefined' || typeof target.getBoundingClientRect !== 'function') {
+      return false;
+    }
+    const behavior = options.behavior || 'smooth';
+    const offset = Number.isFinite(options.offset) ? options.offset : 0;
+    const targetTop = target.getBoundingClientRect().top + window.scrollY;
+    const top = Math.max(targetTop - offset, 0);
+    try {
+      window.scrollTo({ top, behavior });
+    } catch {
+      window.scrollTo(0, top);
+    }
+    return true;
+  };
+
   const scrollToSearchBlock = (options = {}) => {
     const target = searchBlock || searchInput || resultsShell || resultsEl;
+    const behavior = options.behavior || 'smooth';
+    const offset = getAdminBarHeight() + getHeaderHeight();
+    if (scrollToTarget(target, { behavior, offset })) {
+      return;
+    }
     if (!target || typeof target.scrollIntoView !== 'function') {
       return;
     }
-    const behavior = options.behavior || 'smooth';
     try {
       target.scrollIntoView({ behavior, block: 'start', inline: 'nearest' });
     } catch {
@@ -1657,8 +1693,13 @@
     const target = isElementVisible(resultsCloseButton) ? resultsCloseButton : totalCounter || resultsEl;
     const behavior = options.behavior === 'instant' ? 'auto' : options.behavior || 'smooth';
     const marginOverride = Number.isFinite(options.margin) ? options.margin : null;
+    const scrollMargin = Number.isFinite(marginOverride) ? marginOverride : resultsScrollMargin;
     if (marginOverride != null && target) {
       target.style.setProperty('--clubs-results-scroll-margin', `${marginOverride}px`);
+    }
+    const offset = getAdminBarHeight() + (Number.isFinite(scrollMargin) ? scrollMargin : 0);
+    if (scrollToTarget(target, { behavior, offset })) {
+      return;
     }
     try {
       target.scrollIntoView({ behavior, block: 'start', inline: 'nearest' });
