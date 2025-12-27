@@ -472,6 +472,67 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('load', ensureHashVisibility);
   window.addEventListener('hashchange', ensureHashVisibility);
 
+  const setupHeaderReveal = () => {
+    if (!headerWrapper) {
+      return;
+    }
+
+    let lastScrollY = window.scrollY || 0;
+    let headerHeight = headerWrapper.offsetHeight;
+    const scrollTolerance = 6;
+    let ticking = false;
+
+    const updateHeaderHeight = () => {
+      headerHeight = headerWrapper.offsetHeight;
+    };
+
+    const setHidden = (hidden) => {
+      headerWrapper.classList.toggle('is-hidden', hidden);
+    };
+
+    const updateHeaderVisibility = () => {
+      const scrollY = window.scrollY || 0;
+      const delta = scrollY - lastScrollY;
+
+      if (document.documentElement.classList.contains('cm-menu-open')) {
+        setHidden(false);
+        lastScrollY = scrollY;
+        return;
+      }
+
+      if (scrollY <= headerHeight) {
+        setHidden(false);
+        lastScrollY = scrollY;
+        return;
+      }
+
+      if (delta > scrollTolerance) {
+        setHidden(true);
+      } else if (delta < -scrollTolerance) {
+        setHidden(false);
+      }
+
+      lastScrollY = scrollY;
+    };
+
+    const onScroll = () => {
+      if (ticking) {
+        return;
+      }
+      ticking = true;
+      window.requestAnimationFrame(() => {
+        updateHeaderVisibility();
+        ticking = false;
+      });
+    };
+
+    setHidden(false);
+    window.addEventListener('resize', updateHeaderHeight);
+    window.addEventListener('scroll', onScroll, { passive: true });
+  };
+
+  setupHeaderReveal();
+
   const setupNewsCards = () => {
     const newsRoot = document.querySelector('.news-simple');
     if (!newsRoot) {

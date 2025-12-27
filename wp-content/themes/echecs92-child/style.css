@@ -6,23 +6,29 @@
 
 /* Wrapper for WordPress template part */
 header.wp-block-template-part {
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 2000;
   background:#ffffff;
-  transition: box-shadow .3s ease, background-color .3s ease;
+  transition: transform .3s ease, box-shadow .3s ease, background-color .3s ease;
+  will-change: transform;
+}
+header.wp-block-template-part.is-hidden{
+  transform: translateY(-100%);
 }
 header.wp-block-template-part.is-elevated {
   background:#ffffff;
 }
 body.clubs-results-open header.wp-block-template-part{
   position:fixed;
-  top:0;
-  left:0;
-  right:0;
-  z-index:2000;
+}
+body.admin-bar header.wp-block-template-part{
+  top: var(--wp-admin--admin-bar--height, 32px);
 }
 .wp-site-blocks{
-  padding-top:0;
+  padding-top:var(--cm-header-height,96px);
 }
 
 /* ---------- HEADER ---------- */
@@ -478,6 +484,7 @@ body.error404{
 }
 body.error404 .wp-site-blocks{
   padding:0;
+  padding-top:var(--cm-header-height,96px);
 }
 body.error404 .wp-site-blocks > *{
   margin:0;
