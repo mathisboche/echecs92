@@ -5631,3 +5631,10 @@ body.mathis-mode .mathis-fragment{
     margin-top:0;
   }
 }
+
+img{
+  pointer-events:auto !important;
+  user-select:auto !important;
+  -webkit-user-select:auto;
+  -webkit-user-drag:auto;
+}
