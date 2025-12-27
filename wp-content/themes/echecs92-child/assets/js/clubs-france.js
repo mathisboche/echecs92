@@ -980,6 +980,7 @@
   const resultsCloseButton = document.getElementById('clubs-results-close');
   const searchBlock = document.querySelector('.clubs-search-block');
   const DEFAULT_RESULTS_SCROLL_MARGIN = 24;
+  const SEARCH_SCROLL_OFFSET = 12;
   const parseScrollMargin = (value) => {
     if (value == null || value === '') {
       return null;
@@ -1044,7 +1045,7 @@
   const scrollToSearchBlock = (options = {}) => {
     const target = searchBlock || searchInput || resultsShell || resultsEl;
     const behavior = options.behavior || 'smooth';
-    const offset = getAdminBarHeight() + getHeaderHeight();
+    const offset = getAdminBarHeight() + getHeaderHeight() + SEARCH_SCROLL_OFFSET;
     if (scrollToTarget(target, { behavior, offset })) {
       return;
     }
