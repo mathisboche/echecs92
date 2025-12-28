@@ -2349,21 +2349,14 @@ p.news-simple-card__excerpt,
 .news-simple-card__excerpt .wp-block-post-excerpt__excerpt{
   margin:0;
 }
-.news-simple-card__excerpt.wp-block-post-excerpt{
-  display:flex;
-  flex-direction:column;
-  min-height:0;
-}
-.news-simple-card__excerpt.wp-block-post-excerpt .wp-block-post-excerpt__more-link{
-  align-self:flex-start;
-}
 .news-simple-card__more{
   margin:4px 0 0;
   display:flex;
   align-items:flex-start;
 }
 .news-simple-card__excerpt .wp-block-post-excerpt__more-link,
-.news-simple-card__more a{
+.news-simple-card__more a,
+a.news-simple-card__more{
   display:inline-flex;
   align-items:center;
   justify-content:center;
@@ -2381,13 +2374,16 @@ p.news-simple-card__excerpt,
   text-decoration:none;
   transition:background-color .2s ease, border-color .2s ease, color .2s ease;
 }
-.news-simple-card__more a{
+.news-simple-card__more a,
+a.news-simple-card__more{
   margin:0;
 }
 .news-simple-card__excerpt .wp-block-post-excerpt__more-link:hover,
 .news-simple-card__excerpt .wp-block-post-excerpt__more-link:focus-visible,
 .news-simple-card__more a:hover,
-.news-simple-card__more a:focus-visible{
+.news-simple-card__more a:focus-visible,
+a.news-simple-card__more:hover,
+a.news-simple-card__more:focus-visible{
   text-decoration:none;
   outline:none;
   background:#f1f5f9;
@@ -5647,10 +5643,18 @@ img{
   display:flex !important;
   flex-direction:column !important;
   gap:1px !important;
-  height:var(--news-card-height) !important;
-  min-height:var(--news-card-height) !important;
-  max-height:var(--news-card-height) !important;
+  height:var(--news-card-height, 140px) !important;
+  min-height:var(--news-card-height, 140px) !important;
+  max-height:var(--news-card-height, 140px) !important;
   overflow:hidden !important;
+}
+.news-simple .news-simple-card__content > *{
+  margin:0 !important;
+  margin-block-start:0 !important;
+  margin-block-end:0 !important;
+}
+.news-simple .news-simple-card__content > * + *{
+  margin-top:0 !important;
 }
 .news-simple .news-simple-card__title{
   margin:0 !important;
