@@ -51,12 +51,18 @@ add_action('wp_enqueue_scripts', function () {
     $header_script_path = get_stylesheet_directory() . '/header.js';
     $child_style_version = file_exists($child_style_path) ? filemtime($child_style_path) : $theme_version;
     $header_script_version = file_exists($header_script_path) ? filemtime($header_script_path) : $theme_version;
+    $child_style_deps = [
+        'twentytwentyfive-style',
+        'wp-block-library',
+        'wp-block-library-theme',
+        'global-styles',
+    ];
 
     // charge le CSS du child
     wp_enqueue_style(
         'echecs92-child',
         get_stylesheet_uri(),
-        [],
+        $child_style_deps,
         $child_style_version
     );
 
@@ -150,7 +156,7 @@ add_action('wp_enqueue_scripts', function () {
             true
         );
     }
-});
+}, 20);
 
 add_action('wp_head', function () {
     $uploads_base = content_url('uploads');
