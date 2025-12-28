@@ -46,12 +46,18 @@ add_filter('cdje92_contact_form_recaptcha_keys', function ( $keys ) {
 });
 
 add_action('wp_enqueue_scripts', function () {
+    $theme_version = wp_get_theme()->get('Version');
+    $child_style_path = get_stylesheet_directory() . '/style.css';
+    $header_script_path = get_stylesheet_directory() . '/header.js';
+    $child_style_version = file_exists($child_style_path) ? filemtime($child_style_path) : $theme_version;
+    $header_script_version = file_exists($header_script_path) ? filemtime($header_script_path) : $theme_version;
+
     // charge le CSS du child
     wp_enqueue_style(
         'echecs92-child',
         get_stylesheet_uri(),
         [],
-        wp_get_theme()->get('Version')
+        $child_style_version
     );
 
     // charge le JS du header
@@ -59,7 +65,7 @@ add_action('wp_enqueue_scripts', function () {
         'echecs92-header',
         get_stylesheet_directory_uri() . '/header.js',
         [],
-        wp_get_theme()->get('Version'),
+        $header_script_version,
         true // charge le script en footer
     );
 
