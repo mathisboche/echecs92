@@ -9,6 +9,8 @@
   const POSTAL_COORDINATES_DATA_URL = '/wp-content/themes/echecs92-child/assets/data/postal-coordinates-fr.json';
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
   const CLUBS_UI_STATE_KEY = 'echecs92:clubs-fr:ui';
+  const CLUBS_LIST_STATE_KEY = 'echecs92:clubs-fr:list-state';
+  const CLUBS_LIST_STATE_MAX_AGE = 2 * 60 * 60 * 1000;
   const REOPEN_RESULTS_FLAG_KEY = 'echecs92:clubs-fr:reopen-results';
   const VISIBLE_RESULTS_DEFAULT = 12;
   const VISIBLE_RESULTS_STEP = VISIBLE_RESULTS_DEFAULT;
@@ -1874,6 +1876,126 @@
     }
   };
 
+  const getListPathKey = () => {
+    if (typeof window === 'undefined') {
+      return '';
+    }
+    return `${window.location.pathname}${window.location.search || ''}`;
+  };
+
+  const getListScrollSnapshot = () => {
+    if (typeof window === 'undefined') {
+      return { context: 'window', top: 0 };
+    }
+    const usesShell = Boolean(resultsShell && isMobileViewport() && mobileResultsOpen);
+    if (usesShell) {
+      return { context: 'shell', top: resultsShell.scrollTop || 0 };
+    }
+    return {
+      context: 'window',
+      top: window.scrollY || document.documentElement?.scrollTop || 0,
+    };
+  };
+
+  const persistListState = (options = {}) => {
+    try {
+      if (typeof window === 'undefined') {
+        return;
+      }
+      const storage = window.sessionStorage;
+      if (!storage) {
+        return;
+      }
+      const snapshot = getListScrollSnapshot();
+      const scrollTop = Number.isFinite(options.scrollTop) ? options.scrollTop : snapshot.top;
+      const scrollContext =
+        typeof options.scrollContext === 'string' && options.scrollContext
+          ? options.scrollContext
+          : snapshot.context;
+      const visibleCount = Number.isFinite(options.visibleCount) ? options.visibleCount : state.visibleCount;
+      const payload = {
+        ts: Date.now(),
+        path: getListPathKey(),
+        scrollTop,
+        scrollContext,
+        visibleCount,
+      };
+      storage.setItem(CLUBS_LIST_STATE_KEY, JSON.stringify(payload));
+    } catch (error) {
+      // ignore storage failures
+    }
+  };
+
+  const loadListState = () => {
+    try {
+      if (typeof window === 'undefined') {
+        return null;
+      }
+      const storage = window.sessionStorage;
+      if (!storage) {
+        return null;
+      }
+      const raw = storage.getItem(CLUBS_LIST_STATE_KEY);
+      if (!raw) {
+        return null;
+      }
+      let payload;
+      try {
+        payload = JSON.parse(raw);
+      } catch (error) {
+        payload = null;
+      }
+      if (!payload || typeof payload !== 'object') {
+        return null;
+      }
+      if (payload.ts && Date.now() - payload.ts > CLUBS_LIST_STATE_MAX_AGE) {
+        return null;
+      }
+      if (payload.path && payload.path !== getListPathKey()) {
+        return null;
+      }
+      return payload;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const restoreListState = (payload) => {
+    if (!payload) {
+      return;
+    }
+    const shouldOpenShell =
+      payload.scrollContext === 'shell' && resultsShell && typeof isMobileViewport === 'function' && isMobileViewport();
+    if (shouldOpenShell && !mobileResultsOpen) {
+      openResultsShell({ skipHistory: true });
+    }
+    if (
+      Number.isFinite(payload.visibleCount) &&
+      payload.visibleCount > state.visibleCount &&
+      state.filtered.length
+    ) {
+      state.visibleCount = Math.min(payload.visibleCount, state.filtered.length);
+      renderResults({ force: true });
+    }
+    const restoreScroll = () => {
+      const scrollTop = Number.isFinite(payload.scrollTop) ? payload.scrollTop : 0;
+      if (payload.scrollContext === 'shell' && resultsShell && isMobileViewport()) {
+        resultsShell.scrollTop = Math.max(0, scrollTop);
+        return;
+      }
+      if (typeof window !== 'undefined') {
+        window.scrollTo(0, Math.max(0, scrollTop));
+      }
+    };
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(restoreScroll);
+      });
+    } else {
+      setTimeout(restoreScroll, 0);
+    }
+  };
+
   const DEFAULT_SORT_MODE = 'licenses';
 
   const state = {
@@ -2258,6 +2380,7 @@
       if (event.type === 'auxclick' && event.button !== 1) {
         return;
       }
+      persistListState();
       persistListUiState();
       rememberClubsNavigation('map:from-list', '/clubs');
     };
@@ -6424,6 +6547,7 @@
       if (event.type === 'auxclick' && event.button !== 1) {
         return;
       }
+      persistListState();
       persistListUiState();
       markShouldReopenResults();
       rememberClubsNavigation('detail:list', getCurrentBackPath());
@@ -6738,6 +6862,7 @@
     state.visibleCount += increment;
     renderResults();
     updateTotalCounter();
+    persistListState({ visibleCount: state.visibleCount });
     if (state.visibleCount >= state.filtered.length) {
       if (state.query) {
         setSearchStatus('Tous les clubs correspondants sont affichés.', 'info');
@@ -6755,6 +6880,7 @@
   };
 
   const init = () => {
+    const savedListState = loadListState();
     updateClearButtons();
     ensureLocationSuggestionsHost();
     loadGeocodeCache();
@@ -6862,6 +6988,7 @@
         } else {
           syncUrlState({ openResults: mobileResultsOpen && isMobileViewport() });
         }
+        restoreListState(savedListState);
         state.restoreMode = false;
         updateClearButtons();
       })
@@ -6984,6 +7111,11 @@
       });
     });
     updateSortButtons();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('pagehide', () => {
+        persistListState();
+      });
+    }
     if (canUseHistory) {
       window.addEventListener('popstate', (event) => {
         const state = event?.state;
