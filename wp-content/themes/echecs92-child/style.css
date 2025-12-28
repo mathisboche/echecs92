@@ -5689,3 +5689,122 @@ img{
   pointer-events:none !important;
   cursor:default !important;
 }
+
+/* ---------- ACTUALITES DETAIL FALLBACK ---------- */
+body.single-actualite main.wp-block-group,
+body.single-actualite main{
+  max-width:900px;
+  margin:0;
+  padding:56px 24px 96px;
+  display:flex;
+  flex-direction:column;
+  gap:24px;
+  font-family: system-ui,-apple-system,BlinkMacSystemFont,"Inter","Helvetica Neue",Arial,sans-serif;
+  color:#0f172a;
+  text-align:left;
+  width:100%;
+}
+body.single-actualite main.wp-block-group.is-layout-constrained,
+body.single-actualite main.is-layout-constrained{
+  margin-left:0;
+  margin-right:0;
+}
+body.single-actualite main.is-layout-constrained > :where(:not(.alignleft,.alignright,.alignfull)),
+body.single-actualite main .is-layout-constrained > :where(:not(.alignleft,.alignright,.alignfull)){
+  max-width:none;
+  margin-left:0;
+  margin-right:0;
+}
+body.single-actualite .wp-block-post-date{
+  margin:0;
+  font-size:12px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:#94a3b8;
+}
+body.single-actualite .wp-block-post-title{
+  margin:0;
+  font-size:32px;
+  line-height:1.2;
+}
+body.single-actualite .wp-block-post-featured-image{
+  margin:0;
+  width:100%;
+  border-radius:10px;
+  overflow:hidden;
+  border:1px solid #e5e7eb;
+  background:#f8fafc url("/wp-content/themes/echecs92-child/assets/cdje-92-square.svg") center/clamp(180px,30%,240px) no-repeat;
+  aspect-ratio:4/3;
+}
+body.single-actualite .wp-block-post-featured-image img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+body.single-actualite .wp-block-post-content{
+  display:flex;
+  flex-direction:column;
+  gap:0;
+  font-size:16px;
+  line-height:1.6;
+  color:#334155;
+  text-align:left;
+  margin:0;
+  max-width:none;
+}
+body.single-actualite .wp-block-post-content > *{
+  margin:0;
+  max-width:none;
+}
+body.single-actualite .wp-block-post-content > * + *{
+  margin-top:10px;
+}
+body.single-actualite .wp-block-post-content h2,
+body.single-actualite .wp-block-post-content h3,
+body.single-actualite .wp-block-post-content h4{
+  margin:0;
+  color:#0f172a;
+  line-height:1.25;
+}
+body.single-actualite .wp-block-post-content h2{
+  font-size:22px;
+}
+body.single-actualite .wp-block-post-content h3{
+  font-size:20px;
+}
+body.single-actualite .wp-block-post-content h4{
+  font-size:18px;
+}
+body.single-actualite .wp-block-post-content ul,
+body.single-actualite .wp-block-post-content ol{
+  margin:0;
+  padding-left:18px;
+}
+body.single-actualite .wp-block-post-content li + li{
+  margin-top:6px;
+}
+body.single-actualite .wp-block-post-content figure{
+  margin:0;
+}
+body.single-actualite .wp-block-post-content figure + figure{
+  margin-top:10px;
+}
+body.single-actualite .wp-block-post-content figure img{
+  border-radius:10px;
+}
+body.single-actualite .wp-block-post-navigation-link{
+  font-weight:600;
+  font-size:14px;
+  color:#0f172a;
+}
+body.single-actualite .wp-block-post-navigation-link a{
+  color:#1d4ed8;
+  text-decoration:none;
+}
+body.single-actualite .wp-block-post-navigation-link a:hover,
+body.single-actualite .wp-block-post-navigation-link a:focus-visible{
+  color:#0f172a;
+  outline:none;
+  text-decoration:underline;
+}
