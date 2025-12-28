@@ -2315,6 +2315,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   -webkit-box-orient:vertical;
   overflow:hidden;
   min-height:calc(1.15em * 2);
+  max-height:calc(1.15em * 2);
 }
 .news-simple-card__title a{
   color:inherit;
@@ -2343,12 +2344,23 @@ p.news-simple-card__excerpt,
   overflow:hidden;
   min-height:calc(1.3em * 2);
   line-height:1.3;
+  max-height:calc(1.3em * 2);
 }
 .news-simple-card__excerpt .wp-block-post-excerpt__excerpt{
   margin:0;
 }
+.news-simple-card__excerpt.wp-block-post-excerpt{
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+}
+.news-simple-card__excerpt.wp-block-post-excerpt .wp-block-post-excerpt__more-link{
+  align-self:flex-start;
+}
 .news-simple-card__more{
   margin:4px 0 0;
+  display:flex;
+  align-items:flex-start;
 }
 .news-simple-card__excerpt .wp-block-post-excerpt__more-link,
 .news-simple-card__more a{
@@ -2368,6 +2380,9 @@ p.news-simple-card__excerpt,
   color:#0f172a;
   text-decoration:none;
   transition:background-color .2s ease, border-color .2s ease, color .2s ease;
+}
+.news-simple-card__more a{
+  margin:0;
 }
 .news-simple-card__excerpt .wp-block-post-excerpt__more-link:hover,
 .news-simple-card__excerpt .wp-block-post-excerpt__more-link:focus-visible,
@@ -2405,6 +2420,12 @@ p.news-simple-card__excerpt,
 .news-simple__pagination .wp-block-query-pagination-previous.is-disabled,
 .news-simple__pagination .wp-block-query-pagination-next.is-disabled{
   color:#94a3b8;
+  display:inline-flex;
+  align-items:center;
+  opacity:.45;
+  pointer-events:none;
+  cursor:default;
+  text-decoration:none;
 }
 .news-simple__pagination .wp-block-query-pagination-next{
   grid-column:3;
@@ -2815,9 +2836,9 @@ p.news-simple-card__excerpt,
     background-size:var(--news-card-placeholder-size);
   }
   .news-simple-card__content{
-    height:auto;
-    min-height:0;
-    max-height:none;
+    height:var(--news-card-height);
+    min-height:var(--news-card-height);
+    max-height:var(--news-card-height);
   }
   .news-simple-card__date{
     letter-spacing:.08em;
