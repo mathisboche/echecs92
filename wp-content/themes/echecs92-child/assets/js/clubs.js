@@ -5,6 +5,8 @@
 (function () {
   const DATA_URL = '/wp-content/themes/echecs92-child/assets/data/clubs.json';
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs:last-listing';
+  const CLUBS_LIST_STATE_KEY = 'echecs92:clubs-92:list-state';
+  const CLUBS_LIST_STATE_MAX_AGE = 2 * 60 * 60 * 1000;
   const VISIBLE_RESULTS_DEFAULT = 12;
   const VISIBLE_RESULTS_STEP = VISIBLE_RESULTS_DEFAULT;
   const POSTAL_COORDINATES = {
@@ -125,6 +127,111 @@
       storage.setItem(CLUBS_NAV_STORAGE_KEY, JSON.stringify(payload));
     } catch (error) {
       // ignore storage failures
+    }
+  };
+
+  const normalisePath = (value) => {
+    const trimmed = (value || '').toString().replace(/\/+$/u, '');
+    return trimmed || '/';
+  };
+
+  const getCurrentPath = () => {
+    if (typeof window === 'undefined') {
+      return '';
+    }
+    return normalisePath(window.location.pathname);
+  };
+
+  const getScrollY = () => {
+    if (typeof window === 'undefined') {
+      return 0;
+    }
+    return window.scrollY || document.documentElement?.scrollTop || 0;
+  };
+
+  const persistListState = (options = {}) => {
+    try {
+      if (typeof window === 'undefined') {
+        return;
+      }
+      const storage = window.sessionStorage;
+      if (!storage) {
+        return;
+      }
+      const scrollY = Number.isFinite(options.scrollY) ? options.scrollY : getScrollY();
+      const visibleCount = Number.isFinite(options.visibleCount) ? options.visibleCount : state.visibleCount;
+      const payload = {
+        ts: Date.now(),
+        path: getCurrentPath(),
+        scrollY,
+        visibleCount,
+      };
+      storage.setItem(CLUBS_LIST_STATE_KEY, JSON.stringify(payload));
+    } catch (error) {
+      // ignore storage failures
+    }
+  };
+
+  const loadListState = () => {
+    try {
+      if (typeof window === 'undefined') {
+        return null;
+      }
+      const storage = window.sessionStorage;
+      if (!storage) {
+        return null;
+      }
+      const raw = storage.getItem(CLUBS_LIST_STATE_KEY);
+      if (!raw) {
+        return null;
+      }
+      let payload;
+      try {
+        payload = JSON.parse(raw);
+      } catch (error) {
+        payload = null;
+      }
+      if (!payload || typeof payload !== 'object') {
+        return null;
+      }
+      if (payload.ts && Date.now() - payload.ts > CLUBS_LIST_STATE_MAX_AGE) {
+        return null;
+      }
+      if (payload.path && normalisePath(payload.path) !== getCurrentPath()) {
+        return null;
+      }
+      return payload;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const restoreListState = (payload) => {
+    if (!payload) {
+      return;
+    }
+    const shouldRestoreVisible = state.sortMode === 'default' && !state.distanceMode;
+    if (
+      shouldRestoreVisible &&
+      Number.isFinite(payload.visibleCount) &&
+      payload.visibleCount > state.visibleCount &&
+      state.filtered.length
+    ) {
+      state.visibleCount = Math.min(payload.visibleCount, state.filtered.length);
+      renderResults();
+      updateTotalCounter();
+    }
+    if (Number.isFinite(payload.scrollY) && typeof window !== 'undefined') {
+      const restoreScroll = () => {
+        window.scrollTo(0, payload.scrollY);
+      };
+      if (typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(restoreScroll);
+        });
+      } else {
+        setTimeout(restoreScroll, 0);
+      }
     }
   };
 
@@ -481,6 +588,7 @@
       if (event.type === 'auxclick' && event.button !== 1) {
         return;
       }
+      persistListState();
       rememberClubsNavigation('map:from-list', '/clubs-92');
     };
     mapCtaLink.addEventListener('click', handleIntent);
@@ -2894,6 +3002,7 @@ const handleLocationSubmit = async (event) => {
       if (event.type === 'auxclick' && event.button !== 1) {
         return;
       }
+      persistListState();
       rememberClubsNavigation('detail:list', '/clubs-92');
     };
 
@@ -3133,6 +3242,7 @@ const handleLocationSubmit = async (event) => {
     state.visibleCount += increment;
     renderResults();
     updateTotalCounter();
+    persistListState({ visibleCount: state.visibleCount });
     if (state.visibleCount >= state.filtered.length) {
       if (state.query) {
         setSearchStatus('Tous les clubs correspondants sont affichés.', 'info');
@@ -3150,6 +3260,7 @@ const handleLocationSubmit = async (event) => {
   };
 
   const init = () => {
+    const savedListState = loadListState();
     initialiseLocationControls();
     bindMapCtaNavigation();
     setSearchStatus('Chargement de la liste des clubs…', 'info');
@@ -3182,6 +3293,7 @@ const handleLocationSubmit = async (event) => {
             setSearchStatus('Aucun club disponible pour le moment.', 'info');
           }
         }
+        restoreListState(savedListState);
       })
       .catch(() => {
         if (resultsEl) {
@@ -3244,6 +3356,11 @@ const handleLocationSubmit = async (event) => {
       });
     });
     updateSortButtons();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('pagehide', () => {
+        persistListState();
+      });
+    }
   };
 
   if (typeof window !== 'undefined') {
