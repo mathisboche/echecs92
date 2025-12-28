@@ -1557,7 +1557,7 @@
     }
     const name = raw.nom || raw.name || '';
     const primaryAddressMeta = normaliseAddressField(
-      raw.adresse || raw.address || raw.salle_jeu || raw.salle || ''
+      raw.salle_jeu || raw.salle || raw.adresse || raw.address || ''
     );
     const secondaryAddressMeta = normaliseAddressField(raw.siege || raw.siege_social || raw.address2 || '');
     const salleMeta = normaliseAddressField(raw.salle_jeu || raw.salle || '');
@@ -1701,6 +1701,9 @@
     }
     const item = document.createElement('li');
     item.className = 'club-section__item';
+    if (options.variant) {
+      item.classList.add(`club-section__item--${options.variant}`);
+    }
 
     const labelNode = document.createElement('span');
     labelNode.className = 'club-section__label';
@@ -1852,17 +1855,15 @@
         .replace(/[^a-z0-9]+/g, '')
         .trim();
     const addressKey = normalizeAddress(club.address);
-    const salleKey = normalizeAddress(club.salle);
     const siegeKey = normalizeAddress(club.siege);
-    appendDetail(coords.list, 'Adresse', club.address, { icon: 'address' });
-    if (club.salle && salleKey && salleKey !== addressKey) {
-      appendDetail(coords.list, 'Salle de jeu', club.salle);
-    }
+    appendDetail(coords.list, 'Salle de jeu', club.address, {
+      icon: 'address',
+      variant: 'featured',
+    });
     if (
       club.siege &&
       siegeKey &&
-      siegeKey !== addressKey &&
-      (!salleKey || siegeKey !== salleKey)
+      siegeKey !== addressKey
     ) {
       appendDetail(coords.list, 'Siège social', club.siege);
     }
