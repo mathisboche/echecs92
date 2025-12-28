@@ -1701,9 +1701,6 @@
     }
     const item = document.createElement('li');
     item.className = 'club-section__item';
-    if (options.variant) {
-      item.classList.add(`club-section__item--${options.variant}`);
-    }
 
     const labelNode = document.createElement('span');
     labelNode.className = 'club-section__label';
@@ -1800,6 +1797,7 @@
     shareButton.className = 'club-share-button';
     shareButton.setAttribute('aria-label', 'Partager ce club');
     shareButton.title = 'Partager';
+    shareButton.textContent = 'Partager';
     shareButton.addEventListener('click', async () => {
       try {
         if (navigator.share && typeof navigator.share === 'function') {
@@ -1856,10 +1854,7 @@
         .trim();
     const addressKey = normalizeAddress(club.address);
     const siegeKey = normalizeAddress(club.siege);
-    appendDetail(coords.list, 'Salle de jeu', club.address, {
-      icon: 'address',
-      variant: 'featured',
-    });
+    appendDetail(coords.list, 'Salle de jeu', club.address);
     if (
       club.siege &&
       siegeKey &&
@@ -1868,13 +1863,12 @@
       appendDetail(coords.list, 'Siège social', club.siege);
     }
     appendDetail(coords.list, 'Ville', club.commune && !club.address ? club.commune : '');
-    appendDetail(coords.list, 'Email', club.email, { type: 'mail', icon: 'mail' });
-    appendDetail(coords.list, 'Téléphone', club.phone, { type: 'phone', icon: 'phone' });
+    appendDetail(coords.list, 'Email', club.email, { type: 'mail' });
+    appendDetail(coords.list, 'Téléphone', club.phone, { type: 'phone' });
     appendDetail(coords.list, 'Fax', club.fax);
     appendDetail(coords.list, 'Site internet', club.site, {
       type: 'link',
       label: 'Accéder au site du club',
-      icon: 'website',
     });
     appendDetail(coords.list, 'Accès PMR', club.accesPmr);
     if (coords.list.childElementCount) {
@@ -1883,7 +1877,7 @@
 
     const activities = createSection('Activités');
     appendDetail(activities.list, 'Publics accueillis', club.publics);
-    appendDetail(activities.list, 'Horaires', club.hours, { type: 'lines', icon: 'hours' });
+    appendDetail(activities.list, 'Horaires', club.hours, { type: 'lines' });
     appendDetail(activities.list, 'Tarifs', club.tarifs);
     appendDetail(activities.list, 'Informations complémentaires', club.notes && club.publics ? club.notes : '');
     if (activities.list.childElementCount) {
