@@ -373,8 +373,12 @@ const parseClubDetails = (html, ref) => {
     siteHref && /^https?:/i.test(siteHref)
       ? siteHref
       : cleanText(siteRaw).replace(/\s+/g, '');
-  const president = cleanText(extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelPresident'));
-  const contact = cleanText(extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelCorrespondant'));
+  const presidentRaw = extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelPresident');
+  const president = cleanText(presidentRaw);
+  const presidentEmail = extractEmail(presidentRaw);
+  const contactRaw = extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelCorrespondant');
+  const contact = cleanText(contactRaw);
+  const contactEmail = extractEmail(contactRaw);
   const horaires = cleanText(
     extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelOuverture').replace(/<br\s*\/?\s*>/gi, '; ')
   );
@@ -405,7 +409,9 @@ const parseClubDetails = (html, ref) => {
     email,
     site,
     president,
+    president_email: presidentEmail,
     contact,
+    contact_email: contactEmail,
     horaires,
     acces_pmr: accesPmr,
     licences_a: licences.a,
@@ -470,7 +476,9 @@ const buildClubEntries = (detail, listEntry, dept) => {
     email: detail.email || '',
     site: detail.site || '',
     president: detail.president || '',
+    president_email: detail.president_email || '',
     contact: detail.contact || '',
+    contact_email: detail.contact_email || '',
     horaires: detail.horaires || '',
     acces_pmr: detail.acces_pmr || '',
     interclubs: detail.interclubs || '',
@@ -556,7 +564,9 @@ const main = async () => {
             email: '',
             site: '',
             president: '',
+            president_email: '',
             contact: '',
+            contact_email: '',
             horaires: '',
             acces_pmr: '',
             licences_a: null,

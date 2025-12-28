@@ -409,7 +409,9 @@
       assignIfEmpty(club, 'salle', ffeClub.salle);
       assignIfEmpty(club, 'siege', ffeClub.siege);
       assignIfEmpty(club, 'fax', ffeClub.fax);
+      assignIfEmpty(club, 'presidentEmail', ffeClub.presidentEmail);
       assignIfEmpty(club, 'contact', ffeClub.contact);
+      assignIfEmpty(club, 'contactEmail', ffeClub.contactEmail);
       assignIfEmpty(club, 'accesPmr', ffeClub.accesPmr);
       assignIfEmpty(club, 'interclubs', ffeClub.interclubs);
       assignIfEmpty(club, 'interclubsJeunes', ffeClub.interclubsJeunes);
@@ -875,7 +877,9 @@
       email: raw.email || '',
       site,
       president: raw.president || '',
+      presidentEmail: raw.president_email || raw.presidentEmail || '',
       contact: raw.contact || '',
+      contactEmail: raw.contact_email || raw.contactEmail || '',
       hours: raw.horaires || raw.hours || '',
       publics: raw.publics || '',
       tarifs: raw.tarifs || '',
@@ -964,7 +968,7 @@
     } else if (options.type === 'mail') {
       const link = document.createElement('a');
       link.href = `mailto:${value}`;
-      link.textContent = value;
+      link.textContent = options.label || value;
       valueContainer.appendChild(link);
     } else if (options.type === 'phone') {
       const formatted = formatPhone(value) || value;
@@ -1086,11 +1090,17 @@
         .trim();
     const addressKey = normalizeAddress(club.address);
     const siegeKey = normalizeAddress(club.siege);
+    const isSameLocation =
+      addressKey &&
+      siegeKey &&
+      (addressKey === siegeKey ||
+        addressKey.includes(siegeKey) ||
+        siegeKey.includes(addressKey));
     appendDetail(coords.list, 'Salle de jeu', club.address);
     if (
       club.siege &&
       siegeKey &&
-      siegeKey !== addressKey
+      !isSameLocation
     ) {
       appendDetail(coords.list, 'Siège social', club.siege);
     }
@@ -1117,8 +1127,35 @@
     }
 
     const organisation = createSection('Organisation');
-    appendDetail(organisation.list, 'Président·e', club.president);
-    appendDetail(organisation.list, 'Contact', club.contact);
+    const normalizePersonKey = (name, email) => {
+      const emailKey = normalise(email || '').replace(/[^a-z0-9@.+-]/g, '');
+      if (emailKey) {
+        return emailKey;
+      }
+      return normalise(name || '').replace(/[^a-z0-9]+/g, '');
+    };
+    const presidentKey = normalizePersonKey(club.president, club.presidentEmail);
+    const contactKey = normalizePersonKey(club.contact, club.contactEmail);
+    if (club.president || club.presidentEmail) {
+      if (club.presidentEmail) {
+        appendDetail(organisation.list, 'Président·e', club.presidentEmail, {
+          type: 'mail',
+          label: club.president || club.presidentEmail,
+        });
+      } else {
+        appendDetail(organisation.list, 'Président·e', club.president);
+      }
+    }
+    if ((club.contact || club.contactEmail) && (!presidentKey || presidentKey !== contactKey)) {
+      if (club.contactEmail) {
+        appendDetail(organisation.list, 'Contact', club.contactEmail, {
+          type: 'mail',
+          label: club.contact || club.contactEmail,
+        });
+      } else {
+        appendDetail(organisation.list, 'Contact', club.contact);
+      }
+    }
     appendDetail(organisation.list, 'Label fédéral', club.labelFederal);
     if (club.licenses && (club.licenses.A || club.licenses.B)) {
       const licenseParts = [];
