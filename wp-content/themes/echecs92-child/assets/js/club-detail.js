@@ -7,6 +7,7 @@
   const FFE_MANIFEST_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france-ffe.json';
   const FFE_FALLBACK_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france-ffe/';
   const FFE_URL_BASE = 'https://www.echecs.asso.fr/FicheClub.aspx?Ref=';
+  const FFE_DETAILS_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france/92.json';
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs:last-listing';
   const detailContainer = document.getElementById('club-detail');
   const backLink = document.querySelector('[data-club-back]');
@@ -203,6 +204,20 @@
     return digits.replace(/(\d{2})(?=\d)/g, '$1 ').trim();
   };
 
+  const splitLines = (value) => {
+    if (!value) {
+      return [];
+    }
+    if (Array.isArray(value)) {
+      return value.map((line) => String(line).trim()).filter(Boolean);
+    }
+    return value
+      .toString()
+      .split(/\r?\n|;/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+  };
+
   const normalise = (value) =>
     (value || '')
       .toString()
@@ -333,6 +348,83 @@
     }
     result.city = result.city.replace(/\s+/g, ' ').trim();
     return result;
+  };
+
+  const buildFfeDetailsLookup = (entries) => {
+    const byRef = new Map();
+    const byKey = new Map();
+    (Array.isArray(entries) ? entries : []).forEach((entry) => {
+      if (!entry || typeof entry !== 'object') {
+        return;
+      }
+      const ref = sanitiseFfeRef(entry.ffe_ref || entry.ref || entry.ffeRef || entry.fiche_ffe);
+      if (ref && !byRef.has(ref)) {
+        byRef.set(ref, entry);
+      }
+      const name = entry.nom || entry.name || '';
+      const address = entry.adresse || entry.address || entry.salle_jeu || entry.salle || '';
+      const siege = entry.siege || entry.siege_social || '';
+      const parts = extractAddressParts(address || siege);
+      const postalCode = entry.code_postal || entry.postal_code || entry.postalCode || parts.postalCode || '';
+      const commune = entry.commune || entry.ville || parts.city || '';
+      const key = buildFfeLookupKey(name, postalCode, commune);
+      if (key && !byKey.has(key)) {
+        byKey.set(key, entry);
+      }
+    });
+    return { byRef, byKey };
+  };
+
+  const applyFfeDetails = (clubs, lookup) => {
+    if (!Array.isArray(clubs) || !lookup) {
+      return;
+    }
+    const findDetail = (club) => {
+      const ref = sanitiseFfeRef(club?.ffeRef || club?.fiche_ffe);
+      if (ref && lookup.byRef && lookup.byRef.has(ref)) {
+        return lookup.byRef.get(ref);
+      }
+      const key = buildFfeLookupKey(club?.name || '', club?.postalCode || '', club?.commune || '');
+      if (key && lookup.byKey && lookup.byKey.has(key)) {
+        return lookup.byKey.get(key);
+      }
+      return null;
+    };
+    const assignIfEmpty = (club, key, value) => {
+      if (!club || typeof club !== 'object') {
+        return;
+      }
+      if (club[key] == null || club[key] === '') {
+        if (value != null && value !== '') {
+          club[key] = value;
+        }
+      }
+    };
+    clubs.forEach((club) => {
+      const detail = findDetail(club);
+      if (!detail) {
+        return;
+      }
+      const ffeClub = adaptClubRecord(detail);
+      assignIfEmpty(club, 'salle', ffeClub.salle);
+      assignIfEmpty(club, 'siege', ffeClub.siege);
+      assignIfEmpty(club, 'fax', ffeClub.fax);
+      assignIfEmpty(club, 'contact', ffeClub.contact);
+      assignIfEmpty(club, 'accesPmr', ffeClub.accesPmr);
+      assignIfEmpty(club, 'interclubs', ffeClub.interclubs);
+      assignIfEmpty(club, 'interclubsJeunes', ffeClub.interclubsJeunes);
+      assignIfEmpty(club, 'interclubsFeminins', ffeClub.interclubsFeminins);
+      assignIfEmpty(club, 'labelFederal', ffeClub.labelFederal);
+      assignIfEmpty(club, 'hours', ffeClub.hours);
+      if (club.licenses && ffeClub.licenses) {
+        if (!club.licenses.A && ffeClub.licenses.A) {
+          club.licenses.A = ffeClub.licenses.A;
+        }
+        if (!club.licenses.B && ffeClub.licenses.B) {
+          club.licenses.B = ffeClub.licenses.B;
+        }
+      }
+    });
   };
 
   const STREET_KEYWORDS =
@@ -725,7 +817,7 @@
       return raw;
     }
     const name = raw.nom || raw.name || '';
-    const primaryAddress = raw.adresse || raw.address || '';
+    const primaryAddress = raw.adresse || raw.address || raw.salle_jeu || raw.salle || '';
     const addressParts = extractAddressParts(primaryAddress);
     const secondaryAddress = raw.siege || raw.siege_social || raw.address2 || '';
     const secondaryParts = extractAddressParts(secondaryAddress);
@@ -776,15 +868,23 @@
       commune,
       address: primaryAddress || secondaryAddress || '',
       siege: secondaryAddress || '',
+      salle: raw.salle_jeu || raw.salle || '',
       addressStandard: standardAddress,
       phone: raw.telephone || raw.phone || '',
+      fax: raw.fax || '',
       email: raw.email || '',
       site,
       president: raw.president || '',
+      contact: raw.contact || '',
       hours: raw.horaires || raw.hours || '',
       publics: raw.publics || '',
       tarifs: raw.tarifs || '',
       notes: raw.notes || '',
+      accesPmr: raw.acces_pmr || '',
+      interclubs: raw.interclubs || '',
+      interclubsJeunes: raw.interclubs_jeunes || '',
+      interclubsFeminins: raw.interclubs_feminins || '',
+      labelFederal: raw.label_federal || '',
       ffeRef: initialFfeRef,
       fiche_ffe: raw.fiche_ffe || '',
       tags: Array.isArray(raw.tags) ? raw.tags : [],
@@ -824,7 +924,11 @@
   };
 
   const appendDetail = (list, label, value, options = {}) => {
-    if (!value) {
+    if (value == null || value === '') {
+      return false;
+    }
+    const lines = options.type === 'lines' ? splitLines(value) : null;
+    if (options.type === 'lines' && !lines.length) {
       return false;
     }
     const item = document.createElement('li');
@@ -841,7 +945,16 @@
     const valueContainer = document.createElement('div');
     valueContainer.className = 'club-section__value';
 
-    if (options.type === 'link') {
+    if (options.type === 'lines') {
+      const linesWrap = document.createElement('div');
+      linesWrap.className = 'club-section__lines';
+      lines.forEach((line) => {
+        const lineNode = document.createElement('div');
+        lineNode.textContent = line;
+        linesWrap.appendChild(lineNode);
+      });
+      valueContainer.appendChild(linesWrap);
+    } else if (options.type === 'link') {
       const link = document.createElement('a');
       link.href = value;
       link.rel = 'noopener';
@@ -966,22 +1079,42 @@
     const sections = [];
 
     const coords = createSection('Coordonnées');
+    const normalizeAddress = (value) =>
+      normalise(value || '')
+        .replace(/[^a-z0-9]+/g, '')
+        .trim();
+    const addressKey = normalizeAddress(club.address);
+    const salleKey = normalizeAddress(club.salle);
+    const siegeKey = normalizeAddress(club.siege);
     appendDetail(coords.list, 'Adresse', club.address, { icon: 'address' });
+    if (club.salle && salleKey && salleKey !== addressKey) {
+      appendDetail(coords.list, 'Salle de jeu', club.salle);
+    }
+    if (
+      club.siege &&
+      siegeKey &&
+      siegeKey !== addressKey &&
+      (!salleKey || siegeKey !== salleKey)
+    ) {
+      appendDetail(coords.list, 'Siège social', club.siege);
+    }
     appendDetail(coords.list, 'Ville', club.commune && !club.address ? club.commune : '');
     appendDetail(coords.list, 'Email', club.email, { type: 'mail', icon: 'mail' });
     appendDetail(coords.list, 'Téléphone', club.phone, { type: 'phone', icon: 'phone' });
+    appendDetail(coords.list, 'Fax', club.fax);
     appendDetail(coords.list, 'Site internet', club.site, {
       type: 'link',
       label: 'Accéder au site du club',
       icon: 'website',
     });
+    appendDetail(coords.list, 'Accès PMR', club.accesPmr);
     if (coords.list.childElementCount) {
       sections.push(coords.section);
     }
 
     const activities = createSection('Activités');
     appendDetail(activities.list, 'Publics accueillis', club.publics);
-    appendDetail(activities.list, 'Horaires', club.hours, { icon: 'hours' });
+    appendDetail(activities.list, 'Horaires', club.hours, { type: 'lines', icon: 'hours' });
     appendDetail(activities.list, 'Tarifs', club.tarifs);
     appendDetail(activities.list, 'Informations complémentaires', club.notes && club.publics ? club.notes : '');
     if (activities.list.childElementCount) {
@@ -990,6 +1123,8 @@
 
     const organisation = createSection('Organisation');
     appendDetail(organisation.list, 'Président·e', club.president);
+    appendDetail(organisation.list, 'Contact', club.contact);
+    appendDetail(organisation.list, 'Label fédéral', club.labelFederal);
     if (club.licenses && (club.licenses.A || club.licenses.B)) {
       const licenseParts = [];
       if (club.licenses.A) {
@@ -1006,6 +1141,14 @@
     }
     if (organisation.list.childElementCount) {
       sections.push(organisation.section);
+    }
+
+    const competitions = createSection('Compétitions');
+    appendDetail(competitions.list, 'Interclubs', club.interclubs);
+    appendDetail(competitions.list, 'Interclubs Jeunes', club.interclubsJeunes);
+    appendDetail(competitions.list, 'Interclubs Féminins', club.interclubsFeminins);
+    if (competitions.list.childElementCount) {
+      sections.push(competitions.section);
     }
 
     const resources = createSection('Ressources');
@@ -1068,13 +1211,19 @@
     }
   };
 
+  const updateLicenseTotals = (club) => {
+    const licenseA = Number.parseInt(club?.licenses?.A, 10);
+    const licenseB = Number.parseInt(club?.licenses?.B, 10);
+    const total =
+      (Number.isFinite(licenseA) ? licenseA : 0) + (Number.isFinite(licenseB) ? licenseB : 0);
+    if (club && typeof club === 'object') {
+      club.totalLicenses = total > 0 ? total : null;
+    }
+  };
+
   const hydrateClub = (raw) => {
     const club = { ...adaptClubRecord(raw) };
-    const licenseA = Number.parseInt(club.licenses?.A, 10);
-    const licenseB = Number.parseInt(club.licenses?.B, 10);
-    const totalLicenses =
-      (Number.isFinite(licenseA) ? licenseA : 0) + (Number.isFinite(licenseB) ? licenseB : 0);
-    club.totalLicenses = totalLicenses > 0 ? totalLicenses : null;
+    updateLicenseTotals(club);
     club.slug = club.slug || slugify(club.commune || club.name || club.id || 'club');
     return club;
   };
@@ -1088,11 +1237,18 @@
       typeof window !== 'undefined' && window.cdjeSpinner && typeof window.cdjeSpinner.show === 'function'
         ? window.cdjeSpinner.show('Chargement du club…')
         : () => {};
-    Promise.all([fetchJson(DATA_URL), loadFfeRefs()])
-      .then(([data, ffeRefs]) => {
+    Promise.all([
+      fetchJson(DATA_URL),
+      loadFfeRefs(),
+      fetchJson(FFE_DETAILS_URL).catch(() => []),
+    ])
+      .then(([data, ffeRefs, ffeDetails]) => {
         const ffeLookup = buildFfeLookup(ffeRefs);
+        const ffeDetailsLookup = buildFfeDetailsLookup(ffeDetails);
         const clubs = (Array.isArray(data) ? data : []).map(hydrateClub);
         applyFfeRefs(clubs, ffeLookup);
+        applyFfeDetails(clubs, ffeDetailsLookup);
+        clubs.forEach(updateLicenseTotals);
         const club = clubs.find((entry) => entry.slug === clubSlug || entry.id === clubSlug);
         if (!club) {
           renderMessage(detailContainer.dataset.emptyMessage || 'Club introuvable.');

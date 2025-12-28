@@ -365,6 +365,7 @@ const parseClubDetails = (html, ref) => {
   const siege = tidyAddress(extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelAdresse'));
   const salle = tidyAddress(extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelSalle'));
   const telephone = cleanText(extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelTel'));
+  const fax = cleanText(extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelFax'));
   const email = extractEmail(extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelEMail'));
   const siteRaw = extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelURL');
   const siteHref = extractLinkHref(siteRaw);
@@ -373,11 +374,19 @@ const parseClubDetails = (html, ref) => {
       ? siteHref
       : cleanText(siteRaw).replace(/\s+/g, '');
   const president = cleanText(extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelPresident'));
+  const contact = cleanText(extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelCorrespondant'));
   const horaires = cleanText(
     extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelOuverture').replace(/<br\s*\/?\s*>/gi, '; ')
   );
+  const accesPmr = cleanText(extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelHandicape'));
   const licencesRaw = extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelAffilies');
   const licences = parseLicences(licencesRaw);
+  const interclubs = cleanText(extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelDivisionAdulte'));
+  const interclubsJeunes = cleanText(extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelDivisionJeune'));
+  const interclubsFeminins = cleanText(
+    extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelDivisionFeminines')
+  );
+  const labelFederal = cleanText(extractSpan(html, 'ctl00_ContentPlaceHolderMain_LabelLabel'));
 
   const primaryAddress = salle || siege;
   const postalCode = extractPostalCode(primaryAddress, siege);
@@ -390,13 +399,21 @@ const parseClubDetails = (html, ref) => {
     name,
     adresse: primaryAddress,
     siege,
+    salle_jeu: salle,
     telephone,
+    fax,
     email,
     site,
     president,
+    contact,
     horaires,
+    acces_pmr: accesPmr,
     licences_a: licences.a,
     licences_b: licences.b,
+    interclubs,
+    interclubs_jeunes: interclubsJeunes,
+    interclubs_feminins: interclubsFeminins,
+    label_federal: labelFederal,
     postalCode,
     commune: city,
   };
@@ -443,14 +460,23 @@ const buildClubEntries = (detail, listEntry, dept) => {
   const id = slugify(detail.name || listEntry.name || `${dept.code}-${detail.ref}`);
 
   const baseEntry = {
+    ffe_ref: detail.ref || listEntry.ref,
     nom: detail.name || listEntry.name,
     adresse: detail.adresse || '',
     siege: detail.siege || '',
+    salle_jeu: detail.salle_jeu || '',
     telephone: detail.telephone || '',
+    fax: detail.fax || '',
     email: detail.email || '',
     site: detail.site || '',
     president: detail.president || '',
+    contact: detail.contact || '',
     horaires: detail.horaires || '',
+    acces_pmr: detail.acces_pmr || '',
+    interclubs: detail.interclubs || '',
+    interclubs_jeunes: detail.interclubs_jeunes || '',
+    interclubs_feminins: detail.interclubs_feminins || '',
+    label_federal: detail.label_federal || '',
     licences_a: detail.licences_a,
     licences_b: detail.licences_b,
   };
@@ -524,13 +550,21 @@ const main = async () => {
             name: '',
             adresse: '',
             siege: '',
+            salle_jeu: '',
             telephone: '',
+            fax: '',
             email: '',
             site: '',
             president: '',
+            contact: '',
             horaires: '',
+            acces_pmr: '',
             licences_a: null,
             licences_b: null,
+            interclubs: '',
+            interclubs_jeunes: '',
+            interclubs_feminins: '',
+            label_federal: '',
             postalCode: '',
             commune: '',
           });

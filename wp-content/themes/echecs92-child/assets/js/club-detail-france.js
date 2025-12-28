@@ -306,6 +306,20 @@
     return digits.replace(/(\d{2})(?=\d)/g, '$1 ').trim();
   };
 
+  const splitLines = (value) => {
+    if (!value) {
+      return [];
+    }
+    if (Array.isArray(value)) {
+      return value.map((line) => String(line).trim()).filter(Boolean);
+    }
+    return value
+      .toString()
+      .split(/\r?\n|;/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+  };
+
   const normalise = (value) =>
     (value || '')
       .toString()
@@ -1542,8 +1556,11 @@
       return raw;
     }
     const name = raw.nom || raw.name || '';
-    const primaryAddressMeta = normaliseAddressField(raw.adresse || raw.address || '');
+    const primaryAddressMeta = normaliseAddressField(
+      raw.adresse || raw.address || raw.salle_jeu || raw.salle || ''
+    );
     const secondaryAddressMeta = normaliseAddressField(raw.siege || raw.siege_social || raw.address2 || '');
+    const salleMeta = normaliseAddressField(raw.salle_jeu || raw.salle || '');
     const primaryAddress = primaryAddressMeta.full;
     const secondaryAddress = secondaryAddressMeta.full;
     const addressParts = extractAddressParts(primaryAddress || secondaryAddress);
@@ -1611,16 +1628,24 @@
       commune,
       address: primaryAddress || secondaryAddress || '',
       siege: secondaryAddress || '',
+      salle: salleMeta.full || '',
       addressStandard: standardAddress,
       addressDisplay: standardAddress || primaryAddress || secondaryAddress || '',
       phone: raw.telephone || raw.phone || '',
+      fax: raw.fax || '',
       email: raw.email || '',
       site,
       president: raw.president || '',
+      contact: raw.contact || '',
       hours: raw.horaires || raw.hours || '',
       publics: raw.publics || '',
       tarifs: raw.tarifs || '',
       notes: raw.notes || '',
+      accesPmr: raw.acces_pmr || '',
+      interclubs: raw.interclubs || '',
+      interclubsJeunes: raw.interclubs_jeunes || '',
+      interclubsFeminins: raw.interclubs_feminins || '',
+      labelFederal: raw.label_federal || '',
       ffeRef: initialFfeRef,
       fiche_ffe: raw.fiche_ffe || '',
       tags: Array.isArray(raw.tags) ? raw.tags : [],
@@ -1667,7 +1692,11 @@
   };
 
   const appendDetail = (list, label, value, options = {}) => {
-    if (!value) {
+    if (value == null || value === '') {
+      return false;
+    }
+    const lines = options.type === 'lines' ? splitLines(value) : null;
+    if (options.type === 'lines' && !lines.length) {
       return false;
     }
     const item = document.createElement('li');
@@ -1684,7 +1713,16 @@
     const valueContainer = document.createElement('div');
     valueContainer.className = 'club-section__value';
 
-    if (options.type === 'link') {
+    if (options.type === 'lines') {
+      const linesWrap = document.createElement('div');
+      linesWrap.className = 'club-section__lines';
+      lines.forEach((line) => {
+        const lineNode = document.createElement('div');
+        lineNode.textContent = line;
+        linesWrap.appendChild(lineNode);
+      });
+      valueContainer.appendChild(linesWrap);
+    } else if (options.type === 'link') {
       const link = document.createElement('a');
       link.href = value;
       link.rel = 'noopener';
@@ -1809,22 +1847,42 @@
     const sections = [];
 
     const coords = createSection('Coordonnées');
+    const normalizeAddress = (value) =>
+      normalise(value || '')
+        .replace(/[^a-z0-9]+/g, '')
+        .trim();
+    const addressKey = normalizeAddress(club.address);
+    const salleKey = normalizeAddress(club.salle);
+    const siegeKey = normalizeAddress(club.siege);
     appendDetail(coords.list, 'Adresse', club.address, { icon: 'address' });
+    if (club.salle && salleKey && salleKey !== addressKey) {
+      appendDetail(coords.list, 'Salle de jeu', club.salle);
+    }
+    if (
+      club.siege &&
+      siegeKey &&
+      siegeKey !== addressKey &&
+      (!salleKey || siegeKey !== salleKey)
+    ) {
+      appendDetail(coords.list, 'Siège social', club.siege);
+    }
     appendDetail(coords.list, 'Ville', club.commune && !club.address ? club.commune : '');
     appendDetail(coords.list, 'Email', club.email, { type: 'mail', icon: 'mail' });
     appendDetail(coords.list, 'Téléphone', club.phone, { type: 'phone', icon: 'phone' });
+    appendDetail(coords.list, 'Fax', club.fax);
     appendDetail(coords.list, 'Site internet', club.site, {
       type: 'link',
       label: 'Accéder au site du club',
       icon: 'website',
     });
+    appendDetail(coords.list, 'Accès PMR', club.accesPmr);
     if (coords.list.childElementCount) {
       sections.push(coords.section);
     }
 
     const activities = createSection('Activités');
     appendDetail(activities.list, 'Publics accueillis', club.publics);
-    appendDetail(activities.list, 'Horaires', club.hours, { icon: 'hours' });
+    appendDetail(activities.list, 'Horaires', club.hours, { type: 'lines', icon: 'hours' });
     appendDetail(activities.list, 'Tarifs', club.tarifs);
     appendDetail(activities.list, 'Informations complémentaires', club.notes && club.publics ? club.notes : '');
     if (activities.list.childElementCount) {
@@ -1833,6 +1891,8 @@
 
     const organisation = createSection('Organisation');
     appendDetail(organisation.list, 'Président·e', club.president);
+    appendDetail(organisation.list, 'Contact', club.contact);
+    appendDetail(organisation.list, 'Label fédéral', club.labelFederal);
     if (club.licenses && (club.licenses.A || club.licenses.B)) {
       const licenseParts = [];
       if (club.licenses.A) {
@@ -1849,6 +1909,14 @@
     }
     if (organisation.list.childElementCount) {
       sections.push(organisation.section);
+    }
+
+    const competitions = createSection('Compétitions');
+    appendDetail(competitions.list, 'Interclubs', club.interclubs);
+    appendDetail(competitions.list, 'Interclubs Jeunes', club.interclubsJeunes);
+    appendDetail(competitions.list, 'Interclubs Féminins', club.interclubsFeminins);
+    if (competitions.list.childElementCount) {
+      sections.push(competitions.section);
     }
 
     const resources = createSection('Ressources');

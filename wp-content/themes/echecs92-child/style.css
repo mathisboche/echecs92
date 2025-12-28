@@ -5570,6 +5570,11 @@ body.mathis-mode .mathis-fragment{
 .club-section__value{
   color:#1f2937;
 }
+.club-section__lines{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
 .club-section__value a{
   color:#1d4ed8;
   text-decoration:none;
