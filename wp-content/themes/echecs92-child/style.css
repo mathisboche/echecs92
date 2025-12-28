@@ -5626,6 +5626,13 @@ body.mathis-mode .mathis-fragment{
     align-self:flex-end;
     margin-top:0;
   }
+  .club-share-button{
+    width:38px;
+    padding:0;
+    font-size:0;
+    border-radius:50%;
+    gap:0;
+  }
 }
 
 img{
