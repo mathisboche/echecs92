@@ -104,6 +104,7 @@ add_action('wp_enqueue_scripts', function () {
       const content = card.querySelector('.news-simple-card__content');
       const title = card.querySelector('.news-simple-card__title');
       const excerpt = card.querySelector('.news-simple-card__excerpt');
+      const excerptText = card.querySelector('.news-simple-card__excerpt .wp-block-post-excerpt__excerpt') || excerpt;
       const more = card.querySelector('.news-simple-card__more, .wp-block-read-more, .wp-block-post-excerpt__more-link');
 
       add('card content found', Boolean(content));
@@ -125,18 +126,57 @@ add_action('wp_enqueue_scripts', function () {
       }
 
       add('excerpt found', Boolean(excerpt));
-      if (excerpt) {
-        add('excerpt height', styleOf(excerpt, 'height'));
-        add('excerpt lineClamp', styleOf(excerpt, '-webkit-line-clamp'));
+      if (excerptText) {
+        add('excerpt tag', excerptText.tagName);
+        add('excerpt height', styleOf(excerptText, 'height'));
+        add('excerpt lineClamp', styleOf(excerptText, '-webkit-line-clamp'));
       }
 
       add('more link found', Boolean(more));
+      if (more) {
+        add('more tag', more.tagName);
+        add('more classes', more.className || '(none)');
+      }
     }
 
     const articleRoot = document.querySelector('.article-simple');
     add('article-simple found', Boolean(articleRoot));
     const postTitle = document.querySelector('.wp-block-post-title');
     add('wp-block-post-title found', Boolean(postTitle));
+    const main = document.querySelector('main');
+    add('main found', Boolean(main));
+    if (main) {
+      add('main classes', main.className || '(none)');
+      add('main style attr', main.getAttribute('style') || '(none)');
+      add('main maxWidth', styleOf(main, 'max-width'));
+      add('main padding', styleOf(main, 'padding'));
+      add('main display', styleOf(main, 'display'));
+      add('main gap', styleOf(main, 'gap'));
+    }
+    if (postTitle) {
+      add('post title style attr', postTitle.getAttribute('style') || '(none)');
+      add('post title font-size', styleOf(postTitle, 'font-size'));
+      add('post title margin', styleOf(postTitle, 'margin'));
+    }
+    const postDate = document.querySelector('.wp-block-post-date');
+    if (postDate) {
+      add('post date style attr', postDate.getAttribute('style') || '(none)');
+      add('post date font-size', styleOf(postDate, 'font-size'));
+      add('post date letter-spacing', styleOf(postDate, 'letter-spacing'));
+    }
+    const postContent = document.querySelector('.wp-block-post-content');
+    if (postContent) {
+      add('post content style attr', postContent.getAttribute('style') || '(none)');
+      add('post content font-size', styleOf(postContent, 'font-size'));
+      add('post content line-height', styleOf(postContent, 'line-height'));
+      add('post content max-width', styleOf(postContent, 'max-width'));
+    }
+    const featured = document.querySelector('.wp-block-post-featured-image');
+    if (featured) {
+      add('featured image style attr', featured.getAttribute('style') || '(none)');
+      add('featured image border-radius', styleOf(featured, 'border-radius'));
+      add('featured image border', styleOf(featured, 'border'));
+    }
 
     if (pre) {
       pre.textContent += `\n\nDOM debug:\n${lines.join('\n')}`;
@@ -236,6 +276,11 @@ JS;
     }
 }, 20);
 
+add_filter('template_include', function ($template) {
+    $GLOBALS['cdje92_template_include_path'] = $template;
+    return $template;
+}, 99);
+
 add_action('wp_footer', function () {
     if (!isset($_GET['cdje-debug'])) {
         return;
@@ -296,6 +341,7 @@ add_action('wp_footer', function () {
     $output[] = 'Theme stylesheet: ' . $stylesheet;
     $output[] = 'Theme template: ' . $template;
     $output[] = 'Theme version: ' . $theme_version;
+    $output[] = 'Template include path: ' . ($GLOBALS['cdje92_template_include_path'] ?? 'n/a');
     $output[] = 'Current block template id: ' . $current_template_id;
     $output[] = 'Current block template slug: ' . $current_template_slug;
     $output[] = 'Block template source: ' . $template_source;

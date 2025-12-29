@@ -5695,83 +5695,83 @@ body.single-actualite main.wp-block-group,
 body.single-actualite main,
 body.post-type-actualite main.wp-block-group,
 body.post-type-actualite main{
-  max-width:900px;
-  margin:0;
-  padding:56px 24px 96px;
-  display:flex;
-  flex-direction:column;
-  gap:24px;
-  font-family: system-ui,-apple-system,BlinkMacSystemFont,"Inter","Helvetica Neue",Arial,sans-serif;
-  color:#0f172a;
-  text-align:left;
-  width:100%;
+  max-width:900px !important;
+  margin:0 !important;
+  padding:56px 24px 96px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  gap:24px !important;
+  font-family: system-ui,-apple-system,BlinkMacSystemFont,"Inter","Helvetica Neue",Arial,sans-serif !important;
+  color:#0f172a !important;
+  text-align:left !important;
+  width:100% !important;
 }
 body.single-actualite main.wp-block-group.is-layout-constrained,
 body.single-actualite main.is-layout-constrained,
 body.post-type-actualite main.wp-block-group.is-layout-constrained,
 body.post-type-actualite main.is-layout-constrained{
-  margin-left:0;
-  margin-right:0;
+  margin-left:0 !important;
+  margin-right:0 !important;
 }
 body.single-actualite main.is-layout-constrained > :where(:not(.alignleft,.alignright,.alignfull)),
 body.single-actualite main .is-layout-constrained > :where(:not(.alignleft,.alignright,.alignfull)),
 body.post-type-actualite main.is-layout-constrained > :where(:not(.alignleft,.alignright,.alignfull)),
 body.post-type-actualite main .is-layout-constrained > :where(:not(.alignleft,.alignright,.alignfull)){
-  max-width:none;
-  margin-left:0;
-  margin-right:0;
+  max-width:none !important;
+  margin-left:0 !important;
+  margin-right:0 !important;
 }
 body.single-actualite .wp-block-post-date,
 body.post-type-actualite .wp-block-post-date{
-  margin:0;
-  font-size:12px;
-  letter-spacing:.12em;
-  text-transform:uppercase;
-  color:#94a3b8;
+  margin:0 !important;
+  font-size:12px !important;
+  letter-spacing:.12em !important;
+  text-transform:uppercase !important;
+  color:#94a3b8 !important;
 }
 body.single-actualite .wp-block-post-title,
 body.post-type-actualite .wp-block-post-title{
-  margin:0;
-  font-size:32px;
-  line-height:1.2;
+  margin:0 !important;
+  font-size:32px !important;
+  line-height:1.2 !important;
 }
 body.single-actualite .wp-block-post-featured-image,
 body.post-type-actualite .wp-block-post-featured-image{
-  margin:0;
-  width:100%;
-  border-radius:10px;
-  overflow:hidden;
-  border:1px solid #e5e7eb;
-  background:#f8fafc url("/wp-content/themes/echecs92-child/assets/cdje-92-square.svg") center/clamp(180px,30%,240px) no-repeat;
-  aspect-ratio:4/3;
+  margin:0 !important;
+  width:100% !important;
+  border-radius:10px !important;
+  overflow:hidden !important;
+  border:1px solid #e5e7eb !important;
+  background:#f8fafc url("/wp-content/themes/echecs92-child/assets/cdje-92-square.svg") center/clamp(180px,30%,240px) no-repeat !important;
+  aspect-ratio:4/3 !important;
 }
 body.single-actualite .wp-block-post-featured-image img,
 body.post-type-actualite .wp-block-post-featured-image img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  display:block;
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover !important;
+  display:block !important;
 }
 body.single-actualite .wp-block-post-content,
 body.post-type-actualite .wp-block-post-content{
-  display:flex;
-  flex-direction:column;
-  gap:0;
-  font-size:16px;
-  line-height:1.6;
-  color:#334155;
-  text-align:left;
-  margin:0;
-  max-width:none;
+  display:flex !important;
+  flex-direction:column !important;
+  gap:0 !important;
+  font-size:16px !important;
+  line-height:1.6 !important;
+  color:#334155 !important;
+  text-align:left !important;
+  margin:0 !important;
+  max-width:none !important;
 }
 body.single-actualite .wp-block-post-content > *,
 body.post-type-actualite .wp-block-post-content > *{
-  margin:0;
-  max-width:none;
+  margin:0 !important;
+  max-width:none !important;
 }
 body.single-actualite .wp-block-post-content > * + *,
 body.post-type-actualite .wp-block-post-content > * + *{
-  margin-top:10px;
+  margin-top:10px !important;
 }
 body.single-actualite .wp-block-post-content h2,
 body.single-actualite .wp-block-post-content h3,
@@ -5779,61 +5779,61 @@ body.single-actualite .wp-block-post-content h4,
 body.post-type-actualite .wp-block-post-content h2,
 body.post-type-actualite .wp-block-post-content h3,
 body.post-type-actualite .wp-block-post-content h4{
-  margin:0;
-  color:#0f172a;
-  line-height:1.25;
+  margin:0 !important;
+  color:#0f172a !important;
+  line-height:1.25 !important;
 }
 body.single-actualite .wp-block-post-content h2,
 body.post-type-actualite .wp-block-post-content h2{
-  font-size:22px;
+  font-size:22px !important;
 }
 body.single-actualite .wp-block-post-content h3,
 body.post-type-actualite .wp-block-post-content h3{
-  font-size:20px;
+  font-size:20px !important;
 }
 body.single-actualite .wp-block-post-content h4,
 body.post-type-actualite .wp-block-post-content h4{
-  font-size:18px;
+  font-size:18px !important;
 }
 body.single-actualite .wp-block-post-content ul,
 body.single-actualite .wp-block-post-content ol,
 body.post-type-actualite .wp-block-post-content ul,
 body.post-type-actualite .wp-block-post-content ol{
-  margin:0;
-  padding-left:18px;
+  margin:0 !important;
+  padding-left:18px !important;
 }
 body.single-actualite .wp-block-post-content li + li,
 body.post-type-actualite .wp-block-post-content li + li{
-  margin-top:6px;
+  margin-top:6px !important;
 }
 body.single-actualite .wp-block-post-content figure,
 body.post-type-actualite .wp-block-post-content figure{
-  margin:0;
+  margin:0 !important;
 }
 body.single-actualite .wp-block-post-content figure + figure,
 body.post-type-actualite .wp-block-post-content figure + figure{
-  margin-top:10px;
+  margin-top:10px !important;
 }
 body.single-actualite .wp-block-post-content figure img,
 body.post-type-actualite .wp-block-post-content figure img{
-  border-radius:10px;
+  border-radius:10px !important;
 }
 body.single-actualite .wp-block-post-navigation-link,
 body.post-type-actualite .wp-block-post-navigation-link{
-  font-weight:600;
-  font-size:14px;
-  color:#0f172a;
+  font-weight:600 !important;
+  font-size:14px !important;
+  color:#0f172a !important;
 }
 body.single-actualite .wp-block-post-navigation-link a,
 body.post-type-actualite .wp-block-post-navigation-link a{
-  color:#1d4ed8;
-  text-decoration:none;
+  color:#1d4ed8 !important;
+  text-decoration:none !important;
 }
 body.single-actualite .wp-block-post-navigation-link a:hover,
 body.single-actualite .wp-block-post-navigation-link a:focus-visible,
 body.post-type-actualite .wp-block-post-navigation-link a:hover,
 body.post-type-actualite .wp-block-post-navigation-link a:focus-visible{
-  color:#0f172a;
-  outline:none;
-  text-decoration:underline;
+  color:#0f172a !important;
+  outline:none !important;
+  text-decoration:underline !important;
 }
