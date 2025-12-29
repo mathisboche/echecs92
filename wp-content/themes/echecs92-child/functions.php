@@ -145,6 +145,20 @@ add_action('wp_enqueue_scripts', function () {
     add('wp-block-post-title found', Boolean(postTitle));
     const main = document.querySelector('main');
     add('main found', Boolean(main));
+    const siteBlocks = document.querySelector('.wp-site-blocks');
+    if (siteBlocks) {
+      const children = Array.from(siteBlocks.children);
+      const childLabels = children.slice(0, 8).map((el) => {
+        const tag = el.tagName.toLowerCase();
+        const classes = (el.className || '').toString().trim();
+        if (!classes) {
+          return tag;
+        }
+        return `${tag}.${classes.split(/\s+/).join('.')}`;
+      });
+      add('wp-site-blocks child count', children.length);
+      add('wp-site-blocks first children', childLabels.join(' | ') || '(none)');
+    }
     if (main) {
       add('main classes', main.className || '(none)');
       add('main style attr', main.getAttribute('style') || '(none)');
@@ -292,6 +306,8 @@ add_action('wp_footer', function () {
     $stylesheet = $theme->get_stylesheet();
     $template = $theme->get_template();
     $theme_version = $theme->get('Version');
+    $current_template_id = $GLOBALS['_wp_current_template_id'] ?? 'n/a';
+    $current_template_slug = $GLOBALS['_wp_current_template_slug'] ?? 'n/a';
 
     $template_source = 'n/a';
     $template_title = 'n/a';
@@ -332,8 +348,6 @@ add_action('wp_footer', function () {
     $queried_id = (string) get_queried_object_id();
     $is_singular = is_singular() ? 'yes' : 'no';
     $is_actualite = is_singular('actualite') ? 'yes' : 'no';
-    $current_template_id = $GLOBALS['_wp_current_template_id'] ?? 'n/a';
-    $current_template_slug = $GLOBALS['_wp_current_template_slug'] ?? 'n/a';
     $child_style_enqueued = wp_style_is('echecs92-child', 'enqueued') ? 'yes' : 'no';
     $child_style_done = wp_style_is('echecs92-child', 'done') ? 'yes' : 'no';
 

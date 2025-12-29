@@ -5837,3 +5837,52 @@ body.post-type-actualite .wp-block-post-navigation-link a:focus-visible{
   outline:none !important;
   text-decoration:underline !important;
 }
+
+/* ---------- ACTUALITES DETAIL FALLBACK (NO MAIN WRAPPER) ---------- */
+body.single-actualite .wp-site-blocks > :is(
+  .article-simple__back,
+  .article-simple__date,
+  .article-simple__title,
+  .article-simple__media,
+  .wp-block-post-featured-image,
+  .entry-content,
+  .wp-block-post-content,
+  .post-navigation-link-previous,
+  .post-navigation-link-next
+),
+body.post-type-actualite .wp-site-blocks > :is(
+  .article-simple__back,
+  .article-simple__date,
+  .article-simple__title,
+  .article-simple__media,
+  .wp-block-post-featured-image,
+  .entry-content,
+  .wp-block-post-content,
+  .post-navigation-link-previous,
+  .post-navigation-link-next
+){
+  width:100% !important;
+  max-width:900px !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+  padding-left:24px !important;
+  padding-right:24px !important;
+  box-sizing:border-box !important;
+}
+body.single-actualite .wp-site-blocks > .article-simple__back,
+body.post-type-actualite .wp-site-blocks > .article-simple__back{
+  margin-top:56px !important;
+  margin-bottom:4px !important;
+}
+body.single-actualite .wp-site-blocks > .article-simple__media,
+body.single-actualite .wp-site-blocks > .wp-block-post-featured-image,
+body.post-type-actualite .wp-site-blocks > .article-simple__media,
+body.post-type-actualite .wp-site-blocks > .wp-block-post-featured-image{
+  max-width:calc(900px - 48px) !important;
+  padding-left:0 !important;
+  padding-right:0 !important;
+}
+body.single-actualite .wp-site-blocks > .post-navigation-link-next,
+body.post-type-actualite .wp-site-blocks > .post-navigation-link-next{
+  margin-bottom:96px !important;
+}
