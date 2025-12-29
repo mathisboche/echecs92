@@ -79,8 +79,78 @@ add_action('wp_enqueue_scripts', function () {
         $debug_css = 'html{outline:6px solid #0ea5e9 !important;}'
             . 'body::before{content:"CDJE92 THEME DEBUG ACTIVE";position:fixed;top:0;left:0;right:0;'
             . 'z-index:99999;background:#0ea5e9;color:#fff;font:700 12px/1.2 system-ui;'
-            . 'text-align:center;padding:6px 8px;}';
+            . 'text-align:center;padding:6px 8px;}'
+            . '.news-simple{outline:2px dashed #22c55e !important;}'
+            . '.news-simple-card{outline:2px dashed #f97316 !important;}'
+            . '.article-simple,.wp-block-post-content{outline:2px dashed #a855f7 !important;}';
         wp_add_inline_style('echecs92-child', $debug_css);
+
+        $debug_js = <<<'JS'
+(() => {
+  const run = () => {
+    const panel = document.getElementById('cdje92-debug-panel');
+    const pre = panel ? panel.querySelector('pre') : null;
+    const lines = [];
+    const add = (label, value) => lines.push(`${label}: ${value}`);
+    const styleOf = (el, prop) => window.getComputedStyle(el).getPropertyValue(prop);
+
+    const newsRoot = document.querySelector('.news-simple');
+    add('news-simple found', Boolean(newsRoot));
+    const cards = document.querySelectorAll('.news-simple-card');
+    add('news-simple-card count', cards.length);
+
+    if (cards.length) {
+      const card = cards[0];
+      const content = card.querySelector('.news-simple-card__content');
+      const title = card.querySelector('.news-simple-card__title');
+      const excerpt = card.querySelector('.news-simple-card__excerpt');
+      const more = card.querySelector('.news-simple-card__more, .wp-block-read-more, .wp-block-post-excerpt__more-link');
+
+      add('card content found', Boolean(content));
+      if (content) {
+        add('content display', styleOf(content, 'display'));
+        add('content height', styleOf(content, 'height'));
+        add('content minHeight', styleOf(content, 'min-height'));
+        add('content maxHeight', styleOf(content, 'max-height'));
+        add('content overflow', styleOf(content, 'overflow'));
+        add('content gap', styleOf(content, 'gap'));
+        add('content offsetHeight', content.offsetHeight);
+        add('content scrollHeight', content.scrollHeight);
+      }
+
+      add('title found', Boolean(title));
+      if (title) {
+        add('title height', styleOf(title, 'height'));
+        add('title lineClamp', styleOf(title, '-webkit-line-clamp'));
+      }
+
+      add('excerpt found', Boolean(excerpt));
+      if (excerpt) {
+        add('excerpt height', styleOf(excerpt, 'height'));
+        add('excerpt lineClamp', styleOf(excerpt, '-webkit-line-clamp'));
+      }
+
+      add('more link found', Boolean(more));
+    }
+
+    const articleRoot = document.querySelector('.article-simple');
+    add('article-simple found', Boolean(articleRoot));
+    const postTitle = document.querySelector('.wp-block-post-title');
+    add('wp-block-post-title found', Boolean(postTitle));
+
+    if (pre) {
+      pre.textContent += `\n\nDOM debug:\n${lines.join('\n')}`;
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', run);
+  } else {
+    run();
+  }
+})();
+JS;
+        wp_add_inline_script('echecs92-header', $debug_js);
     }
 
     $is_92_map = is_page('carte-des-clubs-92') || is_page_template('page-carte-des-clubs-92.html');
@@ -178,6 +248,26 @@ add_action('wp_footer', function () {
     $template = $theme->get_template();
     $theme_version = $theme->get('Version');
 
+    $template_source = 'n/a';
+    $template_title = 'n/a';
+    $template_theme = 'n/a';
+    $template_has_theme_file = 'n/a';
+    $template_is_custom = 'n/a';
+    if (function_exists('get_block_template') && $current_template_id !== 'n/a') {
+        $template_obj = get_block_template($current_template_id, 'wp_template');
+        if ($template_obj && ! is_wp_error($template_obj)) {
+            $template_source = $template_obj->source ?? ($template_obj->origin ?? 'n/a');
+            $template_title = $template_obj->title ?? 'n/a';
+            $template_theme = $template_obj->theme ?? 'n/a';
+            if (property_exists($template_obj, 'has_theme_file')) {
+                $template_has_theme_file = $template_obj->has_theme_file ? 'yes' : 'no';
+            }
+            if (property_exists($template_obj, 'is_custom')) {
+                $template_is_custom = $template_obj->is_custom ? 'yes' : 'no';
+            }
+        }
+    }
+
     $handles = $wp_styles ? $wp_styles->queue : [];
     $style_lines = [];
     foreach ($handles as $handle) {
@@ -208,6 +298,11 @@ add_action('wp_footer', function () {
     $output[] = 'Theme version: ' . $theme_version;
     $output[] = 'Current block template id: ' . $current_template_id;
     $output[] = 'Current block template slug: ' . $current_template_slug;
+    $output[] = 'Block template source: ' . $template_source;
+    $output[] = 'Block template title: ' . $template_title;
+    $output[] = 'Block template theme: ' . $template_theme;
+    $output[] = 'Block template has_theme_file: ' . $template_has_theme_file;
+    $output[] = 'Block template is_custom: ' . $template_is_custom;
     $output[] = 'Post type: ' . $post_type;
     $output[] = 'Queried id: ' . $queried_id;
     $output[] = 'is_singular: ' . $is_singular;
