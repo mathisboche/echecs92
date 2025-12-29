@@ -525,23 +525,26 @@ add_action('init', 'cdje92_register_actualites_cpt');
 
 if (! function_exists('cdje92_seed_actualites_demo_posts')) {
     function cdje92_seed_actualites_demo_posts() {
-        if (get_option('cdje92_demo_actualites_seeded')) {
+        $force_seed = isset($_GET['cdje-seed-actualites']) && current_user_can('manage_options');
+        if (! $force_seed && get_option('cdje92_demo_actualites_seeded')) {
             return;
         }
 
-        $existing = get_posts([
-            'post_type'              => 'actualite',
-            'posts_per_page'         => 1,
-            'post_status'            => 'any',
-            'fields'                 => 'ids',
-            'no_found_rows'          => true,
-            'update_post_meta_cache' => false,
-            'update_post_term_cache' => false,
-        ]);
+        if (! $force_seed) {
+            $existing = get_posts([
+                'post_type'              => 'actualite',
+                'posts_per_page'         => 1,
+                'post_status'            => 'any',
+                'fields'                 => 'ids',
+                'no_found_rows'          => true,
+                'update_post_meta_cache' => false,
+                'update_post_term_cache' => false,
+            ]);
 
-        if (! empty($existing)) {
-            update_option('cdje92_demo_actualites_seeded', 1);
-            return;
+            if (! empty($existing)) {
+                update_option('cdje92_demo_actualites_seeded', 1);
+                return;
+            }
         }
 
         $author_id = get_current_user_id();
@@ -556,104 +559,379 @@ if (! function_exists('cdje92_seed_actualites_demo_posts')) {
             }
         }
 
+        $placeholder_img = '/wp-content/themes/echecs92-child/assets/img/gouvernance/placeholder.svg';
+
         $samples = [
             [
                 'title'   => 'Rentrée des clubs du 92',
                 'slug'    => 'rentree-des-clubs-du-92',
                 'date'    => '2024-09-12 09:00:00',
                 'excerpt' => 'Inscriptions ouvertes, créneaux débutants et animations locales.',
-                'content' => "Inscriptions ouvertes pour la saison.\n\nCréneaux débutants et animations locales.",
+                'content' => <<<HTML
+<!-- wp:paragraph -->
+<p>La saison 2024-2025 démarre dans tout le departement. Les clubs du 92 ouvrent leurs portes avec des creneaux debutants, des ateliers de jeu libre et des cours encadres pour tous les ages.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Pour trouver un club proche de chez vous, consultez la page <a href="/clubs">Clubs</a> et contactez directement l equipe locale. Vous pouvez aussi nous ecrire via la page <a href="/contact">Contact</a>.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":2} -->
+<h2>Ce qui change cette annee</h2>
+<!-- /wp:heading -->
+
+<!-- wp:list -->
+<ul>
+  <li>Des creneaux d initiation pour les 6-10 ans.</li>
+  <li>Un parcours debutant sur 6 semaines dans 5 clubs.</li>
+  <li>Des tournois amicaux un samedi par mois.</li>
+</ul>
+<!-- /wp:list -->
+
+<!-- wp:paragraph -->
+<p><strong>Conseil :</strong> venez avec votre licence si vous en avez deja une, sinon les clubs peuvent vous aider a la creer.</p>
+<!-- /wp:paragraph -->
+HTML
             ],
             [
                 'title'   => 'Stage départemental U12',
                 'slug'    => 'stage-departemental-u12',
                 'date'    => '2024-09-28 09:00:00',
                 'excerpt' => "Journée de jeu et d'analyse encadrée.",
-                'content' => "Journée de jeu et d'analyse encadrée.\n\nPublic U12, places limitées.",
+                'content' => <<<HTML
+<!-- wp:paragraph -->
+<p>Une journee entiere pour progresser en strategie et en fin de partie. Le stage est encadre par des intervenants diplomes, avec des ateliers pratiques et des parties commentees.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":2} -->
+<h2>Programme de la journee</h2>
+<!-- /wp:heading -->
+
+<!-- wp:list -->
+<ul>
+  <li>09h30 - 10h30 : themes tactiques simples.</li>
+  <li>10h45 - 12h00 : parties commentees.</li>
+  <li>14h00 - 15h30 : finales essentielles.</li>
+  <li>15h45 - 17h00 : mini tournoi par niveau.</li>
+</ul>
+<!-- /wp:list -->
+
+<!-- wp:image {"sizeSlug":"large","linkDestination":"none"} -->
+<figure class="wp-block-image size-large"><img src="{$placeholder_img}" alt="Illustration du stage" /></figure>
+<!-- /wp:image -->
+
+<!-- wp:paragraph -->
+<p>Places limitees. Inscription par mail via <a href="/contact">Contact</a> avant le 20/09.</p>
+<!-- /wp:paragraph -->
+HTML
             ],
             [
                 'title'   => 'Tournois rapides du week-end',
                 'slug'    => 'tournois-rapides-du-week-end',
                 'date'    => '2024-10-05 09:00:00',
                 'excerpt' => 'Rendez-vous ouverts à tous les niveaux.',
-                'content' => "Rendez-vous ouverts à tous les niveaux.\n\nRenseignements auprès des clubs.",
+                'content' => <<<HTML
+<!-- wp:paragraph -->
+<p>Trois tournois rapides sont proposes ce week-end dans le 92. Les evenements sont ouverts a tous les niveaux, avec une ambiance conviviale.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Retrouvez les lieux et horaires sur la page <a href="/competitions">Competitions</a> ou contactez votre club.</p>
+<!-- /wp:paragraph -->
+HTML
             ],
             [
                 'title'   => 'Championnat par équipes',
                 'slug'    => 'championnat-par-equipes',
                 'date'    => '2024-10-12 09:00:00',
                 'excerpt' => 'Calendrier et groupes publiés.',
-                'content' => "Calendrier et groupes publiés.\n\nConsultez les divisions.",
+                'content' => <<<HTML
+<!-- wp:paragraph -->
+<p>Le championnat par equipes reprend avec une formule stable et des groupes equilibres. Merci aux clubs d avoir confirme leurs inscriptions dans les delais.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":2} -->
+<h2>Repartition des groupes</h2>
+<!-- /wp:heading -->
+
+<!-- wp:list -->
+<ul>
+  <li>Division 1 : 8 equipes.</li>
+  <li>Division 2 : 12 equipes en deux poules.</li>
+  <li>Division 3 : 16 equipes en quatre poules.</li>
+</ul>
+<!-- /wp:list -->
+
+<!-- wp:heading {"level":2} -->
+<h2>Feuilles de match et resultats</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Les feuilles de match sont disponibles dans l espace <a href="/documents">Documents</a>. Les resultats seront mis a jour chaque lundi matin.</p>
+<!-- /wp:paragraph -->
+HTML
             ],
             [
                 'title'   => 'Formation animateurs',
                 'slug'    => 'formation-animateurs',
                 'date'    => '2024-10-19 09:00:00',
                 'excerpt' => "Session d'automne pour bénévoles.",
-                'content' => "Session d'automne pour bénévoles.\n\nInscriptions ouvertes.",
+                'content' => <<<HTML
+<!-- wp:paragraph -->
+<p>Session d automne dediee aux benevoles qui souhaitent animer des ateliers en club ou en milieu scolaire. La formation alterne apports theoriques et exercices pratiques.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":2} -->
+<h2>Objectifs</h2>
+<!-- /wp:heading -->
+
+<!-- wp:list -->
+<ul>
+  <li>Structurer une seance de 60 minutes.</li>
+  <li>Donner des consignes simples et efficaces.</li>
+  <li>Adapter le contenu a l age des participants.</li>
+</ul>
+<!-- /wp:list -->
+
+<!-- wp:paragraph -->
+<p>Infos et inscriptions via <a href="/contact">Contact</a>. Places limitees a 20 participants.</p>
+<!-- /wp:paragraph -->
+HTML
             ],
             [
                 'title'   => 'Coupe Loubatière',
                 'slug'    => 'coupe-loubatiere',
                 'date'    => '2024-11-02 09:00:00',
                 'excerpt' => 'Inscriptions avant le 25/10.',
-                'content' => "Inscriptions avant le 25/10.\n\nRèglement disponible.",
+                'content' => <<<HTML
+<!-- wp:paragraph -->
+<p>Les inscriptions pour la Coupe Loubatiere sont ouvertes jusqu au 25/10. Chaque club peut engager une equipe de 4 joueurs.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Le reglement est disponible dans la rubrique <a href="/documents">Documents</a>. Merci de verifier l eligibility des joueurs.</p>
+<!-- /wp:paragraph -->
+HTML
             ],
             [
                 'title'   => 'Open du comité',
                 'slug'    => 'open-du-comite',
                 'date'    => '2024-11-15 09:00:00',
                 'excerpt' => 'Infos pratiques et règlement mis à jour.',
-                'content' => "Infos pratiques et règlement mis à jour.\n\nTournoi ouvert à tous.",
+                'content' => <<<HTML
+<!-- wp:paragraph -->
+<p>L Open du Comite revient pour un week-end complet. Tournoi ouvert a tous, avec un classement par categorie et des prix pour les jeunes.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":2} -->
+<h2>Format et cadence</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>9 rondes, cadence 15+3. Pointage obligatoire 30 minutes avant la premiere ronde.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:image {"sizeSlug":"large","linkDestination":"none"} -->
+<figure class="wp-block-image size-large"><img src="{$placeholder_img}" alt="Illustration tournoi" /></figure>
+<!-- /wp:image -->
+
+<!-- wp:heading {"level":2} -->
+<h2>Inscriptions</h2>
+<!-- /wp:heading -->
+
+<!-- wp:list -->
+<ul>
+  <li>Inscription en ligne via <a href="/contact">Contact</a>.</li>
+  <li>Tarif adulte : 15 euros. Tarif jeune : 8 euros.</li>
+  <li>Cloture des inscriptions le mercredi precedent.</li>
+</ul>
+<!-- /wp:list -->
+HTML
             ],
             [
                 'title'   => 'Arbitrage rapide',
                 'slug'    => 'arbitrage-rapide',
                 'date'    => '2024-11-23 09:00:00',
                 'excerpt' => 'Atelier de mise à niveau pour arbitres.',
-                'content' => "Atelier de mise à niveau pour arbitres.\n\nUne demi-journée.",
+                'content' => <<<HTML
+<!-- wp:paragraph -->
+<p>Atelier de mise a niveau pour arbitres et responsables de tournoi. Une demi-journee pour revoir les points essentiels et les cas particuliers.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":2} -->
+<h2>Au programme</h2>
+<!-- /wp:heading -->
+
+<!-- wp:list -->
+<ul>
+  <li>Regles rapides et nouvelles recommandations.</li>
+  <li>Gestion des retards et des forfaits.</li>
+  <li>Outils numeriques pour l appariement.</li>
+</ul>
+<!-- /wp:list -->
+
+<!-- wp:paragraph -->
+<p>Inscription gratuite, confirmez votre presence via <a href="/contact">Contact</a>.</p>
+<!-- /wp:paragraph -->
+HTML
             ],
             [
                 'title'   => 'Noël des jeunes',
                 'slug'    => 'noel-des-jeunes',
                 'date'    => '2024-12-07 09:00:00',
                 'excerpt' => 'Blitz et animations pour les U14.',
-                'content' => "Blitz et animations pour les U14.\n\nAmbiance conviviale.",
+                'content' => <<<HTML
+<!-- wp:paragraph -->
+<p>Apres-midi festif pour les U14 avec blitz, ateliers tactiques et remise de recompenses. Une collation est prevue sur place.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:image {"sizeSlug":"large","linkDestination":"none"} -->
+<figure class="wp-block-image size-large"><img src="{$placeholder_img}" alt="Animation jeunes" /></figure>
+<!-- /wp:image -->
+
+<!-- wp:list -->
+<ul>
+  <li>Accueil a 13h30.</li>
+  <li>Blitz par groupes de niveau.</li>
+  <li>Remise des prix a 17h15.</li>
+</ul>
+<!-- /wp:list -->
+HTML
             ],
             [
                 'title'   => 'Assemblée générale',
                 'slug'    => 'assemblee-generale',
                 'date'    => '2024-12-14 09:00:00',
                 'excerpt' => 'Ordre du jour et documents disponibles.',
-                'content' => "Ordre du jour et documents disponibles.\n\nParticipation des clubs.",
+                'content' => <<<HTML
+<!-- wp:paragraph -->
+<p>L Assemblee generale annuelle se tiendra le 14/12 a 18h00. Chaque club est invite a etre represente.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":2} -->
+<h2>Documents</h2>
+<!-- /wp:heading -->
+
+<!-- wp:list -->
+<ul>
+  <li>Rapport moral.</li>
+  <li>Rapport financier.</li>
+  <li>Perspectives 2025.</li>
+</ul>
+<!-- /wp:list -->
+
+<!-- wp:paragraph -->
+<p>Les documents preparatoires sont disponibles dans <a href="/documents">Documents</a>.</p>
+<!-- /wp:paragraph -->
+HTML
             ],
             [
                 'title'   => 'Calendrier 2025',
                 'slug'    => 'calendrier-2025',
                 'date'    => '2025-01-04 09:00:00',
                 'excerpt' => 'Dates clés des compétitions.',
-                'content' => "Dates clés des compétitions.\n\nMise à jour progressive.",
+                'content' => <<<HTML
+<!-- wp:paragraph -->
+<p>Le calendrier previsionnel 2025 est en ligne. Il sera mis a jour au fil des inscriptions des clubs.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:list -->
+<ul>
+  <li>Janvier : stages et arbitrage.</li>
+  <li>Fevrier : Coupe 92.</li>
+  <li>Mai : finale departementale.</li>
+</ul>
+<!-- /wp:list -->
+
+<!-- wp:paragraph -->
+<p>Version PDF dans <a href="/documents">Documents</a>.</p>
+<!-- /wp:paragraph -->
+HTML
             ],
             [
                 'title'   => "Stages d'hiver",
                 'slug'    => 'stages-d-hiver',
                 'date'    => '2025-01-18 09:00:00',
                 'excerpt' => 'Sessions ouvertes à tous.',
-                'content' => "Sessions ouvertes à tous.\n\nFormats courts.",
+                'content' => <<<HTML
+<!-- wp:paragraph -->
+<p>Les stages d hiver sont ouverts a tous les niveaux. Chaque session alterne cours theoriques, exercices et parties commentees.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":2} -->
+<h2>Planning</h2>
+<!-- /wp:heading -->
+
+<!-- wp:list -->
+<ul>
+  <li>Session 1 : 20 au 22/01 (debutants).</li>
+  <li>Session 2 : 27 au 29/01 (intermediaires).</li>
+  <li>Session 3 : 03 au 05/02 (perfectionnement).</li>
+</ul>
+<!-- /wp:list -->
+
+<!-- wp:image {"sizeSlug":"large","linkDestination":"none"} -->
+<figure class="wp-block-image size-large"><img src="{$placeholder_img}" alt="Stage d'hiver" /></figure>
+<!-- /wp:image -->
+
+<!-- wp:paragraph -->
+<p>Inscription a la journee possible. Tarifs et horaires disponibles sur demande.</p>
+<!-- /wp:paragraph -->
+HTML
             ],
             [
                 'title'   => 'Coupe 92',
                 'slug'    => 'coupe-92',
                 'date'    => '2025-02-01 09:00:00',
                 'excerpt' => 'Tirage et lieux annoncés.',
-                'content' => "Tirage et lieux annoncés.\n\nDéplacements organisés.",
+                'content' => <<<HTML
+<!-- wp:paragraph -->
+<p>Le tirage de la Coupe 92 est disponible. Les rencontres se jouent entre le 10 et le 25 fevrier.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":2} -->
+<h2>Categories</h2>
+<!-- /wp:heading -->
+
+<!-- wp:list -->
+<ul>
+  <li>Open.</li>
+  <li>Jeunes.</li>
+  <li>Mixte.</li>
+</ul>
+<!-- /wp:list -->
+
+<!-- wp:paragraph -->
+<p>Les clubs peuvent proposer un regroupement de deplacements. Contactez le comite pour faciliter l organisation.</p>
+<!-- /wp:paragraph -->
+HTML
             ],
             [
                 'title'   => 'Initiation écoles',
                 'slug'    => 'initiation-ecoles',
                 'date'    => '2025-02-15 09:00:00',
                 'excerpt' => 'Nouvelles interventions prévues.',
-                'content' => "Nouvelles interventions prévues.\n\nContactez le comité.",
+                'content' => <<<HTML
+<!-- wp:paragraph -->
+<p>Le CDJE 92 relance les interventions en milieu scolaire avec des formats courts et progressifs. L objectif est de faire decouvrir le jeu d echecs et ses valeurs.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":2} -->
+<h2>Pour les ecoles</h2>
+<!-- /wp:heading -->
+
+<!-- wp:list -->
+<ul>
+  <li>Seances de 45 minutes.</li>
+  <li>Materiel fourni.</li>
+  <li>Suivi pedagogique sur 6 semaines.</li>
+</ul>
+<!-- /wp:list -->
+
+<!-- wp:paragraph -->
+<p>Les etablissements interesses peuvent nous contacter via <a href="/contact">Contact</a>.</p>
+<!-- /wp:paragraph -->
+HTML
             ],
         ];
 
@@ -672,7 +950,17 @@ if (! function_exists('cdje92_seed_actualites_demo_posts')) {
             if ($author_id) {
                 $post_data['post_author'] = $author_id;
             }
-            wp_insert_post($post_data);
+            $existing_post = get_page_by_path($sample['slug'], OBJECT, 'actualite');
+            if ($existing_post) {
+                $post_data['ID'] = $existing_post->ID;
+                $post_id = wp_update_post($post_data);
+            } else {
+                $post_id = wp_insert_post($post_data);
+            }
+
+            if (! is_wp_error($post_id) && $post_id) {
+                update_post_meta($post_id, '_cdje92_demo', 1);
+            }
         }
 
         update_option('cdje92_demo_actualites_seeded', 1);

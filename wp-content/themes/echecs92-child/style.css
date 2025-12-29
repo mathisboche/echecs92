@@ -2557,18 +2557,29 @@ a.news-simple-card__more:focus-visible{
 }
 .article-simple__back{
   margin:0 0 4px;
-  font-size:15px;
+  font-size:14px;
 }
 .article-simple__back a{
-  color:#1d4ed8;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:0 10px;
+  min-height:36px;
+  border-radius:999px;
+  border:1px solid rgba(15,23,42,0.16);
+  background:#ffffff;
+  color:#0f172a;
   text-decoration:none;
   font-weight:600;
+  transition:background-color .2s ease, border-color .2s ease, color .2s ease;
 }
 .article-simple__back a:hover,
 .article-simple__back a:focus-visible{
   color:#0f172a;
+  background:#f8fafc;
+  border-color:rgba(15,23,42,0.24);
   outline:none;
-  text-decoration:underline;
+  text-decoration:none;
 }
 .article-simple__header{
   display:flex;
@@ -2595,7 +2606,7 @@ a.news-simple-card__more:focus-visible{
   border:1px solid #e5e7eb;
   background:#f8fafc url("/wp-content/themes/echecs92-child/assets/cdje-92-square.svg") center/clamp(140px,20%,200px) no-repeat;
   aspect-ratio:16/9;
-  box-shadow:0 16px 30px rgba(15,23,42,.08);
+  box-shadow:none;
 }
 .article-simple__media .article-simple__media-image,
 .article-simple__media .wp-block-post-featured-image{
@@ -5694,9 +5705,9 @@ img{
 /* ---------- ACTUALITES DETAIL FALLBACK ---------- */
 body.single-actualite,
 body.post-type-actualite{
-  --actualite-max-width:880px;
+  --actualite-max-width:820px;
   --actualite-side-padding:24px;
-  --actualite-section-gap:18px;
+  --actualite-section-gap:16px;
 }
 body.single-actualite main.wp-block-group,
 body.single-actualite main,
@@ -5739,7 +5750,7 @@ body.post-type-actualite .wp-block-post-date{
 body.single-actualite .wp-block-post-title,
 body.post-type-actualite .wp-block-post-title{
   margin:0 !important;
-  font-size:34px !important;
+  font-size:30px !important;
   line-height:1.2 !important;
   letter-spacing:-0.02em !important;
 }
@@ -5752,7 +5763,7 @@ body.post-type-actualite .wp-block-post-featured-image{
   border:1px solid #e5e7eb !important;
   background:#f8fafc url("/wp-content/themes/echecs92-child/assets/cdje-92-square.svg") center/clamp(140px,20%,200px) no-repeat !important;
   aspect-ratio:16/9 !important;
-  box-shadow:0 16px 30px rgba(15,23,42,.08) !important;
+  box-shadow:none !important;
 }
 body.single-actualite .wp-block-post-featured-image img,
 body.post-type-actualite .wp-block-post-featured-image img{
@@ -5930,11 +5941,11 @@ body.single-actualite .wp-site-blocks > .post-navigation-link-previous,
 body.single-actualite .wp-site-blocks > .post-navigation-link-next,
 body.post-type-actualite .wp-site-blocks > .post-navigation-link-previous,
 body.post-type-actualite .wp-site-blocks > .post-navigation-link-next{
-  padding:12px 16px !important;
-  border-radius:12px !important;
-  border:1px solid #e5e7eb !important;
-  background:#fff !important;
-  box-shadow:0 10px 20px rgba(15,23,42,.06) !important;
+  padding:10px 0 !important;
+  border-radius:0 !important;
+  border-top:1px solid #e2e8f0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
 }
 body.single-actualite .wp-site-blocks > .post-navigation-link-previous:not(:has(a)),
 body.single-actualite .wp-site-blocks > .post-navigation-link-next:not(:has(a)),
