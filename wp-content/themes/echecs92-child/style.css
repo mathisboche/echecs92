@@ -219,6 +219,11 @@ body.admin-bar header.wp-block-template-part{
   outline:2px solid rgba(15,23,42,0.4);
   outline-offset:4px;
 }
+.cm-link-external{
+  font-size:0.85em;
+  opacity:0.7;
+  flex-shrink:0;
+}
 
 /* Burger */
 .cm-burger{
