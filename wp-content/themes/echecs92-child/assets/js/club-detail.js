@@ -51,9 +51,26 @@
 
   const storedNavigation = consumeStoredClubsNavigation();
 
+  const getStoredBackPath = (fallback) => {
+    if (storedNavigation && storedNavigation.back) {
+      try {
+        const url = new URL(storedNavigation.back, window.location.origin);
+        if (url.origin === window.location.origin) {
+          return url.pathname + url.search + url.hash;
+        }
+      } catch (error) {
+        // ignore invalid URLs
+      }
+    }
+    return fallback;
+  };
+
   const cameFromClubsSearch = () => {
     if (storedNavigation && storedNavigation.context === 'detail:list') {
       return true;
+    }
+    if (storedNavigation && storedNavigation.context === 'detail:map') {
+      return false;
     }
     const referrer = document.referrer;
     if (!referrer) {
@@ -92,15 +109,20 @@
   };
 
   const updateBackLinkVisibility = () => {
+    const showMapBack = cameFromClubsMap();
+    const showListBack = !showMapBack && cameFromClubsSearch();
+
     if (backLink) {
-      if (cameFromClubsSearch()) {
+      if (showListBack) {
+        backLink.href = getStoredBackPath('/clubs-92');
         backLink.removeAttribute('hidden');
       } else {
         backLink.setAttribute('hidden', '');
       }
     }
     if (backLinkMap) {
-      if (cameFromClubsMap()) {
+      if (showMapBack) {
+        backLinkMap.href = getStoredBackPath('/carte-des-clubs-92');
         backLinkMap.removeAttribute('hidden');
       } else {
         backLinkMap.setAttribute('hidden', '');
@@ -1295,17 +1317,6 @@
         releaseSpinner();
       });
   };
-
-  if (backLink && document.referrer) {
-    try {
-      const ref = new URL(document.referrer);
-      if (ref.origin === window.location.origin) {
-        backLink.href = ref.pathname + ref.search;
-      }
-    } catch (err) {
-      // Ignore malformed referrer
-    }
-  }
 
   init();
 })();
