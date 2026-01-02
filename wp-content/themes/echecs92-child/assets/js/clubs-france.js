@@ -7,11 +7,20 @@
   const DATA_FALLBACK_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france/';
   const GEO_HINTS_REMOTE_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json';
   const POSTAL_COORDINATES_DATA_URL = '/wp-content/themes/echecs92-child/assets/data/postal-coordinates-fr.json';
-  const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
-  const CLUBS_UI_STATE_KEY = 'echecs92:clubs-fr:ui';
-  const CLUBS_LIST_STATE_KEY = 'echecs92:clubs-fr:list-state';
+  const normalisePathname = (value) => (value || '').replace(/\/+$/u, '') || '/';
+  const clubsPageShell = typeof document !== 'undefined' ? document.querySelector('.clubs-page') : null;
+  const clubsDepartments = (clubsPageShell?.dataset?.clubsDepartments || '')
+    .split(',')
+    .map((value) => value.trim().toUpperCase())
+    .filter(Boolean);
+  const hasDepartmentFilter = clubsDepartments.length > 0;
+  const clubsScopeKey = hasDepartmentFilter ? clubsDepartments.join('-').toLowerCase() : 'fr';
+  const storageKeyBase = hasDepartmentFilter ? `echecs92:clubs-${clubsScopeKey}` : 'echecs92:clubs-fr';
+  const CLUBS_NAV_STORAGE_KEY = hasDepartmentFilter ? 'echecs92:clubs:last-listing' : 'echecs92:clubs-fr:last-listing';
+  const CLUBS_UI_STATE_KEY = `${storageKeyBase}:ui`;
+  const CLUBS_LIST_STATE_KEY = `${storageKeyBase}:list-state`;
   const CLUBS_LIST_STATE_MAX_AGE = 2 * 60 * 60 * 1000;
-  const REOPEN_RESULTS_FLAG_KEY = 'echecs92:clubs-fr:reopen-results';
+  const REOPEN_RESULTS_FLAG_KEY = `${storageKeyBase}:reopen-results`;
   const VISIBLE_RESULTS_DEFAULT = 12;
   const VISIBLE_RESULTS_STEP = VISIBLE_RESULTS_DEFAULT;
   const MIN_RESULTS_SCROLL_DELAY_MS = 1100;
@@ -19,6 +28,17 @@
   const COUNTER_LOADING_TEXT = 'Recherche en cours…';
   const SORT_COUNTER_LOADING_TEXT = 'Tri en cours…';
   const MOBILE_RESULTS_BREAKPOINT = 820;
+  const clubsScopeLabel = (clubsPageShell?.dataset?.clubsScopeLabel || '').trim();
+  const scopeLabel = clubsScopeLabel || 'en France';
+  const listPath = normalisePathname(clubsPageShell?.dataset?.clubsListPath || '/clubs');
+  const clubsDepartmentSet = hasDepartmentFilter ? new Set(clubsDepartments) : null;
+  const shouldIncludeDepartment = (entry) => {
+    if (!clubsDepartmentSet) {
+      return true;
+    }
+    const code = entry?.code ? entry.code.toString().toUpperCase() : '';
+    return clubsDepartmentSet.has(code);
+  };
 
   let manifestPromise = null;
   let datasetPromise = null;
@@ -122,10 +142,11 @@
     if (!datasetPromise) {
       datasetPromise = loadFranceDataManifest().then(async (manifestMeta) => {
         const departments = manifestMeta.departments || [];
-        if (!departments.length) {
+        const filteredDepartments = departments.filter(shouldIncludeDepartment);
+        if (!filteredDepartments.length) {
           return [];
         }
-        const chunks = await Promise.all(departments.map((entry) => fetchDepartmentClubs(entry, manifestMeta)));
+        const chunks = await Promise.all(filteredDepartments.map((entry) => fetchDepartmentClubs(entry, manifestMeta)));
         return chunks.flat();
       });
     }
@@ -963,7 +984,6 @@
 
   const resultsEl = document.getElementById('clubs-results');
   const detailBase = resultsEl?.dataset?.detailBase || '';
-  const normalisePathname = (value) => (value || '').replace(/\/+$/u, '') || '/';
   const detailBasePath = (() => {
     if (!detailBase) {
       return null;
@@ -1823,7 +1843,7 @@
       const url = new URL(window.location.href);
       return url.pathname + url.search + url.hash;
     } catch (error) {
-      return '/clubs';
+      return listPath;
     }
   };
 
@@ -1837,7 +1857,7 @@
         return false;
       }
       const normalized = normalisePathname(refUrl.pathname);
-      if (normalized === '/clubs') {
+      if (normalized === listPath) {
         return true;
       }
       if (detailBasePath && (normalized === detailBasePath || normalized.startsWith(`${detailBasePath}/`))) {
@@ -2446,7 +2466,7 @@
   let locationRequestId = 0;
   const geocodeCache = new Map();
   const reverseGeocodeCache = new Map();
-  const geocodeStorageKey = 'echecs92:clubs-fr:geocode';
+  const geocodeStorageKey = `${storageKeyBase}:geocode`;
 
   const loadGeocodeCache = () => {
     try {
@@ -2502,7 +2522,7 @@
       }
       persistListState();
       persistListUiState();
-      rememberClubsNavigation('map:from-list', '/clubs');
+      rememberClubsNavigation('map:from-list', listPath);
     };
     mapCtaLink.addEventListener('click', handleIntent);
     mapCtaLink.addEventListener('auxclick', handleIntent);
@@ -6911,8 +6931,9 @@
     }
 
     const parts = [];
+    const scopeSuffix = scopeLabel ? ` ${scopeLabel}` : '';
     if (filtered === total && visible >= filtered) {
-      parts.push(`${filtered} club${filtered > 1 ? 's' : ''} en France`);
+      parts.push(`${filtered} club${filtered > 1 ? 's' : ''}${scopeSuffix}`);
     } else {
       parts.push(`${filtered} trouvé${filtered > 1 ? 's' : ''} sur ${total}`);
       if (visible < filtered) {

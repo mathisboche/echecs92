@@ -4,12 +4,29 @@
   const DATA_FALLBACK_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france/';
   const GEO_HINTS_REMOTE_URL = `/wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json?v=${GEO_HINTS_VERSION}`;
   const POSTAL_COORDINATES_DATA_URL = '/wp-content/themes/echecs92-child/assets/data/postal-coordinates-fr.json';
-  const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
+  const normalisePathname = (value) => (value || '').replace(/\/+$/u, '') || '/';
   const mapElement = document.getElementById('clubs-map');
   const mapBackLink = document.querySelector('[data-clubs-map-back]');
   if (!mapElement) {
     return;
   }
+  const pageShell = document.querySelector('.clubs-page');
+  const clubsDepartments = (pageShell?.dataset?.clubsDepartments || mapElement.dataset?.clubsDepartments || '')
+    .split(',')
+    .map((value) => value.trim().toUpperCase())
+    .filter(Boolean);
+  const hasDepartmentFilter = clubsDepartments.length > 0;
+  const CLUBS_NAV_STORAGE_KEY = hasDepartmentFilter ? 'echecs92:clubs:last-listing' : 'echecs92:clubs-fr:last-listing';
+  const listPath = normalisePathname(pageShell?.dataset?.clubsListPath || '/clubs');
+  const mapPathOverride = (pageShell?.dataset?.clubsMapPath || '').trim();
+  const clubsDepartmentSet = hasDepartmentFilter ? new Set(clubsDepartments) : null;
+  const shouldIncludeDepartment = (entry) => {
+    if (!clubsDepartmentSet) {
+      return true;
+    }
+    const code = entry?.code ? entry.code.toString().toUpperCase() : '';
+    return clubsDepartmentSet.has(code);
+  };
 
   let manifestPromise = null;
   let datasetPromise = null;
@@ -86,10 +103,11 @@
     if (!datasetPromise) {
       datasetPromise = loadManifest().then(async (manifestMeta) => {
         const departments = manifestMeta.departments || [];
-        if (!departments.length) {
+        const filteredDepartments = departments.filter(shouldIncludeDepartment);
+        if (!filteredDepartments.length) {
           return [];
         }
-        const chunks = await Promise.all(departments.map((entry) => fetchDepartmentClubs(entry, manifestMeta)));
+        const chunks = await Promise.all(filteredDepartments.map((entry) => fetchDepartmentClubs(entry, manifestMeta)));
         return chunks.flat();
       });
     }
@@ -101,18 +119,18 @@
   const mapHostPath = (() => {
     try {
       const path = window.location && window.location.pathname ? window.location.pathname : '';
-      const normalized = path.replace(/\/+$/u, '') || '/';
-      return normalized;
+      return normalisePathname(path);
     } catch (error) {
       return '';
     }
   })();
+  const mapPath = mapPathOverride ? normalisePathname(mapPathOverride) : mapHostPath || '/carte-des-clubs';
   const getCurrentBackPath = () => {
     try {
       const url = new URL(window.location.href);
       return url.pathname + url.search + url.hash;
     } catch (error) {
-      return mapHostPath || '/clubs';
+      return mapHostPath || listPath;
     }
   };
   const navigationContext = (() => {
@@ -152,7 +170,7 @@
       }
       storage.setItem(
         CLUBS_NAV_STORAGE_KEY,
-        JSON.stringify({ ts: Date.now(), context, back: backPath || '/clubs' })
+        JSON.stringify({ ts: Date.now(), context, back: backPath || listPath })
       );
     } catch (error) {
       // ignore
@@ -172,8 +190,8 @@
       if (refUrl.origin !== window.location.origin) {
         return false;
       }
-      const normalized = refUrl.pathname.replace(/\/+$/u, '') || '/';
-      return normalized === '/clubs';
+      const normalized = normalisePathname(refUrl.pathname);
+      return normalized === listPath;
     } catch (error) {
       return false;
     }
@@ -1774,9 +1792,9 @@
     if (event.type === 'auxclick' && event.button !== 1) {
       return;
     }
-    const fromListingPage = mapHostPath === '/clubs';
+    const fromListingPage = mapHostPath === listPath;
     const backPath = getCurrentBackPath();
-    const fallbackBackPath = fromListingPage ? '/clubs' : '/carte-des-clubs';
+    const fallbackBackPath = fromListingPage ? listPath : mapPath;
     rememberNavigation('detail:map', backPath || fallbackBackPath);
   };
 
