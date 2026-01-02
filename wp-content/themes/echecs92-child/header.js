@@ -478,11 +478,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const root = document.documentElement;
-    let lastScrollY = window.scrollY || 0;
+    const resultsShell = document.getElementById('clubs-results-shell');
     let headerHeight = headerWrapper.offsetHeight;
     const scrollTolerance = 6;
     let ticking = false;
     let isHidden = false;
+    let lastWindowScrollY = window.scrollY || document.documentElement?.scrollTop || 0;
+    let lastShellScrollY = resultsShell ? resultsShell.scrollTop || 0 : 0;
+
+    const getScrollContext = () => {
+      if (resultsShell && document.body && document.body.classList.contains('clubs-results-open')) {
+        return 'shell';
+      }
+      return 'window';
+    };
+
+    const getScrollTop = (context) => {
+      if (context === 'shell') {
+        return resultsShell ? resultsShell.scrollTop || 0 : 0;
+      }
+      return window.scrollY || document.documentElement?.scrollTop || 0;
+    };
+
+    let activeScrollContext = getScrollContext();
+
+    const syncScrollContext = () => {
+      const nextContext = getScrollContext();
+      if (nextContext !== activeScrollContext) {
+        activeScrollContext = nextContext;
+        if (nextContext === 'shell') {
+          lastShellScrollY = getScrollTop('shell');
+        } else {
+          lastWindowScrollY = getScrollTop('window');
+        }
+      }
+    };
 
     const applyHeaderOffset = (hidden) => {
       const offset = hidden ? 0 : headerHeight;
@@ -503,18 +533,29 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const updateHeaderVisibility = () => {
-      const scrollY = window.scrollY || 0;
+      syncScrollContext();
+      const context = activeScrollContext || 'window';
+      const scrollY = getScrollTop(context);
+      const lastScrollY = context === 'shell' ? lastShellScrollY : lastWindowScrollY;
       const delta = scrollY - lastScrollY;
 
       if (document.documentElement.classList.contains('cm-menu-open')) {
         setHidden(false);
-        lastScrollY = scrollY;
+        if (context === 'shell') {
+          lastShellScrollY = scrollY;
+        } else {
+          lastWindowScrollY = scrollY;
+        }
         return;
       }
 
       if (scrollY <= headerHeight) {
         setHidden(false);
-        lastScrollY = scrollY;
+        if (context === 'shell') {
+          lastShellScrollY = scrollY;
+        } else {
+          lastWindowScrollY = scrollY;
+        }
         return;
       }
 
@@ -524,7 +565,11 @@ document.addEventListener('DOMContentLoaded', () => {
         setHidden(false);
       }
 
-      lastScrollY = scrollY;
+      if (context === 'shell') {
+        lastShellScrollY = scrollY;
+      } else {
+        lastWindowScrollY = scrollY;
+      }
     };
 
     const onScroll = () => {
@@ -541,6 +586,15 @@ document.addEventListener('DOMContentLoaded', () => {
     setHidden(false);
     window.addEventListener('resize', updateHeaderHeight);
     window.addEventListener('scroll', onScroll, { passive: true });
+    if (resultsShell) {
+      resultsShell.addEventListener('scroll', onScroll, { passive: true });
+      if (document.body && typeof MutationObserver === 'function') {
+        const observer = new MutationObserver(() => {
+          syncScrollContext();
+        });
+        observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      }
+    }
   };
 
   setupHeaderReveal();
