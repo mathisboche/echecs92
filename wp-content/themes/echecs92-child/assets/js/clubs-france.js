@@ -1028,6 +1028,46 @@
     return header ? header.offsetHeight : 0;
   };
 
+  const LIST_SCROLL_RESTORE_THRESHOLD = 24;
+  const listScrollAnchors = { window: 0, shell: 0 };
+  const listScrollAnchorsSet = { window: false, shell: false };
+
+  const getListScrollTop = (context) => {
+    if (context === 'shell') {
+      return resultsShell ? resultsShell.scrollTop || 0 : 0;
+    }
+    if (typeof window === 'undefined') {
+      return 0;
+    }
+    return window.scrollY || document.documentElement?.scrollTop || 0;
+  };
+
+  const setListScrollAnchor = (context, value) => {
+    const top = Number.isFinite(value) ? value : 0;
+    listScrollAnchors[context] = Math.max(0, top);
+    listScrollAnchorsSet[context] = true;
+  };
+
+  const updateListScrollAnchor = (context, value) => {
+    const top = Number.isFinite(value) ? value : getListScrollTop(context);
+    setListScrollAnchor(context, top);
+  };
+
+  const getListScrollAnchor = (context) => (listScrollAnchorsSet[context] ? listScrollAnchors[context] : 0);
+
+  const shouldRestoreListScroll = (context, scrollTop) => {
+    const anchor = getListScrollAnchor(context);
+    return Math.abs(scrollTop - anchor) > LIST_SCROLL_RESTORE_THRESHOLD;
+  };
+
+  const getScrollTargetTop = (target, offset) => {
+    if (!target || typeof target.getBoundingClientRect !== 'function' || typeof window === 'undefined') {
+      return null;
+    }
+    const targetTop = target.getBoundingClientRect().top + window.scrollY;
+    return Math.max(targetTop - offset, 0);
+  };
+
   const scrollToTarget = (target, options = {}) => {
     if (!target || typeof window === 'undefined' || typeof target.getBoundingClientRect !== 'function') {
       return false;
@@ -1048,6 +1088,12 @@
     const target = searchBlock || searchInput || resultsShell || resultsEl;
     const behavior = options.behavior || 'smooth';
     const offset = getAdminBarHeight() + getHeaderHeight() + SEARCH_SCROLL_OFFSET;
+    const targetTop = getScrollTargetTop(target, offset);
+    if (Number.isFinite(targetTop)) {
+      updateListScrollAnchor('window', targetTop);
+    } else {
+      updateListScrollAnchor('window');
+    }
     if (scrollToTarget(target, { behavior, offset })) {
       return;
     }
@@ -1650,6 +1696,7 @@
     } else {
       resultsShell.scrollTop = 0;
     }
+    updateListScrollAnchor('shell', 0);
   };
 
   const closeResultsShell = (options = {}) => {
@@ -1701,6 +1748,12 @@
       target.style.setProperty('--clubs-results-scroll-margin', `${marginOverride}px`);
     }
     const offset = getAdminBarHeight() + (Number.isFinite(scrollMargin) ? scrollMargin : 0);
+    const targetTop = getScrollTargetTop(target, offset);
+    if (Number.isFinite(targetTop)) {
+      updateListScrollAnchor('window', targetTop);
+    } else {
+      updateListScrollAnchor('window');
+    }
     if (scrollToTarget(target, { behavior, offset })) {
       return;
     }
@@ -1889,11 +1942,11 @@
     }
     const usesShell = Boolean(resultsShell && isMobileViewport() && mobileResultsOpen);
     if (usesShell) {
-      return { context: 'shell', top: resultsShell.scrollTop || 0 };
+      return { context: 'shell', top: getListScrollTop('shell') };
     }
     return {
       context: 'window',
-      top: window.scrollY || document.documentElement?.scrollTop || 0,
+      top: getListScrollTop('window'),
     };
   };
 
@@ -1913,12 +1966,14 @@
           ? options.scrollContext
           : snapshot.context;
       const visibleCount = Number.isFinite(options.visibleCount) ? options.visibleCount : state.visibleCount;
+      const scrollRestorable = shouldRestoreListScroll(scrollContext, scrollTop);
       const payload = {
         ts: Date.now(),
         path: getListPathKey(),
         scrollTop,
         scrollContext,
         visibleCount,
+        scrollRestorable,
       };
       storage.setItem(CLUBS_LIST_STATE_KEY, JSON.stringify(payload));
     } catch (error) {
@@ -1964,6 +2019,11 @@
     if (!payload) {
       return;
     }
+    const scrollRestorable =
+      payload.scrollRestorable === true ||
+      (payload.scrollRestorable == null &&
+        Number.isFinite(payload.scrollTop) &&
+        Math.abs(payload.scrollTop) > LIST_SCROLL_RESTORE_THRESHOLD);
     const shouldOpenShell =
       payload.scrollContext === 'shell' && resultsShell && typeof isMobileViewport === 'function' && isMobileViewport();
     if (shouldOpenShell && !mobileResultsOpen) {
@@ -1978,6 +2038,9 @@
       renderResults({ force: true });
     }
     const restoreScroll = () => {
+      if (!scrollRestorable) {
+        return;
+      }
       const scrollTop = Number.isFinite(payload.scrollTop) ? payload.scrollTop : 0;
       if (payload.scrollContext === 'shell' && resultsShell && isMobileViewport()) {
         resultsShell.scrollTop = Math.max(0, scrollTop);
@@ -6881,6 +6944,7 @@
 
   const init = () => {
     const savedListState = loadListState();
+    updateListScrollAnchor('window');
     updateClearButtons();
     ensureLocationSuggestionsHost();
     loadGeocodeCache();
