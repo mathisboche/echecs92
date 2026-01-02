@@ -1031,6 +1031,7 @@
   const LIST_SCROLL_RESTORE_THRESHOLD = 24;
   const listScrollAnchors = { window: 0, shell: 0 };
   const listScrollAnchorsSet = { window: false, shell: false };
+  let pendingNavigationState = null;
 
   const getListScrollTop = (context) => {
     if (context === 'shell') {
@@ -1054,6 +1055,59 @@
   };
 
   const getListScrollAnchor = (context) => (listScrollAnchorsSet[context] ? listScrollAnchors[context] : 0);
+
+  const getListScrollContext = () => {
+    if (resultsShell && typeof isMobileViewport === 'function' && isMobileViewport() && mobileResultsOpen) {
+      return 'shell';
+    }
+    return 'window';
+  };
+
+  const getListViewportHeight = (context) => {
+    if (context === 'shell') {
+      return resultsShell ? resultsShell.clientHeight || 0 : 0;
+    }
+    if (typeof window === 'undefined') {
+      return 0;
+    }
+    return window.innerHeight || document.documentElement?.clientHeight || 0;
+  };
+
+  const getElementBoundsInContext = (element, context) => {
+    if (!element || typeof element.getBoundingClientRect !== 'function') {
+      return null;
+    }
+    if (context === 'shell') {
+      if (!resultsShell) {
+        return null;
+      }
+      const elementRect = element.getBoundingClientRect();
+      const shellRect = resultsShell.getBoundingClientRect();
+      const scrollTop = resultsShell.scrollTop || 0;
+      return {
+        top: elementRect.top - shellRect.top + scrollTop,
+        bottom: elementRect.bottom - shellRect.top + scrollTop,
+      };
+    }
+    const elementRect = element.getBoundingClientRect();
+    const scrollTop = getListScrollTop('window');
+    return {
+      top: elementRect.top + scrollTop,
+      bottom: elementRect.bottom + scrollTop,
+    };
+  };
+
+  const isElementVisibleAtAnchor = (element, context) => {
+    const bounds = getElementBoundsInContext(element, context);
+    const viewportHeight = getListViewportHeight(context);
+    if (!bounds || !viewportHeight) {
+      return false;
+    }
+    const anchor = getListScrollAnchor(context);
+    const viewportTop = anchor;
+    const viewportBottom = anchor + viewportHeight;
+    return bounds.bottom > viewportTop && bounds.top < viewportBottom;
+  };
 
   const shouldRestoreListScroll = (context, scrollTop) => {
     const anchor = getListScrollAnchor(context);
@@ -1966,7 +2020,10 @@
           ? options.scrollContext
           : snapshot.context;
       const visibleCount = Number.isFinite(options.visibleCount) ? options.visibleCount : state.visibleCount;
-      const scrollRestorable = shouldRestoreListScroll(scrollContext, scrollTop);
+      const scrollRestorable =
+        typeof options.scrollRestorable === 'boolean'
+          ? options.scrollRestorable
+          : shouldRestoreListScroll(scrollContext, scrollTop);
       const payload = {
         ts: Date.now(),
         path: getListPathKey(),
@@ -6610,7 +6667,18 @@
       if (event.type === 'auxclick' && event.button !== 1) {
         return;
       }
-      persistListState();
+      const isPrimaryClick =
+        event.type === 'click' && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+      if (isPrimaryClick) {
+        const scrollContext = getListScrollContext();
+        const scrollTop = getListScrollTop(scrollContext);
+        const scrollRestorable = !isElementVisibleAtAnchor(cardLink, scrollContext);
+        const navigationState = { scrollContext, scrollTop, scrollRestorable };
+        pendingNavigationState = navigationState;
+        persistListState(navigationState);
+      } else {
+        persistListState();
+      }
       persistListUiState();
       markShouldReopenResults();
       rememberClubsNavigation('detail:list', getCurrentBackPath());
@@ -7177,6 +7245,11 @@
     updateSortButtons();
     if (typeof window !== 'undefined') {
       window.addEventListener('pagehide', () => {
+        if (pendingNavigationState) {
+          persistListState(pendingNavigationState);
+          pendingNavigationState = null;
+          return;
+        }
         persistListState();
       });
     }
