@@ -271,6 +271,12 @@
         backLinkMap.setAttribute('hidden', '');
       }
     }
+
+    if (actionsContainer) {
+      const hasListBack = backLink && !backLink.hasAttribute('hidden');
+      const hasMapBack = backLinkMap && !backLinkMap.hasAttribute('hidden');
+      actionsContainer.classList.toggle('club-detail__actions--solo-share', !(hasListBack || hasMapBack));
+    }
   };
 
   updateBackLinkVisibility();
