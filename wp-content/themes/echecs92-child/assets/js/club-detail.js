@@ -276,16 +276,26 @@
   const buildFfeLookupKey = (name, postalCode, commune) => {
     const normalizedName = normalise(name || '').replace(/[^a-z0-9]/g, '');
     const normalizedCity = normalise(commune || '').replace(/[^a-z0-9]/g, '');
-    const normalizedPostal = (postalCode || '').toString().trim();
+    const normalizedPostal = (postalCode || '').toString().replace(/\D/g, '').trim();
     if (!normalizedName && !normalizedCity && !normalizedPostal) {
       return '';
     }
     return [normalizedName || 'club', normalizedPostal || '00000', normalizedCity || ''].join('|');
   };
 
+  const buildFfeNamePostalKey = (name, postalCode) => {
+    const normalizedName = normalise(name || '').replace(/[^a-z0-9]/g, '');
+    const normalizedPostal = (postalCode || '').toString().replace(/\D/g, '').trim();
+    if (!normalizedName && !normalizedPostal) {
+      return '';
+    }
+    return [normalizedName || 'club', normalizedPostal || '00000'].join('|');
+  };
+
   const buildFfeLookup = (entries) => {
     const bySlug = new Map();
     const byKey = new Map();
+    const byNamePostal = new Map();
     (Array.isArray(entries) ? entries : []).forEach((entry) => {
       const ref = sanitiseFfeRef(entry.ref || entry.ffe_ref || entry.fiche_ffe || entry.ffeRef);
       if (!ref) {
@@ -303,8 +313,15 @@
       if (key && !byKey.has(key)) {
         byKey.set(key, ref);
       }
+      const namePostalKey = buildFfeNamePostalKey(
+        entry.name || '',
+        entry.postalCode || entry.postal_code || ''
+      );
+      if (namePostalKey && !byNamePostal.has(namePostalKey)) {
+        byNamePostal.set(namePostalKey, ref);
+      }
     });
-    return { bySlug, byKey };
+    return { bySlug, byKey, byNamePostal };
   };
 
   const applyFfeRefs = (clubs, lookup) => {
@@ -335,6 +352,12 @@
       const lookupKey = buildFfeLookupKey(club.name, club.postalCode, club.commune);
       if (lookupKey && lookup.byKey && lookup.byKey.has(lookupKey)) {
         if (applyRef(club, lookup.byKey.get(lookupKey))) {
+          return;
+        }
+      }
+      const namePostalKey = buildFfeNamePostalKey(club.name, club.postalCode);
+      if (namePostalKey && lookup.byNamePostal && lookup.byNamePostal.has(namePostalKey)) {
+        if (applyRef(club, lookup.byNamePostal.get(namePostalKey))) {
           return;
         }
       }
@@ -381,6 +404,7 @@
   const buildFfeDetailsLookup = (entries) => {
     const byRef = new Map();
     const byKey = new Map();
+    const byNamePostal = new Map();
     (Array.isArray(entries) ? entries : []).forEach((entry) => {
       if (!entry || typeof entry !== 'object') {
         return;
@@ -399,8 +423,12 @@
       if (key && !byKey.has(key)) {
         byKey.set(key, entry);
       }
+      const namePostalKey = buildFfeNamePostalKey(name, postalCode);
+      if (namePostalKey && !byNamePostal.has(namePostalKey)) {
+        byNamePostal.set(namePostalKey, entry);
+      }
     });
-    return { byRef, byKey };
+    return { byRef, byKey, byNamePostal };
   };
 
   const applyFfeDetails = (clubs, lookup) => {
@@ -416,16 +444,18 @@
       if (key && lookup.byKey && lookup.byKey.has(key)) {
         return lookup.byKey.get(key);
       }
+      const namePostalKey = buildFfeNamePostalKey(club?.name || '', club?.postalCode || '');
+      if (namePostalKey && lookup.byNamePostal && lookup.byNamePostal.has(namePostalKey)) {
+        return lookup.byNamePostal.get(namePostalKey);
+      }
       return null;
     };
-    const assignIfEmpty = (club, key, value) => {
+    const assignIfPresent = (club, key, value) => {
       if (!club || typeof club !== 'object') {
         return;
       }
-      if (club[key] == null || club[key] === '') {
-        if (value != null && value !== '') {
-          club[key] = value;
-        }
+      if (value != null && value !== '') {
+        club[key] = value;
       }
     };
     clubs.forEach((club) => {
@@ -434,18 +464,33 @@
         return;
       }
       const ffeClub = adaptClubRecord(detail);
-      assignIfEmpty(club, 'salle', ffeClub.salle);
-      assignIfEmpty(club, 'siege', ffeClub.siege);
-      assignIfEmpty(club, 'fax', ffeClub.fax);
-      assignIfEmpty(club, 'presidentEmail', ffeClub.presidentEmail);
-      assignIfEmpty(club, 'contact', ffeClub.contact);
-      assignIfEmpty(club, 'contactEmail', ffeClub.contactEmail);
-      assignIfEmpty(club, 'accesPmr', ffeClub.accesPmr);
-      assignIfEmpty(club, 'interclubs', ffeClub.interclubs);
-      assignIfEmpty(club, 'interclubsJeunes', ffeClub.interclubsJeunes);
-      assignIfEmpty(club, 'interclubsFeminins', ffeClub.interclubsFeminins);
-      assignIfEmpty(club, 'labelFederal', ffeClub.labelFederal);
-      assignIfEmpty(club, 'hours', ffeClub.hours);
+      assignIfPresent(club, 'address', ffeClub.address);
+      assignIfPresent(club, 'salle', ffeClub.salle);
+      assignIfPresent(club, 'siege', ffeClub.siege);
+      assignIfPresent(club, 'phone', ffeClub.phone);
+      assignIfPresent(club, 'email', ffeClub.email);
+      assignIfPresent(club, 'site', ffeClub.site);
+      assignIfPresent(club, 'president', ffeClub.president);
+      assignIfPresent(club, 'presidentEmail', ffeClub.presidentEmail);
+      assignIfPresent(club, 'contact', ffeClub.contact);
+      assignIfPresent(club, 'contactEmail', ffeClub.contactEmail);
+      assignIfPresent(club, 'fax', ffeClub.fax);
+      assignIfPresent(club, 'accesPmr', ffeClub.accesPmr);
+      assignIfPresent(club, 'interclubs', ffeClub.interclubs);
+      assignIfPresent(club, 'interclubsJeunes', ffeClub.interclubsJeunes);
+      assignIfPresent(club, 'interclubsFeminins', ffeClub.interclubsFeminins);
+      assignIfPresent(club, 'labelFederal', ffeClub.labelFederal);
+      assignIfPresent(club, 'hours', ffeClub.hours);
+      assignIfPresent(club, 'commune', ffeClub.commune);
+      assignIfPresent(club, 'postalCode', ffeClub.postalCode);
+      assignIfPresent(club, 'addressStandard', ffeClub.addressStandard);
+      assignIfPresent(club, 'addressDisplay', ffeClub.addressDisplay);
+      if (!club.ffeRef && ffeClub.ffeRef) {
+        club.ffeRef = ffeClub.ffeRef;
+      }
+      if (!club.fiche_ffe && club.ffeRef) {
+        club.fiche_ffe = `${FFE_URL_BASE}${encodeURIComponent(club.ffeRef)}`;
+      }
       if (club.licenses && ffeClub.licenses) {
         if (!club.licenses.A && ffeClub.licenses.A) {
           club.licenses.A = ffeClub.licenses.A;

@@ -230,8 +230,11 @@ body.admin-bar header.wp-block-template-part{
   opacity:1;
 }
 .cm-link-external svg{
-  width:14px;
-  height:14px;
+  width:16px;
+  height:16px;
+}
+.cm-link-external svg path{
+  stroke-width:2;
 }
 
 /* Burger */
