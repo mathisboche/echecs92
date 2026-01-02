@@ -1856,8 +1856,9 @@
         maxZoom: 18,
       }).addTo(mapInstance);
 
+      const shouldCluster = !hasDepartmentFilter;
       markersLayer =
-        typeof L.markerClusterGroup === 'function'
+        shouldCluster && typeof L.markerClusterGroup === 'function'
           ? L.markerClusterGroup({
               showCoverageOnHover: false,
               spiderfyOnMaxZoom: true,

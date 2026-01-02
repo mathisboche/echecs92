@@ -1226,7 +1226,6 @@
   const distanceFields = document.getElementById('clubs-distance-fields');
   const distanceToggle = document.getElementById('clubs-distance-toggle');
   const distanceHeader = document.querySelector('.clubs-distance__intro');
-  const clubsPageShell = document.querySelector('.clubs-page');
 
   const LOADING_OVERLAY_ID = 'clubs-loading-overlay';
   const LOADING_OVERLAY_DEFAULT_LABEL = 'Patientez…';
