@@ -16,6 +16,7 @@
     .map((value) => value.trim().toUpperCase())
     .filter(Boolean);
   const clubsDataUrl = (pageShell?.dataset?.clubsDataUrl || mapElement.dataset?.clubsDataUrl || '').trim();
+  const useLegacySlugs = Boolean(clubsDataUrl);
   const hasDepartmentFilter = clubsDepartments.length > 0;
   const CLUBS_NAV_STORAGE_KEY = hasDepartmentFilter ? 'echecs92:clubs:last-listing' : 'echecs92:clubs-fr:last-listing';
   const listPath = normalisePathname(pageShell?.dataset?.clubsListPath || '/clubs');
@@ -502,6 +503,17 @@
   };
 
   const ensureUniqueSlugs = (clubs) => {
+    if (useLegacySlugs) {
+      (Array.isArray(clubs) ? clubs : []).forEach((club) => {
+        if (!club || typeof club !== 'object') {
+          return;
+        }
+        const base = slugify(club._slugCommune || club.commune || club.name || club.id || 'club');
+        club.slug = base;
+        club._communeSlug = slugify(club._slugCommune || club.commune || '');
+      });
+      return;
+    }
     const byBase = new Map();
     const stableKey = (club) =>
       `${club.id || ''}|${club.name || ''}|${club.commune || ''}|${club.postalCode || ''}|${

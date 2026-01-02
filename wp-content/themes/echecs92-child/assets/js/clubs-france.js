@@ -14,6 +14,7 @@
     .map((value) => value.trim().toUpperCase())
     .filter(Boolean);
   const clubsDataUrl = (clubsPageShell?.dataset?.clubsDataUrl || '').trim();
+  const useLegacySlugs = Boolean(clubsDataUrl);
   const hasDepartmentFilter = clubsDepartments.length > 0;
   const clubsScopeKey = hasDepartmentFilter ? clubsDepartments.join('-').toLowerCase() : 'fr';
   const storageKeyBase = hasDepartmentFilter ? `echecs92:clubs-${clubsScopeKey}` : 'echecs92:clubs-fr';
@@ -3907,6 +3908,17 @@
   };
 
   const ensureUniqueSlugs = (clubs) => {
+    if (useLegacySlugs) {
+      (Array.isArray(clubs) ? clubs : []).forEach((club) => {
+        if (!club || typeof club !== 'object') {
+          return;
+        }
+        const base = slugify(club._slugCommune || club.commune || club.name || club.id || 'club');
+        club.slug = base;
+        club._communeSlug = slugify(club._slugCommune || club.commune || '');
+      });
+      return;
+    }
     const byBase = new Map();
     const stableKey = (club) =>
       `${club.id || ''}|${club.name || ''}|${club._slugCommune || club.commune || ''}|${club.postalCode || ''}|${
