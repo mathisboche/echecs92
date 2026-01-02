@@ -13,6 +13,7 @@
     .split(',')
     .map((value) => value.trim().toUpperCase())
     .filter(Boolean);
+  const clubsDataUrl = (clubsPageShell?.dataset?.clubsDataUrl || '').trim();
   const hasDepartmentFilter = clubsDepartments.length > 0;
   const clubsScopeKey = hasDepartmentFilter ? clubsDepartments.join('-').toLowerCase() : 'fr';
   const storageKeyBase = hasDepartmentFilter ? `echecs92:clubs-${clubsScopeKey}` : 'echecs92:clubs-fr';
@@ -140,15 +141,21 @@
 
   const loadFranceClubsDataset = () => {
     if (!datasetPromise) {
-      datasetPromise = loadFranceDataManifest().then(async (manifestMeta) => {
-        const departments = manifestMeta.departments || [];
-        const filteredDepartments = departments.filter(shouldIncludeDepartment);
-        if (!filteredDepartments.length) {
-          return [];
-        }
-        const chunks = await Promise.all(filteredDepartments.map((entry) => fetchDepartmentClubs(entry, manifestMeta)));
-        return chunks.flat();
-      });
+      if (clubsDataUrl) {
+        datasetPromise = fetchJson(clubsDataUrl)
+          .then((payload) => (Array.isArray(payload) ? payload : []))
+          .catch(() => []);
+      } else {
+        datasetPromise = loadFranceDataManifest().then(async (manifestMeta) => {
+          const departments = manifestMeta.departments || [];
+          const filteredDepartments = departments.filter(shouldIncludeDepartment);
+          if (!filteredDepartments.length) {
+            return [];
+          }
+          const chunks = await Promise.all(filteredDepartments.map((entry) => fetchDepartmentClubs(entry, manifestMeta)));
+          return chunks.flat();
+        });
+      }
     }
     return datasetPromise;
   };
