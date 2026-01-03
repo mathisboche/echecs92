@@ -5674,6 +5674,13 @@ body.mathis-mode .mathis-fragment{
     border-radius:50%;
     gap:0;
   }
+  .club-detail__actions--solo-share .club-share-button{
+    width:auto;
+    padding:0 14px;
+    font-size:14px;
+    border-radius:999px;
+    gap:8px;
+  }
 }
 
 img{
