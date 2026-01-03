@@ -1680,6 +1680,10 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   cursor:pointer;
   transition:background-color .2s ease;
 }
+.contact-form__submit:disabled{
+  opacity:0.6;
+  cursor:not-allowed;
+}
 .contact-form__submit:hover,
 .contact-form__submit:focus-visible{
   background:#08233a;

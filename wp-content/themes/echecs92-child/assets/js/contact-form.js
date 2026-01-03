@@ -8,8 +8,29 @@
   const captchaEl = captchaField ? captchaField.querySelector('.g-recaptcha') : null;
   const siteKey = captchaEl && captchaEl.dataset ? (captchaEl.dataset.sitekey || '').trim() : '';
   const messageEl = captchaField ? captchaField.querySelector('[data-recaptcha-message]') : null;
+  const submitButton = form.querySelector('.contact-form__submit');
+
+  const ensureMessageEl = () => {
+    if (messageEl) {
+      return messageEl;
+    }
+    const hint = document.createElement('p');
+    hint.className = 'contact-form__hint contact-form__captcha-message';
+    hint.setAttribute('data-recaptcha-message', '');
+    if (submitButton && submitButton.parentNode) {
+      submitButton.parentNode.insertBefore(hint, submitButton.nextSibling);
+    } else {
+      form.appendChild(hint);
+    }
+    return hint;
+  };
 
   if (!captchaField || !captchaEl || !siteKey) {
+    const hint = ensureMessageEl();
+    hint.textContent = 'Verification anti-robot indisponible. Envoi impossible.';
+    if (submitButton) {
+      submitButton.disabled = true;
+    }
     return;
   }
 
@@ -18,9 +39,8 @@
   let pendingSubmit = false;
 
   const setMessage = (text) => {
-    if (messageEl) {
-      messageEl.textContent = text || '';
-    }
+    const hint = ensureMessageEl();
+    hint.textContent = text || '';
   };
 
   const showCaptcha = () => {
@@ -86,7 +106,7 @@
         })
         .catch(() => {
           pendingSubmit = false;
-          setMessage("Le captcha n'a pas pu etre charge. Merci de reessayer.");
+          setMessage("Le captcha n'a pas pu etre charge. Envoi impossible pour le moment.");
         });
       return;
     }

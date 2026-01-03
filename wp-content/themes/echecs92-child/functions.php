@@ -51,7 +51,10 @@ function cdje92_contact_form_should_enqueue_recaptcha() {
     if (! cdje92_contact_form_use_recaptcha()) {
         return false;
     }
+    return cdje92_contact_form_should_enqueue_assets();
+}
 
+function cdje92_contact_form_should_enqueue_assets() {
     if (is_page('contact') || is_page_template('page-contact.html')) {
         return true;
     }
@@ -361,7 +364,7 @@ JS;
         );
     }
 
-    if (cdje92_contact_form_use_recaptcha() && cdje92_contact_form_should_enqueue_recaptcha()) {
+    if (cdje92_contact_form_should_enqueue_assets()) {
         wp_enqueue_script(
             'echecs92-contact-form',
             get_stylesheet_directory_uri() . '/assets/js/contact-form.js',
@@ -1128,13 +1131,14 @@ function cdje92_render_contact_form() {
     ];
 
     $messages = [
-        'success' => __('Votre message a bien été envoyé. Une réponse  sera apportée sous 48 heures ouvrées.', 'echecs92-child'),
+        'success' => __('Votre message a bien été envoyé. Nous revenons vers vous dès que possible.', 'echecs92-child'),
         'error'   => [
             'invalid_nonce' => __('Une erreur est survenue. Merci de réessayer.', 'echecs92-child'),
             'incomplete'    => __('Merci de renseigner les champs obligatoires.', 'echecs92-child'),
             'invalid_email' => __('L’adresse e-mail semble invalide.', 'echecs92-child'),
-            'recaptcha_failed' => __('Merci de confirmer que vous n’êtes pas un robot.', 'echecs92-child'),
-            'send_failed'   => __('L’envoi a échoué. Merci de réessayer dans quelques instants ou d’utiliser les coordonnées directes.', 'echecs92-child'),
+            'recaptcha_failed' => __('Merci de confirmer que vous n’êtes pas un robot pour envoyer le message.', 'echecs92-child'),
+            'recaptcha_unavailable' => __('La vérification anti-robot est indisponible pour le moment. Merci de réessayer plus tard.', 'echecs92-child'),
+            'send_failed'   => __('L’envoi a échoué. Merci de réessayer ou d’utiliser les coordonnées directes.', 'echecs92-child'),
         ],
     ];
 
@@ -1237,7 +1241,8 @@ function cdje92_handle_contact_form() {
     $honeypot = isset($_POST['cdje92_reference']) ? trim(wp_unslash($_POST['cdje92_reference'])) : '';
     if (! empty($honeypot)) {
         cdje92_contact_form_safe_redirect([
-            'contact_status' => 'success',
+            'contact_status' => 'error',
+            'contact_error'  => 'recaptcha_failed',
         ]);
     }
 
@@ -1265,17 +1270,25 @@ function cdje92_handle_contact_form() {
         ]);
     }
 
-    if (cdje92_contact_form_use_recaptcha()) {
-        $token = isset($_POST['g-recaptcha-response']) ? sanitize_text_field(wp_unslash($_POST['g-recaptcha-response'])) : '';
-        if (! cdje92_contact_form_verify_recaptcha_token($token)) {
-            cdje92_contact_form_safe_redirect([
-                'contact_status' => 'error',
-                'contact_error'  => 'recaptcha_failed',
-                'contact_email'  => $email,
-                'contact_club'   => $club,
-                'contact_message'=> $message,
-            ]);
-        }
+    if (! cdje92_contact_form_use_recaptcha()) {
+        cdje92_contact_form_safe_redirect([
+            'contact_status' => 'error',
+            'contact_error'  => 'recaptcha_unavailable',
+            'contact_email'  => $email,
+            'contact_club'   => $club,
+            'contact_message'=> $message,
+        ]);
+    }
+
+    $token = isset($_POST['g-recaptcha-response']) ? sanitize_text_field(wp_unslash($_POST['g-recaptcha-response'])) : '';
+    if (! cdje92_contact_form_verify_recaptcha_token($token)) {
+        cdje92_contact_form_safe_redirect([
+            'contact_status' => 'error',
+            'contact_error'  => 'recaptcha_failed',
+            'contact_email'  => $email,
+            'contact_club'   => $club,
+            'contact_message'=> $message,
+        ]);
     }
 
     $default_recipients = ['contact@echecs92.com'];
@@ -1314,6 +1327,25 @@ function cdje92_handle_contact_form() {
             'contact_message'=> $message,
         ]);
     }
+
+    $confirmation_subject = __('Confirmation de reception - CDJE 92', 'echecs92-child');
+    $confirmation_body = [
+        __('Bonjour,', 'echecs92-child'),
+        '',
+        __('Nous confirmons la bonne reception de votre message au CDJE 92.', 'echecs92-child'),
+        __('Nous reviendrons vers vous des que possible.', 'echecs92-child'),
+        '',
+        __('Rappel de votre message :', 'echecs92-child'),
+        $message,
+        '',
+        __('Merci,', 'echecs92-child'),
+        __('Comite Departemental des Echecs des Hauts-de-Seine', 'echecs92-child'),
+    ];
+    $confirmation_headers = [
+        'Content-Type: text/plain; charset=UTF-8',
+        'Reply-To: contact@echecs92.com',
+    ];
+    wp_mail($email, $confirmation_subject, implode("\n", $confirmation_body), $confirmation_headers);
 
     cdje92_contact_form_safe_redirect([
         'contact_status' => 'success',
