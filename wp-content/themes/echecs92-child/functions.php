@@ -34,23 +34,14 @@ function cdje92_contact_form_should_enqueue_recaptcha() {
     return false;
 }
 
-add_filter('cdje92_contact_form_recaptcha_keys', function ( $keys ) {
-    if (! empty($keys['site_key']) && ! empty($keys['secret_key'])) {
-        return $keys;
-    }
-
-    return [
-        'site_key'   => '6LcEiAksAAAAAIv5n_PExZ7e2g2P_UEdU0bo-y2z',
-        'secret_key' => '6LcEiAksAAAAABHRrA46QvOx6pcsZISxnf2hq5sz',
-    ];
-});
-
 add_action('wp_enqueue_scripts', function () {
     $theme_version = wp_get_theme()->get('Version');
     $child_style_path = get_stylesheet_directory() . '/style.css';
     $header_script_path = get_stylesheet_directory() . '/header.js';
+    $contact_form_script_path = get_stylesheet_directory() . '/assets/js/contact-form.js';
     $child_style_version = file_exists($child_style_path) ? filemtime($child_style_path) : $theme_version;
     $header_script_version = file_exists($header_script_path) ? filemtime($header_script_path) : $theme_version;
+    $contact_form_script_version = file_exists($contact_form_script_path) ? filemtime($contact_form_script_path) : $theme_version;
     $child_style_deps = [
         'twentytwentyfive-style',
         'wp-block-library',
@@ -270,12 +261,12 @@ JS;
         );
     }
 
-    if (cdje92_contact_form_should_enqueue_recaptcha()) {
+    if (cdje92_contact_form_use_recaptcha() && cdje92_contact_form_should_enqueue_recaptcha()) {
         wp_enqueue_script(
-            'google-recaptcha',
-            'https://www.google.com/recaptcha/api.js?hl=fr',
+            'echecs92-contact-form',
+            get_stylesheet_directory_uri() . '/assets/js/contact-form.js',
             [],
-            null,
+            $contact_form_script_version,
             true
         );
     }
@@ -1091,8 +1082,10 @@ function cdje92_render_contact_form() {
                 </div>
 
                 <?php if (cdje92_contact_form_use_recaptcha()) : ?>
-                    <div class="contact-form__field contact-form__field--full contact-form__captcha">
+                    <div class="contact-form__field contact-form__field--full contact-form__captcha" data-recaptcha-field hidden aria-hidden="true">
+                        <p id="cdje92-contact-captcha-label" class="contact-form__label"><?php esc_html_e('Vérification anti-robot', 'echecs92-child'); ?></p>
                         <div class="g-recaptcha" data-sitekey="<?php echo esc_attr($recaptcha['site_key']); ?>" aria-labelledby="cdje92-contact-captcha-label"></div>
+                        <p class="contact-form__hint contact-form__captcha-message" data-recaptcha-message aria-live="polite"></p>
                     </div>
                 <?php endif; ?>
             </div>
