@@ -224,6 +224,14 @@ body.admin-bar header.wp-block-template-part{
   align-items:center;
   gap:6px;
 }
+.cm-link-icon{
+  display:inline-flex;
+  align-items:center;
+}
+.cm-link-icon svg{
+  width:14px;
+  height:14px;
+}
 .cm-link-external{
   display:inline-flex;
   align-items:center;
