@@ -392,6 +392,24 @@ body.admin-bar header.wp-block-template-part{
   cursor:pointer;
   font-family:inherit;
 }
+.cm-mobile-link--cta{
+  background:#e0f2fe;
+  border:1px solid #bfdbfe;
+  border-radius:14px;
+  padding:16px 14px;
+  margin-bottom:10px;
+  justify-content:flex-start;
+  gap:12px;
+}
+.cm-mobile-link--cta .cm-link-icon svg{
+  width:16px;
+  height:16px;
+}
+.cm-mobile-link--cta:focus-visible,
+.cm-mobile-link--cta:hover{
+  background:#dbeafe;
+  text-decoration:none;
+}
 .cm-mobile-link.is-current{
   color:#0b2e4c;
 }
@@ -442,6 +460,46 @@ body.admin-bar header.wp-block-template-part{
 .cm-mobile-back:focus-visible{
   outline:2px solid rgba(15,23,42,0.35);
   outline-offset:4px;
+}
+.cm-mobile-social{
+  margin-top:8px;
+  padding-top:12px;
+  border-top:1px solid #e5e7eb;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  width:100%;
+}
+.cm-mobile-social__title{
+  font-size:12px;
+  font-weight:600;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:#6b7280;
+  margin:0;
+}
+.cm-mobile-social__links{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.cm-mobile-social__link{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  color:#0a0a0a;
+  text-decoration:none;
+  font-size:15px;
+  font-weight:600;
+}
+.cm-mobile-social__link:focus-visible,
+.cm-mobile-social__link:hover{
+  text-decoration:underline;
+}
+.cm-mobile-social__icon{
+  width:16px;
+  height:16px;
+  display:block;
 }
 
 /* Respecte l'attribut hidden globalement */
