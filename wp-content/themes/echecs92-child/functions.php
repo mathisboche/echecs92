@@ -2,9 +2,41 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 function cdje92_contact_form_get_recaptcha_keys() {
+    $site_key = defined('CDJE92_RECAPTCHA_SITE_KEY') ? trim(CDJE92_RECAPTCHA_SITE_KEY) : '';
+    $secret_key = defined('CDJE92_RECAPTCHA_SECRET_KEY') ? trim(CDJE92_RECAPTCHA_SECRET_KEY) : '';
+
+    if (empty($site_key)) {
+        $site_key = trim((string) getenv('CDJE92_RECAPTCHA_SITE_KEY'));
+    }
+    if (empty($secret_key)) {
+        $secret_key = trim((string) getenv('CDJE92_RECAPTCHA_SECRET_KEY'));
+    }
+
+    if (empty($site_key) || empty($secret_key)) {
+        $secrets_path = WP_CONTENT_DIR . '/.secrets/recaptcha.php';
+        if (file_exists($secrets_path)) {
+            $secrets = include $secrets_path;
+            if (is_array($secrets)) {
+                if (empty($site_key) && ! empty($secrets['site_key'])) {
+                    $site_key = trim((string) $secrets['site_key']);
+                }
+                if (empty($secret_key) && ! empty($secrets['secret_key'])) {
+                    $secret_key = trim((string) $secrets['secret_key']);
+                }
+            }
+        }
+    }
+
+    if (empty($site_key)) {
+        $site_key = trim((string) get_option('cdje92_recaptcha_site_key', ''));
+    }
+    if (empty($secret_key)) {
+        $secret_key = trim((string) get_option('cdje92_recaptcha_secret_key', ''));
+    }
+
     $keys = [
-        'site_key'   => defined('CDJE92_RECAPTCHA_SITE_KEY') ? trim(CDJE92_RECAPTCHA_SITE_KEY) : '',
-        'secret_key' => defined('CDJE92_RECAPTCHA_SECRET_KEY') ? trim(CDJE92_RECAPTCHA_SECRET_KEY) : '',
+        'site_key' => $site_key,
+        'secret_key' => $secret_key,
     ];
 
     return apply_filters('cdje92_contact_form_recaptcha_keys', $keys);
@@ -32,6 +64,74 @@ function cdje92_contact_form_should_enqueue_recaptcha() {
     }
 
     return false;
+}
+
+add_action('admin_init', function () {
+    register_setting('cdje92_contact_settings', 'cdje92_recaptcha_site_key', [
+        'type' => 'string',
+        'sanitize_callback' => 'sanitize_text_field',
+        'default' => '',
+    ]);
+    register_setting('cdje92_contact_settings', 'cdje92_recaptcha_secret_key', [
+        'type' => 'string',
+        'sanitize_callback' => 'sanitize_text_field',
+        'default' => '',
+    ]);
+});
+
+add_action('admin_menu', function () {
+    add_options_page(
+        __('Contact CDJE 92', 'echecs92-child'),
+        __('Contact CDJE 92', 'echecs92-child'),
+        'manage_options',
+        'cdje92-contact-settings',
+        'cdje92_contact_form_render_settings_page'
+    );
+});
+
+function cdje92_contact_form_render_settings_page() {
+    if (! current_user_can('manage_options')) {
+        return;
+    }
+
+    $site_key = get_option('cdje92_recaptcha_site_key', '');
+    $secret_key = get_option('cdje92_recaptcha_secret_key', '');
+    $has_constants = (defined('CDJE92_RECAPTCHA_SITE_KEY') && CDJE92_RECAPTCHA_SITE_KEY) ||
+        (defined('CDJE92_RECAPTCHA_SECRET_KEY') && CDJE92_RECAPTCHA_SECRET_KEY);
+    $has_env = getenv('CDJE92_RECAPTCHA_SITE_KEY') || getenv('CDJE92_RECAPTCHA_SECRET_KEY');
+    ?>
+    <div class="wrap">
+        <h1><?php esc_html_e('Contact CDJE 92', 'echecs92-child'); ?></h1>
+        <p><?php esc_html_e('Configurez les cles reCAPTCHA utilisees par le formulaire de contact.', 'echecs92-child'); ?></p>
+        <?php if ($has_constants || $has_env) : ?>
+            <div class="notice notice-info">
+                <p><?php esc_html_e('Des cles reCAPTCHA sont deja definies dans la configuration serveur. Les champs ci-dessous sont utilises seulement si aucune cle n\'est fournie via la configuration.', 'echecs92-child'); ?></p>
+            </div>
+        <?php endif; ?>
+        <form method="post" action="options.php">
+            <?php settings_fields('cdje92_contact_settings'); ?>
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row">
+                        <label for="cdje92_recaptcha_site_key"><?php esc_html_e('Cle du site', 'echecs92-child'); ?></label>
+                    </th>
+                    <td>
+                        <input type="text" id="cdje92_recaptcha_site_key" name="cdje92_recaptcha_site_key" value="<?php echo esc_attr($site_key); ?>" class="regular-text" autocomplete="off">
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">
+                        <label for="cdje92_recaptcha_secret_key"><?php esc_html_e('Cle secrete', 'echecs92-child'); ?></label>
+                    </th>
+                    <td>
+                        <input type="password" id="cdje92_recaptcha_secret_key" name="cdje92_recaptcha_secret_key" value="<?php echo esc_attr($secret_key); ?>" class="regular-text" autocomplete="off">
+                    </td>
+                </tr>
+            </table>
+            <?php submit_button(); ?>
+        </form>
+    </div>
+    <?php
 }
 
 add_action('wp_enqueue_scripts', function () {
