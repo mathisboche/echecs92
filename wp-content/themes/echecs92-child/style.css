@@ -391,6 +391,7 @@ body.admin-bar header.wp-block-template-part{
   border:none;
   cursor:pointer;
   font-family:inherit;
+  box-sizing:border-box;
 }
 .cm-mobile-link--cta{
   background:#e0f2fe;
