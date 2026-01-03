@@ -1,8 +1,9 @@
 (() => {
-  const MENU_CONTAINER_SELECTOR = '[data-clubs-majors]';
-  const MENU_ITEM_SELECTOR = '[data-club-major]';
+  const DESKTOP_ITEM_SELECTOR = '[data-club-major]';
+  const MOBILE_ITEM_SELECTOR = '[data-club-major-mobile]';
   const DATA_URL = '/wp-content/themes/echecs92-child/assets/data/clubs.json';
   const STORAGE_KEY = 'echecs92:clubs:majors';
+  const CACHE_TTL = 24 * 60 * 60 * 1000;
 
   const normalise = (value) =>
     (value || '')
@@ -159,18 +160,20 @@
   };
 
   const initMajorsMenu = () => {
-    const container = document.querySelector(MENU_CONTAINER_SELECTOR);
-    if (!container) {
-      return;
-    }
-    const links = Array.from(container.querySelectorAll(MENU_ITEM_SELECTOR));
-    if (!links.length) {
+    const desktopLinks = Array.from(document.querySelectorAll(DESKTOP_ITEM_SELECTOR));
+    const mobileLinks = Array.from(document.querySelectorAll(MOBILE_ITEM_SELECTOR));
+    const maxCount = Math.max(desktopLinks.length, mobileLinks.length);
+    if (!maxCount) {
       return;
     }
 
     const cached = readCache();
     if (cached && Array.isArray(cached.items)) {
-      applyMajors(cached.items, links);
+      applyMajors(cached.items, desktopLinks);
+      applyMajors(cached.items, mobileLinks);
+      if (Date.now() - cached.ts < CACHE_TTL) {
+        return;
+      }
     }
 
     fetch(DATA_URL, { headers: { Accept: 'application/json' } })
@@ -181,8 +184,9 @@
         return response.json();
       })
       .then((payload) => {
-        const entries = pickTopClubs(payload, links.length);
-        applyMajors(entries, links);
+        const entries = pickTopClubs(payload, maxCount);
+        applyMajors(entries, desktopLinks);
+        applyMajors(entries, mobileLinks);
         writeCache(entries);
       })
       .catch(() => {
