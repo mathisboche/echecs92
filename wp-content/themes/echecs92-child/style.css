@@ -324,6 +324,7 @@ body.admin-bar header.wp-block-template-part{
   z-index:1500;
   text-align:left;
   overflow:hidden;
+  box-sizing:border-box;
 
   /* hidden by default */
   opacity:0;
@@ -345,6 +346,7 @@ body.admin-bar header.wp-block-template-part{
   height:100%;
   padding:32px 20px 40px;
   overflow:auto;
+  box-sizing:border-box;
 }
 .cm-mobile-panel.is-active{
   display:flex;
