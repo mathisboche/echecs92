@@ -1286,6 +1286,47 @@ function cdje92_contact_form_safe_redirect( $args = [] ) {
     exit;
 }
 
+function cdje92_contact_form_generate_email_token() {
+    if (function_exists('random_bytes')) {
+        return bin2hex(random_bytes(16));
+    }
+    $token = wp_generate_password(32, false, false);
+    return strtolower(preg_replace('/[^a-z0-9]/', '', $token));
+}
+
+function cdje92_contact_form_store_email_view( $token, $html ) {
+    if (! $token || ! $html) {
+        return;
+    }
+    set_transient('cdje92_email_view_' . $token, $html, WEEK_IN_SECONDS);
+}
+
+add_action('template_redirect', function () {
+    if (empty($_GET['cdje-email'])) {
+        return;
+    }
+
+    $raw = sanitize_text_field(wp_unslash($_GET['cdje-email']));
+    $token = strtolower(preg_replace('/[^a-z0-9]/', '', $raw));
+    if ($token === '') {
+        status_header(404);
+        nocache_headers();
+        exit;
+    }
+
+    $html = get_transient('cdje92_email_view_' . $token);
+    if (! $html) {
+        status_header(404);
+        nocache_headers();
+        exit;
+    }
+
+    nocache_headers();
+    header('Content-Type: text/html; charset=UTF-8');
+    echo $html;
+    exit;
+});
+
 function cdje92_contact_form_embed_logo( $phpmailer ) {
     if (empty($GLOBALS['cdje92_contact_mail_embed_logo']) || ! is_array($GLOBALS['cdje92_contact_mail_embed_logo'])) {
         return;
@@ -1377,11 +1418,12 @@ function cdje92_handle_contact_form() {
     $from_name  = 'CDJE 92';
     $from_header = sprintf('From: %s <%s>', $from_name, $from_email);
     $logo_path = get_stylesheet_directory() . '/assets/cdje92.png';
-    $logo_src = esc_url(get_stylesheet_directory_uri() . '/assets/cdje92.png');
+    $logo_src_web = esc_url(get_stylesheet_directory_uri() . '/assets/cdje92.png');
+    $logo_src_email = $logo_src_web;
     $logo_cid = 'cdje92-logo';
     $logo_embed = null;
     if (file_exists($logo_path)) {
-        $logo_src = 'cid:' . $logo_cid;
+        $logo_src_email = 'cid:' . $logo_cid;
         $logo_embed = [
             'path' => $logo_path,
             'cid'  => $logo_cid,
@@ -1398,7 +1440,8 @@ function cdje92_handle_contact_form() {
     }
 
     $subject = sprintf('[CDJE 92] Message du formulaire – %s', $email);
-    $web_view_url = esc_url(home_url('/contact/'));
+    $internal_token = cdje92_contact_form_generate_email_token();
+    $web_view_url = esc_url(add_query_arg('cdje-email', $internal_token, home_url('/')));
     $body = <<<HTML
 <!doctype html>
 <html lang="fr">
@@ -1410,12 +1453,12 @@ function cdje92_handle_contact_form() {
   <body style="margin:0;padding:0;background-color:#f3f6fb;color:#0f172a;">
     <div style="width:100%;background-color:#f3f6fb;padding:24px 12px;">
       <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:14px;padding:28px 28px;border:1px solid #e2e8f0;border-top:4px solid #0b2e4c;">
-        <p style="margin:0 0 10px 0;font-size:11px;color:#94a3b8;text-align:center;">
+        <p style="margin:0 0 8px 0;font-size:10px;color:#cbd5e1;text-align:center;">
           Si cet e-mail s’affiche mal,
-          <a href="{$web_view_url}" style="color:#94a3b8;text-decoration:none;">le voir dans le navigateur</a>.
+          <a href="{$web_view_url}" style="color:#cbd5e1;text-decoration:underline;text-underline-offset:2px;">le voir dans le navigateur</a>.
         </p>
         <div style="margin:0 0 12px 0;">
-          <img src="{$logo_src}" alt="CDJE 92 Échecs Hauts-de-Seine" style="height:36px;width:auto;display:block;border:0;outline:none;text-decoration:none;padding:2px 0;">
+          <img src="{$logo_src_email}" alt="CDJE 92 Échecs Hauts-de-Seine" style="height:36px;width:auto;display:block;border:0;outline:none;text-decoration:none;padding:2px 0;">
         </div>
         <h1 style="margin:0 0 14px 0;font-size:20px;line-height:1.3;color:#0f172a;">Nouveau message reçu</h1>
         <div style="margin:0 0 16px 0;padding:16px 18px;border-radius:10px;background-color:#f8fafc;border:1px solid #e2e8f0;">
@@ -1426,11 +1469,15 @@ function cdje92_handle_contact_form() {
           <p style="margin:0 0 4px 0;"><strong>Expéditeur :</strong> <a href="mailto:{$email_attr}" style="color:#0b2e4c;text-decoration:none;">{$email_html}</a></p>
           {$club_row_html}
         </div>
+        <p style="margin:18px 0 0 0;font-size:12px;color:#94a3b8;">CDJE 92 – Échecs Hauts-de-Seine</p>
       </div>
     </div>
   </body>
 </html>
 HTML;
+
+    $body_web = str_replace($logo_src_email, $logo_src_web, $body);
+    cdje92_contact_form_store_email_view($internal_token, $body_web);
 
     $headers = [
         'Content-Type: text/html; charset=UTF-8',
@@ -1457,6 +1504,8 @@ HTML;
     }
 
     $confirmation_subject = __('Message bien reçu - CDJE 92', 'echecs92-child');
+    $confirmation_token = cdje92_contact_form_generate_email_token();
+    $confirmation_view_url = esc_url(add_query_arg('cdje-email', $confirmation_token, home_url('/')));
     $confirmation_body = <<<HTML
 <!doctype html>
 <html lang="fr">
@@ -1468,18 +1517,19 @@ HTML;
   <body style="margin:0;padding:0;background-color:#f3f6fb;color:#0f172a;">
     <div style="width:100%;background-color:#f3f6fb;padding:24px 12px;">
       <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:14px;padding:32px;border:1px solid #e2e8f0;border-top:4px solid #0b2e4c;">
-        <p style="margin:0 0 10px 0;font-size:11px;color:#94a3b8;text-align:center;">
+        <p style="margin:0 0 8px 0;font-size:10px;color:#cbd5e1;text-align:center;">
           Si cet e-mail s’affiche mal,
-          <a href="{$web_view_url}" style="color:#94a3b8;text-decoration:none;">le voir dans le navigateur</a>.
+          <a href="{$confirmation_view_url}" style="color:#cbd5e1;text-decoration:underline;text-underline-offset:2px;">le voir dans le navigateur</a>.
         </p>
         <div style="margin:0 0 12px 0;">
-          <img src="{$logo_src}" alt="CDJE 92 Échecs Hauts-de-Seine" style="height:36px;width:auto;display:block;border:0;outline:none;text-decoration:none;padding:2px 0;">
+          <img src="{$logo_src_email}" alt="CDJE 92 Échecs Hauts-de-Seine" style="height:36px;width:auto;display:block;border:0;outline:none;text-decoration:none;padding:2px 0;">
         </div>
         <h1 style="margin:0 0 12px 0;font-size:24px;line-height:1.25;color:#0f172a;">Votre message a bien été reçu</h1>
         <p style="margin:0 0 20px 0;font-size:16px;line-height:1.6;color:#334155;">
           Merci pour votre message. Nous avons bien reçu votre demande et nous reviendrons vers vous dès que possible.
         </p>
         <div style="margin:20px 0 0 0;padding:14px 16px;background-color:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;font-size:13px;line-height:1.6;color:#475569;">
+          <p style="margin:0 0 6px 0;font-weight:600;color:#64748b;">Rappel de votre message</p>
           <div>{$message_html}</div>
         </div>
         <p style="margin:20px 0 0 0;font-size:13px;line-height:1.6;color:#64748b;">
@@ -1491,6 +1541,8 @@ HTML;
   </body>
 </html>
 HTML;
+    $confirmation_body_web = str_replace($logo_src_email, $logo_src_web, $confirmation_body);
+    cdje92_contact_form_store_email_view($confirmation_token, $confirmation_body_web);
     $confirmation_headers = [
         'Content-Type: text/html; charset=UTF-8',
         $from_header,
