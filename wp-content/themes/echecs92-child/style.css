@@ -1647,6 +1647,27 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   font-size:13px;
   color:#64748b;
 }
+.contact-form__success-actions{
+  margin-top:14px;
+}
+.contact-form__success-link{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px 16px;
+  border-radius:999px;
+  background:#0b2e4c;
+  color:#ffffff;
+  font-size:14px;
+  font-weight:600;
+  text-decoration:none;
+  transition:background-color 0.2s ease;
+}
+.contact-form__success-link:hover,
+.contact-form__success-link:focus-visible{
+  background:#093050;
+  outline:none;
+}
 .cdje92-contact-success .contact-form__intro,
 .cdje92-contact-success .contact-header,
 .cdje92-contact-success .contact-grid,
