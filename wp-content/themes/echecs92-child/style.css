@@ -395,7 +395,8 @@ body.admin-bar header.wp-block-template-part{
   font-family:inherit;
   box-sizing:border-box;
 }
-.cm-mobile-link--cta{
+.cm-mobile-link--cta,
+.cm-mobile-search{
   background:#e0f2fe;
   border:1px solid #bfdbfe;
   border-radius:14px;
@@ -404,14 +405,43 @@ body.admin-bar header.wp-block-template-part{
   justify-content:flex-start;
   gap:12px;
 }
-.cm-mobile-link--cta .cm-link-icon svg{
+.cm-mobile-search{
+  display:flex;
+  align-items:center;
+  width:100%;
+  box-sizing:border-box;
+  font-size:17px;
+  font-weight:600;
+  color:#0a0a0a;
+  line-height:1.3;
+  font-family:inherit;
+}
+.cm-mobile-link--cta .cm-link-icon svg,
+.cm-mobile-search .cm-link-icon svg{
   width:16px;
   height:16px;
 }
 .cm-mobile-link--cta:focus-visible,
-.cm-mobile-link--cta:hover{
+.cm-mobile-link--cta:hover,
+.cm-mobile-search:focus-within,
+.cm-mobile-search:hover{
   background:#dbeafe;
   text-decoration:none;
+}
+.cm-mobile-search__input{
+  flex:1;
+  min-width:0;
+  border:0;
+  background:transparent;
+  padding:0;
+  margin:0;
+  font:inherit;
+  color:inherit;
+  outline:none;
+}
+.cm-mobile-search__input::placeholder{
+  color:#475569;
+  font-weight:500;
 }
 .cm-mobile-link.is-current{
   color:#0b2e4c;
