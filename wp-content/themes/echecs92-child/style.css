@@ -1611,6 +1611,54 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   border:1px solid #f3b1b1;
   color:#8b1c1c;
 }
+.cdje92-contact-form-wrapper--success{
+  gap:0;
+}
+.contact-form__success{
+  background:linear-gradient(135deg,#eef5ff 0%,#f8fafc 100%);
+  border:1px solid #cbd5f5;
+  border-radius:12px;
+  padding:28px 30px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.contact-form__success-kicker{
+  margin:0;
+  font-size:12px;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:#64748b;
+}
+.contact-form__success-title{
+  margin:0;
+  font-size:24px;
+  line-height:1.25;
+  color:#0f172a;
+}
+.contact-form__success-text{
+  margin:0;
+  font-size:16px;
+  line-height:1.6;
+  color:#334155;
+}
+.contact-form__success-note{
+  margin:6px 0 0;
+  font-size:13px;
+  color:#64748b;
+}
+.cdje92-contact-success .contact-form__intro,
+.cdje92-contact-success .contact-header,
+.cdje92-contact-success .contact-grid,
+.cdje92-contact-success .contact-social{
+  display:none;
+}
+.cdje92-contact-success .contact-form-block{
+  border:none;
+  background:transparent;
+  padding:0;
+  gap:0;
+}
 .contact-form__grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
@@ -1762,6 +1810,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   .contact-form-block{
     padding:22px 22px;
   }
+  .contact-form__success{
+    padding:24px 24px;
+  }
 }
 
 @media (max-width:599px){
@@ -1776,6 +1827,12 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   }
   .contact-form-block{
     padding:20px 18px;
+  }
+  .contact-form__success{
+    padding:20px 18px;
+  }
+  .contact-form__success-title{
+    font-size:20px;
   }
   .contact-form__grid{
     grid-template-columns:1fr;

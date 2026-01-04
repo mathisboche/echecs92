@@ -1145,7 +1145,6 @@ function cdje92_render_contact_form() {
     ];
 
     $messages = [
-        'success' => __('Votre message a bien été envoyé. Nous revenons vers vous dès que possible.', 'echecs92-child'),
         'error'   => [
             'invalid_nonce' => __('Une erreur est survenue. Merci de réessayer.', 'echecs92-child'),
             'incomplete'    => __('Merci de renseigner les champs obligatoires.', 'echecs92-child'),
@@ -1159,10 +1158,9 @@ function cdje92_render_contact_form() {
     $notice       = '';
     $notice_class = '';
     $recaptcha    = cdje92_contact_form_get_recaptcha_keys();
+    $success      = ($status === 'success');
 
-    if ($status === 'success') {
-        $notice       = $messages['success'];
-        $notice_class = 'success';
+    if ($success) {
         $prefill_map  = array_fill_keys(array_keys($prefill_map), '');
     } elseif ($status === 'error') {
         $notice       = isset($messages['error'][ $error_code ]) ? $messages['error'][ $error_code ] : __('Votre message n’a pas pu être envoyé. Merci de réessayer.', 'echecs92-child');
@@ -1171,50 +1169,67 @@ function cdje92_render_contact_form() {
 
     ob_start();
     ?>
-    <div class="cdje92-contact-form-wrapper" id="contact-form">
-        <?php if (! empty($notice)) : ?>
-            <div class="contact-form__notice contact-form__notice--<?php echo esc_attr($notice_class); ?>">
-                <?php echo esc_html($notice); ?>
+    <div class="cdje92-contact-form-wrapper<?php echo $success ? ' cdje92-contact-form-wrapper--success' : ''; ?>" id="contact-form">
+        <?php if ($success) : ?>
+            <div class="contact-form__success" role="status" aria-live="polite">
+                <p class="contact-form__success-kicker"><?php esc_html_e('Merci', 'echecs92-child'); ?></p>
+                <h1 class="contact-form__success-title"><?php esc_html_e('Votre message a bien été reçu', 'echecs92-child'); ?></h1>
+                <p class="contact-form__success-text"><?php esc_html_e('Nous avons bien reçu votre message. L’équipe du CDJE 92 revient vers vous dès que possible.', 'echecs92-child'); ?></p>
+                <p class="contact-form__success-note"><?php esc_html_e('Un e-mail de confirmation vient de vous être envoyé.', 'echecs92-child'); ?></p>
             </div>
-        <?php endif; ?>
-
-        <form id="cdje92-contact-form" class="cdje92-contact-form" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" novalidate>
-            <?php wp_nonce_field('cdje92_contact_form', 'cdje92_contact_nonce'); ?>
-            <input type="hidden" name="action" value="cdje92_contact">
-            <label class="contact-form__hidden" for="cdje92-contact-reference" aria-hidden="true"><?php esc_html_e('Ne pas remplir ce champ', 'echecs92-child'); ?></label>
-            <input class="contact-form__hidden" type="text" name="cdje92_reference" id="cdje92-contact-reference" tabindex="-1" autocomplete="off" aria-hidden="true">
-
-            <div class="contact-form__grid">
-                <div class="contact-form__field">
-                    <label class="contact-form__label" for="cdje92-contact-email"><?php esc_html_e('Adresse e-mail', 'echecs92-child'); ?><span>*</span></label>
-                    <input class="contact-form__input" type="email" id="cdje92-contact-email" name="cdje92_email" required value="<?php echo esc_attr($prefill_map['email']); ?>">
+        <?php else : ?>
+            <?php if (! empty($notice)) : ?>
+                <div class="contact-form__notice contact-form__notice--<?php echo esc_attr($notice_class); ?>">
+                    <?php echo esc_html($notice); ?>
                 </div>
-                <div class="contact-form__field">
-                    <label class="contact-form__label" for="cdje92-contact-club"><?php esc_html_e('Club / structure (optionnel)', 'echecs92-child'); ?></label>
-                    <input class="contact-form__input" type="text" id="cdje92-contact-club" name="cdje92_club" value="<?php echo esc_attr($prefill_map['club']); ?>">
-                </div>
+            <?php endif; ?>
 
-                <div class="contact-form__field contact-form__field--full">
-                    <label class="contact-form__label" for="cdje92-contact-message"><?php esc_html_e('Message', 'echecs92-child'); ?><span>*</span></label>
-                    <textarea class="contact-form__textarea" id="cdje92-contact-message" name="cdje92_message" required><?php echo esc_textarea($prefill_map['message']); ?></textarea>
-                </div>
+            <form id="cdje92-contact-form" class="cdje92-contact-form" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" novalidate>
+                <?php wp_nonce_field('cdje92_contact_form', 'cdje92_contact_nonce'); ?>
+                <input type="hidden" name="action" value="cdje92_contact">
+                <label class="contact-form__hidden" for="cdje92-contact-reference" aria-hidden="true"><?php esc_html_e('Ne pas remplir ce champ', 'echecs92-child'); ?></label>
+                <input class="contact-form__hidden" type="text" name="cdje92_reference" id="cdje92-contact-reference" tabindex="-1" autocomplete="off" aria-hidden="true">
 
-                <?php if (cdje92_contact_form_use_recaptcha()) : ?>
-                    <div class="contact-form__field contact-form__field--full contact-form__captcha" data-recaptcha-field hidden aria-hidden="true">
-                        <p id="cdje92-contact-captcha-label" class="contact-form__label"><?php esc_html_e('Vérification anti-robot', 'echecs92-child'); ?></p>
-                        <div class="g-recaptcha" data-sitekey="<?php echo esc_attr($recaptcha['site_key']); ?>" aria-labelledby="cdje92-contact-captcha-label"></div>
-                        <p class="contact-form__hint contact-form__captcha-message" data-recaptcha-message aria-live="polite"></p>
+                <div class="contact-form__grid">
+                    <div class="contact-form__field">
+                        <label class="contact-form__label" for="cdje92-contact-email"><?php esc_html_e('Adresse e-mail', 'echecs92-child'); ?><span>*</span></label>
+                        <input class="contact-form__input" type="email" id="cdje92-contact-email" name="cdje92_email" required value="<?php echo esc_attr($prefill_map['email']); ?>">
                     </div>
-                <?php endif; ?>
-            </div>
-            <button type="submit" class="contact-form__submit"><?php esc_html_e('Envoyer', 'echecs92-child'); ?></button>
-        </form>
+                    <div class="contact-form__field">
+                        <label class="contact-form__label" for="cdje92-contact-club"><?php esc_html_e('Club / structure (optionnel)', 'echecs92-child'); ?></label>
+                        <input class="contact-form__input" type="text" id="cdje92-contact-club" name="cdje92_club" value="<?php echo esc_attr($prefill_map['club']); ?>">
+                    </div>
+
+                    <div class="contact-form__field contact-form__field--full">
+                        <label class="contact-form__label" for="cdje92-contact-message"><?php esc_html_e('Message', 'echecs92-child'); ?><span>*</span></label>
+                        <textarea class="contact-form__textarea" id="cdje92-contact-message" name="cdje92_message" required><?php echo esc_textarea($prefill_map['message']); ?></textarea>
+                    </div>
+
+                    <?php if (cdje92_contact_form_use_recaptcha()) : ?>
+                        <div class="contact-form__field contact-form__field--full contact-form__captcha" data-recaptcha-field hidden aria-hidden="true">
+                            <p id="cdje92-contact-captcha-label" class="contact-form__label"><?php esc_html_e('Vérification anti-robot', 'echecs92-child'); ?></p>
+                            <div class="g-recaptcha" data-sitekey="<?php echo esc_attr($recaptcha['site_key']); ?>" aria-labelledby="cdje92-contact-captcha-label"></div>
+                            <p class="contact-form__hint contact-form__captcha-message" data-recaptcha-message aria-live="polite"></p>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <button type="submit" class="contact-form__submit"><?php esc_html_e('Envoyer', 'echecs92-child'); ?></button>
+            </form>
+        <?php endif; ?>
     </div>
     <?php
 
     return ob_get_clean();
 }
 add_shortcode('cdje92_contact_form', 'cdje92_render_contact_form');
+
+add_filter('body_class', function ( $classes ) {
+    $status = isset($_GET['contact_status']) ? sanitize_key(wp_unslash($_GET['contact_status'])) : '';
+    if ($status === 'success' && (is_page('contact') || is_page_template('page-contact.html'))) {
+        $classes[] = 'cdje92-contact-success';
+    }
+    return $classes;
+});
 
 add_filter('render_block', function ( $block_content, $block ) {
     if (
@@ -1239,7 +1254,13 @@ function cdje92_contact_form_get_redirect_url() {
 
 function cdje92_contact_form_safe_redirect( $args = [] ) {
     $url = add_query_arg($args, cdje92_contact_form_get_redirect_url());
-    $url .= '#contact-form';
+    $anchor = '#contact-form';
+    if (isset($args['contact_status']) && $args['contact_status'] === 'success') {
+        $anchor = '';
+    }
+    if ($anchor) {
+        $url .= $anchor;
+    }
     wp_safe_redirect($url);
     exit;
 }
@@ -1316,6 +1337,10 @@ function cdje92_handle_contact_form() {
         $recipients = [$recipients];
     }
 
+    $from_email = 'contact@echecs92.com';
+    $from_name  = 'CDJE 92';
+    $from_header = sprintf('From: %s <%s>', $from_name, $from_email);
+
     $subject = sprintf('[CDJE 92] Message du formulaire – %s', $email);
     $body    = [
         'Email : ' . $email,
@@ -1328,6 +1353,7 @@ function cdje92_handle_contact_form() {
     $headers = [
         'Content-Type: text/plain; charset=UTF-8',
         sprintf('Reply-To: %s', $email),
+        $from_header,
     ];
 
     $sent = wp_mail($recipients, $subject, implode("\n", $body), $headers);
@@ -1342,24 +1368,43 @@ function cdje92_handle_contact_form() {
         ]);
     }
 
-    $confirmation_subject = __('Confirmation de reception - CDJE 92', 'echecs92-child');
-    $confirmation_body = [
-        __('Bonjour,', 'echecs92-child'),
-        '',
-        __('Nous confirmons la bonne reception de votre message au CDJE 92.', 'echecs92-child'),
-        __('Nous reviendrons vers vous des que possible.', 'echecs92-child'),
-        '',
-        __('Rappel de votre message :', 'echecs92-child'),
-        $message,
-        '',
-        __('Merci,', 'echecs92-child'),
-        __('Comite Departemental des Echecs des Hauts-de-Seine', 'echecs92-child'),
-    ];
+    $confirmation_subject = __('Message bien reçu - CDJE 92', 'echecs92-child');
+    $confirmation_message = nl2br(esc_html($message));
+    $confirmation_body = <<<HTML
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message bien reçu - CDJE 92</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f3f6fb;color:#0f172a;">
+    <div style="width:100%;background-color:#f3f6fb;padding:24px 12px;">
+      <div style="max-width:560px;margin:0 auto;background-color:#ffffff;border-radius:14px;padding:32px;border:1px solid #e2e8f0;">
+        <p style="margin:0 0 12px 0;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#64748b;">CDJE 92</p>
+        <h1 style="margin:0 0 12px 0;font-size:22px;line-height:1.25;color:#0f172a;">Votre message a bien été reçu</h1>
+        <p style="margin:0 0 20px 0;font-size:16px;line-height:1.6;color:#334155;">
+          Merci pour votre message. Nous avons bien reçu votre demande et nous reviendrons vers vous dès que possible.
+        </p>
+        <div style="margin:20px 0 0 0;padding:14px 16px;background-color:#f8fafc;border-left:3px solid #cbd5f5;font-size:13px;line-height:1.6;color:#475569;">
+          <p style="margin:0 0 6px 0;font-weight:600;color:#64748b;">Rappel discret de votre message</p>
+          <div>{$confirmation_message}</div>
+        </div>
+        <p style="margin:20px 0 0 0;font-size:13px;line-height:1.6;color:#64748b;">
+          Comité Départemental des Échecs des Hauts-de-Seine<br>
+          <a href="mailto:contact@echecs92.com" style="color:#1e3a8a;text-decoration:none;">contact@echecs92.com</a>
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
+HTML;
     $confirmation_headers = [
-        'Content-Type: text/plain; charset=UTF-8',
-        'Reply-To: contact@echecs92.com',
+        'Content-Type: text/html; charset=UTF-8',
+        $from_header,
+        sprintf('Reply-To: %s', $from_email),
     ];
-    wp_mail($email, $confirmation_subject, implode("\n", $confirmation_body), $confirmation_headers);
+    wp_mail($email, $confirmation_subject, $confirmation_body, $confirmation_headers);
 
     cdje92_contact_form_safe_redirect([
         'contact_status' => 'success',
