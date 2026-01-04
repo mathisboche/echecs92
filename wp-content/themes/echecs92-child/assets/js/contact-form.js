@@ -9,6 +9,32 @@
   const siteKey = captchaEl && captchaEl.dataset ? (captchaEl.dataset.sitekey || '').trim() : '';
   const messageEl = captchaField ? captchaField.querySelector('[data-recaptcha-message]') : null;
   const submitButton = form.querySelector('.contact-form__submit');
+  const wrapper = form.closest('.cdje92-contact-form-wrapper') || form.parentElement;
+  const emailInput = form.querySelector('#cdje92-contact-email');
+  const messageInput = form.querySelector('#cdje92-contact-message');
+
+  const ensureNoticeEl = () => {
+    if (!wrapper) {
+      return null;
+    }
+    let notice = wrapper.querySelector('.contact-form__notice');
+    if (!notice) {
+      notice = document.createElement('div');
+      notice.className = 'contact-form__notice contact-form__notice--error';
+      wrapper.insertBefore(notice, wrapper.firstChild);
+    }
+    return notice;
+  };
+
+  const setNotice = (text) => {
+    const notice = ensureNoticeEl();
+    if (!notice) {
+      return;
+    }
+    notice.classList.remove('contact-form__notice--success');
+    notice.classList.add('contact-form__notice--error');
+    notice.textContent = text || '';
+  };
 
   const ensureMessageEl = () => {
     if (messageEl) {
@@ -110,6 +136,28 @@
   };
 
   form.addEventListener('submit', (event) => {
+    const emailMissing = emailInput && emailInput.validity && emailInput.validity.valueMissing;
+    const messageMissing = messageInput && messageInput.validity && messageInput.validity.valueMissing;
+    const emailInvalid = emailInput && emailInput.validity && emailInput.validity.typeMismatch;
+
+    if (emailMissing || messageMissing) {
+      event.preventDefault();
+      setNotice('Merci de renseigner les champs obligatoires.');
+      if (form.reportValidity) {
+        form.reportValidity();
+      }
+      return;
+    }
+
+    if (emailInvalid) {
+      event.preventDefault();
+      setNotice("L'adresse e-mail semble invalide.");
+      if (form.reportValidity) {
+        form.reportValidity();
+      }
+      return;
+    }
+
     if (!window.grecaptcha || widgetId === null) {
       event.preventDefault();
       pendingSubmit = true;
