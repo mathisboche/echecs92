@@ -1615,8 +1615,8 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   gap:0;
 }
 .contact-form__success{
-  background:linear-gradient(135deg,#eef5ff 0%,#f8fafc 100%);
-  border:1px solid #cbd5f5;
+  background:linear-gradient(135deg,#ecfdf3 0%,#f6fffa 100%);
+  border:1px solid #b5e5c2;
   border-radius:12px;
   padding:28px 30px;
   display:flex;
@@ -1628,13 +1628,17 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   font-size:12px;
   letter-spacing:0.12em;
   text-transform:uppercase;
-  color:#64748b;
+  color:#2f7a4f;
 }
 .contact-form__success-title{
   margin:0;
   font-size:24px;
   line-height:1.25;
-  color:#0f172a;
+  color:#12331f;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
 }
 .contact-form__success-text{
   margin:0;
@@ -1645,7 +1649,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .contact-form__success-note{
   margin:6px 0 0;
   font-size:13px;
-  color:#64748b;
+  color:#4a6b57;
 }
 .contact-form__success-actions{
   margin-top:14px;
@@ -1654,24 +1658,34 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   display:inline-flex;
   align-items:center;
   gap:8px;
-  padding:10px 16px;
+  padding:8px 14px;
   border-radius:999px;
-  background:#0b2e4c;
-  color:#ffffff;
+  background:#e5f5ec;
+  border:1px solid #a7e0b3;
+  color:#1f7a3a;
   font-size:14px;
   font-weight:600;
   text-decoration:none;
-  transition:background-color 0.2s ease;
+  transition:background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 .contact-form__success-link:hover,
 .contact-form__success-link:focus-visible{
-  background:#093050;
+  background:#d7f0e1;
+  border-color:#8bd39f;
+  color:#1a6a32;
   outline:none;
 }
 .contact-form__success-icon{
   width:16px;
   height:16px;
   display:block;
+}
+.contact-form__success-check{
+  width:20px;
+  height:20px;
+  display:block;
+  color:#2f7a4f;
+  flex:none;
 }
 .cdje92-contact-success .contact-form__intro,
 .cdje92-contact-success .contact-header,
