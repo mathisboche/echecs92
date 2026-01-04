@@ -1175,7 +1175,7 @@ function cdje92_render_contact_form() {
             <div class="contact-form__success" role="status" aria-live="polite">
                 <p class="contact-form__success-kicker"><?php esc_html_e('Merci', 'echecs92-child'); ?></p>
                 <h1 class="contact-form__success-title">
-                    <?php esc_html_e('Message bien reçu, votre message a bien été transmis', 'echecs92-child'); ?>
+                    <?php esc_html_e('Votre message a bien été transmis', 'echecs92-child'); ?>
                     <svg class="contact-form__success-check" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                         <path d="M5.5 12.5l4 4 9-9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
                     </svg>
