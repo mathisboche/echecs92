@@ -1173,7 +1173,6 @@ function cdje92_render_contact_form() {
     <div class="cdje92-contact-form-wrapper<?php echo $success ? ' cdje92-contact-form-wrapper--success' : ''; ?>" id="contact-form">
         <?php if ($success) : ?>
             <div class="contact-form__success" role="status" aria-live="polite">
-                <p class="contact-form__success-kicker"><?php esc_html_e('Merci', 'echecs92-child'); ?></p>
                 <h1 class="contact-form__success-title">
                     <?php esc_html_e('Votre message a bien été transmis', 'echecs92-child'); ?>
                     <svg class="contact-form__success-check" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -1286,47 +1285,6 @@ function cdje92_contact_form_safe_redirect( $args = [] ) {
     exit;
 }
 
-function cdje92_contact_form_generate_email_token() {
-    if (function_exists('random_bytes')) {
-        return bin2hex(random_bytes(16));
-    }
-    $token = wp_generate_password(32, false, false);
-    return strtolower(preg_replace('/[^a-z0-9]/', '', $token));
-}
-
-function cdje92_contact_form_store_email_view( $token, $html ) {
-    if (! $token || ! $html) {
-        return;
-    }
-    set_transient('cdje92_email_view_' . $token, $html, WEEK_IN_SECONDS);
-}
-
-add_action('template_redirect', function () {
-    if (empty($_GET['cdje-email'])) {
-        return;
-    }
-
-    $raw = sanitize_text_field(wp_unslash($_GET['cdje-email']));
-    $token = strtolower(preg_replace('/[^a-z0-9]/', '', $raw));
-    if ($token === '') {
-        status_header(404);
-        nocache_headers();
-        exit;
-    }
-
-    $html = get_transient('cdje92_email_view_' . $token);
-    if (! $html) {
-        status_header(404);
-        nocache_headers();
-        exit;
-    }
-
-    nocache_headers();
-    header('Content-Type: text/html; charset=UTF-8');
-    echo $html;
-    exit;
-});
-
 function cdje92_contact_form_embed_logo( $phpmailer ) {
     if (empty($GLOBALS['cdje92_contact_mail_embed_logo']) || ! is_array($GLOBALS['cdje92_contact_mail_embed_logo'])) {
         return;
@@ -1418,8 +1376,8 @@ function cdje92_handle_contact_form() {
     $from_name  = 'CDJE 92';
     $from_header = sprintf('From: %s <%s>', $from_name, $from_email);
     $logo_path = get_stylesheet_directory() . '/assets/cdje92.png';
-    $logo_src_web = esc_url(get_stylesheet_directory_uri() . '/assets/cdje92.png');
-    $logo_src_email = $logo_src_web;
+    $logo_src = esc_url(get_stylesheet_directory_uri() . '/assets/cdje92.png');
+    $logo_src_email = $logo_src;
     $logo_cid = 'cdje92-logo';
     $logo_embed = null;
     if (file_exists($logo_path)) {
@@ -1440,15 +1398,6 @@ function cdje92_handle_contact_form() {
     }
 
     $subject = sprintf('[CDJE 92] Message du formulaire – %s', $email);
-    $internal_token = cdje92_contact_form_generate_email_token();
-    $web_view_url = esc_url(add_query_arg('cdje-email', $internal_token, home_url('/')));
-    $web_view_line_email = '<p style="margin:12px 0 0 0;font-size:9px;color:#e2e8f0;text-align:center;">'
-        . 'Si cet e-mail s’affiche mal, '
-        . '<a href="' . $web_view_url . '" style="color:#e2e8f0;text-decoration:underline;text-underline-offset:2px;">'
-        . 'voir dans le navigateur'
-        . '</a>.'
-        . '</p>';
-    $web_view_line_web = '';
     $body = <<<HTML
 <!doctype html>
 <html lang="fr">
@@ -1460,15 +1409,6 @@ function cdje92_handle_contact_form() {
   <body style="margin:0;padding:0;background-color:#f3f6fb;color:#0f172a;font-family:'Helvetica Neue', Arial, sans-serif;">
     <div style="width:100%;background-color:#f3f6fb;padding:24px 12px;">
       <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:14px;padding:28px 28px;border:1px solid #e2e8f0;border-top:4px solid #0b2e4c;">
-        <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;line-height:1px;font-size:1px;">
-          Nouveau message reçu. Formulaire du CDJE 92. Voici le message transmis via le site.
-          <span style="display:inline-block;width:0;max-height:0;overflow:hidden;">
-            &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
-            &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
-            &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
-            &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
-          </span>
-        </div>
         <div style="margin:0 0 12px 0;">
           <img src="{$logo_src_email}" alt="CDJE 92 Échecs Hauts-de-Seine" style="height:36px;width:auto;display:block;border:0;outline:none;text-decoration:none;padding:2px 0;">
         </div>
@@ -1481,16 +1421,11 @@ function cdje92_handle_contact_form() {
           <p style="margin:0 0 4px 0;"><strong>Expéditeur :</strong> <a href="mailto:{$email_attr}" style="color:#0b2e4c;text-decoration:none;">{$email_html}</a></p>
           {$club_row_html}
         </div>
-        {$web_view_line_email}
       </div>
     </div>
   </body>
 </html>
 HTML;
-
-    $body_web = str_replace($logo_src_email, $logo_src_web, $body);
-    $body_web = str_replace($web_view_line_email, $web_view_line_web, $body_web);
-    cdje92_contact_form_store_email_view($internal_token, $body_web);
 
     $headers = [
         'Content-Type: text/html; charset=UTF-8',
@@ -1517,15 +1452,6 @@ HTML;
     }
 
     $confirmation_subject = __('Message bien reçu - CDJE 92', 'echecs92-child');
-    $confirmation_token = cdje92_contact_form_generate_email_token();
-    $confirmation_view_url = esc_url(add_query_arg('cdje-email', $confirmation_token, home_url('/')));
-    $confirmation_web_view_line_email = '<p style="margin:12px 0 0 0;font-size:9px;color:#e2e8f0;text-align:center;">'
-        . 'Si cet e-mail s’affiche mal, '
-        . '<a href="' . $confirmation_view_url . '" style="color:#e2e8f0;text-decoration:underline;text-underline-offset:2px;">'
-        . 'voir dans le navigateur'
-        . '</a>.'
-        . '</p>';
-    $confirmation_web_view_line_web = '';
     $confirmation_body = <<<HTML
 <!doctype html>
 <html lang="fr">
@@ -1537,15 +1463,6 @@ HTML;
   <body style="margin:0;padding:0;background-color:#f3f6fb;color:#0f172a;font-family:'Helvetica Neue', Arial, sans-serif;">
     <div style="width:100%;background-color:#f3f6fb;padding:24px 12px;">
       <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:14px;padding:32px;border:1px solid #e2e8f0;border-top:4px solid #0b2e4c;">
-        <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;line-height:1px;font-size:1px;">
-          Votre message a bien été reçu. Merci pour votre confiance. Nous revenons vers vous dès que possible.
-          <span style="display:inline-block;width:0;max-height:0;overflow:hidden;">
-            &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
-            &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
-            &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
-            &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
-          </span>
-        </div>
         <div style="margin:0 0 12px 0;">
           <img src="{$logo_src_email}" alt="CDJE 92 Échecs Hauts-de-Seine" style="height:36px;width:auto;display:block;border:0;outline:none;text-decoration:none;padding:2px 0;">
         </div>
@@ -1561,15 +1478,11 @@ HTML;
           Comité Départemental des Échecs des Hauts-de-Seine<br>
           <a href="mailto:contact@echecs92.com" style="color:#0b2e4c;text-decoration:none;">contact@echecs92.com</a>
         </p>
-        {$confirmation_web_view_line_email}
       </div>
     </div>
   </body>
 </html>
 HTML;
-    $confirmation_body_web = str_replace($logo_src_email, $logo_src_web, $confirmation_body);
-    $confirmation_body_web = str_replace($confirmation_web_view_line_email, $confirmation_web_view_line_web, $confirmation_body_web);
-    cdje92_contact_form_store_email_view($confirmation_token, $confirmation_body_web);
     $confirmation_headers = [
         'Content-Type: text/html; charset=UTF-8',
         $from_header,
