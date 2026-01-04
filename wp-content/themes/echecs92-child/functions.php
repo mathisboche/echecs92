@@ -1143,6 +1143,7 @@ function cdje92_render_contact_form() {
         'club'    => isset($_GET['contact_club']) ? sanitize_text_field(wp_unslash($_GET['contact_club'])) : '',
         'message' => isset($_GET['contact_message']) ? sanitize_textarea_field(wp_unslash($_GET['contact_message'])) : '',
     ];
+    $success_email = isset($_GET['contact_email']) ? sanitize_email(wp_unslash($_GET['contact_email'])) : '';
 
     $messages = [
         'error'   => [
@@ -1173,11 +1174,20 @@ function cdje92_render_contact_form() {
         <?php if ($success) : ?>
             <div class="contact-form__success" role="status" aria-live="polite">
                 <p class="contact-form__success-kicker"><?php esc_html_e('Merci', 'echecs92-child'); ?></p>
-                <h1 class="contact-form__success-title"><?php esc_html_e('Votre message a bien été reçu', 'echecs92-child'); ?></h1>
-                <p class="contact-form__success-text"><?php esc_html_e('Nous avons bien reçu votre message. L’équipe du CDJE 92 revient vers vous dès que possible.', 'echecs92-child'); ?></p>
-                <p class="contact-form__success-note"><?php esc_html_e('Un e-mail de confirmation vient de vous être envoyé.', 'echecs92-child'); ?></p>
+                <h1 class="contact-form__success-title"><?php esc_html_e('Message bien reçu', 'echecs92-child'); ?></h1>
+                <p class="contact-form__success-text"><?php esc_html_e('Nous avons bien reçu votre message.', 'echecs92-child'); ?></p>
+                <?php if (! empty($success_email)) : ?>
+                    <p class="contact-form__success-note">
+                        <?php esc_html_e('Un e-mail de confirmation a été envoyé à', 'echecs92-child'); ?>
+                        <strong><?php echo esc_html($success_email); ?></strong>.
+                    </p>
+                <?php else : ?>
+                    <p class="contact-form__success-note"><?php esc_html_e('Un e-mail de confirmation a été envoyé.', 'echecs92-child'); ?></p>
+                <?php endif; ?>
                 <div class="contact-form__success-actions">
-                    <a class="contact-form__success-link" href="<?php echo esc_url(home_url('/')); ?>"><?php esc_html_e('Retour à l’accueil', 'echecs92-child'); ?></a>
+                    <a class="contact-form__success-link" href="<?php echo esc_url(home_url('/')); ?>">
+                        <?php esc_html_e('← Retour à l’accueil', 'echecs92-child'); ?>
+                    </a>
                 </div>
             </div>
         <?php else : ?>
@@ -1343,12 +1353,15 @@ function cdje92_handle_contact_form() {
     $from_email = 'contact@echecs92.com';
     $from_name  = 'CDJE 92';
     $from_header = sprintf('From: %s <%s>', $from_name, $from_email);
-    $logo_url = esc_url(get_stylesheet_directory_uri() . '/assets/cdje92.svg');
+    $logo_url = esc_url(get_stylesheet_directory_uri() . '/assets/cdje-icon.svg');
     $message_html = nl2br(esc_html($message));
     $email_attr = esc_attr($email);
     $email_html = esc_html($email);
-    $club_display = $club ?: __('Non renseigné', 'echecs92-child');
-    $club_html = esc_html($club_display);
+    $club_value = trim($club);
+    $club_row_html = '';
+    if ($club_value !== '') {
+        $club_row_html = '<p style="margin:0;"><strong>Club / structure :</strong> ' . esc_html($club_value) . '</p>';
+    }
 
     $subject = sprintf('[CDJE 92] Message du formulaire – %s', $email);
     $body = <<<HTML
@@ -1363,7 +1376,7 @@ function cdje92_handle_contact_form() {
     <div style="width:100%;background-color:#f3f6fb;padding:24px 12px;">
       <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:14px;padding:28px 28px;border:1px solid #e2e8f0;border-top:4px solid #0b2e4c;">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
-          <img src="{$logo_url}" alt="CDJE 92" style="width:44px;height:auto;display:block;">
+          <img src="{$logo_url}" alt="CDJE 92" style="width:44px;height:auto;display:block;border:0;outline:none;text-decoration:none;">
           <div>
             <p style="margin:0;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#64748b;">CDJE 92</p>
             <p style="margin:4px 0 0 0;font-size:18px;font-weight:600;color:#0f172a;">Nouveau message reçu</p>
@@ -1375,7 +1388,7 @@ function cdje92_handle_contact_form() {
         </div>
         <div style="font-size:13px;line-height:1.6;color:#475569;">
           <p style="margin:0 0 4px 0;"><strong>Expéditeur :</strong> <a href="mailto:{$email_attr}" style="color:#0b2e4c;text-decoration:none;">{$email_html}</a></p>
-          <p style="margin:0;"><strong>Club / structure :</strong> {$club_html}</p>
+          {$club_row_html}
         </div>
       </div>
     </div>
@@ -1414,7 +1427,7 @@ HTML;
     <div style="width:100%;background-color:#f3f6fb;padding:24px 12px;">
       <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:14px;padding:32px;border:1px solid #e2e8f0;border-top:4px solid #0b2e4c;">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
-          <img src="{$logo_url}" alt="CDJE 92" style="width:48px;height:auto;display:block;">
+          <img src="{$logo_url}" alt="CDJE 92" style="width:40px;height:auto;display:block;border:0;outline:none;text-decoration:none;">
           <div>
             <p style="margin:0;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#64748b;">CDJE 92</p>
             <p style="margin:4px 0 0 0;font-size:18px;font-weight:600;color:#0f172a;">Confirmation</p>
@@ -1425,7 +1438,7 @@ HTML;
           Merci pour votre message. Nous avons bien reçu votre demande et nous reviendrons vers vous dès que possible.
         </p>
         <div style="margin:20px 0 0 0;padding:14px 16px;background-color:#f8fafc;border-left:3px solid #cbd5f5;font-size:13px;line-height:1.6;color:#475569;">
-          <p style="margin:0 0 6px 0;font-weight:600;color:#64748b;">Rappel discret de votre message</p>
+          <p style="margin:0 0 6px 0;font-weight:600;color:#64748b;">Rappel de votre message</p>
           <div>{$message_html}</div>
         </div>
         <p style="margin:20px 0 0 0;font-size:13px;line-height:1.6;color:#64748b;">
@@ -1446,6 +1459,7 @@ HTML;
 
     cdje92_contact_form_safe_redirect([
         'contact_status' => 'success',
+        'contact_email'  => $email,
     ]);
 }
 add_action('admin_post_cdje92_contact', 'cdje92_handle_contact_form');
