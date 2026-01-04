@@ -1442,9 +1442,9 @@ function cdje92_handle_contact_form() {
     $subject = sprintf('[CDJE 92] Message du formulaire – %s', $email);
     $internal_token = cdje92_contact_form_generate_email_token();
     $web_view_url = esc_url(add_query_arg('cdje-email', $internal_token, home_url('/')));
-    $web_view_line_email = '<p style="margin:0 0 6px 0;font-size:9px;color:#cbd5e1;text-align:center;">'
+    $web_view_line_email = '<p style="margin:0 0 6px 0;font-size:9px;color:#e2e8f0;text-align:center;">'
         . 'Si cet e-mail s’affiche mal, '
-        . '<a href="' . $web_view_url . '" style="color:#cbd5e1;text-decoration:underline;text-underline-offset:2px;">'
+        . '<a href="' . $web_view_url . '" style="color:#e2e8f0;text-decoration:underline;text-underline-offset:2px;">'
         . 'voir dans le navigateur'
         . '</a>.'
         . '</p>';
@@ -1457,11 +1457,15 @@ function cdje92_handle_contact_form() {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Message reçu - CDJE 92</title>
   </head>
-  <body style="margin:0;padding:0;background-color:#f3f6fb;color:#0f172a;">
+  <body style="margin:0;padding:0;background-color:#f3f6fb;color:#0f172a;font-family:'Helvetica Neue', Arial, sans-serif;">
     <div style="width:100%;background-color:#f3f6fb;padding:24px 12px;">
       <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:14px;padding:28px 28px;border:1px solid #e2e8f0;border-top:4px solid #0b2e4c;">
-        <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;line-height:1px;">
-          Nouveau message reçu - CDJE 92
+        <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;line-height:1px;font-size:1px;">
+          Nouveau message reçu. Formulaire du CDJE 92. Voici le message transmis via le site.
+          <span style="display:inline-block;width:0;max-height:0;overflow:hidden;">
+            &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+            &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+          </span>
         </div>
         {$web_view_line_email}
         <div style="margin:0 0 12px 0;">
@@ -1513,9 +1517,9 @@ HTML;
     $confirmation_subject = __('Message bien reçu - CDJE 92', 'echecs92-child');
     $confirmation_token = cdje92_contact_form_generate_email_token();
     $confirmation_view_url = esc_url(add_query_arg('cdje-email', $confirmation_token, home_url('/')));
-    $confirmation_web_view_line_email = '<p style="margin:0 0 6px 0;font-size:9px;color:#cbd5e1;text-align:center;">'
+    $confirmation_web_view_line_email = '<p style="margin:0 0 6px 0;font-size:9px;color:#e2e8f0;text-align:center;">'
         . 'Si cet e-mail s’affiche mal, '
-        . '<a href="' . $confirmation_view_url . '" style="color:#cbd5e1;text-decoration:underline;text-underline-offset:2px;">'
+        . '<a href="' . $confirmation_view_url . '" style="color:#e2e8f0;text-decoration:underline;text-underline-offset:2px;">'
         . 'voir dans le navigateur'
         . '</a>.'
         . '</p>';
@@ -1528,11 +1532,15 @@ HTML;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Message bien reçu - CDJE 92</title>
   </head>
-  <body style="margin:0;padding:0;background-color:#f3f6fb;color:#0f172a;">
+  <body style="margin:0;padding:0;background-color:#f3f6fb;color:#0f172a;font-family:'Helvetica Neue', Arial, sans-serif;">
     <div style="width:100%;background-color:#f3f6fb;padding:24px 12px;">
       <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:14px;padding:32px;border:1px solid #e2e8f0;border-top:4px solid #0b2e4c;">
-        <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;line-height:1px;">
-          Votre message a bien été reçu - CDJE 92
+        <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;line-height:1px;font-size:1px;">
+          Votre message a bien été reçu. Merci pour votre confiance. Nous revenons vers vous dès que possible.
+          <span style="display:inline-block;width:0;max-height:0;overflow:hidden;">
+            &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+            &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+          </span>
         </div>
         {$confirmation_web_view_line_email}
         <div style="margin:0 0 12px 0;">
@@ -1542,14 +1550,14 @@ HTML;
         <p style="margin:0 0 20px 0;font-size:16px;line-height:1.6;color:#334155;">
           Merci pour votre message. Nous avons bien reçu votre demande et nous reviendrons vers vous dès que possible.
         </p>
+        <p style="margin:0 0 20px 0;font-size:13px;line-height:1.6;color:#64748b;">
+          Comité Départemental des Échecs des Hauts-de-Seine<br>
+          <a href="mailto:contact@echecs92.com" style="color:#0b2e4c;text-decoration:none;">contact@echecs92.com</a>
+        </p>
         <div style="margin:20px 0 0 0;padding:14px 16px;background-color:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;font-size:13px;line-height:1.6;color:#475569;">
           <p style="margin:0 0 6px 0;font-weight:600;color:#64748b;">Rappel de votre message</p>
           <div>{$message_html}</div>
         </div>
-        <p style="margin:20px 0 0 0;font-size:13px;line-height:1.6;color:#64748b;">
-          Comité Départemental des Échecs des Hauts-de-Seine<br>
-          <a href="mailto:contact@echecs92.com" style="color:#0b2e4c;text-decoration:none;">contact@echecs92.com</a>
-        </p>
       </div>
     </div>
   </body>
