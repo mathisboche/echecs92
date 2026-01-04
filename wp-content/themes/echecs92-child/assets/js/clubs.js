@@ -4,6 +4,7 @@
  */
 (function () {
   const DATA_URL = '/wp-content/themes/echecs92-child/assets/data/clubs.json';
+  const FFE_DETAILS_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france/92.json';
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs:last-listing';
   const CLUBS_LIST_STATE_KEY = 'echecs92:clubs-92:list-state';
   const CLUBS_LIST_STATE_MAX_AGE = 2 * 60 * 60 * 1000;
@@ -1656,6 +1657,64 @@
     return components.join(', ').trim();
   };
 
+  const sanitiseFfeRef = (value) => {
+    const str = (value || '').toString().trim();
+    if (!str) {
+      return '';
+    }
+    const match = str.match(/(\d{2,})$/);
+    return match ? match[1] : '';
+  };
+
+  const buildFfeLookupKey = (name, postalCode, commune) => {
+    const normalizedName = normalise(name || '').replace(/[^a-z0-9]/g, '');
+    const normalizedCity = normalise(commune || '').replace(/[^a-z0-9]/g, '');
+    const normalizedPostal = (postalCode || '').toString().replace(/\D/g, '').trim();
+    if (!normalizedName && !normalizedCity && !normalizedPostal) {
+      return '';
+    }
+    return [normalizedName || 'club', normalizedPostal || '00000', normalizedCity || ''].join('|');
+  };
+
+  const buildFfeNamePostalKey = (name, postalCode) => {
+    const normalizedName = normalise(name || '').replace(/[^a-z0-9]/g, '');
+    const normalizedPostal = (postalCode || '').toString().replace(/\D/g, '').trim();
+    if (!normalizedName && !normalizedPostal) {
+      return '';
+    }
+    return [normalizedName || 'club', normalizedPostal || '00000'].join('|');
+  };
+
+  const buildFfeDetailsLookup = (entries) => {
+    const byRef = new Map();
+    const byKey = new Map();
+    const byNamePostal = new Map();
+    (Array.isArray(entries) ? entries : []).forEach((entry) => {
+      if (!entry || typeof entry !== 'object') {
+        return;
+      }
+      const ref = sanitiseFfeRef(entry.ffe_ref || entry.ref || entry.ffeRef || entry.fiche_ffe);
+      if (ref && !byRef.has(ref)) {
+        byRef.set(ref, entry);
+      }
+      const name = entry.nom || entry.name || '';
+      const address = entry.salle_jeu || entry.salle || entry.adresse || entry.address || '';
+      const siege = entry.siege || entry.siege_social || '';
+      const parts = extractAddressParts(address || siege);
+      const postalCode = entry.code_postal || entry.postal_code || entry.postalCode || parts.postalCode || '';
+      const commune = entry.commune || entry.ville || parts.city || '';
+      const key = buildFfeLookupKey(name, postalCode, commune);
+      if (key && !byKey.has(key)) {
+        byKey.set(key, entry);
+      }
+      const namePostalKey = buildFfeNamePostalKey(name, postalCode);
+      if (namePostalKey && !byNamePostal.has(namePostalKey)) {
+        byNamePostal.set(namePostalKey, entry);
+      }
+    });
+    return { byRef, byKey, byNamePostal };
+  };
+
   const normalisePostalCodeValue = (value) => {
     if (value == null) {
       return '';
@@ -2865,7 +2924,7 @@ const handleLocationSubmit = async (event) => {
     }
 
     const name = raw.nom || raw.name || '';
-    const primaryAddress = raw.adresse || raw.address || '';
+    const primaryAddress = raw.salle_jeu || raw.salle || raw.adresse || raw.address || '';
     const addressParts = extractAddressParts(primaryAddress);
     const secondaryAddress = raw.siege || raw.siege_social || raw.address2 || '';
     const secondaryParts = extractAddressParts(secondaryAddress);
@@ -2908,6 +2967,7 @@ const handleLocationSubmit = async (event) => {
     const longitude =
       toFloat(raw.longitude ?? raw.lng ?? raw.lon ?? raw.location?.longitude ?? raw.location?.lng) ??
       null;
+    const initialFfeRef = sanitiseFfeRef(raw.ffe_ref ?? raw.ffeRef ?? raw.fiche_ffe);
 
     return {
       id,
@@ -2915,15 +2975,26 @@ const handleLocationSubmit = async (event) => {
       commune,
       address: primaryAddress || secondaryAddress || '',
       siege: secondaryAddress || '',
+      salle: raw.salle_jeu || raw.salle || '',
       addressStandard: standardAddress,
       phone: raw.telephone || raw.phone || '',
+      fax: raw.fax || '',
       email: raw.email || '',
       site,
       president: raw.president || '',
+      presidentEmail: raw.president_email || raw.presidentEmail || '',
+      contact: raw.contact || '',
+      contactEmail: raw.contact_email || raw.contactEmail || '',
       hours: raw.horaires || raw.hours || '',
       publics: raw.publics || '',
       tarifs: raw.tarifs || '',
       notes: raw.notes || '',
+      accesPmr: raw.acces_pmr || '',
+      interclubs: raw.interclubs || '',
+      interclubsJeunes: raw.interclubs_jeunes || '',
+      interclubsFeminins: raw.interclubs_feminins || '',
+      labelFederal: raw.label_federal || '',
+      ffeRef: initialFfeRef,
       fiche_ffe: raw.fiche_ffe || '',
       tags: Array.isArray(raw.tags) ? raw.tags : [],
       latitude,
@@ -2936,11 +3007,14 @@ const handleLocationSubmit = async (event) => {
     };
   };
 
-  const hydrateClub = (raw) => {
-    const club = { ...adaptClubRecord(raw) };
+  const refreshClubIndexes = (club, options = {}) => {
+    if (!club || typeof club !== 'object') {
+      return;
+    }
     const licenseA = Number.parseInt(club.licenses?.A, 10);
     const licenseB = Number.parseInt(club.licenses?.B, 10);
-    const totalLicenses = (Number.isFinite(licenseA) ? licenseA : 0) + (Number.isFinite(licenseB) ? licenseB : 0);
+    const totalLicenses =
+      (Number.isFinite(licenseA) ? licenseA : 0) + (Number.isFinite(licenseB) ? licenseB : 0);
     club.totalLicenses = totalLicenses > 0 ? totalLicenses : null;
     const tagsText = Array.isArray(club.tags) ? club.tags.filter(Boolean).join(' ') : '';
     const displayAddress = club.addressStandard || club.address || club.siege || '';
@@ -2952,10 +3026,90 @@ const handleLocationSubmit = async (event) => {
     const nameAliases = [club.name].concat(Array.isArray(club.tags) ? club.tags : []);
     club._nameSearch = normaliseForSearch(nameAliases.filter(Boolean).join(' '));
     club._addressSearch = normaliseForSearch(displayAddress || '');
-    const communeSlugSource = club.commune || club.name || club.id;
-    club.slug = slugify(communeSlugSource || club.id || club.name || 'club');
-    club._communeSlug = club.slug;
+    const preserveSlug = options.preserveSlug === true;
+    if (!preserveSlug || !club.slug) {
+      const communeSlugSource = club.commune || club.name || club.id;
+      club.slug = club.slug || slugify(communeSlugSource || club.id || club.name || 'club');
+      club._communeSlug = club.slug;
+    }
+  };
+
+  const hydrateClub = (raw) => {
+    const club = { ...adaptClubRecord(raw) };
+    refreshClubIndexes(club);
     return club;
+  };
+
+  const applyFfeDetails = (clubs, lookup) => {
+    if (!Array.isArray(clubs) || !lookup) {
+      return;
+    }
+    const findDetail = (club) => {
+      const ref = sanitiseFfeRef(club?.ffeRef || club?.fiche_ffe);
+      if (ref && lookup.byRef && lookup.byRef.has(ref)) {
+        return lookup.byRef.get(ref);
+      }
+      const key = buildFfeLookupKey(club?.name || '', club?.postalCode || '', club?.commune || '');
+      if (key && lookup.byKey && lookup.byKey.has(key)) {
+        return lookup.byKey.get(key);
+      }
+      const namePostalKey = buildFfeNamePostalKey(club?.name || '', club?.postalCode || '');
+      if (namePostalKey && lookup.byNamePostal && lookup.byNamePostal.has(namePostalKey)) {
+        return lookup.byNamePostal.get(namePostalKey);
+      }
+      return null;
+    };
+    const assignIfPresent = (club, key, value) => {
+      if (!club || typeof club !== 'object') {
+        return;
+      }
+      if (value != null && value !== '') {
+        club[key] = value;
+      }
+    };
+    clubs.forEach((club) => {
+      const detail = findDetail(club);
+      if (!detail) {
+        return;
+      }
+      const ffeClub = adaptClubRecord(detail);
+      assignIfPresent(club, 'name', ffeClub.name);
+      assignIfPresent(club, 'commune', ffeClub.commune);
+      assignIfPresent(club, 'address', ffeClub.address);
+      assignIfPresent(club, 'salle', ffeClub.salle);
+      assignIfPresent(club, 'siege', ffeClub.siege);
+      assignIfPresent(club, 'addressStandard', ffeClub.addressStandard);
+      assignIfPresent(club, 'phone', ffeClub.phone);
+      assignIfPresent(club, 'fax', ffeClub.fax);
+      assignIfPresent(club, 'email', ffeClub.email);
+      assignIfPresent(club, 'site', ffeClub.site);
+      assignIfPresent(club, 'president', ffeClub.president);
+      assignIfPresent(club, 'presidentEmail', ffeClub.presidentEmail);
+      assignIfPresent(club, 'contact', ffeClub.contact);
+      assignIfPresent(club, 'contactEmail', ffeClub.contactEmail);
+      assignIfPresent(club, 'hours', ffeClub.hours);
+      assignIfPresent(club, 'accesPmr', ffeClub.accesPmr);
+      assignIfPresent(club, 'interclubs', ffeClub.interclubs);
+      assignIfPresent(club, 'interclubsJeunes', ffeClub.interclubsJeunes);
+      assignIfPresent(club, 'interclubsFeminins', ffeClub.interclubsFeminins);
+      assignIfPresent(club, 'labelFederal', ffeClub.labelFederal);
+      assignIfPresent(club, 'postalCode', ffeClub.postalCode);
+      if (ffeClub.ffeRef) {
+        club.ffeRef = ffeClub.ffeRef;
+      }
+      if (ffeClub.fiche_ffe) {
+        club.fiche_ffe = ffeClub.fiche_ffe;
+      }
+      if (ffeClub.licenses) {
+        club.licenses = club.licenses || {};
+        if (ffeClub.licenses.A != null && ffeClub.licenses.A !== '') {
+          club.licenses.A = ffeClub.licenses.A;
+        }
+        if (ffeClub.licenses.B != null && ffeClub.licenses.B !== '') {
+          club.licenses.B = ffeClub.licenses.B;
+        }
+      }
+    });
   };
 
   const resolveClubSlug = (club) => {
@@ -3259,6 +3413,14 @@ const handleLocationSubmit = async (event) => {
     }
   };
 
+  const fetchJson = (url) =>
+    fetch(url, { headers: { Accept: 'application/json' } }).then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return response.json();
+    });
+
   const init = () => {
     const savedListState = loadListState();
     initialiseLocationControls();
@@ -3270,18 +3432,15 @@ const handleLocationSubmit = async (event) => {
         ? window.cdjeSpinner.show('Chargement des clubs…')
         : () => {};
 
-    fetch(DATA_URL, { headers: { Accept: 'application/json' } })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        return response.json();
-      })
-      .then((payload) => {
+    Promise.all([fetchJson(DATA_URL), fetchJson(FFE_DETAILS_URL).catch(() => [])])
+      .then(([payload, ffeDetails]) => {
         const data = Array.isArray(payload) ? payload : [];
-        state.clubs = data
-          .map(hydrateClub)
-          .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
+        const clubs = data.map(hydrateClub);
+        if (Array.isArray(ffeDetails) && ffeDetails.length) {
+          applyFfeDetails(clubs, buildFfeDetailsLookup(ffeDetails));
+          clubs.forEach((club) => refreshClubIndexes(club, { preserveSlug: true }));
+        }
+        state.clubs = clubs.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
 
         if (getActiveLicenseSort() || state.sortMode === 'alpha') {
           applySortMode();
