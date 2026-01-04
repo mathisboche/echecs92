@@ -1176,6 +1176,9 @@ function cdje92_render_contact_form() {
                 <h1 class="contact-form__success-title"><?php esc_html_e('Votre message a bien été reçu', 'echecs92-child'); ?></h1>
                 <p class="contact-form__success-text"><?php esc_html_e('Nous avons bien reçu votre message. L’équipe du CDJE 92 revient vers vous dès que possible.', 'echecs92-child'); ?></p>
                 <p class="contact-form__success-note"><?php esc_html_e('Un e-mail de confirmation vient de vous être envoyé.', 'echecs92-child'); ?></p>
+                <div class="contact-form__success-actions">
+                    <a class="contact-form__success-link" href="<?php echo esc_url(home_url('/')); ?>"><?php esc_html_e('Retour à l’accueil', 'echecs92-child'); ?></a>
+                </div>
             </div>
         <?php else : ?>
             <?php if (! empty($notice)) : ?>
@@ -1340,23 +1343,53 @@ function cdje92_handle_contact_form() {
     $from_email = 'contact@echecs92.com';
     $from_name  = 'CDJE 92';
     $from_header = sprintf('From: %s <%s>', $from_name, $from_email);
+    $logo_url = esc_url(get_stylesheet_directory_uri() . '/assets/cdje92.svg');
+    $message_html = nl2br(esc_html($message));
+    $email_attr = esc_attr($email);
+    $email_html = esc_html($email);
+    $club_display = $club ?: __('Non renseigné', 'echecs92-child');
+    $club_html = esc_html($club_display);
 
     $subject = sprintf('[CDJE 92] Message du formulaire – %s', $email);
-    $body    = [
-        'Email : ' . $email,
-        'Club / structure : ' . ($club ?: __('Non renseigné', 'echecs92-child')),
-        '',
-        'Message :',
-        $message,
-    ];
+    $body = <<<HTML
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message reçu - CDJE 92</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f3f6fb;color:#0f172a;">
+    <div style="width:100%;background-color:#f3f6fb;padding:24px 12px;">
+      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:14px;padding:28px 28px;border:1px solid #e2e8f0;border-top:4px solid #0b2e4c;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+          <img src="{$logo_url}" alt="CDJE 92" style="width:44px;height:auto;display:block;">
+          <div>
+            <p style="margin:0;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#64748b;">CDJE 92</p>
+            <p style="margin:4px 0 0 0;font-size:18px;font-weight:600;color:#0f172a;">Nouveau message reçu</p>
+          </div>
+        </div>
+        <div style="margin:0 0 16px 0;padding:16px 18px;border-radius:10px;background-color:#f8fafc;border:1px solid #e2e8f0;">
+          <p style="margin:0 0 6px 0;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Message</p>
+          <div style="font-size:16px;line-height:1.6;color:#0f172a;">{$message_html}</div>
+        </div>
+        <div style="font-size:13px;line-height:1.6;color:#475569;">
+          <p style="margin:0 0 4px 0;"><strong>Expéditeur :</strong> <a href="mailto:{$email_attr}" style="color:#0b2e4c;text-decoration:none;">{$email_html}</a></p>
+          <p style="margin:0;"><strong>Club / structure :</strong> {$club_html}</p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+HTML;
 
     $headers = [
-        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Type: text/html; charset=UTF-8',
         sprintf('Reply-To: %s', $email),
         $from_header,
     ];
 
-    $sent = wp_mail($recipients, $subject, implode("\n", $body), $headers);
+    $sent = wp_mail($recipients, $subject, $body, $headers);
 
     if (! $sent) {
         cdje92_contact_form_safe_redirect([
@@ -1369,7 +1402,6 @@ function cdje92_handle_contact_form() {
     }
 
     $confirmation_subject = __('Message bien reçu - CDJE 92', 'echecs92-child');
-    $confirmation_message = nl2br(esc_html($message));
     $confirmation_body = <<<HTML
 <!doctype html>
 <html lang="fr">
@@ -1380,19 +1412,25 @@ function cdje92_handle_contact_form() {
   </head>
   <body style="margin:0;padding:0;background-color:#f3f6fb;color:#0f172a;">
     <div style="width:100%;background-color:#f3f6fb;padding:24px 12px;">
-      <div style="max-width:560px;margin:0 auto;background-color:#ffffff;border-radius:14px;padding:32px;border:1px solid #e2e8f0;">
-        <p style="margin:0 0 12px 0;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#64748b;">CDJE 92</p>
-        <h1 style="margin:0 0 12px 0;font-size:22px;line-height:1.25;color:#0f172a;">Votre message a bien été reçu</h1>
+      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:14px;padding:32px;border:1px solid #e2e8f0;border-top:4px solid #0b2e4c;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+          <img src="{$logo_url}" alt="CDJE 92" style="width:48px;height:auto;display:block;">
+          <div>
+            <p style="margin:0;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#64748b;">CDJE 92</p>
+            <p style="margin:4px 0 0 0;font-size:18px;font-weight:600;color:#0f172a;">Confirmation</p>
+          </div>
+        </div>
+        <h1 style="margin:0 0 12px 0;font-size:24px;line-height:1.25;color:#0f172a;">Votre message a bien été reçu</h1>
         <p style="margin:0 0 20px 0;font-size:16px;line-height:1.6;color:#334155;">
           Merci pour votre message. Nous avons bien reçu votre demande et nous reviendrons vers vous dès que possible.
         </p>
         <div style="margin:20px 0 0 0;padding:14px 16px;background-color:#f8fafc;border-left:3px solid #cbd5f5;font-size:13px;line-height:1.6;color:#475569;">
           <p style="margin:0 0 6px 0;font-weight:600;color:#64748b;">Rappel discret de votre message</p>
-          <div>{$confirmation_message}</div>
+          <div>{$message_html}</div>
         </div>
         <p style="margin:20px 0 0 0;font-size:13px;line-height:1.6;color:#64748b;">
           Comité Départemental des Échecs des Hauts-de-Seine<br>
-          <a href="mailto:contact@echecs92.com" style="color:#1e3a8a;text-decoration:none;">contact@echecs92.com</a>
+          <a href="mailto:contact@echecs92.com" style="color:#0b2e4c;text-decoration:none;">contact@echecs92.com</a>
         </p>
       </div>
     </div>
