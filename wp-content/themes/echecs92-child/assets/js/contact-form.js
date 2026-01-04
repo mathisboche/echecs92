@@ -75,23 +75,38 @@
     if (widgetId !== null) {
       return;
     }
-    if (!window.grecaptcha || typeof window.grecaptcha.render !== 'function') {
+
+    const doRender = () => {
+      if (widgetId !== null) {
+        return;
+      }
+      if (!window.grecaptcha || typeof window.grecaptcha.render !== 'function') {
+        return;
+      }
+
+      widgetId = window.grecaptcha.render(captchaEl, {
+        sitekey: siteKey,
+        callback: () => {
+          setMessage('');
+          if (pendingSubmit) {
+            pendingSubmit = false;
+            form.submit();
+          }
+        },
+        'expired-callback': () => {
+          pendingSubmit = false;
+        },
+      });
+    };
+
+    if (window.grecaptcha && typeof window.grecaptcha.ready === 'function') {
+      window.grecaptcha.ready(() => {
+        requestAnimationFrame(doRender);
+      });
       return;
     }
 
-    widgetId = window.grecaptcha.render(captchaEl, {
-      sitekey: siteKey,
-      callback: () => {
-        setMessage('');
-        if (pendingSubmit) {
-          pendingSubmit = false;
-          form.submit();
-        }
-      },
-      'expired-callback': () => {
-        pendingSubmit = false;
-      },
-    });
+    requestAnimationFrame(doRender);
   };
 
   form.addEventListener('submit', (event) => {
