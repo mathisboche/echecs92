@@ -1175,7 +1175,6 @@ function cdje92_render_contact_form() {
             <div class="contact-form__success" role="status" aria-live="polite">
                 <p class="contact-form__success-kicker"><?php esc_html_e('Merci', 'echecs92-child'); ?></p>
                 <h1 class="contact-form__success-title"><?php esc_html_e('Message bien reçu', 'echecs92-child'); ?></h1>
-                <p class="contact-form__success-text"><?php esc_html_e('Nous avons bien reçu votre message.', 'echecs92-child'); ?></p>
                 <?php if (! empty($success_email)) : ?>
                     <p class="contact-form__success-note">
                         <?php esc_html_e('Un e-mail de confirmation a été envoyé à', 'echecs92-child'); ?>
@@ -1186,7 +1185,11 @@ function cdje92_render_contact_form() {
                 <?php endif; ?>
                 <div class="contact-form__success-actions">
                     <a class="contact-form__success-link" href="<?php echo esc_url(home_url('/')); ?>">
-                        <?php esc_html_e('← Retour à l’accueil', 'echecs92-child'); ?>
+                        <svg class="contact-form__success-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M3.5 11.5L12 4l8.5 7.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>
+                            <path d="M6.5 10.5V19a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-8.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                        <?php esc_html_e('Retour à l’accueil', 'echecs92-child'); ?>
                     </a>
                 </div>
             </div>
@@ -1278,6 +1281,21 @@ function cdje92_contact_form_safe_redirect( $args = [] ) {
     exit;
 }
 
+function cdje92_contact_form_embed_logo( $phpmailer ) {
+    if (empty($GLOBALS['cdje92_contact_mail_embed_logo']) || ! is_array($GLOBALS['cdje92_contact_mail_embed_logo'])) {
+        return;
+    }
+    $payload = $GLOBALS['cdje92_contact_mail_embed_logo'];
+    if (empty($payload['path']) || ! file_exists($payload['path'])) {
+        return;
+    }
+
+    $cid  = isset($payload['cid']) && $payload['cid'] ? $payload['cid'] : 'cdje92-logo';
+    $name = isset($payload['name']) && $payload['name'] ? $payload['name'] : basename($payload['path']);
+    $phpmailer->addEmbeddedImage($payload['path'], $cid, $name);
+}
+add_action('phpmailer_init', 'cdje92_contact_form_embed_logo');
+
 function cdje92_handle_contact_form() {
     if (! isset($_POST['cdje92_contact_nonce']) || ! wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['cdje92_contact_nonce'])), 'cdje92_contact_form')) {
         cdje92_contact_form_safe_redirect([
@@ -1353,7 +1371,18 @@ function cdje92_handle_contact_form() {
     $from_email = 'contact@echecs92.com';
     $from_name  = 'CDJE 92';
     $from_header = sprintf('From: %s <%s>', $from_name, $from_email);
-    $logo_url = esc_url(get_stylesheet_directory_uri() . '/assets/cdje-icon.svg');
+    $logo_path = get_stylesheet_directory() . '/assets/cdje-icon.png';
+    $logo_src = esc_url(get_stylesheet_directory_uri() . '/assets/cdje-icon.png');
+    $logo_cid = 'cdje92-logo';
+    $logo_embed = null;
+    if (file_exists($logo_path)) {
+        $logo_src = 'cid:' . $logo_cid;
+        $logo_embed = [
+            'path' => $logo_path,
+            'cid'  => $logo_cid,
+            'name' => 'cdje-icon.png',
+        ];
+    }
     $message_html = nl2br(esc_html($message));
     $email_attr = esc_attr($email);
     $email_html = esc_html($email);
@@ -1376,7 +1405,7 @@ function cdje92_handle_contact_form() {
     <div style="width:100%;background-color:#f3f6fb;padding:24px 12px;">
       <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:14px;padding:28px 28px;border:1px solid #e2e8f0;border-top:4px solid #0b2e4c;">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
-          <img src="{$logo_url}" alt="CDJE 92" style="width:44px;height:auto;display:block;border:0;outline:none;text-decoration:none;">
+          <img src="{$logo_src}" alt="CDJE 92" style="width:44px;height:auto;display:block;border:0;outline:none;text-decoration:none;">
           <div>
             <p style="margin:0;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#64748b;">CDJE 92</p>
             <p style="margin:4px 0 0 0;font-size:18px;font-weight:600;color:#0f172a;">Nouveau message reçu</p>
@@ -1402,7 +1431,13 @@ HTML;
         $from_header,
     ];
 
+    if ($logo_embed) {
+        $GLOBALS['cdje92_contact_mail_embed_logo'] = $logo_embed;
+    }
     $sent = wp_mail($recipients, $subject, $body, $headers);
+    if ($logo_embed) {
+        unset($GLOBALS['cdje92_contact_mail_embed_logo']);
+    }
 
     if (! $sent) {
         cdje92_contact_form_safe_redirect([
@@ -1427,7 +1462,7 @@ HTML;
     <div style="width:100%;background-color:#f3f6fb;padding:24px 12px;">
       <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:14px;padding:32px;border:1px solid #e2e8f0;border-top:4px solid #0b2e4c;">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
-          <img src="{$logo_url}" alt="CDJE 92" style="width:40px;height:auto;display:block;border:0;outline:none;text-decoration:none;">
+          <img src="{$logo_src}" alt="CDJE 92" style="width:40px;height:auto;display:block;border:0;outline:none;text-decoration:none;">
           <div>
             <p style="margin:0;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#64748b;">CDJE 92</p>
             <p style="margin:4px 0 0 0;font-size:18px;font-weight:600;color:#0f172a;">Confirmation</p>
@@ -1455,7 +1490,13 @@ HTML;
         $from_header,
         sprintf('Reply-To: %s', $from_email),
     ];
+    if ($logo_embed) {
+        $GLOBALS['cdje92_contact_mail_embed_logo'] = $logo_embed;
+    }
     wp_mail($email, $confirmation_subject, $confirmation_body, $confirmation_headers);
+    if ($logo_embed) {
+        unset($GLOBALS['cdje92_contact_mail_embed_logo']);
+    }
 
     cdje92_contact_form_safe_redirect([
         'contact_status' => 'success',
