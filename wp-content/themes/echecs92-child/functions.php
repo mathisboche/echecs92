@@ -1175,7 +1175,7 @@ function cdje92_render_contact_form() {
             <div class="contact-form__success" role="status" aria-live="polite">
                 <p class="contact-form__success-kicker"><?php esc_html_e('Merci', 'echecs92-child'); ?></p>
                 <h1 class="contact-form__success-title">
-                    <span><?php esc_html_e('Message bien reçu, votre message a bien été transmis', 'echecs92-child'); ?></span>
+                    <?php esc_html_e('Message bien reçu, votre message a bien été transmis', 'echecs92-child'); ?>
                     <svg class="contact-form__success-check" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                         <path d="M5.5 12.5l4 4 9-9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
                     </svg>
@@ -1376,8 +1376,8 @@ function cdje92_handle_contact_form() {
     $from_email = 'contact@echecs92.com';
     $from_name  = 'CDJE 92';
     $from_header = sprintf('From: %s <%s>', $from_name, $from_email);
-    $logo_path = get_stylesheet_directory() . '/assets/cdje-icon.png';
-    $logo_src = esc_url(get_stylesheet_directory_uri() . '/assets/cdje-icon.png');
+    $logo_path = get_stylesheet_directory() . '/assets/cdje92.png';
+    $logo_src = esc_url(get_stylesheet_directory_uri() . '/assets/cdje92.png');
     $logo_cid = 'cdje92-logo';
     $logo_embed = null;
     if (file_exists($logo_path)) {
@@ -1385,7 +1385,7 @@ function cdje92_handle_contact_form() {
         $logo_embed = [
             'path' => $logo_path,
             'cid'  => $logo_cid,
-            'name' => 'cdje-icon.png',
+            'name' => 'cdje92.png',
         ];
     }
     $message_html = nl2br(esc_html($message));
@@ -1398,6 +1398,7 @@ function cdje92_handle_contact_form() {
     }
 
     $subject = sprintf('[CDJE 92] Message du formulaire – %s', $email);
+    $web_view_url = esc_url(home_url('/contact/'));
     $body = <<<HTML
 <!doctype html>
 <html lang="fr">
@@ -1409,13 +1410,14 @@ function cdje92_handle_contact_form() {
   <body style="margin:0;padding:0;background-color:#f3f6fb;color:#0f172a;">
     <div style="width:100%;background-color:#f3f6fb;padding:24px 12px;">
       <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:14px;padding:28px 28px;border:1px solid #e2e8f0;border-top:4px solid #0b2e4c;">
-        <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
-          <img src="{$logo_src}" alt="CDJE 92" style="width:36px;height:36px;display:block;border:0;outline:none;text-decoration:none;border-radius:10px;padding:4px;background-color:#f1f5f9;">
-          <div>
-            <p style="margin:0;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#64748b;">CDJE 92</p>
-            <p style="margin:4px 0 0 0;font-size:18px;font-weight:600;color:#0f172a;">Nouveau message reçu</p>
-          </div>
+        <p style="margin:0 0 10px 0;font-size:11px;color:#94a3b8;text-align:center;">
+          Si cet e-mail s’affiche mal,
+          <a href="{$web_view_url}" style="color:#94a3b8;text-decoration:none;">le voir dans le navigateur</a>.
+        </p>
+        <div style="margin:0 0 12px 0;">
+          <img src="{$logo_src}" alt="CDJE 92 Échecs Hauts-de-Seine" style="height:36px;width:auto;display:block;border:0;outline:none;text-decoration:none;padding:2px 0;">
         </div>
+        <h1 style="margin:0 0 14px 0;font-size:20px;line-height:1.3;color:#0f172a;">Nouveau message reçu</h1>
         <div style="margin:0 0 16px 0;padding:16px 18px;border-radius:10px;background-color:#f8fafc;border:1px solid #e2e8f0;">
           <p style="margin:0 0 6px 0;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Message</p>
           <div style="font-size:16px;line-height:1.6;color:#0f172a;">{$message_html}</div>
@@ -1466,19 +1468,18 @@ HTML;
   <body style="margin:0;padding:0;background-color:#f3f6fb;color:#0f172a;">
     <div style="width:100%;background-color:#f3f6fb;padding:24px 12px;">
       <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:14px;padding:32px;border:1px solid #e2e8f0;border-top:4px solid #0b2e4c;">
-        <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
-          <img src="{$logo_src}" alt="CDJE 92" style="width:36px;height:36px;display:block;border:0;outline:none;text-decoration:none;border-radius:10px;padding:4px;background-color:#f1f5f9;">
-          <div>
-            <p style="margin:0;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#64748b;">CDJE 92</p>
-            <p style="margin:4px 0 0 0;font-size:18px;font-weight:600;color:#0f172a;">Confirmation</p>
-          </div>
+        <p style="margin:0 0 10px 0;font-size:11px;color:#94a3b8;text-align:center;">
+          Si cet e-mail s’affiche mal,
+          <a href="{$web_view_url}" style="color:#94a3b8;text-decoration:none;">le voir dans le navigateur</a>.
+        </p>
+        <div style="margin:0 0 12px 0;">
+          <img src="{$logo_src}" alt="CDJE 92 Échecs Hauts-de-Seine" style="height:36px;width:auto;display:block;border:0;outline:none;text-decoration:none;padding:2px 0;">
         </div>
         <h1 style="margin:0 0 12px 0;font-size:24px;line-height:1.25;color:#0f172a;">Votre message a bien été reçu</h1>
         <p style="margin:0 0 20px 0;font-size:16px;line-height:1.6;color:#334155;">
           Merci pour votre message. Nous avons bien reçu votre demande et nous reviendrons vers vous dès que possible.
         </p>
-        <div style="margin:20px 0 0 0;padding:14px 16px;background-color:#f8fafc;border-left:3px solid #cbd5f5;font-size:13px;line-height:1.6;color:#475569;">
-          <p style="margin:0 0 6px 0;font-weight:600;color:#64748b;">Rappel de votre message</p>
+        <div style="margin:20px 0 0 0;padding:14px 16px;background-color:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;font-size:13px;line-height:1.6;color:#475569;">
           <div>{$message_html}</div>
         </div>
         <p style="margin:20px 0 0 0;font-size:13px;line-height:1.6;color:#64748b;">

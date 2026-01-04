@@ -1615,8 +1615,8 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   gap:0;
 }
 .contact-form__success{
-  background:linear-gradient(135deg,#ecfdf3 0%,#f6fffa 100%);
-  border:1px solid #b5e5c2;
+  background:linear-gradient(135deg,#e9f9ef 0%,#f6fffb 100%);
+  border:1px solid #a7dfb7;
   border-radius:12px;
   padding:28px 30px;
   display:flex;
@@ -1628,13 +1628,13 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   font-size:12px;
   letter-spacing:0.12em;
   text-transform:uppercase;
-  color:#2f7a4f;
+  color:#2a7a49;
 }
 .contact-form__success-title{
   margin:0;
   font-size:24px;
   line-height:1.25;
-  color:#12331f;
+  color:#0f2f1b;
   display:flex;
   align-items:center;
   gap:10px;
@@ -1649,7 +1649,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 .contact-form__success-note{
   margin:6px 0 0;
   font-size:13px;
-  color:#4a6b57;
+  color:#3f6a52;
 }
 .contact-form__success-actions{
   margin-top:14px;
@@ -1658,11 +1658,11 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   display:inline-flex;
   align-items:center;
   gap:8px;
-  padding:8px 14px;
+  padding:6px 12px;
   border-radius:999px;
-  background:#e5f5ec;
-  border:1px solid #a7e0b3;
-  color:#1f7a3a;
+  background:#f0fbf4;
+  border:1px solid #c6e8d2;
+  color:#2f7a49;
   font-size:14px;
   font-weight:600;
   text-decoration:none;
@@ -1670,9 +1670,9 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
 }
 .contact-form__success-link:hover,
 .contact-form__success-link:focus-visible{
-  background:#d7f0e1;
-  border-color:#8bd39f;
-  color:#1a6a32;
+  background:#e3f6ec;
+  border-color:#a9dcb9;
+  color:#25653c;
   outline:none;
 }
 .contact-form__success-icon{
