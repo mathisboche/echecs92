@@ -26,6 +26,20 @@ function cdje92_contact_form_get_recaptcha_keys() {
             }
         }
     }
+    if (empty($site_key) || empty($secret_key)) {
+        $theme_secrets_path = get_stylesheet_directory() . '/config/recaptcha.php';
+        if (file_exists($theme_secrets_path)) {
+            $secrets = include $theme_secrets_path;
+            if (is_array($secrets)) {
+                if (empty($site_key) && ! empty($secrets['site_key'])) {
+                    $site_key = trim((string) $secrets['site_key']);
+                }
+                if (empty($secret_key) && ! empty($secrets['secret_key'])) {
+                    $secret_key = trim((string) $secrets['secret_key']);
+                }
+            }
+        }
+    }
 
     if (empty($site_key)) {
         $site_key = trim((string) get_option('cdje92_recaptcha_site_key', ''));
