@@ -1397,7 +1397,7 @@ function cdje92_handle_contact_form() {
         $club_row_html = '<p style="margin:0;"><strong>Club / structure :</strong> ' . esc_html($club_value) . '</p>';
     }
 
-    $subject = sprintf('[CDJE 92] Message du formulaire – %s', $email);
+    $subject = sprintf('Message du formulaire – %s', $email);
     $body = <<<HTML
 <!doctype html>
 <html lang="fr">
@@ -1451,7 +1451,7 @@ HTML;
         ]);
     }
 
-    $confirmation_subject = __('Message bien reçu - CDJE 92', 'echecs92-child');
+    $confirmation_subject = __('Message bien reçu', 'echecs92-child');
     $confirmation_body = <<<HTML
 <!doctype html>
 <html lang="fr">
