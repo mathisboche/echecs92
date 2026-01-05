@@ -25,6 +25,7 @@
   const CLUBS_NAV_STORAGE_KEY = hasDepartmentFilter ? 'echecs92:clubs:last-listing' : 'echecs92:clubs-fr:last-listing';
   const CLUBS_UI_STATE_KEY = `${storageKeyBase}:ui`;
   const CLUBS_LIST_STATE_KEY = `${storageKeyBase}:list-state`;
+  const CLUBS_UI_RESTORE_KEY = `${storageKeyBase}:ui-restore`;
   const CLUBS_LIST_STATE_MAX_AGE = 2 * 60 * 60 * 1000;
   const REOPEN_RESULTS_FLAG_KEY = `${storageKeyBase}:reopen-results`;
   const VISIBLE_RESULTS_DEFAULT = 12;
@@ -416,8 +417,12 @@
       return [];
     }
     const numericOnly = /^\d+$/.test(trimmed);
-    const postal = normalisePostalCodeValue(trimmed);
-    if (!numericOnly || !postal || postal.length < 3) {
+    const rawPostal = numericOnly ? trimmed : parsePostalCodeFromString(trimmed);
+    const postal = normalisePostalCodeValue(rawPostal);
+    if (!postal) {
+      return [];
+    }
+    if (numericOnly && postal.length < 3) {
       // On attend au moins 3 chiffres pour limiter le bruit.
       return [];
     }
@@ -464,6 +469,50 @@
       suggestions.push(suggestion);
     });
     return suggestions;
+  };
+
+  const stripPostalFromQuery = (raw, postal) => {
+    if (!raw) {
+      return '';
+    }
+    let cleaned = raw.toString();
+    cleaned = cleaned.replace(/\(\s*\d{4,5}\s*\)/g, ' ');
+    if (postal) {
+      const code = postal.toString();
+      if (code.length >= 4) {
+        const pattern = new RegExp(`\\b${code.slice(0, 2)}\\s*${code.slice(2)}\\b`, 'gi');
+        cleaned = cleaned.replace(pattern, ' ');
+      }
+    }
+    cleaned = cleaned.replace(/[()]/g, ' ');
+    return cleaned.replace(/\s+/g, ' ').trim();
+  };
+
+  const extractLocationQueryParts = (rawQuery) => {
+    const trimmed = (rawQuery || '').toString().trim();
+    if (!trimmed) {
+      return {
+        raw: '',
+        postal: '',
+        commune: '',
+        communeKey: '',
+        displayKey: '',
+        numeric: '',
+      };
+    }
+    const numeric = trimmed.replace(/\D/g, '');
+    const parsedPostal = parsePostalCodeFromString(trimmed) || normalisePostalCodeValue(numeric);
+    const postal = canonicalizeParisPostalCode(parsedPostal) || parsedPostal || '';
+    const commune = stripPostalFromQuery(trimmed, postal || parsedPostal);
+    const communeKey = commune ? normaliseCommuneForCompare(commune) : '';
+    return {
+      raw: trimmed,
+      postal,
+      commune,
+      communeKey,
+      displayKey: normaliseForSearch(trimmed),
+      numeric,
+    };
   };
 
   const buildLocationSuggestionIndex = (clubs) => {
@@ -595,8 +644,11 @@
         .map((item) => normalisePostalCodeValue(item?.postalCode || item?.code || ''))
         .filter(Boolean)
     );
-    const numericOnlyInput = /^\d+$/.test((rawQuery || '').trim());
+    const trimmed = (rawQuery || '').trim();
+    const numericOnlyInput = /^\d+$/.test(trimmed);
     const normalisedPostalInput = normalisePostalCodeValue(rawQuery);
+    const canonicalPostalInput = canonicalizeParisPostalCode(normalisedPostalInput) || normalisedPostalInput;
+    const fullPostalInput = numericOnlyInput && canonicalPostalInput && canonicalPostalInput.length === 5;
     const needsExtendedLimit =
       numericOnlyInput &&
       typedSuggestions &&
@@ -613,9 +665,34 @@
         postalHint: parisPostalFromQuery,
       });
     }
+    if (fullPostalInput) {
+      const postalCandidates = new Set([canonicalPostalInput, normalisedPostalInput].filter(Boolean));
+      const postalMatches = [];
+      locationSuggestionsIndex.forEach((entry) => {
+        const entryPostal = normalisePostalCodeValue(entry?.postalCode || entry?.code || '');
+        const canonicalEntry = canonicalizeParisPostalCode(entryPostal) || entryPostal;
+        if (canonicalEntry && postalCandidates.has(canonicalEntry)) {
+          postalMatches.push(entry);
+        }
+      });
+      (typedSuggestions || []).forEach((entry) => {
+        const entryPostal = normalisePostalCodeValue(entry?.postalCode || entry?.code || '');
+        const canonicalEntry = canonicalizeParisPostalCode(entryPostal) || entryPostal;
+        if (canonicalEntry && postalCandidates.has(canonicalEntry)) {
+          postalMatches.push(entry);
+        }
+      });
+      const deduped = dedupeLocationSuggestions(postalMatches);
+      if (deduped.length) {
+        return deduped;
+      }
+    }
+    const queryTokens = normalised ? normalised.split(' ').filter(Boolean) : [];
+    const hasLongQuery = queryTokens.length >= 2 && normalised.length >= 8;
+    const longQueryLimit = hasLongQuery ? Math.max(LOCATION_SUGGESTIONS_LIMIT + 8, 20) : LOCATION_SUGGESTIONS_LIMIT;
     let effectiveLimit = needsExtendedLimit
-      ? Math.max(LOCATION_SUGGESTIONS_LIMIT, typedSuggestions.length)
-      : LOCATION_SUGGESTIONS_LIMIT;
+      ? Math.max(longQueryLimit, typedSuggestions.length)
+      : longQueryLimit;
     const scored = [];
     if (!hasQuery) {
       return dedupeLocationSuggestions(locationSuggestionsIndex.slice(0, effectiveLimit)).slice(0, effectiveLimit);
@@ -696,17 +773,29 @@
     if (!matches.length) {
       return null;
     }
-    const postal = canonicalizeParisPostalCode(rawQuery) || normalisePostalCodeValue(rawQuery);
-    const communeKey = normaliseCommuneForCompare(rawQuery);
+    const queryParts = extractLocationQueryParts(rawQuery);
+    const queryPostal = queryParts.postal;
+    const communeKey = queryParts.communeKey;
+    const displayKey = queryParts.displayKey;
     let fallback = null;
     let fallbackCoords = null;
     for (let i = 0; i < matches.length; i += 1) {
       const entry = matches[i];
       const coords = resolveSuggestionCoordinates(entry);
-      if (postal && entry.postalCode === postal) {
+      const entryPostal = canonicalizeParisPostalCode(entry?.postalCode || entry?.code || '') ||
+        normalisePostalCodeValue(entry?.postalCode || entry?.code || '');
+      const entryCommuneKey = entry?.commune ? normaliseCommuneForCompare(entry.commune) : '';
+      const entryDisplayKey = entry?.display ? normaliseForSearch(entry.display) : '';
+      if (queryPostal && communeKey && entryPostal === queryPostal && entryCommuneKey === communeKey) {
         return { suggestion: entry, coords };
       }
-      if (communeKey && entry.commune && normaliseCommuneForCompare(entry.commune) === communeKey) {
+      if (displayKey && entryDisplayKey && entryDisplayKey === displayKey) {
+        return { suggestion: entry, coords };
+      }
+      if (communeKey && entryCommuneKey && entryCommuneKey === communeKey) {
+        return { suggestion: entry, coords };
+      }
+      if (queryPostal && entryPostal === queryPostal) {
         return { suggestion: entry, coords };
       }
       if (!fallback || (!fallbackCoords && coords)) {
@@ -768,6 +857,30 @@
     return dedupeLocationSuggestions(suggestions);
   };
 
+  const extractBanLabel = (label, postalCode) => {
+    const raw = (label || '').toString().trim();
+    if (!raw) {
+      return '';
+    }
+    if (!postalCode) {
+      return raw;
+    }
+    const code = postalCode.toString();
+    if (code.length < 4) {
+      return raw;
+    }
+    const pattern = new RegExp(`\\b${code.slice(0, 2)}\\s*${code.slice(2)}\\b`, 'i');
+    const match = raw.match(pattern);
+    if (!match) {
+      return raw;
+    }
+    const idx = Number.isFinite(match.index) ? match.index : raw.indexOf(match[0]);
+    if (idx > 0) {
+      return raw.slice(0, idx).trim();
+    }
+    return raw;
+  };
+
   const adaptBanLocationRecords = (payload) => {
     const features = Array.isArray(payload?.features) ? payload.features : [];
     const suggestions = [];
@@ -777,24 +890,26 @@
       if (!LOCATION_REMOTE_ALT_TYPES.has(type)) {
         return;
       }
-      const label = (props.name || props.label || props.city || '').toString().trim();
+      const rawLabel = (props.name || props.label || '').toString().trim();
       const city = (props.city || '').toString().trim();
       const postalRaw = (props.postcode || props.postalcode || '').toString().trim();
       const postal = canonicalizeParisPostalCode(postalRaw) || normalisePostalCodeValue(postalRaw);
-      if (!label && !city && !postal) {
+      const label = extractBanLabel(rawLabel || city, postal);
+      const primaryLabel = label || rawLabel || city;
+      if (!primaryLabel && !postal) {
         return;
       }
-      const communeBase = formatCommune(label || city);
-      const display = formatLocationLabel(communeBase || label || city, postal, label || city || postal || '');
+      const communeBase = formatCommune(primaryLabel);
+      const display = formatLocationLabel(communeBase || primaryLabel, postal, primaryLabel || postal || '');
       const coords = Array.isArray(feature?.geometry?.coordinates) ? feature.geometry.coordinates : [];
       const lon = Number.parseFloat(coords[0]);
       const lat = Number.parseFloat(coords[1]);
-      const searchSource = [label, city, postal].filter(Boolean).join(' ');
-      const searchAltSource = [postal, label, city].filter(Boolean).join(' ');
+      const searchSource = [primaryLabel, city, postal].filter(Boolean).join(' ');
+      const searchAltSource = [postal, primaryLabel, city].filter(Boolean).join(' ');
       const suggestion = {
         display,
         postalCode: postal || '',
-        commune: communeBase || label || city || '',
+        commune: communeBase || primaryLabel || '',
         search: normaliseForSearch(searchSource.trim()),
         searchAlt: normaliseForSearch(searchAltSource.trim()),
         source: 'remote',
@@ -806,6 +921,19 @@
       suggestions.push(suggestion);
     });
     return dedupeLocationSuggestions(suggestions);
+  };
+
+  const getRemoteLocationQueryParts = (rawQuery) => {
+    const trimmed = (rawQuery || '').toString().trim();
+    if (!trimmed) {
+      return { query: '', postal: '', numeric: '' };
+    }
+    const numeric = trimmed.replace(/\D/g, '');
+    const parsedPostal = parsePostalCodeFromString(trimmed) || normalisePostalCodeValue(numeric);
+    const postal = canonicalizeParisPostalCode(parsedPostal) || parsedPostal || '';
+    const cleaned = stripPostalFromQuery(trimmed, postal || parsedPostal);
+    const query = cleaned || trimmed;
+    return { query, postal, numeric };
   };
 
   const shouldFetchRemoteLocationSuggestions = (rawQuery) => {
@@ -821,14 +949,18 @@
     return Boolean(normalised && normalised.length >= LOCATION_REMOTE_MIN_CHARS);
   };
 
-  const fetchGeoLocationSuggestions = (trimmed, numeric) => {
+  const fetchGeoLocationSuggestions = (rawQuery) => {
+    const { query, numeric, postal } = getRemoteLocationQueryParts(rawQuery);
+    const hasLetters = /[a-z]/i.test(query);
+    const isFullPostal = postal && postal.length === 5 && /^\d+$/.test(postal);
+    const limit = isFullPostal ? LOCATION_REMOTE_POSTAL_LIMIT : LOCATION_REMOTE_LIMIT;
     const params = new URLSearchParams({
-      limit: `${LOCATION_REMOTE_LIMIT}`,
+      limit: `${limit}`,
       boost: 'population',
       fields: LOCATION_REMOTE_FIELDS,
     });
-    if (trimmed) {
-      params.set('nom', trimmed);
+    if (query && hasLetters) {
+      params.set('nom', query);
     }
     if (numeric.length >= 3) {
       params.set('codePostal', numeric.slice(0, 5));
@@ -851,7 +983,7 @@
         if (controller && controller.signal && controller.signal.aborted) {
           return [];
         }
-        console.warn(`[clubs-fr-debug] Impossible de charger les suggestions de localisation pour "${trimmed}".`, error);
+        console.warn(`[clubs-fr-debug] Impossible de charger les suggestions de localisation pour "${query}".`, error);
         return [];
       })
       .finally(() => {
@@ -861,37 +993,52 @@
       });
   };
 
-  const fetchBanLocationSuggestions = (trimmed) => {
-    const params = new URLSearchParams({
-      q: trimmed,
-      limit: `${LOCATION_REMOTE_ALT_LIMIT}`,
-    });
-    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timeoutId = controller ? setTimeout(() => controller.abort(), LOCATION_REMOTE_ALT_TIMEOUT_MS) : null;
-    const url = `${LOCATION_REMOTE_ALT_ENDPOINT}?${params.toString()}`;
-    return fetch(url, {
-      headers: { Accept: 'application/json' },
-      signal: controller?.signal,
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        return response.json();
-      })
-      .then((payload) => adaptBanLocationRecords(payload))
-      .catch((error) => {
-        if (controller && controller.signal && controller.signal.aborted) {
-          return [];
-        }
-        console.warn(`[clubs-fr-debug] Impossible de charger les suggestions BAN pour "${trimmed}".`, error);
-        return [];
-      })
-      .finally(() => {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
+  const fetchBanLocationSuggestions = (rawQuery) => {
+    const { query, numeric, postal } = getRemoteLocationQueryParts(rawQuery);
+    const isFullPostal = postal && postal.length === 5 && /^\d+$/.test(postal);
+    const limit = isFullPostal ? LOCATION_REMOTE_ALT_LIMIT_POSTAL : LOCATION_REMOTE_ALT_LIMIT;
+    const baseQuery = query || postal || numeric || '';
+    if (!baseQuery) {
+      return Promise.resolve([]);
+    }
+    const types = ['municipality', 'locality'];
+    const requests = types.map((type) => {
+      const params = new URLSearchParams({
+        q: baseQuery,
+        limit: `${limit}`,
+        type,
       });
+      if (isFullPostal) {
+        params.set('postcode', postal);
+      }
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), LOCATION_REMOTE_ALT_TIMEOUT_MS) : null;
+      const url = `${LOCATION_REMOTE_ALT_ENDPOINT}?${params.toString()}`;
+      return fetch(url, {
+        headers: { Accept: 'application/json' },
+        signal: controller?.signal,
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((payload) => adaptBanLocationRecords(payload))
+        .catch((error) => {
+          if (controller && controller.signal && controller.signal.aborted) {
+            return [];
+          }
+          console.warn(`[clubs-fr-debug] Impossible de charger les suggestions BAN pour "${baseQuery}".`, error);
+          return [];
+        })
+        .finally(() => {
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
+        });
+    });
+    return Promise.all(requests).then((chunks) => dedupeLocationSuggestions(chunks.flat()));
   };
 
   const fetchRemoteLocationSuggestions = (rawQuery) => {
@@ -902,11 +1049,9 @@
     if (cacheKey && remoteLocationSuggestionCache.has(cacheKey)) {
       return remoteLocationSuggestionCache.get(cacheKey);
     }
-    const trimmed = (rawQuery || '').trim();
-    const numeric = trimmed.replace(/\D/g, '');
     const promise = Promise.all([
-      fetchGeoLocationSuggestions(trimmed, numeric),
-      fetchBanLocationSuggestions(trimmed),
+      fetchGeoLocationSuggestions(rawQuery),
+      fetchBanLocationSuggestions(rawQuery),
     ]).then(([geoSuggestions, banSuggestions]) =>
       dedupeLocationSuggestions([...(geoSuggestions || []), ...(banSuggestions || [])])
     );
@@ -1297,11 +1442,13 @@
   const LOCATION_SUGGESTIONS_LIMIT = 12;
   const LOCATION_REMOTE_ENDPOINT = 'https://geo.api.gouv.fr/communes';
   const LOCATION_REMOTE_LIMIT = Math.max(LOCATION_SUGGESTIONS_LIMIT * 3, 24);
+  const LOCATION_REMOTE_POSTAL_LIMIT = Math.max(LOCATION_SUGGESTIONS_LIMIT * 8, 80);
   const LOCATION_REMOTE_FIELDS = 'nom,centre,codesPostaux,code';
   const LOCATION_REMOTE_MIN_CHARS = 2;
   const LOCATION_REMOTE_TIMEOUT_MS = 2400;
   const LOCATION_REMOTE_ALT_ENDPOINT = 'https://api-adresse.data.gouv.fr/search/';
   const LOCATION_REMOTE_ALT_LIMIT = Math.max(LOCATION_SUGGESTIONS_LIMIT * 2, 12);
+  const LOCATION_REMOTE_ALT_LIMIT_POSTAL = Math.max(LOCATION_SUGGESTIONS_LIMIT * 8, 80);
   const LOCATION_REMOTE_ALT_TIMEOUT_MS = 2400;
   const LOCATION_REMOTE_ALT_TYPES = new Set(['municipality', 'locality']);
   const remoteLocationSuggestionCache = new Map();
@@ -2004,6 +2151,49 @@
     }
   };
 
+  const UI_RESTORE_MAX_AGE = 10 * 60 * 1000;
+
+  const markShouldRestoreUiState = () => {
+    try {
+      const storage = window.sessionStorage;
+      if (!storage) {
+        return;
+      }
+      storage.setItem(CLUBS_UI_RESTORE_KEY, JSON.stringify({ ts: Date.now() }));
+    } catch (error) {
+      // ignore
+    }
+  };
+
+  const consumeRestoreUiState = () => {
+    try {
+      const storage = window.sessionStorage;
+      if (!storage) {
+        return false;
+      }
+      const raw = storage.getItem(CLUBS_UI_RESTORE_KEY);
+      storage.removeItem(CLUBS_UI_RESTORE_KEY);
+      if (!raw) {
+        return false;
+      }
+      let payload = null;
+      try {
+        payload = JSON.parse(raw);
+      } catch {
+        payload = null;
+      }
+      if (!payload || typeof payload !== 'object') {
+        return false;
+      }
+      if (payload.ts && Date.now() - payload.ts > UI_RESTORE_MAX_AGE) {
+        return false;
+      }
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
   const buildUrlWithState = (openResultsFlag) => {
     if (typeof window === 'undefined') {
       return '';
@@ -2630,8 +2820,16 @@
       if (event.type === 'auxclick' && event.button !== 1) {
         return;
       }
+      const isPrimaryClick =
+        event.type === 'click' && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
       persistListState();
       persistListUiState();
+      if (isPrimaryClick) {
+        markShouldRestoreUiState();
+        if (mobileResultsOpen) {
+          markShouldReopenResults();
+        }
+      }
       rememberClubsNavigation('map:from-list', listPath);
     };
     mapCtaLink.addEventListener('click', handleIntent);
@@ -3558,7 +3756,7 @@
 
   const setSortMode = (mode, options = {}) => {
     const actionStartedAt = Date.now();
-    const normalized = LICENSE_SORT_CONFIGS[mode] ? mode : mode === 'alpha' ? 'alpha' : 'default';
+    const normalized = LICENSE_SORT_CONFIGS[mode] ? mode : DEFAULT_SORT_MODE;
     const triggerButton = options.triggerButton || null;
     const busyLabel =
       typeof options.busyLabel === 'string' && options.busyLabel.trim() ? options.busyLabel.trim() : '';
@@ -3644,8 +3842,6 @@
     if (initialSortParam) {
       let normalized = DEFAULT_SORT_MODE;
       if (LICENSE_SORT_CONFIGS[initialSortParam]) {
-        normalized = initialSortParam;
-      } else if (initialSortParam === 'alpha' || initialSortParam === 'default') {
         normalized = initialSortParam;
       }
       if (normalized !== DEFAULT_SORT_MODE) {
@@ -7037,7 +7233,10 @@
         persistListState();
       }
       persistListUiState();
-      markShouldReopenResults();
+      if (isPrimaryClick) {
+        markShouldRestoreUiState();
+        markShouldReopenResults();
+      }
       rememberClubsNavigation('detail:list', getCurrentBackPath());
     };
 
@@ -7408,14 +7607,18 @@
         applyStaticHints(state.clubs, staticHints);
         buildLocationSuggestionIndex(state.clubs);
 
-        const cameFromClubsPage = cameFromClubsContext();
         const rawReopenFlag = consumeReopenResultsFlag();
-        const reopenResultsRequested = cameFromClubsPage && rawReopenFlag;
-        const savedUi = cameFromClubsPage ? consumeListUiState() : null;
+        const restoreUiRequested = consumeRestoreUiState();
+        const reopenResultsRequested = rawReopenFlag;
+        const savedUi = restoreUiRequested || reopenResultsRequested ? consumeListUiState() : null;
         const urlRestored = await applyInitialUrlState();
         let restored = urlRestored;
         suppressFocusAnimation = reopenResultsRequested;
         const savedPrimaryValue = savedUi ? savedUi.location || savedUi.query || '' : '';
+        const savedSortMode =
+          savedUi && savedUi.sortMode && LICENSE_SORT_CONFIGS[savedUi.sortMode]
+            ? savedUi.sortMode
+            : DEFAULT_SORT_MODE;
 
         if (!restored && savedUi) {
           if (searchInput) {
@@ -7425,7 +7628,7 @@
             locationInput.value = savedPrimaryValue;
           }
           if (savedUi.sortMode) {
-            state.sortMode = savedUi.sortMode;
+            state.sortMode = savedSortMode;
             updateSortButtons();
           }
           if (savedPrimaryValue) {
@@ -7436,13 +7639,13 @@
               restored = false;
             }
           }
-          if (restored && savedUi.sortMode && savedUi.sortMode !== 'default' && !state.distanceMode) {
-            state.sortMode = savedUi.sortMode;
+          if (restored && savedSortMode !== DEFAULT_SORT_MODE && !state.distanceMode) {
+            state.sortMode = savedSortMode;
             updateSortButtons();
             applySortMode({ skipScroll: true, delay: false, quiet: true });
           }
-        } else if (urlRestored && savedUi && !initialSortParam && savedUi.sortMode && savedUi.sortMode !== 'default') {
-          state.sortMode = savedUi.sortMode;
+        } else if (urlRestored && savedUi && !initialSortParam && savedSortMode !== DEFAULT_SORT_MODE) {
+          state.sortMode = savedSortMode;
           updateSortButtons();
           applySortMode({ skipScroll: true, delay: false, quiet: true });
         }
@@ -7461,15 +7664,7 @@
         } else {
           updateTotalCounter();
         }
-        const hasSearchContext =
-          Boolean(state.query) ||
-          Boolean(state.distanceMode && state.distanceReference) ||
-          Boolean(savedUi && (savedUi.query || savedUi.location));
-        const shouldAutoOpenResults =
-          initialOpenResults ||
-          Boolean(initialQueryParam || initialLocParam) ||
-          reopenResultsRequested ||
-          hasSearchContext;
+        const shouldAutoOpenResults = initialOpenResults || reopenResultsRequested;
         if (shouldAutoOpenResults) {
           if (resultsShell && isMobileViewport()) {
             openResultsShell({ skipHistory: initialOpenResults });

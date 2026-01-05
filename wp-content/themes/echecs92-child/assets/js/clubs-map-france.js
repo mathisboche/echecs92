@@ -249,6 +249,21 @@
     return Math.min(16, Math.max(3, parsed));
   };
 
+  const METRO_BOUNDS = {
+    south: 41.0,
+    west: -5.5,
+    north: 51.5,
+    east: 10.5,
+  };
+
+  const isMetropolitanCoordinate = (lat, lng) =>
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= METRO_BOUNDS.south &&
+    lat <= METRO_BOUNDS.north &&
+    lng >= METRO_BOUNDS.west &&
+    lng <= METRO_BOUNDS.east;
+
   const normaliseFocusDetail = (detail) => {
     if (!detail || typeof detail !== 'object') {
       return null;
@@ -2041,6 +2056,7 @@
       const renderMarkers = (list, { refit = false } = {}) => {
         markersLayer.clearLayers();
         const bounds = L.latLngBounds();
+        const metroBounds = L.latLngBounds();
         list.forEach(({ club, coords }) => {
           const marker = L.marker([coords.lat, coords.lng], {
             title: club.name,
@@ -2054,15 +2070,19 @@
             marker.addTo(markersLayer);
           }
           bounds.extend([coords.lat, coords.lng]);
+          if (isMetropolitanCoordinate(coords.lat, coords.lng)) {
+            metroBounds.extend([coords.lat, coords.lng]);
+          }
         });
+        const preferredBounds = metroBounds.isValid() ? metroBounds : bounds;
         if (bounds.isValid()) {
-          fullBounds = bounds;
+          fullBounds = preferredBounds;
         }
-        if (bounds.isValid() && (refit || !hasFittedView)) {
+        if (preferredBounds.isValid() && (refit || !hasFittedView)) {
           if (list.length === 1) {
-            mapInstance.setView(bounds.getCenter(), 13);
+            mapInstance.setView(preferredBounds.getCenter(), 13);
           } else {
-            mapInstance.fitBounds(bounds, { padding: [32, 32], maxZoom: 14 });
+            mapInstance.fitBounds(preferredBounds, { padding: [32, 32], maxZoom: 14 });
           }
           hasFittedView = true;
         }

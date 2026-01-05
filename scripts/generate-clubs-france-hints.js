@@ -10,6 +10,7 @@ const ROOT = path.join(__dirname, '..');
 const DATA_ROOT = path.join(ROOT, 'wp-content', 'themes', 'echecs92-child', 'assets', 'data');
 const MANIFEST_PATH = path.join(DATA_ROOT, 'clubs-france.json');
 const OUTPUT_PATH = path.join(DATA_ROOT, 'clubs-france-hints.json');
+const POSTAL_COORDINATES_PATH = path.join(DATA_ROOT, 'postal-coordinates-fr.json');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -477,6 +478,15 @@ const DEPT_FALLBACK_COORDS = {
   '95': { label: "Val-d'Oise", lat: 49.036, lng: 2.063 },
 };
 
+const MONACO_COORDS = {
+  label: 'Monaco',
+  lat: 43.7384,
+  lng: 7.4246,
+  postalCode: '98000',
+};
+
+const MAX_GEO_DISTANCE_KM = 200;
+
 const getDeptFallbackCoordinates = (postalCode) => {
   if (!postalCode) {
     return null;
@@ -493,10 +503,84 @@ const getDeptFallbackCoordinates = (postalCode) => {
   return { lat: entry.lat, lng: entry.lng, postalCode: str };
 };
 
+const postalCoordinatesIndex = new Map();
+
+const canonicalizeParisPostalCode = (postalCode) => {
+  const code = (postalCode || '').toString().trim();
+  if (code === '75116') {
+    return '75016';
+  }
+  return code;
+};
+
+const loadPostalCoordinatesIndex = async () => {
+  if (postalCoordinatesIndex.size) {
+    return;
+  }
+  try {
+    const raw = await fs.readFile(POSTAL_COORDINATES_PATH, 'utf8');
+    const entries = JSON.parse(raw);
+    if (!Array.isArray(entries)) {
+      return;
+    }
+    entries.forEach((entry) => {
+      if (!Array.isArray(entry) || entry.length < 3) {
+        return;
+      }
+      const [code, lat, lng, label] = entry;
+      const postal = code ? code.toString().trim() : '';
+      const latValue = Number.parseFloat(lat);
+      const lngValue = Number.parseFloat(lng);
+      if (!postal || !Number.isFinite(latValue) || !Number.isFinite(lngValue)) {
+        return;
+      }
+      postalCoordinatesIndex.set(postal, { lat: latValue, lng: lngValue, label: label || '' });
+    });
+  } catch (error) {
+    // ignore missing or invalid postal coordinate data
+  }
+};
+
+const getPostalCoordinates = (postalCode) => {
+  if (!postalCode) {
+    return null;
+  }
+  const code = canonicalizeParisPostalCode(postalCode);
+  if (code === MONACO_COORDS.postalCode) {
+    return { ...MONACO_COORDS };
+  }
+  const entry = postalCoordinatesIndex.get(code);
+  if (!entry) {
+    return null;
+  }
+  return { postalCode: code, lat: entry.lat, lng: entry.lng, label: entry.label };
+};
+
+const haversineKm = (lat1, lon1, lat2, lon2) => {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+const isPlausibleCoordinate = (lat, lng, postalCode) => {
+  const reference = getPostalCoordinates(postalCode);
+  if (!reference) {
+    return true;
+  }
+  const distance = haversineKm(lat, lng, reference.lat, reference.lng);
+  return distance <= MAX_GEO_DISTANCE_KM;
+};
+
 const GEOCODE_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
 
 const geocodePlace = async (query, options = {}) => {
-  const expectedPostal = (options.postalCode || '').toString().trim();
+  const expectedPostal = canonicalizeParisPostalCode((options.postalCode || '').toString().trim());
   const allowMismatch = options.allowMismatch === true;
   const q = (query || '').trim();
   if (!q) {
@@ -538,7 +622,7 @@ const geocodePlace = async (query, options = {}) => {
       return null;
     }
     const postalCodeRaw = first?.address?.postcode || '';
-    const postalCode = postalCodeRaw.split(';')[0].trim();
+    const postalCode = canonicalizeParisPostalCode(postalCodeRaw.split(';')[0].trim());
     if (!allowMismatch && expectedPostal && postalCode && postalCode !== expectedPostal) {
       return null;
     }
@@ -558,9 +642,46 @@ const geocodePlace = async (query, options = {}) => {
   }
 };
 
+const isMonacoClub = (club, postalCandidates) => {
+  if ((postalCandidates || []).some((code) => (code || '').toString().startsWith('98'))) {
+    return true;
+  }
+  const probe = normalise(
+    [
+      club.name || '',
+      club.commune || '',
+      club.address || '',
+      club.siege || '',
+      club.addressStandard || '',
+    ]
+      .filter(Boolean)
+      .join(' ')
+  );
+  return probe.includes('monaco');
+};
+
+const validateGeocodeResult = (result, expectedPostal, label) => {
+  if (!result || !Number.isFinite(result.lat) || !Number.isFinite(result.lng)) {
+    return false;
+  }
+  const postalForCheck = expectedPostal || result.postalCode || '';
+  if (!postalForCheck) {
+    return true;
+  }
+  if (isPlausibleCoordinate(result.lat, result.lng, postalForCheck)) {
+    return true;
+  }
+  const tag = label ? ` (${label})` : '';
+  console.warn(`[geocode] Rejete: coordonnees trop eloignees${tag} -> ${postalForCheck}`);
+  return false;
+};
+
 const geocodeClub = async (club, options = {}) => {
   const postalCandidates = collectPostalCodes(club);
   const expectedPostal = postalCandidates[0] || '';
+  if (isMonacoClub(club, postalCandidates)) {
+    return { ...MONACO_COORDS, source: 'manual-monaco' };
+  }
   const queries = [
     club.addressStandard || '',
     club.address || '',
@@ -584,12 +705,16 @@ const geocodeClub = async (club, options = {}) => {
   };
 
   const strict = await attemptGeocode(expectedPostal, false);
-  if (strict) {
+  if (strict && validateGeocodeResult(strict, expectedPostal, club.name || club.commune)) {
     return strict;
   }
   const relaxed = await attemptGeocode('', true);
-  if (relaxed) {
+  if (relaxed && validateGeocodeResult(relaxed, expectedPostal, club.name || club.commune)) {
     return relaxed;
+  }
+  const postalFallback = getPostalCoordinates(expectedPostal);
+  if (postalFallback) {
+    return { ...postalFallback, source: 'postal-fallback' };
   }
   const deptFallback = getDeptFallbackCoordinates(expectedPostal);
   if (deptFallback) {
@@ -667,6 +792,7 @@ const parseArgs = () => {
 const main = async () => {
   const options = parseArgs();
   const DELAY_MS = options.delay;
+  await loadPostalCoordinatesIndex();
   const clubsAll = (await loadDepartments()).map(adaptClubRecord);
   const clubs =
     options.limit == null
@@ -700,17 +826,40 @@ const main = async () => {
     if (processed % 120 === 0 || processed === clubs.length) {
       console.log(`→ ${processed}/${clubs.length} clubs traités…`);
     }
-    if (hints[club.slug]) {
-      continue;
+    const postalCandidates = collectPostalCodes(club);
+    const expectedPostal = postalCandidates[0] || club.postalCode || '';
+    const existingHint = hints[club.slug];
+    if (existingHint) {
+      const lat = Number.parseFloat(existingHint.lat);
+      const lng = Number.parseFloat(existingHint.lng);
+      const isValid =
+        Number.isFinite(lat) &&
+        Number.isFinite(lng) &&
+        validateGeocodeResult(
+          { lat, lng, postalCode: existingHint.postalCode || expectedPostal },
+          expectedPostal,
+          club.name || club.commune
+        );
+      if (isValid) {
+        continue;
+      }
+      delete hints[club.slug];
     }
     if (Number.isFinite(club.latitude) && Number.isFinite(club.longitude)) {
-      hints[club.slug] = { lat: club.latitude, lng: club.longitude, postalCode: club.postalCode || '' };
-      continue;
+      const isValid = validateGeocodeResult(
+        { lat: club.latitude, lng: club.longitude, postalCode: club.postalCode || expectedPostal },
+        expectedPostal,
+        club.name || club.commune
+      );
+      if (isValid) {
+        hints[club.slug] = { lat: club.latitude, lng: club.longitude, postalCode: club.postalCode || '' };
+        continue;
+      }
     }
     const result = await geocodeClub(club);
     if (result) {
       geocoded += result.source && result.source.includes('fallback') ? 0 : 1;
-      if (result.source === 'dept-fallback') {
+      if (result.source === 'dept-fallback' || result.source === 'postal-fallback') {
         fallback += 1;
       }
       hints[club.slug] = {
