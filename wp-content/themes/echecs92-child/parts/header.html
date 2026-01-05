@@ -93,26 +93,15 @@
         <p class="cm-mobile-panel-title">Menu principal</p>
       </div>
       <div class="cm-mobile-list">
-        <form class="cm-mobile-search cm-mobile-link--cta" action="/clubs-92" method="get" role="search">
-          <label class="sr-only" for="cm-mobile-club-search">Trouver un club</label>
+        <a class="cm-mobile-search cm-mobile-link--cta" href="/clubs-92?focus=1" aria-label="Trouver un club">
           <span class="cm-link-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" role="presentation" focusable="false">
               <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"></circle>
               <path d="M20 20l-4.2-4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
             </svg>
           </span>
-          <input
-            id="cm-mobile-club-search"
-            class="cm-mobile-search__input"
-            type="search"
-            name="q"
-            placeholder="Ville ou code postal..."
-            autocomplete="postal-code"
-            inputmode="search"
-            enterkeyhint="search"
-          >
-          <input type="hidden" name="focus" value="1">
-        </form>
+          <span class="cm-mobile-search__text" aria-hidden="true">Ville ou code postal...</span>
+        </a>
         <a class="cm-mobile-link" href="/">Accueil</a>
         <a class="cm-mobile-link" href="/actualites" data-current-group="actualites">Actualités</a>
         <button class="cm-mobile-link has-children" type="button" data-panel-target="comite" aria-haspopup="true" aria-expanded="false">
