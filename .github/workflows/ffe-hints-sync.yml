@@ -21,6 +21,7 @@ jobs:
           node-version: '20'
       - name: Regenerate address hints
         run: |
+          node scripts/update-postal-coordinates-fr.js
           node scripts/generate-clubs-france-hints.js
       - name: Commit and push if needed
         id: commit
@@ -28,7 +29,8 @@ jobs:
           if git status --porcelain | grep -q .; then
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json
+            git add wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json \
+              wp-content/themes/echecs92-child/assets/data/postal-coordinates-fr.json
             git commit -m "chore(data): refresh address hints"
             git push
             echo "pushed=true" >> "$GITHUB_OUTPUT"
