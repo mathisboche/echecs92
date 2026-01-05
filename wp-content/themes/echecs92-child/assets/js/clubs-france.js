@@ -768,6 +768,46 @@
     return dedupeLocationSuggestions(suggestions);
   };
 
+  const adaptBanLocationRecords = (payload) => {
+    const features = Array.isArray(payload?.features) ? payload.features : [];
+    const suggestions = [];
+    features.forEach((feature) => {
+      const props = feature?.properties || {};
+      const type = (props.type || '').toString();
+      if (!LOCATION_REMOTE_ALT_TYPES.has(type)) {
+        return;
+      }
+      const label = (props.name || props.label || props.city || '').toString().trim();
+      const city = (props.city || '').toString().trim();
+      const postalRaw = (props.postcode || props.postalcode || '').toString().trim();
+      const postal = canonicalizeParisPostalCode(postalRaw) || normalisePostalCodeValue(postalRaw);
+      if (!label && !city && !postal) {
+        return;
+      }
+      const communeBase = formatCommune(label || city);
+      const display = formatLocationLabel(communeBase || label || city, postal, label || city || postal || '');
+      const coords = Array.isArray(feature?.geometry?.coordinates) ? feature.geometry.coordinates : [];
+      const lon = Number.parseFloat(coords[0]);
+      const lat = Number.parseFloat(coords[1]);
+      const searchSource = [label, city, postal].filter(Boolean).join(' ');
+      const searchAltSource = [postal, label, city].filter(Boolean).join(' ');
+      const suggestion = {
+        display,
+        postalCode: postal || '',
+        commune: communeBase || label || city || '',
+        search: normaliseForSearch(searchSource.trim()),
+        searchAlt: normaliseForSearch(searchAltSource.trim()),
+        source: 'remote',
+      };
+      if (Number.isFinite(lat) && Number.isFinite(lon)) {
+        suggestion.latitude = lat;
+        suggestion.longitude = lon;
+      }
+      suggestions.push(suggestion);
+    });
+    return dedupeLocationSuggestions(suggestions);
+  };
+
   const shouldFetchRemoteLocationSuggestions = (rawQuery) => {
     const trimmed = (rawQuery || '').trim();
     if (!trimmed) {
@@ -781,16 +821,7 @@
     return Boolean(normalised && normalised.length >= LOCATION_REMOTE_MIN_CHARS);
   };
 
-  const fetchRemoteLocationSuggestions = (rawQuery) => {
-    if (!shouldFetchRemoteLocationSuggestions(rawQuery)) {
-      return Promise.resolve([]);
-    }
-    const cacheKey = buildRemoteSuggestionCacheKey(rawQuery);
-    if (cacheKey && remoteLocationSuggestionCache.has(cacheKey)) {
-      return remoteLocationSuggestionCache.get(cacheKey);
-    }
-    const trimmed = (rawQuery || '').trim();
-    const numeric = trimmed.replace(/\D/g, '');
+  const fetchGeoLocationSuggestions = (trimmed, numeric) => {
     const params = new URLSearchParams({
       limit: `${LOCATION_REMOTE_LIMIT}`,
       boost: 'population',
@@ -805,7 +836,7 @@
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timeoutId = controller ? setTimeout(() => controller.abort(), LOCATION_REMOTE_TIMEOUT_MS) : null;
     const url = `${LOCATION_REMOTE_ENDPOINT}?${params.toString()}`;
-    const promise = fetch(url, {
+    return fetch(url, {
       headers: { Accept: 'application/json' },
       signal: controller?.signal,
     })
@@ -828,6 +859,57 @@
           clearTimeout(timeoutId);
         }
       });
+  };
+
+  const fetchBanLocationSuggestions = (trimmed) => {
+    const params = new URLSearchParams({
+      q: trimmed,
+      limit: `${LOCATION_REMOTE_ALT_LIMIT}`,
+    });
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), LOCATION_REMOTE_ALT_TIMEOUT_MS) : null;
+    const url = `${LOCATION_REMOTE_ALT_ENDPOINT}?${params.toString()}`;
+    return fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: controller?.signal,
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((payload) => adaptBanLocationRecords(payload))
+      .catch((error) => {
+        if (controller && controller.signal && controller.signal.aborted) {
+          return [];
+        }
+        console.warn(`[clubs-fr-debug] Impossible de charger les suggestions BAN pour "${trimmed}".`, error);
+        return [];
+      })
+      .finally(() => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      });
+  };
+
+  const fetchRemoteLocationSuggestions = (rawQuery) => {
+    if (!shouldFetchRemoteLocationSuggestions(rawQuery)) {
+      return Promise.resolve([]);
+    }
+    const cacheKey = buildRemoteSuggestionCacheKey(rawQuery);
+    if (cacheKey && remoteLocationSuggestionCache.has(cacheKey)) {
+      return remoteLocationSuggestionCache.get(cacheKey);
+    }
+    const trimmed = (rawQuery || '').trim();
+    const numeric = trimmed.replace(/\D/g, '');
+    const promise = Promise.all([
+      fetchGeoLocationSuggestions(trimmed, numeric),
+      fetchBanLocationSuggestions(trimmed),
+    ]).then(([geoSuggestions, banSuggestions]) =>
+      dedupeLocationSuggestions([...(geoSuggestions || []), ...(banSuggestions || [])])
+    );
     if (cacheKey) {
       remoteLocationSuggestionCache.set(cacheKey, promise);
     }
@@ -1218,6 +1300,10 @@
   const LOCATION_REMOTE_FIELDS = 'nom,centre,codesPostaux,code';
   const LOCATION_REMOTE_MIN_CHARS = 2;
   const LOCATION_REMOTE_TIMEOUT_MS = 2400;
+  const LOCATION_REMOTE_ALT_ENDPOINT = 'https://api-adresse.data.gouv.fr/search/';
+  const LOCATION_REMOTE_ALT_LIMIT = Math.max(LOCATION_SUGGESTIONS_LIMIT * 2, 12);
+  const LOCATION_REMOTE_ALT_TIMEOUT_MS = 2400;
+  const LOCATION_REMOTE_ALT_TYPES = new Set(['municipality', 'locality']);
   const remoteLocationSuggestionCache = new Map();
   let locationSuggestionsIndex = [];
   let locationSuggestionsCurrent = [];
