@@ -1,8 +1,8 @@
-name: Sync FFE clubs data
+name: Sync FFE license counts
 
 on:
   schedule:
-    - cron: '15 4 * * 1'
+    - cron: '15 3 * * *'
   workflow_dispatch:
 
 jobs:
@@ -10,8 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    env:
-      DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,10 +19,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Refresh FFE data
+      - name: Refresh license counts
         run: |
-          node scripts/sync-ffe-clubs.js
-          node scripts/generate-clubs-france-hints.js
+          node scripts/sync-ffe-clubs.js --licenses-only
       - name: Commit and push if needed
         id: commit
         run: |
@@ -32,17 +29,10 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git add wp-content/themes/echecs92-child/assets/data/clubs-france \
-              wp-content/themes/echecs92-child/assets/data/clubs-france.json \
-              wp-content/themes/echecs92-child/assets/data/clubs-france-ffe \
-              wp-content/themes/echecs92-child/assets/data/clubs-france-ffe.json \
-              wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json
-            git commit -m "chore(data): refresh FFE clubs"
+              wp-content/themes/echecs92-child/assets/data/clubs.json
+            git commit -m "chore(data): refresh FFE licenses"
             git push
             echo "pushed=true" >> "$GITHUB_OUTPUT"
           else
             echo "pushed=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Trigger deploy hook
-        if: steps.commit.outputs.pushed == 'true' && env.DEPLOY_HOOK_URL != ''
-        run: |
-          curl -sSf -X POST "$DEPLOY_HOOK_URL"
