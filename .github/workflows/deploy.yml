@@ -9,6 +9,7 @@ on:
     workflows:
       - "Sync FFE clubs data"
       - "Sync FFE license counts"
+      - "Sync FFE address hints"
     types:
       - completed
 
