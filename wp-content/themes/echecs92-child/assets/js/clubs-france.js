@@ -3581,11 +3581,13 @@
     return applied;
   };
 
-  const requestPrimarySearchFocus = () => {
+  let focusRetryTimeout = null;
+  const requestPrimarySearchFocus = (options = {}) => {
     if (!shouldFocusSearch || !searchInput) {
       return;
     }
-    window.setTimeout(() => {
+    const shouldRetry = options.retry !== false;
+    const applyFocus = () => {
       if (!searchInput) {
         return;
       }
@@ -3594,10 +3596,23 @@
       } catch (error) {
         searchInput.focus();
       }
-      if (typeof searchInput.select === 'function') {
+      if (typeof searchInput.setSelectionRange === 'function') {
+        const cursorIndex = searchInput.value.length;
+        searchInput.setSelectionRange(cursorIndex, cursorIndex);
+      } else if (typeof searchInput.select === 'function') {
         searchInput.select();
       }
-    }, 0);
+      if (typeof searchInput.click === 'function') {
+        searchInput.click();
+      }
+    };
+    window.setTimeout(applyFocus, 0);
+    if (shouldRetry) {
+      if (focusRetryTimeout) {
+        window.clearTimeout(focusRetryTimeout);
+      }
+      focusRetryTimeout = window.setTimeout(applyFocus, 350);
+    }
   };
 
   const beginButtonWait = (button, busyLabel, options = {}) => {
