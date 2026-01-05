@@ -3586,10 +3586,16 @@
     if (!shouldFocusSearch || !searchInput) {
       return;
     }
+    if (!options.force && typeof document !== 'undefined' && document.activeElement === searchInput) {
+      return;
+    }
     const shouldRetry = options.retry !== false;
     const applyFocus = () => {
       if (!searchInput) {
         return;
+      }
+      if (typeof searchInput.setAttribute === 'function') {
+        searchInput.setAttribute('autofocus', 'autofocus');
       }
       try {
         searchInput.focus({ preventScroll: true });
@@ -3606,12 +3612,12 @@
         searchInput.click();
       }
     };
-    window.setTimeout(applyFocus, 0);
+    applyFocus();
     if (shouldRetry) {
       if (focusRetryTimeout) {
         window.clearTimeout(focusRetryTimeout);
       }
-      focusRetryTimeout = window.setTimeout(applyFocus, 350);
+      focusRetryTimeout = window.setTimeout(applyFocus, 250);
     }
   };
 
@@ -7262,6 +7268,7 @@
     initialiseLocationControls();
     syncDistanceCollapse();
     syncResultsShellToViewport();
+    requestPrimarySearchFocus({ force: true });
     if (mobileViewportQuery) {
       const listener = () => {
         syncDistanceCollapse();
