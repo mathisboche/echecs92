@@ -3621,6 +3621,29 @@
     }
   };
 
+  const setupPrimarySearchFallbackFocus = () => {
+    if (!shouldFocusSearch || !searchInput || !searchBlock) {
+      return;
+    }
+    let armed = true;
+    const cleanup = () => {
+      searchBlock.removeEventListener('pointerdown', handleFallback, true);
+      searchBlock.removeEventListener('touchstart', handleFallback, true);
+      searchBlock.removeEventListener('mousedown', handleFallback, true);
+    };
+    const handleFallback = () => {
+      if (!armed) {
+        return;
+      }
+      armed = false;
+      cleanup();
+      requestPrimarySearchFocus({ force: true, retry: false });
+    };
+    searchBlock.addEventListener('pointerdown', handleFallback, { passive: true, capture: true });
+    searchBlock.addEventListener('touchstart', handleFallback, { passive: true, capture: true });
+    searchBlock.addEventListener('mousedown', handleFallback, { passive: true, capture: true });
+  };
+
   const beginButtonWait = (button, busyLabel, options = {}) => {
     if (!button) {
       return () => {};
@@ -7269,6 +7292,7 @@
     syncDistanceCollapse();
     syncResultsShellToViewport();
     requestPrimarySearchFocus({ force: true });
+    setupPrimarySearchFallbackFocus();
     if (mobileViewportQuery) {
       const listener = () => {
         syncDistanceCollapse();
