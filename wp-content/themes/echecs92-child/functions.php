@@ -1445,7 +1445,7 @@ HTML;
         ]);
     }
 
-    $confirmation_subject = __('CDJE 92 Message bien reçu', 'echecs92-child');
+    $confirmation_subject = __('Confirmation de réception', 'echecs92-child');
     $confirmation_text = [
         'Votre message a bien ete recu.',
         'Merci pour votre confiance. Nous avons bien recu votre demande et nous reviendrons vers vous des que possible.',

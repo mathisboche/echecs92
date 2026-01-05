@@ -443,8 +443,8 @@ body.admin-bar header.wp-block-template-part{
 .cm-mobile-search__text{
   flex:1;
   min-width:0;
-  color:#475569;
-  font-weight:500;
+  color:inherit;
+  font-weight:inherit;
 }
 .cm-mobile-search__input::placeholder{
   color:#475569;

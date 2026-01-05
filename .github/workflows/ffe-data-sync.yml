@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,8 +43,6 @@ jobs:
             echo "pushed=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Trigger deploy hook
-        if: steps.commit.outputs.pushed == 'true' && secrets.DEPLOY_HOOK_URL != ''
-        env:
-          DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
+        if: steps.commit.outputs.pushed == 'true' && env.DEPLOY_HOOK_URL != ''
         run: |
           curl -sSf -X POST "$DEPLOY_HOOK_URL"
