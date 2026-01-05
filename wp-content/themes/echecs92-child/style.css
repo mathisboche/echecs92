@@ -415,6 +415,7 @@ body.admin-bar header.wp-block-template-part{
   color:#0a0a0a;
   line-height:1.3;
   font-family:inherit;
+  text-decoration:none;
 }
 .cm-mobile-link--cta .cm-link-icon svg,
 .cm-mobile-search .cm-link-icon svg{
@@ -438,6 +439,12 @@ body.admin-bar header.wp-block-template-part{
   font:inherit;
   color:inherit;
   outline:none;
+}
+.cm-mobile-search__text{
+  flex:1;
+  min-width:0;
+  color:#475569;
+  font-weight:500;
 }
 .cm-mobile-search__input::placeholder{
   color:#475569;
