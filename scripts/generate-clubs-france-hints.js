@@ -467,6 +467,71 @@ const buildClubSignature = (club) => {
   return parts.join('|');
 };
 
+const issueLog = {
+  suspect: [],
+  failed: [],
+  fallback: [],
+  forced: [],
+};
+
+const buildIssueLabel = (club) =>
+  `${club.name || 'Club'}${club.slug ? ` (${club.slug})` : ''}`;
+
+const recordIssue = (type, club, details = {}) => {
+  if (!issueLog[type]) {
+    issueLog[type] = [];
+  }
+  const payload = {
+    name: club?.name || '',
+    slug: club?.slug || '',
+    postalCode: club?.postalCode || '',
+    commune: club?.commune || '',
+    ...details,
+  };
+  issueLog[type].push(payload);
+  const base = buildIssueLabel(club);
+  const info = details.message ? ` - ${details.message}` : '';
+  console.warn(`[geocode:${type}] ${base}${info}`);
+};
+
+const printIssueSummary = () => {
+  const order = ['failed', 'suspect', 'fallback', 'forced'];
+  const total = order.reduce((sum, key) => sum + (issueLog[key]?.length || 0), 0);
+  if (!total) {
+    return;
+  }
+  console.warn('--- Geocode issues summary ---');
+  order.forEach((key) => {
+    const entries = issueLog[key] || [];
+    if (!entries.length) {
+      return;
+    }
+    console.warn(`${key.toUpperCase()} (${entries.length})`);
+    entries.forEach((entry) => {
+      const label = entry.name || entry.slug || 'club';
+      const extras = [];
+      if (entry.postalCode) {
+        extras.push(`CP ${entry.postalCode}`);
+      }
+      if (entry.commune) {
+        extras.push(entry.commune);
+      }
+      if (Number.isFinite(entry.distanceKm)) {
+        extras.push(`${entry.distanceKm.toFixed(1)} km`);
+      }
+      if (Number.isFinite(entry.lat) && Number.isFinite(entry.lng)) {
+        extras.push(`(${entry.lat.toFixed(5)}, ${entry.lng.toFixed(5)})`);
+      }
+      if (entry.message) {
+        extras.push(entry.message);
+      }
+      const suffix = extras.length ? ` | ${extras.join(' | ')}` : '';
+      console.warn(`- ${label}${suffix}`);
+    });
+  });
+  console.warn('--- End geocode issues summary ---');
+};
+
 const DEPT_FALLBACK_COORDS = {
   '75': { label: 'Paris', lat: 48.8566, lng: 2.3522 },
   '77': { label: 'Seine-et-Marne', lat: 48.5396, lng: 2.6526 },
@@ -643,7 +708,7 @@ const geocodePlace = async (query, options = {}) => {
 };
 
 const isMonacoClub = (club, postalCandidates) => {
-  if ((postalCandidates || []).some((code) => (code || '').toString().startsWith('98'))) {
+  if ((postalCandidates || []).some((code) => /^980\d{2}$/.test((code || '').toString()))) {
     return true;
   }
   const probe = normalise(
@@ -660,26 +725,30 @@ const isMonacoClub = (club, postalCandidates) => {
   return probe.includes('monaco');
 };
 
-const validateGeocodeResult = (result, expectedPostal, label) => {
+const validateGeocodeResult = (result, expectedPostal) => {
   if (!result || !Number.isFinite(result.lat) || !Number.isFinite(result.lng)) {
-    return false;
+    return { ok: false, reason: 'invalid' };
   }
   const postalForCheck = expectedPostal || result.postalCode || '';
   if (!postalForCheck) {
-    return true;
+    return { ok: true, reason: 'no-postal' };
   }
-  if (isPlausibleCoordinate(result.lat, result.lng, postalForCheck)) {
-    return true;
+  const reference = getPostalCoordinates(postalForCheck);
+  if (!reference) {
+    return { ok: true, reason: 'no-reference' };
   }
-  const tag = label ? ` (${label})` : '';
-  console.warn(`[geocode] Rejete: coordonnees trop eloignees${tag} -> ${postalForCheck}`);
-  return false;
+  const distance = haversineKm(result.lat, result.lng, reference.lat, reference.lng);
+  if (distance <= MAX_GEO_DISTANCE_KM) {
+    return { ok: true, distance };
+  }
+  return { ok: false, reason: 'distance', distance };
 };
 
 const geocodeClub = async (club, options = {}) => {
   const postalCandidates = collectPostalCodes(club);
   const expectedPostal = postalCandidates[0] || '';
   if (isMonacoClub(club, postalCandidates)) {
+    recordIssue('forced', club, { message: 'Coordonnées Monaco forcées.' });
     return { ...MONACO_COORDS, source: 'manual-monaco' };
   }
   const queries = [
@@ -705,19 +774,41 @@ const geocodeClub = async (club, options = {}) => {
   };
 
   const strict = await attemptGeocode(expectedPostal, false);
-  if (strict && validateGeocodeResult(strict, expectedPostal, club.name || club.commune)) {
-    return strict;
+  if (strict) {
+    const strictCheck = validateGeocodeResult(strict, expectedPostal);
+    if (strictCheck.ok) {
+      return strict;
+    }
+    recordIssue('suspect', club, {
+      message: `Coordonnées trop éloignées du code postal ${expectedPostal || 'n/a'}.`,
+      distanceKm: strictCheck.distance,
+      lat: strict.lat,
+      lng: strict.lng,
+      source: strict.source,
+    });
   }
   const relaxed = await attemptGeocode('', true);
-  if (relaxed && validateGeocodeResult(relaxed, expectedPostal, club.name || club.commune)) {
-    return relaxed;
+  if (relaxed) {
+    const relaxedCheck = validateGeocodeResult(relaxed, expectedPostal);
+    if (relaxedCheck.ok) {
+      return relaxed;
+    }
+    recordIssue('suspect', club, {
+      message: `Coordonnées trop éloignées du code postal ${expectedPostal || 'n/a'} (recherche relâchée).`,
+      distanceKm: relaxedCheck.distance,
+      lat: relaxed.lat,
+      lng: relaxed.lng,
+      source: relaxed.source,
+    });
   }
   const postalFallback = getPostalCoordinates(expectedPostal);
   if (postalFallback) {
+    recordIssue('fallback', club, { message: `Fallback sur le centroïde postal ${expectedPostal}.` });
     return { ...postalFallback, source: 'postal-fallback' };
   }
   const deptFallback = getDeptFallbackCoordinates(expectedPostal);
   if (deptFallback) {
+    recordIssue('fallback', club, { message: `Fallback sur le département ${expectedPostal.slice(0, 2)}.` });
     return { ...deptFallback, source: 'dept-fallback' };
   }
   return null;
@@ -832,29 +923,38 @@ const main = async () => {
     if (existingHint) {
       const lat = Number.parseFloat(existingHint.lat);
       const lng = Number.parseFloat(existingHint.lng);
-      const isValid =
-        Number.isFinite(lat) &&
-        Number.isFinite(lng) &&
-        validateGeocodeResult(
-          { lat, lng, postalCode: existingHint.postalCode || expectedPostal },
-          expectedPostal,
-          club.name || club.commune
-        );
-      if (isValid) {
+      const check = validateGeocodeResult(
+        { lat, lng, postalCode: existingHint.postalCode || expectedPostal },
+        expectedPostal
+      );
+      if (Number.isFinite(lat) && Number.isFinite(lng) && check.ok) {
         continue;
       }
+      recordIssue('suspect', club, {
+        message: `Indice existant trop éloigné du code postal ${expectedPostal || 'n/a'}.`,
+        distanceKm: check.distance,
+        lat,
+        lng,
+        source: existingHint.source || 'hint',
+      });
       delete hints[club.slug];
     }
     if (Number.isFinite(club.latitude) && Number.isFinite(club.longitude)) {
-      const isValid = validateGeocodeResult(
+      const check = validateGeocodeResult(
         { lat: club.latitude, lng: club.longitude, postalCode: club.postalCode || expectedPostal },
-        expectedPostal,
-        club.name || club.commune
+        expectedPostal
       );
-      if (isValid) {
+      if (check.ok) {
         hints[club.slug] = { lat: club.latitude, lng: club.longitude, postalCode: club.postalCode || '' };
         continue;
       }
+      recordIssue('suspect', club, {
+        message: `Coordonnées existantes trop éloignées du code postal ${expectedPostal || 'n/a'}.`,
+        distanceKm: check.distance,
+        lat: club.latitude,
+        lng: club.longitude,
+        source: 'club-data',
+      });
     }
     const result = await geocodeClub(club);
     if (result) {
@@ -868,6 +968,8 @@ const main = async () => {
         postalCode: result.postalCode || club.postalCode || '',
         source: result.source || 'geocode',
       };
+    } else {
+      recordIssue('failed', club, { message: 'Aucune coordonnée trouvée.' });
     }
     // Be polite with the geocoding service
     await sleep(DELAY_MS);
@@ -879,6 +981,7 @@ const main = async () => {
   const totalKeys = await flushHints();
   console.log(`Generated ${OUTPUT_PATH}`);
   console.log(`Clubs: ${processed}, hints: ${totalKeys}, geocoded: ${geocoded}, dept fallback: ${fallback}`);
+  printIssueSummary();
 };
 
 main().catch((error) => {

@@ -229,6 +229,7 @@
   let mapInstance = null;
   let markersLayer = null;
   let mapFeatures = [];
+  const mapIssues = [];
   let fullBounds = null;
   let hasFittedView = false;
   let pendingMapFocus = null;
@@ -365,6 +366,20 @@
     commune: true,
     approx: true,
     department: true,
+  };
+
+  const MAP_SUSPECT_DISTANCE_KM = 200;
+
+  const haversineKm = (lat1, lon1, lat2, lon2) => {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
   const formatCommune = (value) => {
@@ -967,6 +982,17 @@
     return Array.from(codes);
   };
 
+  const normalisePostalCodeValue = (value) => {
+    if (!value) {
+      return '';
+    }
+    const digits = value.toString().replace(/\D/g, '').trim();
+    if (digits.length !== 5) {
+      return '';
+    }
+    return digits;
+  };
+
   const extractParisPostal = (value) => {
     if (!value) {
       return null;
@@ -1181,6 +1207,59 @@
       return null;
     }
     return { postalCode: entry.postalCode, lat: entry.lat, lng: entry.lng, label: entry.label };
+  };
+
+  const getPostalReferenceForClub = (club) => {
+    if (!club) {
+      return null;
+    }
+    const candidates = collectPostalCodes(club)
+      .map((code) => normalisePostalCodeValue(code))
+      .filter(Boolean);
+    if (!candidates.length) {
+      return null;
+    }
+    for (let i = 0; i < candidates.length; i += 1) {
+      const postal = candidates[i];
+      const coords = getPostalCoordinates(postal, club.commune);
+      if (coords) {
+        return { postal, coords };
+      }
+    }
+    return null;
+  };
+
+  const detectSuspectCoordinates = (club, coords) => {
+    if (!club || !coords) {
+      return null;
+    }
+    const ref = getPostalReferenceForClub(club);
+    if (!ref) {
+      return null;
+    }
+    const distanceKm = haversineKm(coords.lat, coords.lng, ref.coords.lat, ref.coords.lng);
+    if (!Number.isFinite(distanceKm) || distanceKm <= MAP_SUSPECT_DISTANCE_KM) {
+      return null;
+    }
+    return {
+      club,
+      coords,
+      distanceKm,
+      postalCode: ref.postal,
+      referenceLabel: ref.coords.label || '',
+    };
+  };
+
+  const reportMapIssues = (issues) => {
+    if (!issues.length) {
+      return;
+    }
+    issues.forEach((issue) => {
+      const label = issue.club?.name || issue.club?.slug || 'club';
+      console.warn(
+        `[clubs-fr-map] Coordonnées suspectes: ${label} (${issue.postalCode}) à ${issue.distanceKm.toFixed(1)} km.`
+      );
+    });
   };
 
   const DEPT_FALLBACK_COORDS = {
@@ -1920,12 +1999,17 @@
 
   const buildFeaturesFromClubs = (clubs) => {
     const list = [];
+    mapIssues.length = 0;
     (Array.isArray(clubs) ? clubs : []).forEach((club) => {
       const coords = resolveClubCoordinates(club);
       const precision = coords?.precision || 'unknown';
       const isParisHint = precision === 'hint' && isParisPostal(club.postalCode);
       if (coords && COORD_PRECISION_ALLOWED[precision] && !isParisHint) {
         list.push({ club, coords });
+        const issue = detectSuspectCoordinates(club, coords);
+        if (issue) {
+          mapIssues.push(issue);
+        }
       }
     });
     return list;
@@ -2090,10 +2174,18 @@
 
       if (mapFeatures.length) {
         renderMarkers(mapFeatures, { refit: true });
-        updateStatus(
-          `${mapFeatures.length} club${mapFeatures.length > 1 ? 's' : ''} affiché${mapFeatures.length > 1 ? 's' : ''} sur la carte.`,
-          'success'
-        );
+        const baseStatus = `${mapFeatures.length} club${mapFeatures.length > 1 ? 's' : ''} affiché${
+          mapFeatures.length > 1 ? 's' : ''
+        } sur la carte.`;
+        if (mapIssues.length) {
+          updateStatus(
+            `${baseStatus} Attention: ${mapIssues.length} club${mapIssues.length > 1 ? 's' : ''} ont des coordonnées suspectes.`,
+            'warning'
+          );
+          reportMapIssues(mapIssues);
+        } else {
+          updateStatus(baseStatus, 'success');
+        }
       } else {
         updateStatus('Aucun club positionné pour le moment.', 'error');
       }
