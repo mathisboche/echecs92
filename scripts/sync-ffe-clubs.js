@@ -23,6 +23,7 @@ const DATA_ROOT = path.join(
 );
 const CLUBS_DIR = path.join(DATA_ROOT, 'clubs-france');
 const FFE_DIR = path.join(DATA_ROOT, 'clubs-france-ffe');
+const FFE_DETAILS_DIR = path.join(DATA_ROOT, 'clubs-france-ffe-details');
 const MANIFEST_PATH = path.join(DATA_ROOT, 'clubs-france.json');
 const FFE_MANIFEST_PATH = path.join(DATA_ROOT, 'clubs-france-ffe.json');
 const CLUBS_92_PATH = path.join(DATA_ROOT, 'clubs.json');
@@ -35,24 +36,32 @@ const HEADERS = {
 };
 const FETCH_TIMEOUT_MS = 20000;
 const DETAIL_CONCURRENCY = 8;
+const LIST_CONCURRENCY = 3;
 const EXCLUDED_CLUB_REFS = new Set(['1901']);
 const EXCLUDED_CLUB_NAME_PATTERNS = [/championnat de france/i];
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const fetchText = async (url, retries = 3) => {
-  for (let attempt = 0; attempt <= retries; attempt += 1) {
+const fetchText = async (url, options = {}, retries = 3) => {
+  let requestOptions = options;
+  let attempts = retries;
+  if (typeof options === 'number') {
+    requestOptions = {};
+    attempts = options;
+  }
+  for (let attempt = 0; attempt <= attempts; attempt += 1) {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-      const res = await fetch(url, { headers: HEADERS, signal: controller.signal });
+      const headers = { ...HEADERS, ...(requestOptions.headers || {}) };
+      const res = await fetch(url, { ...requestOptions, headers, signal: controller.signal });
       clearTimeout(timer);
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
       return await res.text();
     } catch (error) {
-      if (attempt >= retries) {
+      if (attempt >= attempts) {
         throw error;
       }
       await sleep(500 * (attempt + 1));
@@ -430,6 +439,283 @@ const parseClubDetails = (html, ref) => {
   };
 };
 
+const extractHiddenFields = (html) => {
+  const fields = {};
+  const regex = /<input[^>]+type=["']?hidden["']?[^>]*>/gi;
+  let match;
+  while ((match = regex.exec(html)) !== null) {
+    const input = match[0];
+    const nameMatch = input.match(/name=["']?([^"' >]+)/i);
+    if (!nameMatch) {
+      continue;
+    }
+    const valueMatch = input.match(/value=["']?([^"']*)/i);
+    fields[nameMatch[1]] = decodeHtml(valueMatch ? valueMatch[1] : '');
+  }
+  return fields;
+};
+
+const extractPagerInfo = (html) => {
+  const regex = /__doPostBack\('([^']+)',\s*'([^']+)'\)/g;
+  let eventTarget = '';
+  const pages = new Set();
+  let match;
+  while ((match = regex.exec(html)) !== null) {
+    const target = match[1];
+    const arg = match[2];
+    if (!/Pager/i.test(target)) {
+      continue;
+    }
+    if (!eventTarget) {
+      eventTarget = target;
+    }
+    if (/^\d+$/.test(arg)) {
+      pages.add(Number.parseInt(arg, 10));
+    }
+  }
+  const maxPage = pages.size ? Math.max(...pages) : 1;
+  return { eventTarget, maxPage };
+};
+
+const fetchPagedHtml = async (url) => {
+  const pages = [];
+  let html = await fetchText(url);
+  pages.push(html);
+
+  const { eventTarget, maxPage } = extractPagerInfo(html);
+  if (!eventTarget || maxPage <= 1) {
+    return pages;
+  }
+
+  let hiddenFields = extractHiddenFields(html);
+  for (let page = 2; page <= maxPage; page += 1) {
+    const bodyFields = {
+      ...hiddenFields,
+      __EVENTTARGET: eventTarget,
+      __EVENTARGUMENT: String(page),
+    };
+    const body = new URLSearchParams(bodyFields);
+    html = await fetchText(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body,
+    });
+    pages.push(html);
+    hiddenFields = extractHiddenFields(html);
+    await sleep(80);
+  }
+  return pages;
+};
+
+const extractTableRows = (html) => {
+  const rows = [];
+  const rowRegex = /<tr class=liste_[^>]*>[\s\S]*?<\/tr>/gi;
+  let rowMatch;
+  while ((rowMatch = rowRegex.exec(html)) !== null) {
+    const rowHtml = rowMatch[0];
+    const cells = [];
+    const cellRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+    let cellMatch;
+    while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
+      cells.push(cellMatch[1]);
+    }
+    if (cells.length) {
+      rows.push({ cells, rowHtml });
+    }
+  }
+  return rows;
+};
+
+const extractPlayerId = (html) => {
+  const match = html.match(/FicheJoueur\.aspx\?Id=(\d+)/i);
+  return match ? match[1] : '';
+};
+
+const parseMemberRows = (html) => {
+  const rows = extractTableRows(html);
+  const results = [];
+  rows.forEach(({ cells, rowHtml }) => {
+    if (cells.length < 10) {
+      return;
+    }
+    const values = cells.map(cleanText);
+    const nrFfe = values[0] || '';
+    const name = values[1] || '';
+    if (!nrFfe || !name) {
+      return;
+    }
+    const playerId = extractPlayerId(rowHtml);
+    results.push({
+      nrFfe,
+      name,
+      aff: values[2] || '',
+      playerId: playerId || '',
+      elo: values[4] || '',
+      rapid: values[5] || '',
+      blitz: values[6] || '',
+      category: values[7] || '',
+      gender: values[8] || '',
+      club: values[9] || '',
+    });
+  });
+  return results;
+};
+
+const parseQualificationRows = (html) => {
+  const rows = extractTableRows(html);
+  const results = [];
+  rows.forEach(({ cells, rowHtml }) => {
+    if (cells.length < 5) {
+      return;
+    }
+    const values = cells.map(cleanText);
+    const nrFfe = values[0] || '';
+    const name = values[1] || '';
+    if (!nrFfe || !name) {
+      return;
+    }
+    const email = extractEmail(rowHtml);
+    results.push({
+      nrFfe,
+      name,
+      email: email || '',
+      role: values[2] || '',
+      validity: values[3] || '',
+      club: values[4] || '',
+      playerId: '',
+    });
+  });
+  return results;
+};
+
+const dedupeRows = (rows, getKey) => {
+  const seen = new Set();
+  const output = [];
+  rows.forEach((row) => {
+    const key = getKey(row);
+    if (!key || seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    output.push(row);
+  });
+  return output;
+};
+
+const buildMemberIdLookup = (rows) => {
+  const map = new Map();
+  rows.forEach((row) => {
+    const key = (row.nrFfe || '').toString().trim();
+    const playerId = (row.playerId || '').toString().trim();
+    if (!key || !playerId || map.has(key)) {
+      return;
+    }
+    map.set(key, playerId);
+  });
+  return map;
+};
+
+const applyPlayerIds = (rows, lookup) =>
+  rows.map((row) => {
+    if (row.playerId || !row.nrFfe || !lookup.has(row.nrFfe)) {
+      return row;
+    }
+    return { ...row, playerId: lookup.get(row.nrFfe) };
+  });
+
+const fetchListRows = async (url, parser, dedupeKey) => {
+  const pages = await fetchPagedHtml(url);
+  let rows = [];
+  pages.forEach((html) => {
+    rows = rows.concat(parser(html));
+  });
+  if (dedupeKey) {
+    rows = dedupeRows(rows, dedupeKey);
+  }
+  return rows;
+};
+
+const buildListPayload = (rows, error = '') => ({
+  count: Array.isArray(rows) ? rows.length : 0,
+  rows: Array.isArray(rows) ? rows : [],
+  error: error || '',
+});
+
+const sanitiseClubRef = (value) => {
+  const match = (value || '').toString().trim().match(/(\d{2,})$/);
+  return match ? match[1] : '';
+};
+
+const fetchClubLists = async (ref, name, errors) => {
+  const refId = sanitiseClubRef(ref);
+  if (!refId) {
+    return null;
+  }
+
+  const memberUrl = `${BASE_URL}/ListeJoueurs.aspx?Action=JOUEURCLUBREF&ClubRef=${encodeURIComponent(refId)}`;
+  const memberEloUrl = `${BASE_URL}/ListeJoueurs.aspx?Action=JOUEURCLUBREF&JrTri=Elo&ClubRef=${encodeURIComponent(refId)}`;
+  const arbitrageUrl = `${BASE_URL}/ListeArbitres.aspx?Action=DNACLUB&ClubRef=${encodeURIComponent(refId)}`;
+  const animationUrl = `${BASE_URL}/ListeArbitres.aspx?Action=DAFFECLUB&ClubRef=${encodeURIComponent(refId)}`;
+  const trainingUrl = `${BASE_URL}/ListeArbitres.aspx?Action=DEFFECLUB&ClubRef=${encodeURIComponent(refId)}`;
+  const initiationUrl = `${BASE_URL}/ListeArbitres.aspx?Action=DIFFECLUB&ClubRef=${encodeURIComponent(refId)}`;
+
+  const listErrors = [];
+
+  const safeFetch = async (label, url, parser, dedupeKey) => {
+    try {
+      const rows = await fetchListRows(url, parser, dedupeKey);
+      return { rows, error: '' };
+    } catch (error) {
+      const message = error && error.message ? error.message : 'Erreur inconnue';
+      listErrors.push(`${label}: ${message}`);
+      return { rows: [], error: message };
+    }
+  };
+
+  const memberKey = (row) => `${row.nrFfe || ''}|${row.name || ''}|${row.playerId || ''}`;
+  const staffKey = (row) => `${row.nrFfe || ''}|${row.name || ''}|${row.role || ''}`;
+
+  const members = await safeFetch('membres', memberUrl, parseMemberRows, memberKey);
+  const memberLookup = buildMemberIdLookup(members.rows);
+  members.rows = applyPlayerIds(members.rows, memberLookup);
+
+  const membersByElo = await safeFetch('membres_par_elo', memberEloUrl, parseMemberRows, memberKey);
+  membersByElo.rows = applyPlayerIds(membersByElo.rows, memberLookup);
+
+  const arbitrage = await safeFetch('arbitrage', arbitrageUrl, parseQualificationRows, staffKey);
+  arbitrage.rows = applyPlayerIds(arbitrage.rows, memberLookup);
+
+  const animation = await safeFetch('animation', animationUrl, parseQualificationRows, staffKey);
+  animation.rows = applyPlayerIds(animation.rows, memberLookup);
+
+  const entrainement = await safeFetch('entrainement', trainingUrl, parseQualificationRows, staffKey);
+  entrainement.rows = applyPlayerIds(entrainement.rows, memberLookup);
+
+  const initiation = await safeFetch('initiation', initiationUrl, parseQualificationRows, staffKey);
+  initiation.rows = applyPlayerIds(initiation.rows, memberLookup);
+
+  if (listErrors.length && Array.isArray(errors)) {
+    errors.push({
+      ref: refId,
+      name: name || '',
+      details: listErrors,
+    });
+  }
+
+  return {
+    ref: refId,
+    updated: new Date().toISOString(),
+    members: buildListPayload(members.rows, members.error),
+    members_by_elo: buildListPayload(membersByElo.rows, membersByElo.error),
+    arbitrage: buildListPayload(arbitrage.rows, arbitrage.error),
+    animation: buildListPayload(animation.rows, animation.error),
+    entrainement: buildListPayload(entrainement.rows, entrainement.error),
+    initiation: buildListPayload(initiation.rows, initiation.error),
+  };
+};
+
 const limitConcurrency = (concurrency) => {
   const queue = [];
   let active = 0;
@@ -700,6 +986,7 @@ const main = async () => {
   const perDeptBase = new Map();
   const perDeptFfe = new Map();
   const allFfeEntries = [];
+  const includedRefs = new Map();
 
   departments.forEach((dept) => {
     const list = deptClubLists.get(dept.code) || [];
@@ -711,6 +998,10 @@ const main = async () => {
       if (shouldExcludeClub(detail, entry)) {
         console.log(`→ Club exclu (${entry.ref}) ${entry.name || detail.name || ''}`.trim());
         return;
+      }
+      const refKey = detail.ref || entry.ref;
+      if (refKey && !includedRefs.has(refKey)) {
+        includedRefs.set(refKey, { name: detail.name || entry.name || '' });
       }
       const combined = buildClubEntries(detail, entry, dept);
       baseEntries.push(combined.baseEntry);
@@ -748,6 +1039,46 @@ const main = async () => {
   }
 
   ensureUniqueSlugs(allFfeEntries);
+
+  if (includedRefs.size) {
+    console.log('→ Téléchargement des listes FFE (membres, arbitrage, animation, entrainement, initiation)...');
+    fs.mkdirSync(FFE_DETAILS_DIR, { recursive: true });
+    const refs = Array.from(includedRefs.entries()).map(([ref, meta]) => ({
+      ref,
+      name: meta?.name || '',
+    }));
+    const limiter = limitConcurrency(LIST_CONCURRENCY);
+    const errors = [];
+    let doneLists = 0;
+
+    await Promise.all(
+      refs.map((entry) =>
+        limiter(async () => {
+          const payload = await fetchClubLists(entry.ref, entry.name, errors);
+          if (payload) {
+            const filePath = path.join(FFE_DETAILS_DIR, `${payload.ref}.json`);
+            writeJson(filePath, payload);
+          }
+          doneLists += 1;
+          if (doneLists % 25 === 0 || doneLists === refs.length) {
+            process.stdout.write(`  ${doneLists}/${refs.length} clubs traités\r`);
+          }
+        })
+      )
+    );
+    process.stdout.write('\n');
+    if (errors.length) {
+      console.log('--- FFE lists issues summary ---');
+      errors.slice(0, 20).forEach((item) => {
+        const label = item.name ? `${item.name} (${item.ref})` : item.ref;
+        console.log(`- ${label} | ${item.details.join('; ')}`);
+      });
+      if (errors.length > 20) {
+        console.log(`… ${errors.length - 20} autres erreurs`);
+      }
+      console.log('--- End FFE lists issues summary ---');
+    }
+  }
 
   departments.forEach((dept) => {
     const baseEntries = perDeptBase.get(dept.code) || [];

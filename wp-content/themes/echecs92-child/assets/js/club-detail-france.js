@@ -9,7 +9,9 @@
   const FFE_MANIFEST_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france-ffe.json';
   const FFE_FALLBACK_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france-ffe/';
   const FFE_URL_BASE = 'https://www.echecs.asso.fr/FicheClub.aspx?Ref=';
+  const FFE_PLAYER_URL_BASE = 'https://www.echecs.asso.fr/FicheJoueur.aspx?Id=';
   const GEO_HINTS_REMOTE_URL = `/wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json?v=${GEO_HINTS_VERSION}`;
+  const FFE_LISTS_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france-ffe-details/';
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
   const detailContainer = document.getElementById('club-detail');
   const backLink = document.querySelector('[data-club-back]');
@@ -493,6 +495,19 @@
     }
     const match = str.match(/(\d{2,})$/);
     return match ? match[1] : '';
+  };
+
+  const loadFfeLists = async (ref) => {
+    const refId = sanitiseFfeRef(ref);
+    if (!refId) {
+      return null;
+    }
+    const url = `${FFE_LISTS_BASE_PATH}${encodeURIComponent(refId)}.json`;
+    try {
+      return await fetchJson(url);
+    } catch (error) {
+      return null;
+    }
   };
 
   const buildFfeLookupKey = (name, postalCode, commune) => {
@@ -1758,7 +1773,245 @@
     return true;
   };
 
-  const renderClub = (club) => {
+  const buildPlayerUrl = (playerId) => {
+    if (!playerId) {
+      return '';
+    }
+    return `${FFE_PLAYER_URL_BASE}${encodeURIComponent(playerId)}`;
+  };
+
+  const createNameBlock = (row) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'club-table__name';
+    const name = row?.name || '';
+    if (row?.playerId) {
+      const link = document.createElement('a');
+      link.href = buildPlayerUrl(row.playerId);
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.textContent = name;
+      wrap.appendChild(link);
+    } else {
+      const text = document.createElement('span');
+      text.textContent = name;
+      wrap.appendChild(text);
+    }
+    if (row?.email) {
+      const emailLink = document.createElement('a');
+      emailLink.className = 'club-table__email';
+      emailLink.href = `mailto:${row.email}`;
+      emailLink.textContent = row.email;
+      wrap.appendChild(emailLink);
+    }
+    return wrap;
+  };
+
+  const appendTextCell = (row, value, className) => {
+    const cell = document.createElement('td');
+    if (className) {
+      cell.className = className;
+    }
+    cell.textContent = value || '';
+    row.appendChild(cell);
+    return cell;
+  };
+
+  const createTableWrap = (table) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'club-table__wrap';
+    wrap.appendChild(table);
+    return wrap;
+  };
+
+  const renderMembersTable = (rows) => {
+    const table = document.createElement('table');
+    table.className = 'club-table';
+    const thead = document.createElement('thead');
+    const headRow = document.createElement('tr');
+    [
+      'Nr FFE',
+      'Nom',
+      'Aff.',
+      'Elo',
+      'Rapide',
+      'Blitz',
+      'Cat.',
+      'M.',
+      'Club',
+    ].forEach((label) => {
+      const th = document.createElement('th');
+      th.textContent = label;
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    rows.forEach((row) => {
+      const tr = document.createElement('tr');
+      appendTextCell(tr, row.nrFfe);
+      const nameCell = document.createElement('td');
+      nameCell.appendChild(createNameBlock(row));
+      tr.appendChild(nameCell);
+      appendTextCell(tr, row.aff);
+      appendTextCell(tr, row.elo);
+      appendTextCell(tr, row.rapid);
+      appendTextCell(tr, row.blitz);
+      appendTextCell(tr, row.category);
+      appendTextCell(tr, row.gender);
+      appendTextCell(tr, row.club);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    return createTableWrap(table);
+  };
+
+  const renderStaffTable = (rows) => {
+    const table = document.createElement('table');
+    table.className = 'club-table';
+    const thead = document.createElement('thead');
+    const headRow = document.createElement('tr');
+    ['Nr FFE', 'Nom', 'Niveau', 'Validité', 'Club'].forEach((label) => {
+      const th = document.createElement('th');
+      th.textContent = label;
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    rows.forEach((row) => {
+      const tr = document.createElement('tr');
+      appendTextCell(tr, row.nrFfe);
+      const nameCell = document.createElement('td');
+      nameCell.appendChild(createNameBlock(row));
+      tr.appendChild(nameCell);
+      appendTextCell(tr, row.role);
+      appendTextCell(tr, row.validity);
+      appendTextCell(tr, row.club);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    return createTableWrap(table);
+  };
+
+  const renderFfeListsSection = (club, lists) => {
+    if (!lists || typeof lists !== 'object') {
+      return null;
+    }
+
+    const listDefs = [
+      { key: 'members', label: 'Membres', type: 'members' },
+      { key: 'members_by_elo', label: 'Par Elo', type: 'members' },
+      { key: 'arbitrage', label: 'Arbitrage', type: 'staff' },
+      { key: 'animation', label: 'Animation', type: 'staff' },
+      { key: 'entrainement', label: 'Entraînement', type: 'staff' },
+      { key: 'initiation', label: 'Initiation', type: 'staff' },
+    ];
+
+    const available = listDefs.filter((def) => lists[def.key]);
+    if (!available.length) {
+      return null;
+    }
+
+    const section = document.createElement('section');
+    section.className = 'club-section club-section--ffe';
+
+    const heading = document.createElement('h2');
+    heading.textContent = 'FFE - Membres et encadrement';
+    section.appendChild(heading);
+
+    const tabs = document.createElement('div');
+    tabs.className = 'club-tabs';
+    tabs.setAttribute('role', 'tablist');
+    section.appendChild(tabs);
+
+    const panelsWrap = document.createElement('div');
+    panelsWrap.className = 'club-tabs__panels';
+    section.appendChild(panelsWrap);
+
+    const tabButtons = [];
+    const tabPanels = [];
+    const tabPrefix = slugify(`ffe-${club.slug || club.id || club.name || 'club'}`);
+
+    const createEmptyMessage = (message) => {
+      const empty = document.createElement('p');
+      empty.className = 'club-tabs__empty';
+      empty.textContent = message;
+      return empty;
+    };
+
+    available.forEach((def, index) => {
+      const list = lists[def.key] || {};
+      const rows = Array.isArray(list.rows) ? list.rows : [];
+      const count = typeof list.count === 'number' ? list.count : rows.length;
+      const label = count ? `${def.label} (${count})` : def.label;
+
+      const tabId = `${tabPrefix}-tab-${def.key}`;
+      const panelId = `${tabPrefix}-panel-${def.key}`;
+
+      const tab = document.createElement('button');
+      tab.type = 'button';
+      tab.className = 'club-tabs__tab';
+      tab.setAttribute('role', 'tab');
+      tab.setAttribute('id', tabId);
+      tab.setAttribute('aria-controls', panelId);
+      tab.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
+      tab.setAttribute('tabindex', index === 0 ? '0' : '-1');
+      tab.textContent = label;
+      tabs.appendChild(tab);
+
+      const panel = document.createElement('div');
+      panel.className = 'club-tabs__panel';
+      panel.setAttribute('role', 'tabpanel');
+      panel.setAttribute('id', panelId);
+      panel.setAttribute('aria-labelledby', tabId);
+      panel.hidden = index !== 0;
+
+      if (list.error) {
+        panel.appendChild(createEmptyMessage('Données indisponibles pour le moment.'));
+      } else if (!rows.length) {
+        panel.appendChild(createEmptyMessage('Aucune donnée disponible pour ce club.'));
+      } else if (def.type === 'members') {
+        panel.appendChild(renderMembersTable(rows));
+      } else {
+        panel.appendChild(renderStaffTable(rows));
+      }
+
+      panelsWrap.appendChild(panel);
+      tabButtons.push(tab);
+      tabPanels.push(panel);
+    });
+
+    const activateTab = (index) => {
+      tabButtons.forEach((button, idx) => {
+        const isActive = idx === index;
+        button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        button.setAttribute('tabindex', isActive ? '0' : '-1');
+        tabPanels[idx].hidden = !isActive;
+      });
+    };
+
+    tabButtons.forEach((button, index) => {
+      button.addEventListener('click', () => {
+        activateTab(index);
+      });
+      button.addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') {
+          return;
+        }
+        event.preventDefault();
+        const direction = event.key === 'ArrowRight' ? 1 : -1;
+        const nextIndex = (index + direction + tabButtons.length) % tabButtons.length;
+        activateTab(nextIndex);
+        tabButtons[nextIndex].focus();
+      });
+    });
+
+    return section;
+  };
+
+  const renderClub = (club, ffeLists) => {
     detailContainer.innerHTML = '';
 
     const sheet = document.createElement('div');
@@ -1967,6 +2220,11 @@
       sections.push(resources.section);
     }
 
+    const ffeSection = renderFfeListsSection(club, ffeLists);
+    if (ffeSection) {
+      sections.push(ffeSection);
+    }
+
     sections.forEach((section) => sheet.appendChild(section));
 
     detailContainer.appendChild(sheet);
@@ -2048,7 +2306,8 @@
           return;
         }
         await geocodeClubIfNeeded(club);
-        renderClub(club);
+        const ffeLists = await loadFfeLists(club.ffeRef);
+        renderClub(club, ffeLists);
       })
       .catch(() => {
         renderMessage('Impossible de charger la fiche du club pour le moment.');
