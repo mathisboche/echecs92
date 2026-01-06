@@ -35,6 +35,8 @@ const HEADERS = {
 };
 const FETCH_TIMEOUT_MS = 20000;
 const DETAIL_CONCURRENCY = 8;
+const EXCLUDED_CLUB_REFS = new Set(['1901']);
+const EXCLUDED_CLUB_NAME_PATTERNS = [/championnat de france/i];
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -506,6 +508,18 @@ const buildClubEntries = (detail, listEntry, dept) => {
   return { baseEntry, ffeEntry };
 };
 
+const shouldExcludeClub = (detail, listEntry) => {
+  const ref = (detail?.ref || listEntry?.ref || '').toString().trim();
+  if (ref && EXCLUDED_CLUB_REFS.has(ref)) {
+    return true;
+  }
+  const name = (detail?.name || listEntry?.name || '').toString().trim();
+  if (name && EXCLUDED_CLUB_NAME_PATTERNS.some((pattern) => pattern.test(name))) {
+    return true;
+  }
+  return false;
+};
+
 const coerceLicenseValue = (value) => {
   if (value == null || value === '') {
     return null;
@@ -694,6 +708,10 @@ const main = async () => {
 
     list.forEach((entry) => {
       const detail = allRefs.get(entry.ref) || { ref: entry.ref };
+      if (shouldExcludeClub(detail, entry)) {
+        console.log(`→ Club exclu (${entry.ref}) ${entry.name || detail.name || ''}`.trim());
+        return;
+      }
       const combined = buildClubEntries(detail, entry, dept);
       baseEntries.push(combined.baseEntry);
       ffeEntries.push(combined.ffeEntry);

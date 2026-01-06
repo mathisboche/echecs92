@@ -4178,19 +4178,19 @@ a.news-simple-card__more:focus-visible{
 }
 .clubs-scope-banner{
   display:flex;
-  flex-wrap:wrap;
   align-items:center;
-  gap:10px;
-  margin:8px 0 12px;
-  padding:8px 12px;
-  border-radius:12px;
-  border:1px solid #e2e8f0;
-  background:#f9fafc;
+  gap:12px;
+  width:100vw;
+  margin:0 calc(50% - 50vw) 14px;
+  padding:8px 24px;
+  border-top:1px solid #e2e8f0;
+  border-bottom:1px solid #e2e8f0;
+  background:#f8fafc;
   color:#0f172a;
   font-size:13px;
 }
 .clubs-scope-banner__text{
-  font-weight:600;
+  font-weight:500;
 }
 .clubs-scope-banner__link{
   font-weight:600;
@@ -4464,8 +4464,8 @@ a.news-simple-card__more:focus-visible{
     font-size:11px;
   }
   .clubs-scope-banner{
-    padding:14px;
-    margin:10px 0 12px;
+    padding:8px 16px;
+    margin:0 calc(50% - 50vw) 12px;
   }
   .clubs-scope-modal__panel{
     width:calc(100% - 24px);
