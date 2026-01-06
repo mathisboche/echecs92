@@ -35,6 +35,7 @@ jobs:
               wp-content/themes/echecs92-child/assets/data/clubs-france.json \
               wp-content/themes/echecs92-child/assets/data/clubs-france-ffe \
               wp-content/themes/echecs92-child/assets/data/clubs-france-ffe.json \
+              wp-content/themes/echecs92-child/assets/data/clubs-france-ffe-details \
               wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json
             git commit -m "chore(data): refresh FFE clubs"
             git push
