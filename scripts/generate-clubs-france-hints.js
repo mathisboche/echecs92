@@ -357,22 +357,40 @@ const pickBestCommune = (candidates, postalCode) => {
   return best || '';
 };
 
+const rankPostalCandidate = (code) => {
+  if (!code) {
+    return -Infinity;
+  }
+  let score = 0;
+  if (/^\d{5}$/.test(code)) {
+    score += 1;
+  }
+  if (postalCoordinatesIndex.size && postalCoordinatesIndex.has(code)) {
+    score += 3;
+  }
+  return score;
+};
+
 const collectPostalCodes = (club) => {
   const codes = new Set();
+  const add = (value) => {
+    const parsed = parsePostalCodeFromString(value || '');
+    const canonical = parsed ? canonicalizeParisPostalCode(parsed) || parsed : '';
+    if (canonical) {
+      codes.add(canonical);
+    }
+  };
   if (club.postalCode) {
-    codes.add(club.postalCode);
+    add(club.postalCode);
   }
   [club.address, club.siege, club.addressStandard].forEach((value) => {
-    const parsed = parsePostalCodeFromString(value || '');
-    if (parsed) {
-      codes.add(parsed);
-    }
+    add(value);
     const matches = (value || '').match(/\b\d{5}\b/g);
     if (matches) {
-      matches.forEach((code) => codes.add(code));
+      matches.forEach((code) => add(code));
     }
   });
-  return Array.from(codes);
+  return Array.from(codes).sort((a, b) => rankPostalCandidate(b) - rankPostalCandidate(a));
 };
 
 const adaptClubRecord = (raw) => {
@@ -643,6 +661,8 @@ const isPlausibleCoordinate = (lat, lng, postalCode) => {
 };
 
 const GEOCODE_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
+const GEOCODE_BAN_ENDPOINT = 'https://api-adresse.data.gouv.fr/search/';
+const GEO_COMPARE_DISTANCE_KM = 80;
 
 const geocodePlace = async (query, options = {}) => {
   const expectedPostal = canonicalizeParisPostalCode((options.postalCode || '').toString().trim());
@@ -707,22 +727,85 @@ const geocodePlace = async (query, options = {}) => {
   }
 };
 
+const geocodePlaceBan = async (query, options = {}) => {
+  const expectedPostal = canonicalizeParisPostalCode((options.postalCode || '').toString().trim());
+  const allowMismatch = options.allowMismatch === true;
+  const q = (query || '').trim();
+  if (!q) {
+    return null;
+  }
+  const params = new URLSearchParams({
+    q,
+    limit: '1',
+    autocomplete: '0',
+  });
+  if (expectedPostal) {
+    params.set('postcode', expectedPostal);
+  }
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer =
+    controller && Number.isFinite(options.timeoutMs || 0) && (options.timeoutMs || 0) > 0
+      ? setTimeout(() => controller.abort(), options.timeoutMs)
+      : controller
+      ? setTimeout(() => controller.abort(), 15000)
+      : null;
+  try {
+    const response = await fetch(`${GEOCODE_BAN_ENDPOINT}?${params.toString()}`, {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'echecs92-clubs-fr/1.0 (contact@echecs92.com)',
+      },
+      signal: controller?.signal,
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const payload = await response.json();
+    const feature = Array.isArray(payload?.features) ? payload.features[0] : null;
+    if (!feature) {
+      return null;
+    }
+    const coords = Array.isArray(feature?.geometry?.coordinates) ? feature.geometry.coordinates : [];
+    const lng = Number.parseFloat(coords[0]);
+    const lat = Number.parseFloat(coords[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return null;
+    }
+    const postalCodeRaw = feature?.properties?.postcode || feature?.properties?.postalcode || '';
+    const postalCode = canonicalizeParisPostalCode(postalCodeRaw.toString().trim());
+    if (!allowMismatch && expectedPostal && postalCode && postalCode !== expectedPostal) {
+      return null;
+    }
+    return {
+      lat,
+      lng,
+      postalCode: postalCode || expectedPostal,
+      label: feature?.properties?.label || '',
+      source: allowMismatch ? 'ban-relaxed' : 'ban-strict',
+    };
+  } catch (error) {
+    return null;
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
+};
+
 const isMonacoClub = (club, postalCandidates) => {
   if ((postalCandidates || []).some((code) => /^980\d{2}$/.test((code || '').toString()))) {
     return true;
   }
-  const probe = normalise(
-    [
-      club.name || '',
-      club.commune || '',
-      club.address || '',
-      club.siege || '',
-      club.addressStandard || '',
-    ]
-      .filter(Boolean)
-      .join(' ')
-  );
-  return probe.includes('monaco');
+  const name = normalise(club.name || '');
+  const commune = normalise(club.commune || '');
+  if (name.includes('monaco') || commune.includes('monaco')) {
+    return true;
+  }
+  const addressCity = extractAddressParts(club.address || '').city || '';
+  const siegeCity = extractAddressParts(club.siege || '').city || '';
+  const standardCity = extractAddressParts(club.addressStandard || '').city || '';
+  const cityProbe = normalise([addressCity, siegeCity, standardCity].filter(Boolean).join(' '));
+  return cityProbe.includes('monaco');
 };
 
 const validateGeocodeResult = (result, expectedPostal) => {
@@ -744,6 +827,46 @@ const validateGeocodeResult = (result, expectedPostal) => {
   return { ok: false, reason: 'distance', distance };
 };
 
+const pickBestGeocodeCandidate = (expectedPostal, candidates) => {
+  const scored = (candidates || [])
+    .filter(Boolean)
+    .map((candidate) => ({ candidate, check: validateGeocodeResult(candidate, expectedPostal) }));
+  if (!scored.length) {
+    return null;
+  }
+  const chooseBest = (list) => {
+    const withDistance = list.filter((item) => Number.isFinite(item.check.distance));
+    if (withDistance.length) {
+      withDistance.sort((a, b) => a.check.distance - b.check.distance);
+      return withDistance[0].candidate;
+    }
+    return list[0].candidate;
+  };
+  const valid = scored.filter((item) => item.check.ok);
+  if (valid.length) {
+    return chooseBest(valid);
+  }
+  return chooseBest(scored);
+};
+
+const compareGeocodeProviders = (club, nominatim, ban, contextLabel = '') => {
+  if (!nominatim || !ban) {
+    return;
+  }
+  const distance = haversineKm(nominatim.lat, nominatim.lng, ban.lat, ban.lng);
+  if (!Number.isFinite(distance) || distance <= GEO_COMPARE_DISTANCE_KM) {
+    return;
+  }
+  const label = contextLabel ? ` pour "${contextLabel}"` : '';
+  recordIssue('suspect', club, {
+    message: `Écart Nominatim/BAN (${distance.toFixed(1)} km)${label}.`,
+    distanceKm: distance,
+    lat: nominatim.lat,
+    lng: nominatim.lng,
+    source: 'compare',
+  });
+};
+
 const geocodeClub = async (club, options = {}) => {
   const postalCandidates = collectPostalCodes(club);
   const expectedPostal = postalCandidates[0] || '';
@@ -751,21 +874,33 @@ const geocodeClub = async (club, options = {}) => {
     recordIssue('forced', club, { message: 'Coordonnées Monaco forcées.' });
     return { ...MONACO_COORDS, source: 'manual-monaco' };
   }
-  const queries = [
+  const nameQuery =
+    club.name && (club.commune || expectedPostal)
+      ? `${club.name} ${club.commune || ''} ${expectedPostal || ''}`.trim()
+      : '';
+  const rawQueries = [
     club.addressStandard || '',
     club.address || '',
     club.siege || '',
     club.commune && expectedPostal ? `${club.commune} ${expectedPostal}` : '',
     club.commune || '',
     expectedPostal,
-    club.name || '',
+    nameQuery,
   ]
     .map((q) => (q || '').trim())
     .filter(Boolean);
+  const queries = Array.from(new Set(rawQueries));
+  if (!queries.length) {
+    recordIssue('failed', club, { message: 'Aucune adresse exploitable.' });
+    return null;
+  }
 
   const attemptGeocode = async (postalConstraint, allowMismatch) => {
     for (const q of queries) {
-      const place = await geocodePlace(q, { postalCode: postalConstraint, allowMismatch });
+      const nominatim = await geocodePlace(q, { postalCode: postalConstraint, allowMismatch });
+      const ban = await geocodePlaceBan(q, { postalCode: postalConstraint, allowMismatch });
+      compareGeocodeProviders(club, nominatim, ban, q);
+      const place = pickBestGeocodeCandidate(expectedPostal, [nominatim, ban]);
       if (place) {
         return place;
       }
