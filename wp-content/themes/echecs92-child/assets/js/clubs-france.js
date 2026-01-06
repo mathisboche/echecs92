@@ -731,18 +731,6 @@
     return cleaned.replace(/\s+/g, ' ').trim();
   };
 
-  const trimRemoteQuery = (query) => {
-    const cleaned = (query || '').toString().trim();
-    if (!cleaned) {
-      return '';
-    }
-    const tokens = cleaned.split(/\s+/).filter(Boolean);
-    if (tokens.length >= 2 && tokens[tokens.length - 1].length < 3) {
-      return tokens.slice(0, -1).join(' ');
-    }
-    return cleaned;
-  };
-
   const extractLocationQueryParts = (rawQuery) => {
     const trimmed = (rawQuery || '').toString().trim();
     if (!trimmed) {
@@ -1112,23 +1100,6 @@
     return dedupeLocationSuggestions(suggestions);
   };
 
-  const LOCALITY_EXCLUDE_KEYWORDS =
-    /\b(rue|avenue|av\.?|boulevard|bd|bld|route|chemin|impasse|all[ée]e|allee|voie|quai|cours|passage|square|sentier|mail|esplanade|terrasse|pont|faubourg|clos|cité|cite|lotissement|residence|résidence|place|rond[-\s]?point)\b/i;
-
-  const looksLikeNonHamletLocality = (value) => {
-    const raw = (value || '').toString().trim();
-    if (!raw) {
-      return true;
-    }
-    if (LOCALITY_EXCLUDE_KEYWORDS.test(raw)) {
-      return true;
-    }
-    if (/\d/.test(raw)) {
-      return true;
-    }
-    return false;
-  };
-
   const extractBanLabel = (label, postalCode) => {
     const raw = (label || '').toString().trim();
     if (!raw) {
@@ -1171,9 +1142,6 @@
       if (!primaryLabel && !postal) {
         return;
       }
-      if (type === 'locality' && looksLikeNonHamletLocality(primaryLabel || rawLabel)) {
-        return;
-      }
       const communeBase = formatCommune(primaryLabel);
       const display = formatLocationLabel(communeBase || primaryLabel, postal, primaryLabel || postal || '');
       const coords = Array.isArray(feature?.geometry?.coordinates) ? feature.geometry.coordinates : [];
@@ -1201,15 +1169,12 @@
   const getRemoteLocationQueryParts = (rawQuery) => {
     const trimmed = (rawQuery || '').toString().trim();
     if (!trimmed) {
-      return { query: '', queryForRemote: '', postal: '', numeric: '' };
+      return { query: '', postal: '', numeric: '' };
     }
     const numeric = trimmed.replace(/\D/g, '');
     const parsedPostal = parsePostalCodeFromString(trimmed) || normalisePostalCodeValue(numeric);
     const postal = canonicalizeParisPostalCode(parsedPostal) || parsedPostal || '';
-    const cleaned = stripPostalFromQuery(trimmed, postal || parsedPostal);
-    const query = cleaned || trimmed;
-    const queryForRemote = trimRemoteQuery(query);
-    return { query, queryForRemote, postal, numeric };
+    return { query: trimmed, postal, numeric };
   };
 
   const shouldFetchRemoteLocationSuggestions = (rawQuery) => {
@@ -1226,9 +1191,8 @@
   };
 
   const fetchGeoLocationSuggestions = (rawQuery) => {
-    const { query, queryForRemote, numeric, postal } = getRemoteLocationQueryParts(rawQuery);
-    const remoteQuery = queryForRemote || query;
-    const hasLetters = /[a-z]/i.test(remoteQuery);
+    const { query, numeric, postal } = getRemoteLocationQueryParts(rawQuery);
+    const hasLetters = /[a-z]/i.test(query);
     const isFullPostal = postal && postal.length === 5 && /^\d+$/.test(postal);
     const limit = isFullPostal ? LOCATION_REMOTE_POSTAL_LIMIT : LOCATION_REMOTE_LIMIT;
     const params = new URLSearchParams({
@@ -1236,8 +1200,8 @@
       boost: 'population',
       fields: LOCATION_REMOTE_FIELDS,
     });
-    if (remoteQuery && hasLetters) {
-      params.set('nom', remoteQuery);
+    if (query && hasLetters) {
+      params.set('nom', query);
     }
     if (numeric.length >= 3) {
       params.set('codePostal', numeric.slice(0, 5));
@@ -1271,15 +1235,14 @@
   };
 
   const fetchBanLocationSuggestions = (rawQuery) => {
-    const { query, queryForRemote, numeric, postal } = getRemoteLocationQueryParts(rawQuery);
-    const remoteQuery = queryForRemote || query;
+    const { query, numeric, postal } = getRemoteLocationQueryParts(rawQuery);
     const isFullPostal = postal && postal.length === 5 && /^\d+$/.test(postal);
     const limit = isFullPostal ? LOCATION_REMOTE_ALT_LIMIT_POSTAL : LOCATION_REMOTE_ALT_LIMIT;
-    const baseQuery = remoteQuery || postal || numeric || '';
+    const baseQuery = query || postal || numeric || '';
     if (!baseQuery) {
       return Promise.resolve([]);
     }
-    const types = ['municipality', 'locality'];
+    const types = ['municipality'];
     const requests = types.map((type) => {
       const params = new URLSearchParams({
         q: baseQuery,
@@ -1728,7 +1691,7 @@
   const LOCATION_REMOTE_ALT_LIMIT = Math.max(LOCATION_SUGGESTIONS_LIMIT * 2, 12);
   const LOCATION_REMOTE_ALT_LIMIT_POSTAL = Math.max(LOCATION_SUGGESTIONS_LIMIT * 16, 200);
   const LOCATION_REMOTE_ALT_TIMEOUT_MS = 2400;
-  const LOCATION_REMOTE_ALT_TYPES = new Set(['municipality', 'locality']);
+  const LOCATION_REMOTE_ALT_TYPES = new Set(['municipality']);
   const remoteLocationSuggestionCache = new Map();
   let locationSuggestionsIndex = [];
   let locationSuggestionsCurrent = [];
