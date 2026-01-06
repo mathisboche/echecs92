@@ -48,6 +48,57 @@
     return raw.replace(/^(dans|en)\s+/i, '').trim();
   })();
   const scopeShortLabel = clubsDepartments.length === 1 ? clubsDepartments[0] : scopeName;
+  const buildScopeGrammar = (label) => {
+    const raw = (label || '').trim();
+    const fallback = {
+      label: 'la France',
+      de: 'de la France',
+      hors: 'hors de la France',
+      dehors: 'en dehors de la France',
+    };
+    if (!raw) {
+      return fallback;
+    }
+    const cleaned = raw.replace(/^(dans|en)\s+/i, '').trim();
+    const base = cleaned || raw;
+    const apostropheMatch = base.match(/^l[’']\s*(.+)$/i);
+    if (apostropheMatch) {
+      const noun = apostropheMatch[1].trim();
+      const de = `de l'${noun}`;
+      return {
+        label: base,
+        de,
+        hors: `hors ${de}`,
+        dehors: `en dehors ${de}`,
+      };
+    }
+    const articleMatch = base.match(/^(les|le|la)\s+(.+)$/i);
+    if (articleMatch) {
+      const article = articleMatch[1].toLowerCase();
+      const noun = articleMatch[2].trim();
+      let de = `de ${base}`;
+      if (article === 'les') {
+        de = `des ${noun}`;
+      } else if (article === 'le') {
+        de = `du ${noun}`;
+      } else if (article === 'la') {
+        de = `de la ${noun}`;
+      }
+      return {
+        label: base,
+        de,
+        hors: `hors ${de}`,
+        dehors: `en dehors ${de}`,
+      };
+    }
+    const de = `de ${base}`;
+    return {
+      label: base,
+      de,
+      hors: `hors ${de}`,
+      dehors: `en dehors ${de}`,
+    };
+  };
   const shouldIncludeDepartment = (entry) => {
     if (!clubsDepartmentSet) {
       return true;
@@ -204,11 +255,15 @@
     }
     const label = (payload.label || '').trim();
     const scopeLabelText = scopeName || clubsScopeLabel || scopeLabel || 'la France';
-    const titleLabel = scopeLabelText ? `Recherche hors ${scopeLabelText}` : 'Recherche hors périmètre';
+    const grammar = buildScopeGrammar(scopeLabelText);
+    const titleLabel = grammar?.hors ? `Recherche ${grammar.hors}` : 'Recherche hors périmètre';
     const detail = label ? `La localisation "${label}"` : 'Cette localisation';
     modalState.title.textContent = titleLabel;
-    modalState.text.textContent = `${detail} semble être en dehors de ${scopeLabelText}. Souhaitez-vous lancer la recherche sur toute la France ?`;
-    modalState.stayButton.textContent = scopeShortLabel ? `Rester sur le ${scopeShortLabel}` : 'Rester ici';
+    modalState.text.textContent = `${detail} semble être ${grammar.dehors}. Souhaitez-vous lancer la recherche sur toute la France ?`;
+    const stayLabel = scopeShortLabel
+      ? (/^\d+$/.test(scopeShortLabel) ? `Rester sur le ${scopeShortLabel}` : `Rester sur ${scopeShortLabel}`)
+      : 'Rester ici';
+    modalState.stayButton.textContent = stayLabel;
     modalState.goButton.textContent = 'Rechercher partout en France';
     modalState.lastFocus = typeof document !== 'undefined' ? document.activeElement : null;
     modalState.modal.removeAttribute('hidden');
@@ -4227,6 +4282,72 @@
     return digits;
   };
 
+  const MONACO_POSTAL_CODE = '98000';
+  const MONACO_BANNER_URL = 'https://chessmatesinternational.com';
+  let monacoBanner = null;
+
+  const ensureMonacoBanner = () => {
+    if (monacoBanner || !resultsEl || typeof document === 'undefined') {
+      return monacoBanner;
+    }
+    const banner = document.createElement('div');
+    banner.className = 'clubs-monaco-banner';
+    banner.setAttribute('role', 'note');
+    banner.setAttribute('hidden', '');
+
+    const text = document.createElement('span');
+    text.className = 'clubs-monaco-banner__text';
+    text.textContent = 'Monaco : ChessMates International (association monegasque).';
+
+    const link = document.createElement('a');
+    link.className = 'clubs-monaco-banner__link';
+    link.href = MONACO_BANNER_URL;
+    link.textContent = 'chessmatesinternational.com';
+    link.rel = 'noopener';
+
+    banner.appendChild(text);
+    banner.appendChild(link);
+    resultsEl.before(banner);
+    monacoBanner = banner;
+    return monacoBanner;
+  };
+
+  const setMonacoBannerVisible = (visible) => {
+    const banner = ensureMonacoBanner();
+    if (!banner) {
+      return;
+    }
+    if (visible) {
+      banner.removeAttribute('hidden');
+    } else {
+      banner.setAttribute('hidden', '');
+    }
+  };
+
+  const isMonacoReference = (payload = {}) => {
+    const postal = normalisePostalCodeValue(payload.postalCode || '');
+    if (postal === MONACO_POSTAL_CODE) {
+      return true;
+    }
+    const label = normalise(payload.label || '');
+    const commune = normalise(payload.commune || '');
+    return Boolean(label && label.includes('monaco')) || Boolean(commune && commune.includes('monaco'));
+  };
+
+  const updateMonacoBanner = () => {
+    if (!resultsEl) {
+      return;
+    }
+    const shouldShow =
+      state.distanceMode &&
+      isMonacoReference({
+        postalCode: state.distanceReferencePostal,
+        label: state.distanceReference,
+        commune: state.distanceReferenceCommune,
+      });
+    setMonacoBannerVisible(shouldShow);
+  };
+
   const postalCoordinatesIndex = new Map();
   const communeCoordinatesByName = new Map();
   let postalCoordinatesPromise = null;
@@ -6328,6 +6449,7 @@
     state.visibleCount = Math.min(VISIBLE_RESULTS_DEFAULT, state.filtered.length);
     renderResults();
     updateTotalCounter();
+    updateMonacoBanner();
 
     return {
       total: state.filtered.length,
@@ -6360,6 +6482,7 @@
       state.distanceReferenceType = referenceType || '';
       renderResults();
       updateTotalCounter();
+      updateMonacoBanner();
       return { total: 0, finite: 0, label: state.distanceReference };
     }
 
@@ -6440,6 +6563,7 @@
     state.visibleCount = Math.min(VISIBLE_RESULTS_DEFAULT, state.filtered.length);
     renderResults();
     updateTotalCounter();
+    updateMonacoBanner();
 
     return {
       total: state.filtered.length,
