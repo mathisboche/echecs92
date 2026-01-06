@@ -4180,32 +4180,55 @@ a.news-simple-card__more:focus-visible{
   display:flex;
   flex-wrap:wrap;
   align-items:center;
-  gap:16px;
-  margin:12px 0 16px;
-  padding:16px 18px;
-  border-radius:16px;
-  border:1px solid #d7deec;
-  background:#f8fafc;
+  gap:10px;
+  margin:8px 0 12px;
+  padding:8px 12px;
+  border-radius:12px;
+  border:1px solid #e2e8f0;
+  background:#f9fafc;
   color:#0f172a;
+  font-size:13px;
 }
 .clubs-scope-banner__text{
-  flex:1 1 240px;
+  font-weight:600;
+}
+.clubs-scope-banner__link{
+  font-weight:600;
+  color:#0b2e4c;
+  text-decoration:none;
+}
+.clubs-scope-banner__link:hover,
+.clubs-scope-banner__link:focus-visible{
+  text-decoration:underline;
+}
+.clubs-monaco-banner{
   display:flex;
-  flex-direction:column;
-  gap:4px;
-}
-.clubs-scope-banner__text strong{
-  font-size:15px;
-}
-.clubs-scope-banner__text span{
+  flex-wrap:wrap;
+  align-items:center;
+  gap:10px;
+  margin:8px 0 12px;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid #e2e8f0;
+  background:#ffffff;
+  color:#0f172a;
   font-size:13px;
+}
+.clubs-monaco-banner[hidden]{
+  display:none;
+}
+.clubs-monaco-banner__text{
+  flex:1 1 220px;
   color:#475569;
 }
-.clubs-scope-banner__btn{
-  flex:0 0 auto;
-  border-radius:999px;
-  padding:10px 16px;
-  font-size:13px;
+.clubs-monaco-banner__link{
+  font-weight:600;
+  color:#0b2e4c;
+  text-decoration:none;
+}
+.clubs-monaco-banner__link:hover,
+.clubs-monaco-banner__link:focus-visible{
+  text-decoration:underline;
 }
 .btn-geoloc{
   background:#0a8a4f;
@@ -4271,7 +4294,7 @@ a.news-simple-card__more:focus-visible{
   position:relative;
   z-index:1;
   max-width:520px;
-  width:92%;
+  width:calc(100% - 32px);
   background:#ffffff;
   border-radius:18px;
   padding:20px 20px 18px;
@@ -4444,7 +4467,15 @@ a.news-simple-card__more:focus-visible{
     padding:14px;
     margin:10px 0 12px;
   }
-  .clubs-scope-banner__btn{
+  .clubs-scope-modal__panel{
+    width:calc(100% - 24px);
+    padding:18px 16px 16px;
+  }
+  .clubs-scope-modal__actions{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .clubs-scope-modal__actions .btn{
     width:100%;
   }
   .clubs-geoloc-banner{
