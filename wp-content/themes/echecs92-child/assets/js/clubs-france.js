@@ -39,12 +39,200 @@
   const scopeLabel = clubsScopeLabel || 'en France';
   const listPath = normalisePathname(clubsPageShell?.dataset?.clubsListPath || '/clubs');
   const clubsDepartmentSet = hasDepartmentFilter ? new Set(clubsDepartments) : null;
+  const FRANCE_LIST_PATH = '/clubs';
+  const scopeName = (() => {
+    const raw = (clubsScopeLabel || '').trim();
+    if (!raw) {
+      return '';
+    }
+    return raw.replace(/^(dans|en)\s+/i, '').trim();
+  })();
+  const scopeShortLabel = clubsDepartments.length === 1 ? clubsDepartments[0] : scopeName;
   const shouldIncludeDepartment = (entry) => {
     if (!clubsDepartmentSet) {
       return true;
     }
     const code = entry?.code ? entry.code.toString().toUpperCase() : '';
     return clubsDepartmentSet.has(code);
+  };
+
+  const getDepartmentFromPostal = (postalCode) => {
+    const digits = (postalCode || '').toString().replace(/\D/g, '').trim();
+    if (digits.length < 2) {
+      return '';
+    }
+    if (digits.startsWith('97') || digits.startsWith('98')) {
+      return digits.slice(0, 3);
+    }
+    return digits.slice(0, 2);
+  };
+
+  const isPostalOutsideScope = (postalCode) => {
+    if (!hasDepartmentFilter || !clubsDepartmentSet) {
+      return false;
+    }
+    const dept = getDepartmentFromPostal(postalCode);
+    if (!dept) {
+      return false;
+    }
+    return !clubsDepartmentSet.has(dept);
+  };
+
+  const buildFranceSearchUrl = (label) => {
+    const params = new URLSearchParams();
+    if (label) {
+      params.set('loc', label);
+    }
+    params.set('liste', '1');
+    const query = params.toString();
+    return query ? `${FRANCE_LIST_PATH}?${query}` : FRANCE_LIST_PATH;
+  };
+
+  let scopeModalState = null;
+  const ensureScopeModal = () => {
+    if (scopeModalState) {
+      return scopeModalState;
+    }
+    if (typeof document === 'undefined' || !document.body) {
+      return null;
+    }
+    const modal = document.createElement('div');
+    modal.id = 'clubs-scope-modal';
+    modal.className = 'clubs-scope-modal';
+    modal.setAttribute('hidden', '');
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'clubs-scope-modal__backdrop';
+    backdrop.dataset.scopeAction = 'close';
+    modal.appendChild(backdrop);
+
+    const panel = document.createElement('div');
+    panel.className = 'clubs-scope-modal__panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    panel.setAttribute('aria-labelledby', 'clubs-scope-modal-title');
+    modal.appendChild(panel);
+
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.className = 'clubs-scope-modal__close';
+    closeButton.setAttribute('aria-label', 'Fermer');
+    closeButton.textContent = 'x';
+    closeButton.dataset.scopeAction = 'close';
+    panel.appendChild(closeButton);
+
+    const title = document.createElement('h2');
+    title.id = 'clubs-scope-modal-title';
+    title.className = 'clubs-scope-modal__title';
+    panel.appendChild(title);
+
+    const text = document.createElement('p');
+    text.className = 'clubs-scope-modal__text';
+    panel.appendChild(text);
+
+    const actions = document.createElement('div');
+    actions.className = 'clubs-scope-modal__actions';
+    panel.appendChild(actions);
+
+    const stayButton = document.createElement('button');
+    stayButton.type = 'button';
+    stayButton.className = 'btn btn-secondary clubs-scope-modal__stay';
+    stayButton.dataset.scopeAction = 'stay';
+    actions.appendChild(stayButton);
+
+    const goButton = document.createElement('button');
+    goButton.type = 'button';
+    goButton.className = 'btn clubs-scope-modal__go';
+    goButton.dataset.scopeAction = 'go';
+    actions.appendChild(goButton);
+
+    document.body.appendChild(modal);
+
+    scopeModalState = {
+      modal,
+      title,
+      text,
+      stayButton,
+      goButton,
+      lastFocus: null,
+      resolve: null,
+    };
+
+    const handleAction = (action) => {
+      if (!scopeModalState || !scopeModalState.resolve) {
+        return;
+      }
+      const resolve = scopeModalState.resolve;
+      scopeModalState.resolve = null;
+      scopeModalState.modal.setAttribute('hidden', '');
+      if (scopeModalState.lastFocus && typeof scopeModalState.lastFocus.focus === 'function') {
+        scopeModalState.lastFocus.focus();
+      }
+      resolve(action === 'go');
+    };
+
+    modal.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+      const action = target.dataset.scopeAction;
+      if (!action) {
+        return;
+      }
+      event.preventDefault();
+      handleAction(action);
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (!scopeModalState || scopeModalState.modal.hasAttribute('hidden')) {
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        handleAction('close');
+      }
+    });
+
+    return scopeModalState;
+  };
+
+  const openScopeModal = (payload = {}) => {
+    const modalState = ensureScopeModal();
+    if (!modalState) {
+      return Promise.resolve(false);
+    }
+    const label = (payload.label || '').trim();
+    const scopeLabelText = scopeName || clubsScopeLabel || scopeLabel || 'la France';
+    const titleLabel = scopeLabelText ? `Recherche hors ${scopeLabelText}` : 'Recherche hors périmètre';
+    const detail = label ? `La localisation "${label}"` : 'Cette localisation';
+    modalState.title.textContent = titleLabel;
+    modalState.text.textContent = `${detail} semble être en dehors de ${scopeLabelText}. Souhaitez-vous lancer la recherche sur toute la France ?`;
+    modalState.stayButton.textContent = scopeShortLabel ? `Rester sur le ${scopeShortLabel}` : 'Rester ici';
+    modalState.goButton.textContent = 'Rechercher partout en France';
+    modalState.lastFocus = typeof document !== 'undefined' ? document.activeElement : null;
+    modalState.modal.removeAttribute('hidden');
+    modalState.goButton.focus();
+    return new Promise((resolve) => {
+      modalState.resolve = resolve;
+    });
+  };
+
+  const maybeRedirectToFrance = async (payload = {}) => {
+    if (!isPostalOutsideScope(payload.postalCode)) {
+      return false;
+    }
+    const accepted = await openScopeModal({ label: payload.label });
+    if (!accepted) {
+      return false;
+    }
+    const redirectLabel = payload.label || payload.postalCode || '';
+    const targetUrl = buildFranceSearchUrl(redirectLabel);
+    if (typeof window !== 'undefined') {
+      window.location.assign(targetUrl);
+      return true;
+    }
+    return false;
   };
 
   let manifestPromise = null;
@@ -6699,6 +6887,16 @@
       const baseLabel = toDistanceReferenceLabel(displayLabel, coords.postalCode, { type: referenceType });
       const referenceContext = deriveReferenceContext(displayLabel, coords, referenceType);
       const decoratedLabel = decorateReferenceLabel(baseLabel, referenceContext.type);
+      const redirectLabel = displayLabel || suggestion.display || raw;
+      const outOfScopePostal =
+        referenceContext.postalCode ||
+        coords.postalCode ||
+        suggestion.postalCode ||
+        '';
+      if (await maybeRedirectToFrance({ label: redirectLabel, postalCode: outOfScopePostal })) {
+        result = { ok: false, redirected: true };
+        return result;
+      }
 
       if (locationInput) {
         locationInput.value = decoratedLabel || displayLabel || raw;
@@ -6825,7 +7023,7 @@
           const { latitude, longitude } = position.coords;
           reverseGeocode(latitude, longitude)
             .catch(() => null)
-            .then((place) => {
+            .then(async (place) => {
               if (requestId !== locationRequestId) {
                 releaseButton();
                 releaseGeolocUi();
@@ -6840,6 +7038,11 @@
               );
               const referenceContext = deriveReferenceContext(place?.label || '', place || {}, referenceType);
               const decoratedLabel = decorateReferenceLabel(baseLabel, referenceContext.type);
+              const redirectLabel = place?.label || place?.postalCode || 'votre position';
+              const outOfScopePostal = referenceContext.postalCode || place?.postalCode || '';
+              if (await maybeRedirectToFrance({ label: redirectLabel, postalCode: outOfScopePostal })) {
+                return;
+              }
 
               if (locationInput) {
                 locationInput.value = decoratedLabel || place?.label || '';

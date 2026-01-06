@@ -4176,6 +4176,37 @@ a.news-simple-card__more:focus-visible{
   background:#f6f8fc;
   border-color:#d7deec;
 }
+.clubs-scope-banner{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:16px;
+  margin:12px 0 16px;
+  padding:16px 18px;
+  border-radius:16px;
+  border:1px solid #d7deec;
+  background:#f8fafc;
+  color:#0f172a;
+}
+.clubs-scope-banner__text{
+  flex:1 1 240px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.clubs-scope-banner__text strong{
+  font-size:15px;
+}
+.clubs-scope-banner__text span{
+  font-size:13px;
+  color:#475569;
+}
+.clubs-scope-banner__btn{
+  flex:0 0 auto;
+  border-radius:999px;
+  padding:10px 16px;
+  font-size:13px;
+}
 .btn-geoloc{
   background:#0a8a4f;
   border-color:#0a8a4f;
@@ -4219,6 +4250,59 @@ a.news-simple-card__more:focus-visible{
   color:#0a7a45;
   border-color:#b9f0cf;
   min-width:130px;
+}
+.clubs-scope-modal{
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:99999;
+}
+.clubs-scope-modal[hidden]{
+  display:none;
+}
+.clubs-scope-modal__backdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(15,23,42,0.45);
+}
+.clubs-scope-modal__panel{
+  position:relative;
+  z-index:1;
+  max-width:520px;
+  width:92%;
+  background:#ffffff;
+  border-radius:18px;
+  padding:20px 20px 18px;
+  border:1px solid #e2e8f0;
+  box-shadow:0 24px 60px rgba(15,23,42,0.25);
+  color:#0f172a;
+}
+.clubs-scope-modal__title{
+  font-size:18px;
+  margin:0 0 8px;
+}
+.clubs-scope-modal__text{
+  font-size:14px;
+  color:#475569;
+  margin:0 0 16px;
+}
+.clubs-scope-modal__actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  justify-content:flex-end;
+}
+.clubs-scope-modal__close{
+  position:absolute;
+  top:12px;
+  right:12px;
+  border:0;
+  background:transparent;
+  color:#64748b;
+  font-size:20px;
+  cursor:pointer;
 }
 .clubs-sort-toggle{
   margin:4px 0 0;
@@ -4355,6 +4439,13 @@ a.news-simple-card__more:focus-visible{
   }
   .clubs-distance__note{
     font-size:11px;
+  }
+  .clubs-scope-banner{
+    padding:14px;
+    margin:10px 0 12px;
+  }
+  .clubs-scope-banner__btn{
+    width:100%;
   }
   .clubs-geoloc-banner{
     flex-direction:column;
