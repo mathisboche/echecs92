@@ -1369,9 +1369,9 @@ function cdje92_handle_contact_form() {
     }
 
     $from_email = 'contact@echecs92.com';
-    $from_name  = 'CDJE 92';
+    $from_name  = 'Comité Échecs 92';
     $from_header = sprintf('From: %s <%s>', $from_name, $from_email);
-    $logo_src = esc_url(get_stylesheet_directory_uri() . '/assets/cdje92.png');
+    $logo_src = esc_url(get_stylesheet_directory_uri() . '/assets/cdje92-email.png');
     $logo_src_email = $logo_src;
     $message_plain = trim($message);
     $message_html = nl2br(esc_html($message_plain));
