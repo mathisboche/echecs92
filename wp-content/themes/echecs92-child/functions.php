@@ -1290,11 +1290,42 @@ function cdje92_contact_form_set_alt_body( $text ) {
 }
 
 add_action('phpmailer_init', function ( $phpmailer ) {
-    if (empty($GLOBALS['cdje92_contact_mail_alt_body'])) {
+    $has_alt_body = ! empty($GLOBALS['cdje92_contact_mail_alt_body']);
+    $has_from = ! empty($GLOBALS['cdje92_contact_mail_from_email']) || ! empty($GLOBALS['cdje92_contact_mail_from_name']);
+
+    if (! $has_alt_body && ! $has_from) {
         return;
     }
-    $phpmailer->AltBody = $GLOBALS['cdje92_contact_mail_alt_body'];
-});
+
+    if ($has_alt_body) {
+        $phpmailer->AltBody = (string) $GLOBALS['cdje92_contact_mail_alt_body'];
+    }
+
+    if ($has_from) {
+        $from_email = isset($GLOBALS['cdje92_contact_mail_from_email']) ? (string) $GLOBALS['cdje92_contact_mail_from_email'] : '';
+        $from_name  = isset($GLOBALS['cdje92_contact_mail_from_name']) ? (string) $GLOBALS['cdje92_contact_mail_from_name'] : '';
+
+        if ($from_email !== '') {
+            $phpmailer->setFrom($from_email, $from_name, false);
+        }
+    }
+}, 9999);
+
+add_filter('wp_mail_from', function ( $from_email ) {
+    if (! empty($GLOBALS['cdje92_contact_mail_from_email'])) {
+        return (string) $GLOBALS['cdje92_contact_mail_from_email'];
+    }
+
+    return $from_email;
+}, 9999);
+
+add_filter('wp_mail_from_name', function ( $from_name ) {
+    if (! empty($GLOBALS['cdje92_contact_mail_from_name'])) {
+        return (string) $GLOBALS['cdje92_contact_mail_from_name'];
+    }
+
+    return $from_name;
+}, 9999);
 
 function cdje92_handle_contact_form() {
     if (! isset($_POST['cdje92_contact_nonce']) || ! wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['cdje92_contact_nonce'])), 'cdje92_contact_form')) {
@@ -1372,6 +1403,8 @@ function cdje92_handle_contact_form() {
     $from_name  = 'Comité Échecs 92';
     $from_header = sprintf('From: %s <%s>', $from_name, $from_email);
     $logo_src = esc_url(get_stylesheet_directory_uri() . '/assets/cdje92-email.png');
+    $GLOBALS['cdje92_contact_mail_from_email'] = $from_email;
+    $GLOBALS['cdje92_contact_mail_from_name']  = $from_name;
     $logo_src_email = $logo_src;
     $message_plain = trim($message);
     $message_html = nl2br(esc_html($message_plain));
@@ -1383,7 +1416,7 @@ function cdje92_handle_contact_form() {
         $club_row_html = '<p style="margin:0;"><strong>Club / structure :</strong> ' . esc_html($club_value) . '</p>';
     }
 
-    $subject = sprintf('CDJE 92 Message du formulaire - %s', $email);
+    $subject = sprintf('Message du formulaire - %s', $email);
     $body_text = [
         'CDJE 92 - Nouveau message reçu',
         '',
@@ -1436,6 +1469,7 @@ HTML;
     unset($GLOBALS['cdje92_contact_mail_alt_body']);
 
     if (! $sent) {
+        unset($GLOBALS['cdje92_contact_mail_from_email'], $GLOBALS['cdje92_contact_mail_from_name']);
         cdje92_contact_form_safe_redirect([
             'contact_status' => 'error',
             'contact_error'  => 'send_failed',
@@ -1496,6 +1530,7 @@ HTML;
     cdje92_contact_form_set_alt_body($confirmation_text_plain);
     wp_mail($email, $confirmation_subject, $confirmation_body, $confirmation_headers);
     unset($GLOBALS['cdje92_contact_mail_alt_body']);
+    unset($GLOBALS['cdje92_contact_mail_from_email'], $GLOBALS['cdje92_contact_mail_from_name']);
 
     cdje92_contact_form_safe_redirect([
         'contact_status' => 'success',
