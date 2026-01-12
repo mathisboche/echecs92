@@ -3764,6 +3764,9 @@ a.news-simple-card__more:focus-visible{
   --clubs-floating-top: calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-offset, 0px) + 12px);
   box-sizing:border-box;
 }
+.clubs-page.clubs-page--has-scope-banner{
+  padding-top:0;
+}
 .clubs-page--detail{
   padding-top:12px;
 }
@@ -4178,8 +4181,13 @@ a.news-simple-card__more:focus-visible{
 }
 .clubs-scope-banner{
   display:flex;
+  flex-wrap:wrap;
   align-items:center;
+  justify-content:center;
   gap:12px;
+  position:sticky;
+  top:calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-offset, var(--cm-header-height, 96px)));
+  z-index:1900;
   width:100vw;
   margin:0 calc(50% - 50vw) 14px;
   padding:8px 24px;
@@ -4188,6 +4196,9 @@ a.news-simple-card__more:focus-visible{
   background:#f8fafc;
   color:#0f172a;
   font-size:13px;
+  text-align:center;
+  box-sizing:border-box;
+  transition:top .3s ease;
 }
 .clubs-scope-banner__text{
   font-weight:500;
@@ -4301,6 +4312,7 @@ a.news-simple-card__more:focus-visible{
   border:1px solid #e2e8f0;
   box-shadow:0 24px 60px rgba(15,23,42,0.25);
   color:#0f172a;
+  box-sizing:border-box;
 }
 .clubs-scope-modal__title{
   font-size:18px;
