@@ -512,6 +512,14 @@ add_action('init', function () {
     add_rewrite_rule('^club-92/([^/]+)/?$', 'index.php?pagename=club-92&club_commune=$matches[1]', 'top');
     add_rewrite_rule('^club/([^/]+)/?$', 'index.php?pagename=club&club_commune=$matches[1]', 'top');
     add_rewrite_rule('^club-france/([^/]+)/?$', 'index.php?pagename=club&club_commune=$matches[1]', 'top');
+
+    add_rewrite_rule('^joueur/([^/]+)/?$', 'index.php?pagename=joueur&ffe_player=$matches[1]', 'top');
+
+    $rewrite_version = '2026-01-13';
+    if (is_admin() && current_user_can('manage_options') && get_option('cdje92_rewrite_rules_version') !== $rewrite_version) {
+        flush_rewrite_rules(false);
+        update_option('cdje92_rewrite_rules_version', $rewrite_version);
+    }
 });
 
 add_action('template_redirect', function () {
@@ -565,6 +573,10 @@ add_filter('redirect_canonical', function ($redirect_url, $requested_url) {
         preg_match('#^/club/[^/]+/?$#i', $normalized) ||
         preg_match('#^/club-france/[^/]+/?$#i', $normalized)
     ) {
+        return false;
+    }
+
+    if (preg_match('#^/joueur/[^/]+/?$#i', $normalized)) {
         return false;
     }
 
@@ -1075,6 +1087,7 @@ add_action('after_switch_theme', function () {
 
 add_filter('query_vars', function ($vars) {
     $vars[] = 'club_commune';
+    $vars[] = 'ffe_player';
     return $vars;
 });
 

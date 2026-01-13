@@ -1015,6 +1015,24 @@
     return { section, list };
   };
 
+  const createDisclosure = (title, options = {}) => {
+    const details = document.createElement('details');
+    details.className = `club-disclosure${options.className ? ` ${options.className}` : ''}`;
+    if (options.open) {
+      details.open = true;
+    }
+
+    const summary = document.createElement('summary');
+    summary.textContent = title;
+    details.appendChild(summary);
+
+    const content = document.createElement('div');
+    content.className = 'club-disclosure__content';
+    details.appendChild(content);
+
+    return { details, content, summary };
+  };
+
   const appendDetail = (list, label, value, options = {}) => {
     if (value == null || value === '') {
       return false;
@@ -1078,6 +1096,13 @@
     if (!playerId) {
       return '';
     }
+    return `${window.location.origin}/joueur/${encodeURIComponent(playerId)}/`;
+  };
+
+  const buildOfficialPlayerUrl = (playerId) => {
+    if (!playerId) {
+      return '';
+    }
     return `${FFE_PLAYER_URL_BASE}${encodeURIComponent(playerId)}`;
   };
 
@@ -1088,8 +1113,6 @@
     if (row?.playerId) {
       const link = document.createElement('a');
       link.href = buildPlayerUrl(row.playerId);
-      link.target = '_blank';
-      link.rel = 'noopener';
       link.textContent = name;
       wrap.appendChild(link);
     } else {
@@ -1215,25 +1238,32 @@
       return null;
     }
 
-    const section = document.createElement('section');
-    section.className = 'club-section club-section--ffe';
+    const membersCount =
+      (lists.members && typeof lists.members.count === 'number' && lists.members.count) ||
+      (lists.members_by_elo &&
+        typeof lists.members_by_elo.count === 'number' &&
+        lists.members_by_elo.count) ||
+      0;
+    const disclosureLabel = membersCount
+      ? `FFE - Joueurs et encadrement (${membersCount})`
+      : 'FFE - Joueurs et encadrement';
 
-    const heading = document.createElement('h2');
-    heading.textContent = 'FFE - Membres et encadrement';
-    section.appendChild(heading);
+    const disclosure = createDisclosure(disclosureLabel, { className: 'club-disclosure--ffe' });
 
     const tabs = document.createElement('div');
     tabs.className = 'club-tabs';
     tabs.setAttribute('role', 'tablist');
-    section.appendChild(tabs);
+    disclosure.content.appendChild(tabs);
 
     const panelsWrap = document.createElement('div');
     panelsWrap.className = 'club-tabs__panels';
-    section.appendChild(panelsWrap);
+    disclosure.content.appendChild(panelsWrap);
 
     const tabButtons = [];
     const tabPanels = [];
+    const tabPayloads = [];
     const tabPrefix = slugify(`ffe-${club.slug || club.id || club.name || 'club'}`);
+    let activeTabIndex = 0;
 
     const createEmptyMessage = (message) => {
       const empty = document.createElement('p');
@@ -1269,6 +1299,20 @@
       panel.setAttribute('aria-labelledby', tabId);
       panel.hidden = index !== 0;
 
+      panelsWrap.appendChild(panel);
+      tabButtons.push(tab);
+      tabPanels.push(panel);
+      tabPayloads.push({ def, list, rows });
+    });
+
+    const ensurePanelRendered = (index) => {
+      const panel = tabPanels[index];
+      const payload = tabPayloads[index];
+      if (!panel || !payload || panel.dataset.rendered === 'true') {
+        return;
+      }
+      const { def, list, rows } = payload;
+      panel.dataset.rendered = 'true';
       if (list.error) {
         panel.appendChild(createEmptyMessage('Données indisponibles pour le moment.'));
       } else if (!rows.length) {
@@ -1278,19 +1322,19 @@
       } else {
         panel.appendChild(renderStaffTable(rows));
       }
-
-      panelsWrap.appendChild(panel);
-      tabButtons.push(tab);
-      tabPanels.push(panel);
-    });
+    };
 
     const activateTab = (index) => {
+      activeTabIndex = index;
       tabButtons.forEach((button, idx) => {
         const isActive = idx === index;
         button.setAttribute('aria-selected', isActive ? 'true' : 'false');
         button.setAttribute('tabindex', isActive ? '0' : '-1');
         tabPanels[idx].hidden = !isActive;
       });
+      if (disclosure.details.open) {
+        ensurePanelRendered(index);
+      }
     };
 
     tabButtons.forEach((button, index) => {
@@ -1309,7 +1353,13 @@
       });
     });
 
-    return section;
+    disclosure.details.addEventListener('toggle', () => {
+      if (disclosure.details.open) {
+        ensurePanelRendered(activeTabIndex);
+      }
+    });
+
+    return disclosure.details;
   };
 
   const renderClub = (club, ffeLists) => {
@@ -1409,7 +1459,40 @@
 
     const sections = [];
 
-    const coords = createSection('Coordonnées');
+    const essentials = createSection('Infos essentielles');
+    appendDetail(essentials.list, 'Site internet', club.site, {
+      type: 'link',
+      label: 'Accéder au site du club',
+    });
+    appendDetail(essentials.list, 'Email', club.email, { type: 'mail' });
+    appendDetail(essentials.list, 'Téléphone', club.phone, { type: 'phone' });
+    appendDetail(essentials.list, 'Salle de jeu', club.address || club.salle || club.addressDisplay || '');
+    if (essentials.list.childElementCount) {
+      sections.push(essentials.section);
+    }
+
+    const highlights = createSection('Infos club');
+    if (club.president || club.presidentEmail) {
+      if (club.presidentEmail) {
+        appendDetail(highlights.list, 'Président·e', club.presidentEmail, {
+          type: 'mail',
+          label: club.president || club.presidentEmail,
+        });
+      } else {
+        appendDetail(highlights.list, 'Président·e', club.president);
+      }
+    }
+    if (club.totalLicenses) {
+      const label = `${club.totalLicenses} licencié${club.totalLicenses > 1 ? 's' : ''}`;
+      appendDetail(highlights.list, 'Total licenciés', label);
+    }
+    if (highlights.list.childElementCount) {
+      sections.push(highlights.section);
+    }
+
+    const more = createDisclosure('Toutes les informations', { className: 'club-disclosure--details' });
+
+    const coords = createSection('Coordonnées (détails)');
     const normalizeAddress = (value) =>
       normalise(value || '')
         .replace(/[^a-z0-9]+/g, '')
@@ -1422,7 +1505,6 @@
       (addressKey === siegeKey ||
         addressKey.includes(siegeKey) ||
         siegeKey.includes(addressKey));
-    appendDetail(coords.list, 'Salle de jeu', club.address);
     if (
       club.siege &&
       siegeKey &&
@@ -1430,17 +1512,11 @@
     ) {
       appendDetail(coords.list, 'Siège social', club.siege);
     }
-    appendDetail(coords.list, 'Ville', club.commune && !club.address ? club.commune : '');
-    appendDetail(coords.list, 'Email', club.email, { type: 'mail' });
-    appendDetail(coords.list, 'Téléphone', club.phone, { type: 'phone' });
+    appendDetail(coords.list, 'Ville', club.commune);
     appendDetail(coords.list, 'Fax', club.fax);
-    appendDetail(coords.list, 'Site internet', club.site, {
-      type: 'link',
-      label: 'Accéder au site du club',
-    });
     appendDetail(coords.list, 'Accès PMR', club.accesPmr);
     if (coords.list.childElementCount) {
-      sections.push(coords.section);
+      more.content.appendChild(coords.section);
     }
 
     const activities = createSection('Activités');
@@ -1449,7 +1525,7 @@
     appendDetail(activities.list, 'Tarifs', club.tarifs);
     appendDetail(activities.list, 'Informations complémentaires', club.notes && club.publics ? club.notes : '');
     if (activities.list.childElementCount) {
-      sections.push(activities.section);
+      more.content.appendChild(activities.section);
     }
 
     const organisation = createSection('Organisation');
@@ -1462,16 +1538,6 @@
     };
     const presidentKey = normalizePersonKey(club.president, club.presidentEmail);
     const contactKey = normalizePersonKey(club.contact, club.contactEmail);
-    if (club.president || club.presidentEmail) {
-      if (club.presidentEmail) {
-        appendDetail(organisation.list, 'Président·e', club.presidentEmail, {
-          type: 'mail',
-          label: club.president || club.presidentEmail,
-        });
-      } else {
-        appendDetail(organisation.list, 'Président·e', club.president);
-      }
-    }
     if ((club.contact || club.contactEmail) && (!presidentKey || presidentKey !== contactKey)) {
       if (club.contactEmail) {
         appendDetail(organisation.list, 'Contact', club.contactEmail, {
@@ -1493,12 +1559,8 @@
       }
       appendDetail(organisation.list, 'Répartition licences', licenseParts.join(' · '));
     }
-    if (club.totalLicenses) {
-      const label = `${club.totalLicenses} licencié${club.totalLicenses > 1 ? 's' : ''}`;
-      appendDetail(organisation.list, 'Total licenciés', label);
-    }
     if (organisation.list.childElementCount) {
-      sections.push(organisation.section);
+      more.content.appendChild(organisation.section);
     }
 
     const competitions = createSection('Compétitions');
@@ -1506,7 +1568,7 @@
     appendDetail(competitions.list, 'Interclubs Jeunes', club.interclubsJeunes);
     appendDetail(competitions.list, 'Interclubs Féminins', club.interclubsFeminins);
     if (competitions.list.childElementCount) {
-      sections.push(competitions.section);
+      more.content.appendChild(competitions.section);
     }
 
     const resources = createSection('Ressources');
@@ -1518,7 +1580,11 @@
       label: 'Consulter la fiche FFE',
     });
     if (resources.list.childElementCount) {
-      sections.push(resources.section);
+      more.content.appendChild(resources.section);
+    }
+
+    if (more.content.childElementCount) {
+      sections.push(more.details);
     }
 
     const ffeSection = renderFfeListsSection(club, ffeLists);

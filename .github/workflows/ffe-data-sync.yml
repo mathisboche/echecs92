@@ -25,6 +25,7 @@ jobs:
         run: |
           node scripts/sync-ffe-clubs.js
           node scripts/generate-clubs-france-hints.js
+          node scripts/generate-ffe-players-index.js
       - name: Commit and push if needed
         id: commit
         run: |
@@ -36,6 +37,7 @@ jobs:
               wp-content/themes/echecs92-child/assets/data/clubs-france-ffe \
               wp-content/themes/echecs92-child/assets/data/clubs-france-ffe.json \
               wp-content/themes/echecs92-child/assets/data/clubs-france-ffe-details \
+              wp-content/themes/echecs92-child/assets/data/ffe-players \
               wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json
             git commit -m "chore(data): refresh FFE clubs"
             git push
