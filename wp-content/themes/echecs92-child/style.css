@@ -4190,7 +4190,7 @@ a.news-simple-card__more:focus-visible{
   top:calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-offset, var(--cm-header-height, 96px)));
   z-index:1900;
   width:100vw;
-  margin:0 calc(50% - 50vw) 22px;
+  margin:0 calc(50% - 50vw) 32px;
   padding:8px 24px;
   border-top:1px solid #e2e8f0;
   border-bottom:1px solid #e2e8f0;
@@ -4478,7 +4478,7 @@ a.news-simple-card__more:focus-visible{
   }
   .clubs-scope-banner{
     padding:8px 16px;
-    margin:0 calc(50% - 50vw) 18px;
+    margin:0 calc(50% - 50vw) 24px;
   }
   .clubs-scope-modal__panel{
     width:calc(100% - 24px);
