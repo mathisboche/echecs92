@@ -5955,6 +5955,55 @@ body.mathis-mode .mathis-fragment{
   text-decoration:underline;
   outline:none;
 }
+.club-disclosure{
+  border-top:1px solid #e2e8f0;
+  padding-top:20px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.club-disclosure:first-child{
+  border-top:none;
+  padding-top:0;
+}
+.club-disclosure>summary{
+  font-size:15px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  margin:0;
+  color:#475569;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  list-style:none;
+  font-weight:700;
+}
+.club-disclosure>summary::after{
+  content:'+';
+  font-size:16px;
+  font-weight:700;
+  color:#475569;
+}
+.club-disclosure>summary::marker,
+.club-disclosure>summary::-webkit-details-marker{
+  display:none;
+}
+.club-disclosure[open]>summary::after{
+  content:'-';
+}
+.club-disclosure>summary:focus-visible{
+  outline:2px solid #0ea5e9;
+  outline-offset:4px;
+}
+.club-disclosure__content{
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+.club-disclosure--ffe .club-disclosure__content{
+  gap:16px;
+}
 .club-section--ffe{
   gap:16px;
 }
