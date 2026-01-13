@@ -2,7 +2,7 @@ name: Sync FFE clubs data
 
 on:
   schedule:
-    - cron: '15 4 * * 1'
+    - cron: '15 4 * * *'
   workflow_dispatch:
 
 jobs:
