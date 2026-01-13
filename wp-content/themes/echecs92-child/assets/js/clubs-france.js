@@ -10,6 +10,29 @@
   const POSTAL_COORDINATES_DATA_URL = '/wp-content/themes/echecs92-child/assets/data/postal-coordinates-fr.json';
   const normalisePathname = (value) => (value || '').replace(/\/+$/u, '') || '/';
   const clubsPageShell = typeof document !== 'undefined' ? document.querySelector('.clubs-page') : null;
+  const clubsScopeBanner = clubsPageShell ? clubsPageShell.querySelector('.clubs-scope-banner') : null;
+  const syncScopeBannerHeight = () => {
+    if (!clubsScopeBanner || typeof document === 'undefined') {
+      return;
+    }
+    const rect = clubsScopeBanner.getBoundingClientRect();
+    const height = Number.isFinite(rect.height) ? Math.max(0, Math.round(rect.height)) : 0;
+    document.documentElement.style.setProperty('--clubs-scope-banner-height', `${height}px`);
+  };
+  if (clubsScopeBanner) {
+    syncScopeBannerHeight();
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(syncScopeBannerHeight);
+    }
+    if (typeof ResizeObserver === 'function') {
+      const scopeBannerObserver = new ResizeObserver(() => {
+        syncScopeBannerHeight();
+      });
+      scopeBannerObserver.observe(clubsScopeBanner);
+    } else if (typeof window !== 'undefined') {
+      window.addEventListener('resize', syncScopeBannerHeight);
+    }
+  }
   const clubsDepartments = (clubsPageShell?.dataset?.clubsDepartments || '')
     .split(',')
     .map((value) => value.trim().toUpperCase())

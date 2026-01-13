@@ -679,6 +679,7 @@ body.cm-menu-open{
 :root{
   --cm-header-height:96px;
   --cm-header-offset:var(--cm-header-height, 96px);
+  --clubs-scope-banner-height:0px;
   --home-accent:#0b2e4c;
   --home-accent-soft:#e5edf6;
   --home-dark:#081529;
@@ -4189,7 +4190,7 @@ a.news-simple-card__more:focus-visible{
   top:calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-offset, var(--cm-header-height, 96px)));
   z-index:1900;
   width:100vw;
-  margin:0 calc(50% - 50vw) 14px;
+  margin:0 calc(50% - 50vw) 22px;
   padding:8px 24px;
   border-top:1px solid #e2e8f0;
   border-bottom:1px solid #e2e8f0;
@@ -4477,7 +4478,7 @@ a.news-simple-card__more:focus-visible{
   }
   .clubs-scope-banner{
     padding:8px 16px;
-    margin:0 calc(50% - 50vw) 12px;
+    margin:0 calc(50% - 50vw) 18px;
   }
   .clubs-scope-modal__panel{
     width:calc(100% - 24px);
@@ -4946,8 +4947,8 @@ a.news-simple-card__more:focus-visible{
   flex-direction:column;
   gap:12px;
   --clubs-results-padding-offset: 16px;
-  --clubs-results-padding-top: calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-offset, 0px) + var(--clubs-results-padding-offset));
-  --clubs-results-sticky-top: calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-offset, 0px) + 12px);
+  --clubs-results-padding-top: calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-offset, 0px) + var(--clubs-scope-banner-height, 0px) + var(--clubs-results-padding-offset));
+  --clubs-results-sticky-top: calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-offset, 0px) + var(--clubs-scope-banner-height, 0px) + 12px);
   padding:var(--clubs-results-padding-top) 16px 24px;
   z-index:40;
   transform:translateX(100%);
@@ -4962,7 +4963,7 @@ a.news-simple-card__more:focus-visible{
     position:static;
     inset:auto;
     --clubs-results-padding-offset: 0px;
-    --clubs-results-sticky-top: calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-offset, 0px) + 12px);
+    --clubs-results-sticky-top: calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-offset, 0px) + var(--clubs-scope-banner-height, 0px) + 12px);
     padding:0;
     background:transparent;
     transform:none;
@@ -5004,7 +5005,7 @@ a.news-simple-card__more:focus-visible{
 }
 @media (max-width:820px){
   .clubs-results-shell{
-    top: calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-offset, 0px));
+    top: calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-offset, 0px) + var(--clubs-scope-banner-height, 0px));
     --clubs-results-padding-offset: 6px;
     --clubs-results-sticky-top: var(--clubs-results-padding-offset);
     padding-top: var(--clubs-results-padding-offset);
