@@ -1663,6 +1663,42 @@
       return;
     }
     detailContainer.setAttribute('aria-busy', 'true');
+    let placeholderTimer = null;
+    let placeholderVisibleSince = 0;
+    let placeholderShown = false;
+    const PLACEHOLDER_SHOW_DELAY_MS = 220;
+    const PLACEHOLDER_MIN_VISIBLE_MS = 320;
+    const schedulePlaceholder = () => {
+      if (typeof window === 'undefined' || typeof window.setTimeout !== 'function') {
+        return;
+      }
+      if (!detailContainer.querySelector('.club-detail-placeholder')) {
+        return;
+      }
+      placeholderTimer = window.setTimeout(() => {
+        placeholderShown = true;
+        placeholderVisibleSince = Date.now();
+        detailContainer.classList.add('is-loading');
+      }, PLACEHOLDER_SHOW_DELAY_MS);
+    };
+    const settlePlaceholder = async () => {
+      if (placeholderTimer) {
+        clearTimeout(placeholderTimer);
+        placeholderTimer = null;
+      }
+      if (!placeholderShown) {
+        detailContainer.classList.remove('is-loading');
+        return;
+      }
+      const elapsed = Date.now() - placeholderVisibleSince;
+      const remaining = Math.max(0, PLACEHOLDER_MIN_VISIBLE_MS - elapsed);
+      if (remaining > 0) {
+        await new Promise((resolve) => setTimeout(resolve, remaining));
+      }
+      detailContainer.classList.remove('is-loading');
+    };
+
+    schedulePlaceholder();
     Promise.all([
       fetchJson(DATA_URL),
       loadFfeRefs(),
@@ -1677,13 +1713,16 @@
         clubs.forEach(updateLicenseTotals);
         const club = clubs.find((entry) => entry.slug === clubSlug || entry.id === clubSlug);
         if (!club) {
+          await settlePlaceholder();
           renderMessage(detailContainer.dataset.emptyMessage || 'Club introuvable.');
           return;
         }
         const ffeLists = await loadFfeLists(club.ffeRef);
+        await settlePlaceholder();
         renderClub(club, ffeLists);
       })
-      .catch(() => {
+      .catch(async () => {
+        await settlePlaceholder();
         renderMessage('Impossible de charger la fiche du club pour le moment.');
       })
       .finally(() => {
