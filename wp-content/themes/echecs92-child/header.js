@@ -5,10 +5,12 @@ window.echecs92_test = true;
   const OVERLAY_ID = 'clubs-loading-overlay';
   const DEFAULT_LABEL = 'Patientez…';
   const FALLBACK_ICON = '/wp-content/themes/echecs92-child/assets/cdje92.svg';
-  const MIN_VISIBLE_MS = 480;
+  const MIN_VISIBLE_MS = 250;
+  const SHOW_DELAY_MS = 200;
   let overlayEl = null;
   let overlayHost = null;
   let visibleSince = 0;
+  let showTimer = null;
   let hideTimer = null;
   let stack = 0;
 
@@ -157,6 +159,14 @@ window.echecs92_test = true;
     if (stack > 0) {
       return;
     }
+    if (showTimer) {
+      clearTimeout(showTimer);
+      showTimer = null;
+      overlayEl.classList.remove('is-visible');
+      overlayEl.setAttribute('aria-hidden', 'true');
+      overlayHost?.removeAttribute('aria-busy');
+      return;
+    }
     const elapsed = Date.now() - visibleSince;
     const delay = Math.max(0, MIN_VISIBLE_MS - elapsed);
     if (hideTimer) {
@@ -180,14 +190,29 @@ window.echecs92_test = true;
       clearTimeout(hideTimer);
       hideTimer = null;
     }
-    if (stack === 0) {
-      visibleSince = Date.now();
-    }
     stack += 1;
     setLabel(label);
-    overlay.classList.add('is-visible');
-    overlay.setAttribute('aria-hidden', 'false');
-    overlayHost?.setAttribute('aria-busy', 'true');
+    const ensureVisible = () => {
+      if (!overlayEl || stack <= 0) {
+        return;
+      }
+      if (overlayEl.classList.contains('is-visible')) {
+        overlayHost?.setAttribute('aria-busy', 'true');
+        return;
+      }
+      visibleSince = Date.now();
+      overlayEl.classList.add('is-visible');
+      overlayEl.setAttribute('aria-hidden', 'false');
+      overlayHost?.setAttribute('aria-busy', 'true');
+    };
+    if (overlayEl && overlayEl.classList.contains('is-visible')) {
+      overlayHost?.setAttribute('aria-busy', 'true');
+    } else if (!showTimer) {
+      showTimer = setTimeout(() => {
+        showTimer = null;
+        ensureVisible();
+      }, SHOW_DELAY_MS);
+    }
     let released = false;
     return () => {
       if (released) {

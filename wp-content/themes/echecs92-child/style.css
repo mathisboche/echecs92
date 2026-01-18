@@ -4878,11 +4878,14 @@ a.news-simple-card__more:focus-visible{
 .clubs-loading-overlay{
   position:fixed;
   inset:0;
-  display:none;
+  display:flex;
   align-items:center;
   justify-content:center;
   z-index:120;
   pointer-events:none;
+  opacity:0;
+  visibility:hidden;
+  transition:opacity .14s ease, visibility 0s linear .14s;
 }
 .clubs-loading-overlay.clubs-loading-overlay--scoped{
   position:absolute;
@@ -4891,8 +4894,10 @@ a.news-simple-card__more:focus-visible{
   position:relative;
 }
 .clubs-loading-overlay.is-visible{
-  display:flex;
+  opacity:1;
+  visibility:visible;
   pointer-events:all;
+  transition:opacity .14s ease;
 }
 .clubs-loading-overlay__backdrop{
   position:absolute;
@@ -5750,9 +5755,12 @@ body.mathis-mode .mathis-fragment{
   box-shadow:none;
 }
 .club-detail-placeholder{
-  display:flex;
+  display:none;
   flex-direction:column;
   gap:24px;
+}
+.club-detail-page.is-loading .club-detail-placeholder{
+  display:flex;
 }
 .club-detail-placeholder__header{
   display:flex;
@@ -5809,6 +5817,11 @@ body.mathis-mode .mathis-fragment{
   background:linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 50%, #e2e8f0 100%);
   background-size:200% 100%;
   animation:clubs-skeleton-shimmer 1.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce){
+  .clubs-skeleton{
+    animation:none;
+  }
 }
 @keyframes clubs-skeleton-shimmer{
   from{
