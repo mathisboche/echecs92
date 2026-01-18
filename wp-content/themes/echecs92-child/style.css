@@ -3781,6 +3781,9 @@ a.news-simple-card__more:focus-visible{
 .clubs-page.clubs-page--has-scope-banner{
   padding-top:calc(var(--clubs-scope-banner-height, 0px) + 32px);
 }
+body.club-ffe-view .clubs-page{
+  max-width:1400px;
+}
 .clubs-page--detail{
   padding-top:12px;
 }
@@ -6111,6 +6114,19 @@ body.mathis-mode .mathis-fragment{
 }
 .club-section--ffe{
   gap:16px;
+}
+.club-ffe-link__intro{
+  margin:0;
+  font-size:14px;
+  color:#475569;
+}
+.club-ffe-link__actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.club-ffe-link__actions .btn{
+  margin:0;
 }
 .club-tabs{
   display:flex;
