@@ -7,6 +7,7 @@ window.echecs92_test = true;
   const FALLBACK_ICON = '/wp-content/themes/echecs92-child/assets/cdje92.svg';
   const MIN_VISIBLE_MS = 480;
   let overlayEl = null;
+  let overlayHost = null;
   let visibleSince = 0;
   let hideTimer = null;
   let stack = 0;
@@ -27,30 +28,45 @@ window.echecs92_test = true;
     return FALLBACK_ICON;
   };
 
-  const lockPage = (active) => {
-    const method = active ? 'add' : 'remove';
-    document.documentElement?.classList[method]('clubs-loading-lock');
-    document.body?.classList[method]('clubs-loading-lock');
-    if (active) {
-      const burger = document.querySelector('.cm-burger[aria-expanded="true"]');
-      const menu = document.getElementById('cm-mobile-menu');
-      if (burger) {
-        burger.setAttribute('aria-expanded', 'false');
-        burger.classList.remove('is-active');
-      }
-      if (menu) {
-        menu.classList.remove('is-open');
-        menu.setAttribute('hidden', '');
-        menu.style.top = '';
-      }
-      document.body?.classList.remove('cm-menu-open');
-      document.documentElement?.classList.remove('cm-menu-open');
+  const resolveElement = (value) => {
+    if (!value) {
+      return null;
     }
+    if (value instanceof Element) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      return document.querySelector(value);
+    }
+    if (typeof value === 'function') {
+      try {
+        return resolveElement(value());
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  };
+
+  const resolveOverlayHost = (options = {}) => {
+    if (typeof document === 'undefined') {
+      return null;
+    }
+    const requested =
+      resolveElement(options.host) || resolveElement(options.container) || resolveElement(options.scope);
+    if (requested) {
+      return requested === document.documentElement ? document.body : requested;
+    }
+    const clubsPage = document.querySelector('.clubs-page');
+    return clubsPage || document.body;
   };
 
   const ensureOverlay = () => {
     if (overlayEl) {
       return overlayEl;
+    }
+    if (typeof document === 'undefined' || !document.body) {
+      return null;
     }
     const overlay = document.createElement('div');
     overlay.id = OVERLAY_ID;
@@ -71,13 +87,53 @@ window.echecs92_test = true;
     if (icon && faviconUrl) {
       icon.setAttribute('src', faviconUrl);
     }
-    document.body.appendChild(overlay);
     overlayEl = overlay;
     return overlay;
   };
 
-  const setLabel = (label) => {
+  const mountOverlay = (requestedHost) => {
     const overlay = ensureOverlay();
+    if (!overlay) {
+      return null;
+    }
+    const host = requestedHost && requestedHost instanceof Element ? requestedHost : document.body;
+    if (!host || !document.body) {
+      return overlay;
+    }
+
+    if (stack > 0 && overlayHost && overlayHost !== host) {
+      if (overlayHost.contains(host)) {
+        // Conserve le host actuel (plus large).
+        return overlay;
+      }
+      if (host.contains(overlayHost)) {
+        overlayHost.removeAttribute('aria-busy');
+      }
+    }
+
+    const nextHost =
+      stack > 0 && overlayHost && overlayHost !== host && overlayHost.contains(host)
+        ? overlayHost
+        : host;
+
+    if (overlayHost && overlayHost !== nextHost) {
+      overlayHost.removeAttribute('aria-busy');
+    }
+
+    overlayHost = nextHost;
+    const scoped = overlayHost !== document.body;
+    if (scoped) {
+      overlayHost.classList.add('clubs-loading-host');
+    }
+    if (overlay.parentElement !== overlayHost) {
+      overlayHost.appendChild(overlay);
+    }
+    overlay.classList.toggle('clubs-loading-overlay--scoped', scoped);
+    return overlay;
+  };
+
+  const setLabel = (label) => {
+    const overlay = overlayEl || ensureOverlay();
     if (!overlay) {
       return;
     }
@@ -109,13 +165,14 @@ window.echecs92_test = true;
     hideTimer = setTimeout(() => {
       overlayEl.classList.remove('is-visible');
       overlayEl.setAttribute('aria-hidden', 'true');
-      lockPage(false);
+      overlayHost?.removeAttribute('aria-busy');
       hideTimer = null;
     }, delay);
   };
 
-  const show = (label) => {
-    const overlay = ensureOverlay();
+  const show = (label, options = {}) => {
+    const requestedHost = resolveOverlayHost(options);
+    const overlay = mountOverlay(requestedHost);
     if (!overlay) {
       return () => {};
     }
@@ -125,12 +182,12 @@ window.echecs92_test = true;
     }
     if (stack === 0) {
       visibleSince = Date.now();
-      lockPage(true);
     }
     stack += 1;
     setLabel(label);
     overlay.classList.add('is-visible');
     overlay.setAttribute('aria-hidden', 'false');
+    overlayHost?.setAttribute('aria-busy', 'true');
     let released = false;
     return () => {
       if (released) {
@@ -159,7 +216,8 @@ window.echecs92_test = true;
   document.addEventListener('cdje:spinner', (event) => {
     const action = event?.detail?.action || '';
     if (action === 'show') {
-      const release = show(event.detail?.label);
+      const payload = event?.detail && typeof event.detail === 'object' ? event.detail : {};
+      const release = show(payload?.label, payload);
       if (event.detail) {
         event.detail.release = release;
       }
@@ -169,6 +227,32 @@ window.echecs92_test = true;
       hideAll();
     }
   });
+})();
+
+(() => {
+  const scopeBanner = typeof document !== 'undefined' ? document.querySelector('.clubs-scope-banner') : null;
+  if (!scopeBanner) {
+    return;
+  }
+
+  const syncScopeBannerHeight = () => {
+    const rect = scopeBanner.getBoundingClientRect();
+    const height = Number.isFinite(rect.height) ? Math.max(0, Math.round(rect.height)) : 0;
+    document.documentElement.style.setProperty('--clubs-scope-banner-height', `${height}px`);
+  };
+
+  syncScopeBannerHeight();
+  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(syncScopeBannerHeight);
+  }
+  if (typeof ResizeObserver === 'function') {
+    const observer = new ResizeObserver(() => {
+      syncScopeBannerHeight();
+    });
+    observer.observe(scopeBanner);
+  } else if (typeof window !== 'undefined') {
+    window.addEventListener('resize', syncScopeBannerHeight);
+  }
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -426,7 +510,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const getStickyOffset = () => {
     const headerHeight = headerWrapper && isHeaderPinned() ? headerWrapper.offsetHeight : 0;
     const adminBarHeight = adminBar ? adminBar.offsetHeight : 0;
-    return headerHeight + adminBarHeight + 12;
+    const scopeHeightRaw = window
+      .getComputedStyle(document.documentElement)
+      .getPropertyValue('--clubs-scope-banner-height');
+    const scopeHeight = Number.isFinite(Number.parseFloat(scopeHeightRaw)) ? Number.parseFloat(scopeHeightRaw) : 0;
+    return headerHeight + adminBarHeight + scopeHeight + 12;
   };
 
   const scrollHashTargetIntoView = () => {

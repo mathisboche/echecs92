@@ -1560,6 +1560,18 @@
     return header ? header.offsetHeight : 0;
   };
 
+  const getScopeBannerHeight = () => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return 0;
+    }
+    const raw = window.getComputedStyle(document.documentElement).getPropertyValue('--clubs-scope-banner-height');
+    const parsed = Number.parseFloat(raw);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+    return clubsScopeBanner ? clubsScopeBanner.offsetHeight || 0 : 0;
+  };
+
   const LIST_SCROLL_RESTORE_THRESHOLD = 24;
   const listScrollAnchors = { window: 0, shell: 0 };
   const listScrollAnchorsSet = { window: false, shell: false };
@@ -1673,7 +1685,7 @@
   const scrollToSearchBlock = (options = {}) => {
     const target = searchBlock || searchInput || resultsShell || resultsEl;
     const behavior = options.behavior || 'smooth';
-    const offset = getAdminBarHeight() + getHeaderHeight() + SEARCH_SCROLL_OFFSET;
+    const offset = getAdminBarHeight() + getHeaderHeight() + getScopeBannerHeight() + SEARCH_SCROLL_OFFSET;
     const targetTop = getScrollTargetTop(target, offset);
     if (Number.isFinite(targetTop)) {
       updateListScrollAnchor('window', targetTop);
@@ -1835,7 +1847,12 @@
     if (icon && faviconUrl) {
       icon.setAttribute('src', faviconUrl);
     }
-    document.body.appendChild(overlay);
+    const host = clubsPageShell && document.body.contains(clubsPageShell) ? clubsPageShell : document.body;
+    if (host !== document.body) {
+      host.classList.add('clubs-loading-host');
+      overlay.classList.add('clubs-loading-overlay--scoped');
+    }
+    host.appendChild(overlay);
     loadingOverlayElement = overlay;
     return overlay;
   };
@@ -1877,7 +1894,6 @@
       }
       loadingOverlayElement.classList.remove('is-visible');
       loadingOverlayElement.setAttribute('aria-hidden', 'true');
-      setLoadingPageLock(false);
       loadingOverlayHideTimer = null;
     }, delay);
   };
@@ -1885,7 +1901,7 @@
   const showLoadingOverlay = (label) => {
     const globalSpinner = getGlobalSpinner();
     if (globalSpinner) {
-      return globalSpinner.show(label);
+      return globalSpinner.show(label, { host: clubsPageShell });
     }
     const overlay = ensureLoadingOverlay();
     if (!overlay) {
@@ -1897,7 +1913,6 @@
     }
     if (loadingOverlayStack === 0) {
       loadingOverlayVisibleSince = Date.now();
-      setLoadingPageLock(true);
     }
     loadingOverlayStack += 1;
     setLoadingOverlayLabel(label);
@@ -2341,7 +2356,7 @@
     if (marginOverride != null && target) {
       target.style.setProperty('--clubs-results-scroll-margin', `${marginOverride}px`);
     }
-    const offset = getAdminBarHeight() + (Number.isFinite(scrollMargin) ? scrollMargin : 0);
+    const offset = getAdminBarHeight() + getScopeBannerHeight() + (Number.isFinite(scrollMargin) ? scrollMargin : 0);
     const targetTop = getScrollTargetTop(target, offset);
     if (Number.isFinite(targetTop)) {
       updateListScrollAnchor('window', targetTop);
@@ -2383,9 +2398,69 @@
       if (detailBasePath && (normalized === detailBasePath || normalized.startsWith(`${detailBasePath}/`))) {
         return true;
       }
+      if (/^\/carte-des-clubs(?:-92)?$/i.test(normalized)) {
+        return true;
+      }
       return /^\/club(?:\/|$)/i.test(normalized);
     } catch (error) {
       return false;
+    }
+  };
+
+  const getNavigationType = () => {
+    if (typeof window === 'undefined') {
+      return 'navigate';
+    }
+    const performanceApi = window.performance;
+    if (!performanceApi) {
+      return 'navigate';
+    }
+    try {
+      if (typeof performanceApi.getEntriesByType === 'function') {
+        const entries = performanceApi.getEntriesByType('navigation');
+        const entry = entries && entries[0];
+        if (entry && typeof entry.type === 'string') {
+          return entry.type;
+        }
+      }
+    } catch (error) {
+      // ignore
+    }
+    const legacy = performanceApi.navigation;
+    if (legacy && typeof legacy.type === 'number') {
+      if (legacy.type === 1) {
+        return 'reload';
+      }
+      if (legacy.type === 2) {
+        return 'back_forward';
+      }
+    }
+    return 'navigate';
+  };
+
+  const shouldRestoreSessionStateOnLoad = () => {
+    const navType = getNavigationType();
+    if (navType === 'reload' || navType === 'back_forward') {
+      return true;
+    }
+    return cameFromClubsContext();
+  };
+
+  const clearSessionRestoreState = () => {
+    try {
+      window.sessionStorage?.removeItem(CLUBS_UI_RESTORE_KEY);
+    } catch (error) {
+      // ignore
+    }
+    try {
+      window.sessionStorage?.removeItem(CLUBS_LIST_STATE_KEY);
+    } catch (error) {
+      // ignore
+    }
+    try {
+      window.localStorage?.removeItem(REOPEN_RESULTS_FLAG_KEY);
+    } catch (error) {
+      // ignore
     }
   };
 
@@ -7930,7 +8005,11 @@
   };
 
   const init = () => {
-    const savedListState = loadListState();
+    const shouldRestoreSessionState = shouldRestoreSessionStateOnLoad();
+    if (!shouldRestoreSessionState) {
+      clearSessionRestoreState();
+    }
+    const savedListState = shouldRestoreSessionState ? loadListState() : null;
     updateListScrollAnchor('window');
     updateClearButtons();
     ensureLocationSuggestionsHost();
@@ -7970,8 +8049,9 @@
         buildLocationSuggestionIndex(state.clubs);
 
         const rawReopenFlag = consumeReopenResultsFlag();
-        const restoreUiRequested = consumeRestoreUiState();
-        const reopenResultsRequested = rawReopenFlag;
+        const rawRestoreUiRequested = consumeRestoreUiState();
+        const reopenResultsRequested = shouldRestoreSessionState ? rawReopenFlag : false;
+        const restoreUiRequested = shouldRestoreSessionState ? rawRestoreUiRequested : false;
         const savedUi = restoreUiRequested || reopenResultsRequested ? consumeListUiState() : null;
         const urlRestored = await applyInitialUrlState();
         let restored = urlRestored;
@@ -8040,7 +8120,9 @@
         } else {
           syncUrlState({ openResults: mobileResultsOpen && isMobileViewport() });
         }
-        restoreListState(savedListState);
+        if (shouldRestoreSessionState) {
+          restoreListState(savedListState);
+        }
         state.restoreMode = false;
         updateClearButtons();
       })

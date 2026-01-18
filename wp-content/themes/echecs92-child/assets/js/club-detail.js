@@ -1662,10 +1662,7 @@
       renderMessage(detailContainer.dataset.emptyMessage || 'Club introuvable.');
       return;
     }
-    const releaseSpinner =
-      typeof window !== 'undefined' && window.cdjeSpinner && typeof window.cdjeSpinner.show === 'function'
-        ? window.cdjeSpinner.show('Chargement du club…')
-        : () => {};
+    detailContainer.setAttribute('aria-busy', 'true');
     Promise.all([
       fetchJson(DATA_URL),
       loadFfeRefs(),
@@ -1690,7 +1687,7 @@
         renderMessage('Impossible de charger la fiche du club pour le moment.');
       })
       .finally(() => {
-        releaseSpinner();
+        detailContainer.removeAttribute('aria-busy');
       });
   };
 

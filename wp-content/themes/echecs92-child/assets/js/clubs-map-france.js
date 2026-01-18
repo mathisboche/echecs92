@@ -2067,9 +2067,10 @@
   mapElement.addEventListener('auxclick', handleMapLinkInteraction);
 
   updateStatus('Chargement de la carte…', 'info');
+  const spinnerHost = mapElement.closest('.clubs-map__container') || mapElement;
   const releaseSpinner =
     typeof window !== 'undefined' && window.cdjeSpinner && typeof window.cdjeSpinner.show === 'function'
-      ? window.cdjeSpinner.show('Chargement de la carte…')
+      ? window.cdjeSpinner.show('Chargement de la carte…', { host: spinnerHost })
       : () => {};
 
   const waitForLeaflet = () =>
