@@ -1784,22 +1784,6 @@
     const method = active ? 'add' : 'remove';
     document.documentElement?.classList[method]('clubs-loading-lock');
     document.body?.classList[method]('clubs-loading-lock');
-    if (active) {
-      // Ferme le menu mobile en cours le cas échéant pour éviter de le rouvrir pendant le chargement.
-      const burger = document.querySelector('.cm-burger[aria-expanded="true"]');
-      const menu = document.getElementById('cm-mobile-menu');
-      if (burger) {
-        burger.setAttribute('aria-expanded', 'false');
-        burger.classList.remove('is-active');
-      }
-      if (menu) {
-        menu.classList.remove('is-open');
-        menu.setAttribute('hidden', '');
-        menu.style.top = '';
-      }
-      document.body?.classList.remove('cm-menu-open');
-      document.documentElement?.classList.remove('cm-menu-open');
-    }
   };
 
   const resolveFaviconUrl = () => {
@@ -1901,7 +1885,7 @@
   const showLoadingOverlay = (label) => {
     const globalSpinner = getGlobalSpinner();
     if (globalSpinner) {
-      return globalSpinner.show(label, { host: clubsPageShell });
+      return globalSpinner.show(label, { host: clubsPageShell, lockScroll: true, pinToViewport: true });
     }
     const overlay = ensureLoadingOverlay();
     if (!overlay) {
@@ -2733,7 +2717,7 @@
 
   const restoreListState = (payload) => {
     if (!payload) {
-      return;
+      return Promise.resolve(false);
     }
     const scrollRestorable =
       payload.scrollRestorable === true ||
@@ -2766,13 +2750,24 @@
         window.scrollTo(0, Math.max(0, scrollTop));
       }
     };
-    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(restoreScroll);
-      });
-    } else {
-      setTimeout(restoreScroll, 0);
+    if (!scrollRestorable) {
+      return Promise.resolve(false);
     }
+    return new Promise((resolve) => {
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            restoreScroll();
+            window.requestAnimationFrame(() => resolve(true));
+          });
+        });
+        return;
+      }
+      setTimeout(() => {
+        restoreScroll();
+        setTimeout(() => resolve(true), 0);
+      }, 0);
+    });
   };
 
   const DEFAULT_SORT_MODE = 'licenses';
@@ -8121,7 +8116,7 @@
           syncUrlState({ openResults: mobileResultsOpen && isMobileViewport() });
         }
         if (shouldRestoreSessionState) {
-          restoreListState(savedListState);
+          await restoreListState(savedListState);
         }
         state.restoreMode = false;
         updateClearButtons();
