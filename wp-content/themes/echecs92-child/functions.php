@@ -5,10 +5,6 @@ if ( ! defined( 'CDJE92_REDIRECT_PERSONAL_PAGES' ) ) {
     define( 'CDJE92_REDIRECT_PERSONAL_PAGES', true );
 }
 
-if ( ! defined( 'CDJE92_PERSONAL_PAGES_REDIRECT_URL' ) ) {
-    define( 'CDJE92_PERSONAL_PAGES_REDIRECT_URL', 'https://www.google.com' );
-}
-
 function cdje92_contact_form_get_recaptcha_keys() {
     $site_key = defined('CDJE92_RECAPTCHA_SITE_KEY') ? trim(CDJE92_RECAPTCHA_SITE_KEY) : '';
     $secret_key = defined('CDJE92_RECAPTCHA_SECRET_KEY') ? trim(CDJE92_RECAPTCHA_SECRET_KEY) : '';
@@ -537,7 +533,16 @@ add_action('template_redirect', function () {
 
     if (CDJE92_REDIRECT_PERSONAL_PAGES && preg_match('#^/mathis-boche/?$#i', $normalized)) {
         header('X-Robots-Tag: noindex, nofollow', true);
-        wp_redirect(CDJE92_PERSONAL_PAGES_REDIRECT_URL, 302);
+        global $wp_query;
+        if ($wp_query instanceof WP_Query) {
+            $wp_query->set_404();
+        }
+        status_header(404);
+        nocache_headers();
+        $template = get_query_template('404');
+        if ($template) {
+            include $template;
+        }
         exit;
     }
 
