@@ -210,7 +210,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (
       path === '/comite' ||
-      path === '/mathis-boche' ||
       path === '/comite/gouvernance' ||
       path === '/comite/presentation' ||
       path === '/comite/documents'

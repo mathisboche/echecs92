@@ -632,8 +632,19 @@
     }
   };
 
+  const LEGACY_EASTER_EGG = (() => {
+    if (typeof document === 'undefined') {
+      return { trigger: '', href: '', text: '' };
+    }
+    const dataset = document.currentScript && document.currentScript.dataset ? document.currentScript.dataset : {};
+    const trigger = typeof dataset.easterEggTrigger === 'string' ? dataset.easterEggTrigger.trim().toLowerCase() : '';
+    const href = typeof dataset.easterEggHref === 'string' ? dataset.easterEggHref.trim() : '';
+    const text = typeof dataset.easterEggText === 'string' ? dataset.easterEggText.trim() : '';
+    return { trigger, href, text };
+  })();
+
   const MATHIS_TAKEOVER_ID = 'mathis-takeover';
-  const MATHIS_LINK_TEXT = 'mathisboche.com';
+  const MATHIS_LINK_TEXT = LEGACY_EASTER_EGG.text;
   const MATHIS_REVEAL_DELAY = 650;
   let mathisSequenceActive = false;
   let mathisCollapsedTargets = [];
@@ -1302,7 +1313,7 @@
     if (!lettersHost || !anchor) {
       return;
     }
-    anchor.setAttribute('href', 'https://mathisboche.com');
+    anchor.setAttribute('href', LEGACY_EASTER_EGG.href || '#');
     lettersHost.innerHTML = '';
     const letters = MATHIS_LINK_TEXT.split('');
     const spans = letters.map((char) => {
@@ -1349,7 +1360,7 @@
     });
   };
 
-  const showMathisBocheSpectacle = () => {
+  const showLegacySpectacle = () => {
     if (typeof document === 'undefined') {
       return {
         message: 'Impossible d’afficher l’effet spécial sans navigateur.',
@@ -1386,9 +1397,11 @@
     ['debug92', () => toggleDebugMode()],
     [':sansdebug', () => setDebugMode(false)],
     [':debugmode', () => setDebugMode(true)],
-    ['mathisboche.com', () => showMathisBocheSpectacle()],
-    ['mb', () => showMathisBocheSpectacle()],
   ]);
+
+  if (LEGACY_EASTER_EGG.trigger) {
+    SECRET_DEBUG_COMMANDS.set(LEGACY_EASTER_EGG.trigger, () => showLegacySpectacle());
+  }
 
   const updateSortButtons = () => {
     sortButtons.forEach((button) => {
@@ -2102,8 +2115,12 @@
     if (!trimmed) {
       return false;
     }
+    const normalized = trimmed.toLowerCase();
     const handler = findSecretCommandHandler(trimmed);
     if (!handler) {
+      return false;
+    }
+    if (handler === showLegacySpectacle && LEGACY_EASTER_EGG.trigger && normalized !== LEGACY_EASTER_EGG.trigger) {
       return false;
     }
     const result = handler({ immediate: Boolean(options.immediate), query: trimmed }) || null;
@@ -3521,10 +3538,6 @@ const handleLocationSubmit = async (event) => {
       });
     }
   };
-
-  if (typeof window !== 'undefined') {
-    window.cdje92ShowMathisSpectacle = showMathisBocheSpectacle;
-  }
 
   if (resultsEl) {
     init();

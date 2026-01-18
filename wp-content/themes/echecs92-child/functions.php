@@ -1,6 +1,14 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
+if ( ! defined( 'CDJE92_REDIRECT_PERSONAL_PAGES' ) ) {
+    define( 'CDJE92_REDIRECT_PERSONAL_PAGES', true );
+}
+
+if ( ! defined( 'CDJE92_PERSONAL_PAGES_REDIRECT_URL' ) ) {
+    define( 'CDJE92_PERSONAL_PAGES_REDIRECT_URL', 'https://www.google.com' );
+}
+
 function cdje92_contact_form_get_recaptcha_keys() {
     $site_key = defined('CDJE92_RECAPTCHA_SITE_KEY') ? trim(CDJE92_RECAPTCHA_SITE_KEY) : '';
     $secret_key = defined('CDJE92_RECAPTCHA_SECRET_KEY') ? trim(CDJE92_RECAPTCHA_SECRET_KEY) : '';
@@ -526,6 +534,12 @@ add_action('template_redirect', function () {
     $request_path = isset($_SERVER['REQUEST_URI']) ? wp_parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : '';
     $query_string = isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] ? '?' . $_SERVER['QUERY_STRING'] : '';
     $normalized = '/' . ltrim((string) $request_path, '/');
+
+    if (CDJE92_REDIRECT_PERSONAL_PAGES && preg_match('#^/mathis-boche/?$#i', $normalized)) {
+        header('X-Robots-Tag: noindex, nofollow', true);
+        wp_redirect(CDJE92_PERSONAL_PAGES_REDIRECT_URL, 302);
+        exit;
+    }
 
     if (preg_match('#^/clubs-france/?$#i', $normalized)) {
         wp_redirect(home_url('/clubs/') . $query_string, 301);
@@ -1089,14 +1103,6 @@ add_filter('query_vars', function ($vars) {
     $vars[] = 'club_commune';
     $vars[] = 'ffe_player';
     return $vars;
-});
-
-add_filter('document_title_parts', function ($title) {
-    if (is_page('mathis-boche')) {
-        $title['title'] = "Mathis Boche CDJE 92";
-    }
-
-    return $title;
 });
 
 function cdje92_contact_form_truncate( $value, $length = 200 ) {
