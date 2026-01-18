@@ -13,6 +13,11 @@ window.echecs92_test = true;
   let showTimer = null;
   let hideTimer = null;
   let stack = 0;
+  let scrollLockCount = 0;
+  let scrollLockActive = false;
+  let pinCount = 0;
+  let pinActive = false;
+  let pinListenerAttached = false;
 
   const resolveFaviconUrl = () => {
     const selectors = [
@@ -61,6 +66,103 @@ window.echecs92_test = true;
     }
     const clubsPage = document.querySelector('.clubs-page');
     return clubsPage || document.body;
+  };
+
+  const updateScrollbarCompensation = () => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return;
+    }
+    const root = document.documentElement;
+    if (!root) {
+      return;
+    }
+    const scrollbarWidth = (window.innerWidth || 0) - (root.clientWidth || 0);
+    if (Number.isFinite(scrollbarWidth) && scrollbarWidth > 0) {
+      root.style.setProperty('--cdje-scrollbar-width', `${Math.round(scrollbarWidth)}px`);
+    } else {
+      root.style.removeProperty('--cdje-scrollbar-width');
+    }
+  };
+
+  const setScrollLockActive = (active) => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    const root = document.documentElement;
+    const body = document.body;
+    if (!root || !body) {
+      return;
+    }
+    if (active) {
+      updateScrollbarCompensation();
+      root.classList.add('cdje-spinner-lock');
+      body.classList.add('cdje-spinner-lock');
+    } else {
+      root.classList.remove('cdje-spinner-lock');
+      body.classList.remove('cdje-spinner-lock');
+      root.style.removeProperty('--cdje-scrollbar-width');
+    }
+  };
+
+  const clearPinStyles = () => {
+    if (!overlayEl) {
+      return;
+    }
+    overlayEl.classList.remove('clubs-loading-overlay--pinned');
+    overlayEl.style.top = '';
+    overlayEl.style.bottom = '';
+    overlayEl.style.height = '';
+    overlayEl.style.left = '';
+    overlayEl.style.right = '';
+  };
+
+  const syncPinnedOverlay = () => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return;
+    }
+    if (!overlayEl || !overlayHost) {
+      return;
+    }
+    if (overlayHost === document.body) {
+      clearPinStyles();
+      return;
+    }
+    const rect = overlayHost.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || document.documentElement?.clientHeight || 0;
+    const safeViewportHeight = Number.isFinite(viewportHeight) ? viewportHeight : 0;
+    const visibleTop = Math.max(0, Number.isFinite(rect.top) ? rect.top : 0);
+    const visibleBottom = Math.min(
+      safeViewportHeight,
+      Number.isFinite(rect.bottom) ? rect.bottom : safeViewportHeight
+    );
+    const visibleHeight = Math.max(0, Math.round(visibleBottom - visibleTop));
+    const offsetTop = Math.max(0, Math.round(visibleTop - (Number.isFinite(rect.top) ? rect.top : 0)));
+    const fallbackHeight = Number.isFinite(rect.height) ? Math.round(rect.height) : safeViewportHeight;
+    overlayEl.classList.add('clubs-loading-overlay--pinned');
+    overlayEl.style.top = `${offsetTop}px`;
+    overlayEl.style.bottom = 'auto';
+    overlayEl.style.height = `${Math.max(visibleHeight, 0) || Math.max(fallbackHeight, 0) || safeViewportHeight}px`;
+    overlayEl.style.left = '0';
+    overlayEl.style.right = '0';
+  };
+
+  const setPinModeActive = (active) => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (!active) {
+      if (pinListenerAttached) {
+        window.removeEventListener('resize', syncPinnedOverlay);
+        pinListenerAttached = false;
+      }
+      clearPinStyles();
+      return;
+    }
+    syncPinnedOverlay();
+    if (!pinListenerAttached) {
+      window.addEventListener('resize', syncPinnedOverlay, { passive: true });
+      pinListenerAttached = true;
+    }
   };
 
   const ensureOverlay = () => {
@@ -165,6 +267,14 @@ window.echecs92_test = true;
       overlayEl.classList.remove('is-visible');
       overlayEl.setAttribute('aria-hidden', 'true');
       overlayHost?.removeAttribute('aria-busy');
+      if (scrollLockCount <= 0) {
+        scrollLockActive = false;
+        setScrollLockActive(false);
+      }
+      if (pinCount <= 0) {
+        pinActive = false;
+        setPinModeActive(false);
+      }
       return;
     }
     const elapsed = Date.now() - visibleSince;
@@ -177,6 +287,14 @@ window.echecs92_test = true;
       overlayEl.setAttribute('aria-hidden', 'true');
       overlayHost?.removeAttribute('aria-busy');
       hideTimer = null;
+      if (scrollLockCount <= 0) {
+        scrollLockActive = false;
+        setScrollLockActive(false);
+      }
+      if (pinCount <= 0) {
+        pinActive = false;
+        setPinModeActive(false);
+      }
     }, delay);
   };
 
@@ -185,6 +303,26 @@ window.echecs92_test = true;
     const overlay = mountOverlay(requestedHost);
     if (!overlay) {
       return () => {};
+    }
+    const wantsScrollLock = options.lockScroll === true;
+    const wantsPin = options.pinToViewport === true || options.pinToViewport === '1';
+    if (wantsScrollLock) {
+      scrollLockCount += 1;
+      if (!scrollLockActive && overlayEl && overlayEl.classList.contains('is-visible')) {
+        scrollLockActive = true;
+        setScrollLockActive(true);
+      }
+    }
+    if (wantsPin) {
+      pinCount += 1;
+      if (!pinActive) {
+        pinActive = true;
+      }
+      setPinModeActive(true);
+    } else if (pinActive) {
+      setPinModeActive(true);
+    } else {
+      clearPinStyles();
     }
     if (hideTimer) {
       clearTimeout(hideTimer);
@@ -195,6 +333,13 @@ window.echecs92_test = true;
     const ensureVisible = () => {
       if (!overlayEl || stack <= 0) {
         return;
+      }
+      if (scrollLockCount > 0 && !scrollLockActive) {
+        scrollLockActive = true;
+        setScrollLockActive(true);
+      }
+      if (pinActive) {
+        syncPinnedOverlay();
       }
       if (overlayEl.classList.contains('is-visible')) {
         overlayHost?.setAttribute('aria-busy', 'true');
@@ -219,6 +364,12 @@ window.echecs92_test = true;
         return;
       }
       released = true;
+      if (wantsScrollLock) {
+        scrollLockCount = Math.max(0, scrollLockCount - 1);
+      }
+      if (wantsPin) {
+        pinCount = Math.max(0, pinCount - 1);
+      }
       hideOne();
     };
   };
@@ -228,6 +379,8 @@ window.echecs92_test = true;
       return;
     }
     stack = 1;
+    scrollLockCount = 0;
+    pinCount = 0;
     hideOne();
   };
 

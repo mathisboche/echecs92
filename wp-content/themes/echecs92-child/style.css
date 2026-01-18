@@ -667,6 +667,19 @@ body.cm-menu-open{
   height:100%;
 }
 
+html.cdje-spinner-lock,
+body.cdje-spinner-lock{
+  overflow:hidden;
+  height:100%;
+}
+body.cdje-spinner-lock{
+  padding-right:var(--cdje-scrollbar-width, 0px);
+}
+body.cdje-spinner-lock header.wp-block-template-part,
+body.cdje-spinner-lock .clubs-scope-banner{
+  padding-right:var(--cdje-scrollbar-width, 0px);
+}
+
 /* Focus outline only for keyboard navigation */
 :focus {
   outline: none;
@@ -5053,10 +5066,7 @@ body.clubs-results-open{
 html.clubs-loading-lock,
 body.clubs-loading-lock{
   overflow:hidden;
-  touch-action:none;
-}
-.clubs-loading-lock .cm-burger{
-  pointer-events:none;
+  height:100%;
 }
 .clubs-total{
   font-size:15px;
