@@ -516,10 +516,13 @@ add_action('init', function () {
     add_rewrite_rule('^club-92/([^/]+)/?$', 'index.php?pagename=club-92&club_commune=$matches[1]', 'top');
     add_rewrite_rule('^club/([^/]+)/?$', 'index.php?pagename=club&club_commune=$matches[1]', 'top');
     add_rewrite_rule('^club-france/([^/]+)/?$', 'index.php?pagename=club&club_commune=$matches[1]', 'top');
+    add_rewrite_rule('^club-92/([^/]+)/ffe/?$', 'index.php?pagename=club-92&club_commune=$matches[1]', 'top');
+    add_rewrite_rule('^club/([^/]+)/ffe/?$', 'index.php?pagename=club&club_commune=$matches[1]', 'top');
+    add_rewrite_rule('^club-france/([^/]+)/ffe/?$', 'index.php?pagename=club&club_commune=$matches[1]', 'top');
 
     add_rewrite_rule('^joueur/([^/]+)/?$', 'index.php?pagename=joueur&ffe_player=$matches[1]', 'top');
 
-    $rewrite_version = '2026-01-13';
+    $rewrite_version = '2026-01-18';
     if (is_admin() && current_user_can('manage_options') && get_option('cdje92_rewrite_rules_version') !== $rewrite_version) {
         flush_rewrite_rules(false);
         update_option('cdje92_rewrite_rules_version', $rewrite_version);
@@ -591,6 +594,14 @@ add_filter('redirect_canonical', function ($redirect_url, $requested_url) {
         preg_match('#^/club-92/[^/]+/?$#i', $normalized) ||
         preg_match('#^/club/[^/]+/?$#i', $normalized) ||
         preg_match('#^/club-france/[^/]+/?$#i', $normalized)
+    ) {
+        return false;
+    }
+
+    if (
+        preg_match('#^/club-92/[^/]+/ffe/?$#i', $normalized) ||
+        preg_match('#^/club/[^/]+/ffe/?$#i', $normalized) ||
+        preg_match('#^/club-france/[^/]+/ffe/?$#i', $normalized)
     ) {
         return false;
     }

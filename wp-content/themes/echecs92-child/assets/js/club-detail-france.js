@@ -298,6 +298,15 @@
   };
 
   const clubSlug = deriveClubSlugFromPath();
+  const getPathSegments = () =>
+    (window.location.pathname || '')
+      .toString()
+      .replace(/\/+$/u, '')
+      .split('/')
+      .filter(Boolean);
+  const pathSegments = getPathSegments();
+  const isFfeListsView =
+    pathSegments.length >= 3 && (pathSegments[pathSegments.length - 1] || '').toLowerCase() === 'ffe';
 
   const renderMessage = (message, tone = 'error') => {
     detailContainer.innerHTML = `<p class="clubs-empty" data-tone="${tone}">${message}</p>`;
@@ -1918,9 +1927,78 @@
     return createTableWrap(table);
   };
 
+  const buildClubUrl = (club) => {
+    const slug = club?.slug || club?.id || clubSlug || '';
+    if (!slug) {
+      return '';
+    }
+    return `${window.location.origin}/club/${encodeURIComponent(slug)}/`;
+  };
+
+  const buildFfeListsUrl = (club) => {
+    const base = buildClubUrl(club);
+    return base ? `${base}ffe/` : '';
+  };
+
   const renderFfeListsSection = (club, lists) => {
+    const ffeUrl = buildFfeListsUrl(club);
+
+    if (!isFfeListsView) {
+      if (!ffeUrl || !club?.ffeRef) {
+        return null;
+      }
+
+      const section = document.createElement('section');
+      section.className = 'club-section club-section--ffe club-ffe-link';
+
+      const heading = document.createElement('h2');
+      heading.textContent = 'FFE - Joueurs et encadrement';
+      section.appendChild(heading);
+
+      const intro = document.createElement('p');
+      intro.className = 'club-ffe-link__intro';
+      intro.textContent =
+        'Les listes FFE (membres, arbitrage, animation, entraînement, initiation) sont disponibles sur une page dédiée.';
+      section.appendChild(intro);
+
+      const actions = document.createElement('div');
+      actions.className = 'club-ffe-link__actions';
+
+      const link = document.createElement('a');
+      link.className = 'btn btn-secondary';
+      link.href = ffeUrl;
+      link.textContent = 'Ouvrir la liste en plein écran';
+      actions.appendChild(link);
+
+      section.appendChild(actions);
+      return section;
+    }
+
+    const section = document.createElement('section');
+    section.className = 'club-section club-section--ffe club-ffe-lists';
+
+    const membersCount =
+      (lists?.members && typeof lists.members.count === 'number' && lists.members.count) ||
+      (lists?.members_by_elo && typeof lists.members_by_elo.count === 'number' && lists.members_by_elo.count) ||
+      0;
+    const disclosureLabel = membersCount
+      ? `FFE - Joueurs et encadrement (${membersCount})`
+      : 'FFE - Joueurs et encadrement';
+
+    const heading = document.createElement('h2');
+    heading.textContent = disclosureLabel;
+    section.appendChild(heading);
+
+    const createEmptyMessage = (message) => {
+      const empty = document.createElement('p');
+      empty.className = 'club-tabs__empty';
+      empty.textContent = message;
+      return empty;
+    };
+
     if (!lists || typeof lists !== 'object') {
-      return null;
+      section.appendChild(createEmptyMessage('Données indisponibles pour le moment.'));
+      return section;
     }
 
     const listDefs = [
@@ -1934,42 +2012,24 @@
 
     const available = listDefs.filter((def) => lists[def.key]);
     if (!available.length) {
-      return null;
+      section.appendChild(createEmptyMessage('Aucune donnée disponible pour ce club.'));
+      return section;
     }
-
-    const membersCount =
-      (lists.members && typeof lists.members.count === 'number' && lists.members.count) ||
-      (lists.members_by_elo &&
-        typeof lists.members_by_elo.count === 'number' &&
-        lists.members_by_elo.count) ||
-      0;
-    const disclosureLabel = membersCount
-      ? `FFE - Joueurs et encadrement (${membersCount})`
-      : 'FFE - Joueurs et encadrement';
-
-    const disclosure = createDisclosure(disclosureLabel, { className: 'club-disclosure--ffe' });
 
     const tabs = document.createElement('div');
     tabs.className = 'club-tabs';
     tabs.setAttribute('role', 'tablist');
-    disclosure.content.appendChild(tabs);
+    section.appendChild(tabs);
 
     const panelsWrap = document.createElement('div');
     panelsWrap.className = 'club-tabs__panels';
-    disclosure.content.appendChild(panelsWrap);
+    section.appendChild(panelsWrap);
 
     const tabButtons = [];
     const tabPanels = [];
     const tabPayloads = [];
     const tabPrefix = slugify(`ffe-${club.slug || club.id || club.name || 'club'}`);
     let activeTabIndex = 0;
-
-    const createEmptyMessage = (message) => {
-      const empty = document.createElement('p');
-      empty.className = 'club-tabs__empty';
-      empty.textContent = message;
-      return empty;
-    };
 
     available.forEach((def, index) => {
       const list = lists[def.key] || {};
@@ -2031,9 +2091,7 @@
         button.setAttribute('tabindex', isActive ? '0' : '-1');
         tabPanels[idx].hidden = !isActive;
       });
-      if (disclosure.details.open) {
-        ensurePanelRendered(index);
-      }
+      ensurePanelRendered(index);
     };
 
     tabButtons.forEach((button, index) => {
@@ -2052,13 +2110,9 @@
       });
     });
 
-    disclosure.details.addEventListener('toggle', () => {
-      if (disclosure.details.open) {
-        ensurePanelRendered(activeTabIndex);
-      }
-    });
+    ensurePanelRendered(activeTabIndex);
 
-    return disclosure.details;
+    return section;
   };
 
   const renderClub = (club, ffeLists) => {
@@ -2078,7 +2132,9 @@
     title.textContent = club.name;
     titleRow.appendChild(title);
 
-    const shareUrl = `${window.location.origin}/club/${encodeURIComponent(club.slug || club.id || '')}/`;
+    const clubBaseUrl = buildClubUrl(club);
+    const ffeListsUrl = buildFfeListsUrl(club);
+    const shareUrl = isFfeListsView && ffeListsUrl ? ffeListsUrl : clubBaseUrl;
     const shareBlock = document.createElement('div');
     shareBlock.className = 'club-sheet__share';
 
@@ -2155,6 +2211,39 @@
       sheet.appendChild(shareBlock);
     }
     sheet.appendChild(header);
+
+    if (isFfeListsView) {
+      document.body?.classList.add('club-ffe-view');
+      if (backLink) {
+        backLink.setAttribute('hidden', '');
+      }
+      if (backLinkMap) {
+        backLinkMap.setAttribute('hidden', '');
+      }
+      if (actionsContainer && clubBaseUrl) {
+        const existingFfeBack = actionsContainer.querySelector('.club-detail__back--ffe');
+        if (existingFfeBack) {
+          existingFfeBack.remove();
+        }
+        const backToClub = document.createElement('a');
+        backToClub.className = 'link-button club-detail__back club-detail__back--ffe';
+        backToClub.href = clubBaseUrl;
+        backToClub.textContent = '← Retour à la fiche du club';
+        actionsContainer.prepend(backToClub);
+      }
+
+      const ffeSection = renderFfeListsSection(club, ffeLists);
+      if (ffeSection) {
+        sheet.appendChild(ffeSection);
+      }
+      detailContainer.appendChild(sheet);
+
+      if (club.name) {
+        document.title = `${club.name} – Listes FFE`;
+      }
+      return;
+    }
+    document.body?.classList.remove('club-ffe-view');
 
     const sections = [];
 
@@ -2406,7 +2495,7 @@
           return;
         }
         await geocodeClubIfNeeded(club);
-        const ffeLists = await loadFfeLists(club.ffeRef);
+        const ffeLists = isFfeListsView ? await loadFfeLists(club.ffeRef) : null;
         await settlePlaceholder();
         renderClub(club, ffeLists);
       })
