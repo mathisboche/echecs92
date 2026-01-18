@@ -3766,7 +3766,7 @@ a.news-simple-card__more:focus-visible{
   box-sizing:border-box;
 }
 .clubs-page.clubs-page--has-scope-banner{
-  padding-top:0;
+  padding-top:calc(var(--clubs-scope-banner-height, 0px) + 32px);
 }
 .clubs-page--detail{
   padding-top:12px;
@@ -4200,6 +4200,13 @@ a.news-simple-card__more:focus-visible{
   text-align:center;
   box-sizing:border-box;
   transition:top .3s ease;
+}
+.clubs-page--has-scope-banner .clubs-scope-banner{
+  position:fixed;
+  left:0;
+  right:0;
+  width:auto;
+  margin:0;
 }
 .clubs-scope-banner__text{
   font-weight:500;
@@ -4876,6 +4883,12 @@ a.news-simple-card__more:focus-visible{
   justify-content:center;
   z-index:120;
   pointer-events:none;
+}
+.clubs-loading-overlay.clubs-loading-overlay--scoped{
+  position:absolute;
+}
+.clubs-loading-host{
+  position:relative;
 }
 .clubs-loading-overlay.is-visible{
   display:flex;
@@ -5735,6 +5748,75 @@ body.mathis-mode .mathis-fragment{
   flex-direction:column;
   gap:24px;
   box-shadow:none;
+}
+.club-detail-placeholder{
+  display:flex;
+  flex-direction:column;
+  gap:24px;
+}
+.club-detail-placeholder__header{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.club-detail-placeholder__title{
+  height:34px;
+  width:clamp(220px, 72%, 520px);
+  border-radius:14px;
+}
+.club-detail-placeholder__meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.club-detail-placeholder__chip{
+  height:28px;
+  width:128px;
+  border-radius:999px;
+}
+.club-detail-placeholder__chip:nth-child(2){
+  width:172px;
+}
+.club-detail-placeholder__line{
+  height:14px;
+  border-radius:10px;
+  width:100%;
+}
+.club-detail-placeholder__line--short{
+  width:72%;
+}
+.club-detail-placeholder__section{
+  border-top:1px solid #e2e8f0;
+  padding-top:20px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.club-detail-placeholder__section-title{
+  height:20px;
+  width:180px;
+  border-radius:12px;
+}
+.club-detail-placeholder__row{
+  height:14px;
+  border-radius:10px;
+  width:100%;
+}
+.club-detail-placeholder__row--short{
+  width:62%;
+}
+.clubs-skeleton{
+  background:linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 50%, #e2e8f0 100%);
+  background-size:200% 100%;
+  animation:clubs-skeleton-shimmer 1.2s ease-in-out infinite;
+}
+@keyframes clubs-skeleton-shimmer{
+  from{
+    background-position:200% 0;
+  }
+  to{
+    background-position:-200% 0;
+  }
 }
 .club-detail__actions{
   display:flex;

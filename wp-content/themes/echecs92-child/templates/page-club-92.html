@@ -8,7 +8,32 @@
   </div>
 
   <div id="club-detail" class="club-detail-page" data-empty-message="Ce club est introuvable ou n'est plus référencé.">
-    <p class="clubs-search__status" role="status">Chargement de la fiche club…</p>
+    <p class="clubs-search__status sr-only" role="status" aria-live="polite">Chargement de la fiche club…</p>
+
+    <div class="club-detail-placeholder" aria-hidden="true">
+      <div class="club-detail-placeholder__header">
+        <div class="club-detail-placeholder__title clubs-skeleton"></div>
+        <div class="club-detail-placeholder__meta">
+          <div class="club-detail-placeholder__chip clubs-skeleton"></div>
+          <div class="club-detail-placeholder__chip clubs-skeleton"></div>
+        </div>
+        <div class="club-detail-placeholder__line clubs-skeleton"></div>
+        <div class="club-detail-placeholder__line club-detail-placeholder__line--short clubs-skeleton"></div>
+      </div>
+
+      <div class="club-detail-placeholder__section">
+        <div class="club-detail-placeholder__section-title clubs-skeleton"></div>
+        <div class="club-detail-placeholder__row clubs-skeleton"></div>
+        <div class="club-detail-placeholder__row clubs-skeleton"></div>
+        <div class="club-detail-placeholder__row club-detail-placeholder__row--short clubs-skeleton"></div>
+      </div>
+
+      <div class="club-detail-placeholder__section">
+        <div class="club-detail-placeholder__section-title clubs-skeleton"></div>
+        <div class="club-detail-placeholder__row clubs-skeleton"></div>
+        <div class="club-detail-placeholder__row club-detail-placeholder__row--short clubs-skeleton"></div>
+      </div>
+    </div>
   </div>
 </div>
 

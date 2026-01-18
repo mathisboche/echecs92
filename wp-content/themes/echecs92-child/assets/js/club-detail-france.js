@@ -2354,10 +2354,7 @@
       renderMessage(detailContainer.dataset.emptyMessage || 'Club introuvable.');
       return;
     }
-    const releaseSpinner =
-      typeof window !== 'undefined' && window.cdjeSpinner && typeof window.cdjeSpinner.show === 'function'
-        ? window.cdjeSpinner.show('Chargement du club…')
-        : () => {};
+    detailContainer.setAttribute('aria-busy', 'true');
     Promise.all([loadFranceClubsDataset(), loadStaticGeoHints(), loadFfeRefs()])
       .then(async ([data, staticHints, ffeRefs]) => {
         const ffeLookup = buildFfeLookup(ffeRefs);
@@ -2379,7 +2376,7 @@
         renderMessage('Impossible de charger la fiche du club pour le moment.');
       })
       .finally(() => {
-        releaseSpinner();
+        detailContainer.removeAttribute('aria-busy');
       });
   };
 
