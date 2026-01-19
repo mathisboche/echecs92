@@ -1804,7 +1804,7 @@
     if (!playerId) {
       return '';
     }
-    return `${window.location.origin}/joueur/${encodeURIComponent(playerId)}/`;
+    return `${window.location.origin}/joueur/?ffe_player=${encodeURIComponent(playerId)}`;
   };
 
   const buildOfficialPlayerUrl = (playerId) => {

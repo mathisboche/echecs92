@@ -529,6 +529,31 @@ add_action('init', function () {
     }
 });
 
+add_action('init', function () {
+    if (! current_user_can('manage_options')) {
+        return;
+    }
+
+    if (get_page_by_path('joueur', OBJECT, 'page')) {
+        return;
+    }
+
+    $page_id = wp_insert_post([
+        'post_type' => 'page',
+        'post_status' => 'publish',
+        'post_title' => 'Joueur',
+        'post_name' => 'joueur',
+        'post_content' => '',
+        'post_author' => get_current_user_id(),
+        'comment_status' => 'closed',
+        'ping_status' => 'closed',
+    ], true);
+
+    if (is_wp_error($page_id)) {
+        return;
+    }
+}, 12);
+
 add_action('template_redirect', function () {
     $request_path = isset($_SERVER['REQUEST_URI']) ? wp_parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : '';
     $query_string = isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] ? '?' . $_SERVER['QUERY_STRING'] : '';
