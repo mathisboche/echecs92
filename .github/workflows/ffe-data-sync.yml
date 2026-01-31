@@ -9,14 +9,10 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-    env:
-      DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
@@ -26,26 +22,13 @@ jobs:
           node scripts/sync-ffe-clubs.js
           node scripts/generate-clubs-france-hints.js
           node scripts/generate-ffe-players-index.js
-      - name: Commit and push if needed
-        id: commit
-        run: |
-          if git status --porcelain | grep -q .; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add wp-content/themes/echecs92-child/assets/data/clubs-france \
-              wp-content/themes/echecs92-child/assets/data/clubs-france.json \
-              wp-content/themes/echecs92-child/assets/data/clubs-france-ffe \
-              wp-content/themes/echecs92-child/assets/data/clubs-france-ffe.json \
-              wp-content/themes/echecs92-child/assets/data/clubs-france-ffe-details \
-              wp-content/themes/echecs92-child/assets/data/ffe-players \
-              wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json
-            git commit -m "chore(data): refresh FFE clubs"
-            git push
-            echo "pushed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "pushed=false" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Trigger deploy hook
-        if: steps.commit.outputs.pushed == 'true' && env.DEPLOY_HOOK_URL != ''
-        run: |
-          curl -sSf -X POST "$DEPLOY_HOOK_URL"
+      - name: Deploy generated data via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          server-dir: /www/wp-content/themes/echecs92-child/assets/data/
+          local-dir: wp-content/themes/echecs92-child/assets/data/
+          dangerous-clean-slate: false
