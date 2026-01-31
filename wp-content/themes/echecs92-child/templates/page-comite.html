@@ -5,9 +5,7 @@
   <header class="committee-hero">
     <p class="committee-hero__eyebrow">Association loi 1901 · CDJE 92</p>
     <h1 class="committee-hero__title">Le Comité des Échecs des Hauts-de-Seine</h1>
-    <p class="committee-hero__description">Le CDJE 92 coordonne les compétitions, accompagne les clubs et assure la transparence de la vie fédérale dans le département.</p>
   </header>
-
   <section class="committee-section committee-governance" aria-labelledby="committee-governance-title">
     <div class="committee-section__header">
       <h2 id="committee-governance-title">Gouvernance</h2>
@@ -46,44 +44,6 @@
       </article>
     </div>
   </section>
-
-  <section class="committee-section committee-figures" aria-labelledby="committee-figures-title">
-    <div class="committee-section__header">
-      <h2 id="committee-figures-title">Chiffres clés</h2>
-    </div>
-    <div class="committee-figures__grid">
-      <article class="figure-card">
-        <span class="figure-card__value" data-fig-value="20">20</span>
-        <span class="figure-card__label">Clubs affiliés</span>
-      </article>
-      <article class="figure-card">
-        <span class="figure-card__value" data-fig-value="44">44</span>
-        <span class="figure-card__label">Équipes engagées</span>
-      </article>
-      <article class="figure-card">
-        <span class="figure-card__value" data-fig-value="34">34</span>
-        <span class="figure-card__label">Coupe Loubatière</span>
-      </article>
-      <article class="figure-card">
-        <span class="figure-card__value" data-fig-value="181">181</span>
-        <span class="figure-card__label">Joueurs individuels &lt;2200</span>
-      </article>
-      <article class="figure-card">
-        <span class="figure-card__value" data-fig-value="55">55</span>
-        <span class="figure-card__label">Vétérans et Seniors+</span>
-      </article>
-      <article class="figure-card">
-        <span class="figure-card__value" data-fig-value="359">359</span>
-        <span class="figure-card__label">Participants aux qualifications jeunes</span>
-      </article>
-      <article class="figure-card">
-        <span class="figure-card__value" data-fig-value="50592" data-fig-suffix=" €">50 592 €</span>
-        <span class="figure-card__label">Trésorerie (01/09/2025)</span>
-        <span class="figure-card__note">Dont 48 498 € sur livret</span>
-      </article>
-    </div>
-  </section>
-
   <section class="committee-section committee-docs" aria-labelledby="committee-docs-title">
     <div class="committee-section__header">
       <h2 id="committee-docs-title">Documents</h2>
@@ -151,38 +111,12 @@
         </div>
         <figcaption class="partner-card__caption">Ligue Île-de-France des Échecs</figcaption>
       </figure>
-      <figure class="partner-card">
-        <div class="partner-card__logo">
-          <img src="/wp-content/uploads/partners/hauts-de-seine.svg" alt="Département des Hauts-de-Seine">
-        </div>
-        <figcaption class="partner-card__caption">Département des Hauts-de-Seine</figcaption>
-      </figure>
-      <figure class="partner-card">
-        <div class="partner-card__logo">
-          <img src="/wp-content/uploads/partners/cdos92.jpg" alt="CDOS 92">
-        </div>
-        <figcaption class="partner-card__caption">CDOS 92</figcaption>
-      </figure>
-    </div>
-  </section>
-
-  <section class="committee-section committee-callout" aria-labelledby="committee-callout-title">
-    <div class="committee-callout__inner">
-      <h2 id="committee-callout-title">Rejoindre ou contribuer</h2>
-      <p>Pour toute question ou proposition, le secrétariat du comité reste à votre écoute.</p>
-      <div class="committee-callout__actions">
-        <a class="committee-callout__link" href="mailto:contact@echecs92.com">contact@echecs92.com</a>
-        <a class="committee-callout__link committee-callout__link--ghost" href="/contact">Formulaire de contact</a>
-      </div>
     </div>
   </section>
 </div>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     var valueElements = document.querySelectorAll('.figure-card__value[data-fig-value]');
-    if (!valueElements.length) {
-      return;
-    }
 
     var format = function (value) {
       try {
@@ -196,11 +130,9 @@
       var targetValue = Number(el.dataset.figValue || 0);
       var suffix = el.dataset.figSuffix || '';
 
-      if (!Number.isFinite(targetValue)) {
-        return;
+      if (Number.isFinite(targetValue)) {
+        el.textContent = format(targetValue) + suffix;
       }
-
-      el.textContent = format(targetValue) + suffix;
     });
   });
 </script>

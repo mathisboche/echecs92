@@ -1,0 +1,34 @@
+name: Sync FFE clubs data
+
+on:
+  schedule:
+    - cron: '15 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Refresh FFE data
+        run: |
+          node scripts/sync-ffe-clubs.js
+          node scripts/generate-clubs-france-hints.js
+          node scripts/generate-ffe-players-index.js
+      - name: Deploy generated data via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          server-dir: /www/wp-content/themes/echecs92-child/assets/data/
+          local-dir: wp-content/themes/echecs92-child/assets/data/
+          dangerous-clean-slate: false

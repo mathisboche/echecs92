@@ -1,0 +1,36 @@
+<!-- wp:template-part {"slug":"header","tagName":"header","theme":"echecs92-child"} /-->
+
+<!-- wp:html -->
+<div
+  class="clubs-page legal clubs-page--has-scope-banner"
+  data-clubs-departments="92"
+  data-clubs-data-url="/wp-content/themes/echecs92-child/assets/data/clubs.json"
+  data-clubs-scope-label="dans les Hauts-de-Seine"
+  data-clubs-list-path="/clubs-92"
+  data-clubs-map-path="/carte-des-clubs-92"
+>
+  <div class="clubs-scope-banner" role="note" aria-label="Carte des clubs en France">
+    <span class="clubs-scope-banner__text">Carte partout en France ?</span>
+    <a class="clubs-scope-banner__link" href="/carte-des-clubs">Voir</a>
+  </div>
+
+  <h1>Carte des clubs du 92</h1>
+  <p class="clubs-page__subtitle">Un club d’échecs près de chez vous dans les Hauts-de-Seine.</p>
+
+  <section class="clubs-map-section" aria-label="Carte interactive des clubs">
+    <div class="clubs-map__container">
+      <div
+        id="clubs-map"
+        class="clubs-map"
+        data-detail-base="/club-92/"
+        data-clubs-departments="92"
+        data-clubs-data-url="/wp-content/themes/echecs92-child/assets/data/clubs.json"
+        aria-label="Carte des clubs"
+      ></div>
+      <p id="clubs-map-status" class="clubs-map__status" role="status" aria-live="polite">Chargement de la carte…</p>
+    </div>
+  </section>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:template-part {"slug":"footer","tagName":"footer","theme":"echecs92-child"} /-->

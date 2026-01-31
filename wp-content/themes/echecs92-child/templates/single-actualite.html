@@ -1,0 +1,31 @@
+<!-- wp:template-part {"slug":"header","tagName":"header","area":"header"} /-->
+
+<!-- wp:group {"tagName":"main","className":"article-simple","layout":{"type":"constrained","wideSize":"900px"}} -->
+  <!-- wp:group {"tagName":"article","className":"article-simple__article","layout":{"type":"constrained"}} -->
+    <!-- wp:paragraph {"className":"article-simple__back"} -->
+    <p class="article-simple__back"><a href="/actualites">&#8592; Retour aux actualités</a></p>
+    <!-- /wp:paragraph -->
+
+    <!-- wp:group {"className":"article-simple__header","layout":{"type":"constrained"}} -->
+      <!-- wp:post-date {"format":"d.m.Y","className":"article-simple__date"} /-->
+      <!-- wp:post-title {"level":1,"className":"article-simple__title"} /-->
+    <!-- /wp:group -->
+
+    <!-- wp:group {"className":"article-simple__media","layout":{"type":"constrained"}} -->
+    <div class="wp-block-group article-simple__media">
+      <!-- wp:post-featured-image {"className":"article-simple__media-image","aspectRatio":"4/3"} /-->
+    </div>
+    <!-- /wp:group -->
+
+    <!-- wp:group {"className":"article-simple__content","layout":{"type":"constrained"}} -->
+      <!-- wp:post-content /-->
+    <!-- /wp:group -->
+
+    <!-- wp:group {"className":"article-simple__nav","layout":{"type":"flex","justifyContent":"space-between","flexWrap":"wrap"}} -->
+      <!-- wp:post-navigation-link {"type":"previous","label":"Article précédent","showTitle":true} /-->
+      <!-- wp:post-navigation-link {"label":"Article suivant","showTitle":true} /-->
+    <!-- /wp:group -->
+  <!-- /wp:group -->
+<!-- /wp:group -->
+
+<!-- wp:template-part {"slug":"footer","tagName":"footer","area":"footer"} /-->

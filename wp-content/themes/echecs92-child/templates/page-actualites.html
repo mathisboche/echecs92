@@ -1,0 +1,197 @@
+<!-- wp:template-part {"slug":"header","tagName":"header","area":"header"} /-->
+
+<!-- wp:group {"tagName":"main","className":"news-simple","layout":{"type":"constrained","wideSize":"960px"}} -->
+<main class="wp-block-group news-simple">
+  <!-- wp:group {"className":"news-simple__header","layout":{"type":"constrained"}} -->
+  <div class="wp-block-group news-simple__header">
+    <!-- wp:heading {"level":1} -->
+    <h1>Actualités</h1>
+    <!-- /wp:heading -->
+  </div>
+  <!-- /wp:group -->
+
+  <!-- wp:query {"queryId":0,"query":{"perPage":10,"postType":"actualite","order":"desc","orderBy":"date","inherit":false},"className":"news-simple__list"} -->
+  <div class="wp-block-query news-simple__list">
+    <!-- wp:post-template -->
+      <!-- wp:group {"className":"news-simple-card","layout":{"type":"constrained"}} -->
+      <div class="wp-block-group news-simple-card">
+        <!-- wp:group {"className":"news-simple-card__media","layout":{"type":"constrained"}} -->
+        <div class="wp-block-group news-simple-card__media">
+          <!-- wp:post-featured-image {"isLink":true,"className":"news-simple-card__image"} /-->
+        </div>
+        <!-- /wp:group -->
+        <!-- wp:group {"className":"news-simple-card__content","layout":{"type":"constrained"}} -->
+        <div class="wp-block-group news-simple-card__content">
+          <!-- wp:post-date {"format":"d.m.Y","className":"news-simple-card__date"} /-->
+          <!-- wp:post-title {"isLink":true,"level":2,"className":"news-simple-card__title"} /-->
+          <!-- wp:post-excerpt {"excerptLength":12,"className":"news-simple-card__excerpt"} /-->
+          <!-- wp:read-more {"content":"Détails","className":"news-simple-card__more"} /-->
+        </div>
+        <!-- /wp:group -->
+      </div>
+      <!-- /wp:group -->
+    <!-- /wp:post-template -->
+
+    <!-- wp:query-pagination {"layout":{"type":"flex","justifyContent":"flex-start","flexWrap":"wrap"},"className":"news-simple__pagination"} -->
+      <!-- wp:query-pagination-previous {"label":"Articles précédents"} /-->
+      <!-- wp:query-pagination-numbers /-->
+      <!-- wp:query-pagination-next {"label":"Articles suivants"} /-->
+    <!-- /wp:query-pagination -->
+
+    <!-- wp:query-no-results -->
+      <!-- wp:html -->
+      <p class="news-simple__empty">Exemples d’actualités.</p>
+      <div class="news-simple__samples">
+        <div class="news-simple-card">
+          <div class="news-simple-card__media"></div>
+          <div class="news-simple-card__content">
+            <p class="news-simple-card__date">12.09.2024</p>
+            <h2 class="news-simple-card__title"><a href="/actualite/rentree-des-clubs-du-92">Rentrée des clubs du 92</a></h2>
+            <p class="news-simple-card__excerpt">Inscriptions ouvertes, créneaux débutants et animations locales.</p>
+            <p class="news-simple-card__more"><a href="/actualite/rentree-des-clubs-du-92">Détails</a></p>
+          </div>
+        </div>
+
+        <div class="news-simple-card">
+          <div class="news-simple-card__media"></div>
+          <div class="news-simple-card__content">
+            <p class="news-simple-card__date">28.09.2024</p>
+            <h2 class="news-simple-card__title"><a href="/actualite/stage-departemental-u12">Stage départemental U12</a></h2>
+            <p class="news-simple-card__excerpt">Journée de jeu et d'analyse encadrée.</p>
+            <p class="news-simple-card__more"><a href="/actualite/stage-departemental-u12">Détails</a></p>
+          </div>
+        </div>
+
+        <div class="news-simple-card">
+          <div class="news-simple-card__media"></div>
+          <div class="news-simple-card__content">
+            <p class="news-simple-card__date">05.10.2024</p>
+            <h2 class="news-simple-card__title"><a href="/actualite/tournois-rapides-du-week-end">Tournois rapides du week-end</a></h2>
+            <p class="news-simple-card__excerpt">Rendez-vous ouverts à tous les niveaux.</p>
+            <p class="news-simple-card__more"><a href="/actualite/tournois-rapides-du-week-end">Détails</a></p>
+          </div>
+        </div>
+
+        <div class="news-simple-card">
+          <div class="news-simple-card__media"></div>
+          <div class="news-simple-card__content">
+            <p class="news-simple-card__date">12.10.2024</p>
+            <h2 class="news-simple-card__title"><a href="/actualite/championnat-par-equipes">Championnat par équipes</a></h2>
+            <p class="news-simple-card__excerpt">Calendrier et groupes publiés.</p>
+            <p class="news-simple-card__more"><a href="/actualite/championnat-par-equipes">Détails</a></p>
+          </div>
+        </div>
+
+        <div class="news-simple-card">
+          <div class="news-simple-card__media"></div>
+          <div class="news-simple-card__content">
+            <p class="news-simple-card__date">19.10.2024</p>
+            <h2 class="news-simple-card__title"><a href="/actualite/formation-animateurs">Formation animateurs</a></h2>
+            <p class="news-simple-card__excerpt">Session d'automne pour bénévoles.</p>
+            <p class="news-simple-card__more"><a href="/actualite/formation-animateurs">Détails</a></p>
+          </div>
+        </div>
+
+        <div class="news-simple-card">
+          <div class="news-simple-card__media"></div>
+          <div class="news-simple-card__content">
+            <p class="news-simple-card__date">02.11.2024</p>
+            <h2 class="news-simple-card__title"><a href="/actualite/coupe-loubatiere">Coupe Loubatière</a></h2>
+            <p class="news-simple-card__excerpt">Inscriptions avant le 25/10.</p>
+            <p class="news-simple-card__more"><a href="/actualite/coupe-loubatiere">Détails</a></p>
+          </div>
+        </div>
+
+        <div class="news-simple-card">
+          <div class="news-simple-card__media"></div>
+          <div class="news-simple-card__content">
+            <p class="news-simple-card__date">15.11.2024</p>
+            <h2 class="news-simple-card__title"><a href="/actualite/open-du-comite">Open du comité</a></h2>
+            <p class="news-simple-card__excerpt">Infos pratiques et règlement mis à jour.</p>
+            <p class="news-simple-card__more"><a href="/actualite/open-du-comite">Détails</a></p>
+          </div>
+        </div>
+
+        <div class="news-simple-card">
+          <div class="news-simple-card__media"></div>
+          <div class="news-simple-card__content">
+            <p class="news-simple-card__date">23.11.2024</p>
+            <h2 class="news-simple-card__title"><a href="/actualite/arbitrage-rapide">Arbitrage rapide</a></h2>
+            <p class="news-simple-card__excerpt">Atelier de mise à niveau pour arbitres.</p>
+            <p class="news-simple-card__more"><a href="/actualite/arbitrage-rapide">Détails</a></p>
+          </div>
+        </div>
+
+        <div class="news-simple-card">
+          <div class="news-simple-card__media"></div>
+          <div class="news-simple-card__content">
+            <p class="news-simple-card__date">07.12.2024</p>
+            <h2 class="news-simple-card__title"><a href="/actualite/noel-des-jeunes">Noël des jeunes</a></h2>
+            <p class="news-simple-card__excerpt">Blitz et animations pour les U14.</p>
+            <p class="news-simple-card__more"><a href="/actualite/noel-des-jeunes">Détails</a></p>
+          </div>
+        </div>
+
+        <div class="news-simple-card">
+          <div class="news-simple-card__media"></div>
+          <div class="news-simple-card__content">
+            <p class="news-simple-card__date">14.12.2024</p>
+            <h2 class="news-simple-card__title"><a href="/actualite/assemblee-generale">Assemblée générale</a></h2>
+            <p class="news-simple-card__excerpt">Ordre du jour et documents disponibles.</p>
+            <p class="news-simple-card__more"><a href="/actualite/assemblee-generale">Détails</a></p>
+          </div>
+        </div>
+      </div>
+
+      <details class="news-simple__samples-toggle">
+        <summary class="news-simple__samples-more">Afficher plus</summary>
+        <div class="news-simple__samples news-simple__samples--more">
+          <div class="news-simple-card">
+            <div class="news-simple-card__media"></div>
+            <div class="news-simple-card__content">
+              <p class="news-simple-card__date">04.01.2025</p>
+              <h2 class="news-simple-card__title"><a href="/actualite/calendrier-2025">Calendrier 2025</a></h2>
+              <p class="news-simple-card__excerpt">Dates clés des compétitions.</p>
+              <p class="news-simple-card__more"><a href="/actualite/calendrier-2025">Détails</a></p>
+            </div>
+          </div>
+
+          <div class="news-simple-card">
+            <div class="news-simple-card__media"></div>
+            <div class="news-simple-card__content">
+              <p class="news-simple-card__date">18.01.2025</p>
+              <h2 class="news-simple-card__title"><a href="/actualite/stages-d-hiver">Stages d'hiver</a></h2>
+              <p class="news-simple-card__excerpt">Sessions ouvertes à tous.</p>
+              <p class="news-simple-card__more"><a href="/actualite/stages-d-hiver">Détails</a></p>
+            </div>
+          </div>
+
+          <div class="news-simple-card">
+            <div class="news-simple-card__media"></div>
+            <div class="news-simple-card__content">
+              <p class="news-simple-card__date">01.02.2025</p>
+              <h2 class="news-simple-card__title"><a href="/actualite/coupe-92">Coupe 92</a></h2>
+              <p class="news-simple-card__excerpt">Tirage et lieux annoncés.</p>
+              <p class="news-simple-card__more"><a href="/actualite/coupe-92">Détails</a></p>
+            </div>
+          </div>
+
+          <div class="news-simple-card">
+            <div class="news-simple-card__media"></div>
+            <div class="news-simple-card__content">
+              <p class="news-simple-card__date">15.02.2025</p>
+              <h2 class="news-simple-card__title"><a href="/actualite/initiation-ecoles">Initiation écoles</a></h2>
+              <p class="news-simple-card__excerpt">Nouvelles interventions prévues.</p>
+              <p class="news-simple-card__more"><a href="/actualite/initiation-ecoles">Détails</a></p>
+            </div>
+          </div>
+        </div>
+      </details>
+      <!-- /wp:html -->
+    <!-- /wp:query-no-results -->
+  </div>
+  <!-- /wp:query -->
+</main>
+<!-- /wp:group -->
+
+<!-- wp:template-part {"slug":"footer","tagName":"footer","area":"footer"} /-->

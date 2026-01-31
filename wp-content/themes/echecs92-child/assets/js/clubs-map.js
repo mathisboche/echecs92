@@ -1,12 +1,86 @@
 (function () {
   const DATA_URL = '/wp-content/themes/echecs92-child/assets/data/clubs.json';
+  const FFE_DETAILS_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france/92.json';
+  const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs:last-listing';
   const mapElement = document.getElementById('clubs-map');
+  const mapBackLink = document.querySelector('[data-clubs-map-back]');
   if (!mapElement || typeof L === 'undefined') {
     return;
   }
 
   const statusElement = document.getElementById('clubs-map-status');
-  const detailBase = mapElement.dataset.detailBase || '/club/';
+  const detailBase = mapElement.dataset.detailBase || '/club-92/';
+  const navigationContext = (() => {
+    try {
+      const storage = window.localStorage;
+      if (!storage) {
+        return null;
+      }
+      const raw = storage.getItem(CLUBS_NAV_STORAGE_KEY);
+      if (!raw) {
+        return null;
+      }
+      storage.removeItem(CLUBS_NAV_STORAGE_KEY);
+      let payload;
+      try {
+        payload = JSON.parse(raw);
+      } catch (error) {
+        payload = null;
+      }
+      if (!payload || typeof payload.ts !== 'number') {
+        return null;
+      }
+      if (Date.now() - payload.ts > 10 * 60 * 1000) {
+        return null;
+      }
+      return payload;
+    } catch (error) {
+      return null;
+    }
+  })();
+
+  const rememberNavigation = (context, backPath) => {
+    try {
+      const storage = window.localStorage;
+      if (!storage) {
+        return;
+      }
+      storage.setItem(
+        CLUBS_NAV_STORAGE_KEY,
+        JSON.stringify({ ts: Date.now(), context, back: backPath || '/clubs-92' })
+      );
+    } catch (error) {
+      // ignore
+    }
+  };
+
+  const cameFromClubsPage = () => {
+    if (navigationContext && navigationContext.context === 'map:from-list') {
+      return true;
+    }
+    const referrer = document.referrer;
+    if (!referrer) {
+      return false;
+    }
+    try {
+      const refUrl = new URL(referrer, window.location.origin);
+      if (refUrl.origin !== window.location.origin) {
+        return false;
+      }
+      const normalized = refUrl.pathname.replace(/\/+$/u, '') || '/';
+      return normalized === '/clubs-92';
+    } catch (error) {
+      return false;
+    }
+  };
+
+  if (mapBackLink) {
+    if (cameFromClubsPage()) {
+      mapBackLink.removeAttribute('hidden');
+    } else {
+      mapBackLink.setAttribute('hidden', '');
+    }
+  }
 
   const updateStatus = (message, tone = 'info') => {
     if (!statusElement) {
@@ -90,12 +164,169 @@
     return result;
   };
 
+  const STREET_KEYWORDS =
+    /\b(rue|avenue|av\.?|boulevard|bd|place|route|chemin|impasse|all[ée]e|voie|quai|cours|passage|square|sentier|mail|esplanade|terrasse|pont|faubourg|clos|cité|cite|hameau|lotissement|residence|résidence|allee)\b/i;
+
+  const simplifyStreetSegment = (value) => {
+    if (!value) {
+      return '';
+    }
+    const cleaned = value.replace(/\([^)]*\)/g, ' ');
+    const parts = cleaned
+      .split(/[,;/]+/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (!parts.length) {
+      return cleaned.replace(/\s+/g, ' ').trim();
+    }
+    const tests = [
+      (part) => /\b\d+[\p{L}]?\b/iu.test(part) && STREET_KEYWORDS.test(part),
+      (part) => STREET_KEYWORDS.test(part),
+      (part) => /\b\d+[\p{L}]?\b/iu.test(part),
+    ];
+    for (const test of tests) {
+      const match = parts.find((part) => test(part));
+      if (match) {
+        return match.replace(/\s+/g, ' ').trim();
+      }
+    }
+    return parts[0];
+  };
+
+  const stripLocalityNoise = (street, postalCode, city) => {
+    let result = (street || '').trim();
+    if (!result) {
+      return '';
+    }
+    if (postalCode) {
+      const postalPattern = new RegExp(`\\b${postalCode}\\b`, 'gi');
+      result = result.replace(postalPattern, ' ');
+    }
+    const formattedCity = formatCommune(city);
+    if (formattedCity) {
+      const escapedCity = formattedCity.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const cityPatterns = [
+        new RegExp(`^${escapedCity}\\s*[,:;\\-–—]?\\s*`, 'i'),
+        new RegExp(`\\s*[,:;\\-–—]?\\s*${escapedCity}$`, 'i'),
+      ];
+      cityPatterns.forEach((pattern) => {
+        result = result.replace(pattern, ' ');
+      });
+    }
+    const postal = (postalCode || '').toString();
+    if (/^75\d{3}$/.test(postal)) {
+      const arrondissementOnly = /^(?:[,;\s\-–—]*)\d{1,2}(?:er|e|eme|ème)?(?:\s*arr(?:\.|t|ondissement)?)?(?:[,;\s\-–—]*)$/i;
+      if (arrondissementOnly.test(result)) {
+        result = '';
+      }
+    }
+    result = result.replace(/^[,;\-–—\s]+|[,;\-–—\s]+$/g, '');
+    return result.replace(/\s+/g, ' ').trim();
+  };
+
+  const normalizeCityForPostal = (city, postalCode) => {
+    const formatted = formatCommune(city);
+    if (!formatted) {
+      return '';
+    }
+    const postal = (postalCode || '').toString();
+    const looksParisPostal = /^75\d{3}$/.test(postal);
+    if (looksParisPostal && /^Paris\b/i.test(formatted)) {
+      const suffix = formatted.replace(/^Paris\b\s*/i, '');
+      const arrondissementPattern = /^(?:\d{1,2}(?:er|e|eme|ème)?)(?:\s*arr(?:\.|t|ondissement)?)?$/i;
+      if (!suffix || arrondissementPattern.test(suffix)) {
+        return 'Paris';
+      }
+    }
+    return formatted;
+  };
+
+  const buildStandardAddress = (primaryAddress, secondaryAddress, postalCode, city) => {
+    const rawStreet =
+      simplifyStreetSegment(primaryAddress) || simplifyStreetSegment(secondaryAddress) || '';
+    const formattedCity = normalizeCityForPostal(city, postalCode);
+    const street = stripLocalityNoise(rawStreet, postalCode, formattedCity);
+    const components = [];
+    if (street) {
+      components.push(street);
+    }
+    const localityParts = [];
+    if (postalCode) {
+      localityParts.push(postalCode);
+    }
+    if (formattedCity) {
+      localityParts.push(formattedCity);
+    }
+    if (localityParts.length) {
+      components.push(localityParts.join(' ').trim());
+    }
+    return components.join(', ').trim();
+  };
+
+  const sanitiseFfeRef = (value) => {
+    const str = (value || '').toString().trim();
+    if (!str) {
+      return '';
+    }
+    const match = str.match(/(\d{2,})$/);
+    return match ? match[1] : '';
+  };
+
+  const buildFfeLookupKey = (name, postalCode, commune) => {
+    const normalizedName = normalise(name || '').replace(/[^a-z0-9]/g, '');
+    const normalizedCity = normalise(commune || '').replace(/[^a-z0-9]/g, '');
+    const normalizedPostal = (postalCode || '').toString().replace(/\D/g, '').trim();
+    if (!normalizedName && !normalizedCity && !normalizedPostal) {
+      return '';
+    }
+    return [normalizedName || 'club', normalizedPostal || '00000', normalizedCity || ''].join('|');
+  };
+
+  const buildFfeNamePostalKey = (name, postalCode) => {
+    const normalizedName = normalise(name || '').replace(/[^a-z0-9]/g, '');
+    const normalizedPostal = (postalCode || '').toString().replace(/\D/g, '').trim();
+    if (!normalizedName && !normalizedPostal) {
+      return '';
+    }
+    return [normalizedName || 'club', normalizedPostal || '00000'].join('|');
+  };
+
+  const buildFfeDetailsLookup = (entries) => {
+    const byRef = new Map();
+    const byKey = new Map();
+    const byNamePostal = new Map();
+    (Array.isArray(entries) ? entries : []).forEach((entry) => {
+      if (!entry || typeof entry !== 'object') {
+        return;
+      }
+      const ref = sanitiseFfeRef(entry.ffe_ref || entry.ref || entry.ffeRef || entry.fiche_ffe);
+      if (ref && !byRef.has(ref)) {
+        byRef.set(ref, entry);
+      }
+      const name = entry.nom || entry.name || '';
+      const address = entry.salle_jeu || entry.salle || entry.adresse || entry.address || '';
+      const siege = entry.siege || entry.siege_social || '';
+      const parts = extractAddressParts(address || siege);
+      const postalCode = entry.code_postal || entry.postal_code || entry.postalCode || parts.postalCode || '';
+      const commune = entry.commune || entry.ville || parts.city || '';
+      const key = buildFfeLookupKey(name, postalCode, commune);
+      if (key && !byKey.has(key)) {
+        byKey.set(key, entry);
+      }
+      const namePostalKey = buildFfeNamePostalKey(name, postalCode);
+      if (namePostalKey && !byNamePostal.has(namePostalKey)) {
+        byNamePostal.set(namePostalKey, entry);
+      }
+    });
+    return { byRef, byKey, byNamePostal };
+  };
+
   const collectPostalCodes = (club) => {
     const codes = new Set();
     if (club.postalCode) {
       codes.add(club.postalCode);
     }
-    [club.address, club.siege].forEach((value) => {
+    [club.address, club.siege, club.addressStandard].forEach((value) => {
       const matches = (value || '').match(/\b\d{5}\b/g);
       if (matches) {
         matches.forEach((code) => codes.add(code));
@@ -235,7 +466,7 @@
       return raw;
     }
     const name = raw.nom || raw.name || '';
-    const primaryAddress = raw.adresse || raw.address || '';
+    const primaryAddress = raw.salle_jeu || raw.salle || raw.adresse || raw.address || '';
     const addressParts = extractAddressParts(primaryAddress);
     const secondaryAddress = raw.siege || raw.siege_social || raw.address2 || '';
     const secondaryParts = extractAddressParts(secondaryAddress);
@@ -243,7 +474,34 @@
     const commune = formatCommune(communeRaw);
     const postalCode = raw.code_postal || raw.postal_code || addressParts.postalCode || secondaryParts.postalCode || '';
     const slugSource = commune || name || postalCode || primaryAddress || secondaryAddress;
+    const standardAddress = buildStandardAddress(
+      primaryAddress,
+      secondaryAddress,
+      postalCode,
+      commune || addressParts.city || secondaryParts.city || ''
+    );
     const id = raw.id || slugify(name || slugSource || `club-${Date.now()}`);
+
+    const rawSite = raw.site || raw.website || '';
+    let site = rawSite;
+    if (site && !/^https?:/i.test(site)) {
+      site = `https://${site.replace(/^\/+/g, '')}`;
+    }
+
+    const toFloat = (value) => {
+      if (value == null || value === '') {
+        return null;
+      }
+      const parsed = Number.parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const latitude =
+      toFloat(raw.latitude ?? raw.lat ?? raw.location?.latitude ?? raw.location?.lat) ?? null;
+    const longitude =
+      toFloat(raw.longitude ?? raw.lng ?? raw.lon ?? raw.location?.longitude ?? raw.location?.lng) ??
+      null;
+    const initialFfeRef = sanitiseFfeRef(raw.ffe_ref ?? raw.ffeRef ?? raw.fiche_ffe);
 
     return {
       id,
@@ -251,17 +509,127 @@
       commune,
       address: primaryAddress || secondaryAddress || '',
       siege: secondaryAddress || '',
+      salle: raw.salle_jeu || raw.salle || '',
       phone: raw.telephone || raw.phone || '',
+      fax: raw.fax || '',
       email: raw.email || '',
-      site: raw.site || raw.website || '',
+      site,
+      president: raw.president || '',
+      presidentEmail: raw.president_email || raw.presidentEmail || '',
+      contact: raw.contact || '',
+      contactEmail: raw.contact_email || raw.contactEmail || '',
+      hours: raw.horaires || raw.hours || '',
+      accesPmr: raw.acces_pmr || '',
+      interclubs: raw.interclubs || '',
+      interclubsJeunes: raw.interclubs_jeunes || '',
+      interclubsFeminins: raw.interclubs_feminins || '',
+      labelFederal: raw.label_federal || '',
+      ffeRef: initialFfeRef,
       postalCode,
+      addressStandard: standardAddress,
+      addressDisplay: standardAddress || primaryAddress || secondaryAddress || '',
+      latitude,
+      longitude,
       slug: slugify(slugSource || id || name || 'club'),
     };
+  };
+
+  const refreshClubDisplay = (club) => {
+    if (!club || typeof club !== 'object') {
+      return;
+    }
+    club.addressDisplay = club.addressStandard || club.address || club.siege || '';
+  };
+
+  const applyFfeDetails = (clubs, lookup) => {
+    if (!Array.isArray(clubs) || !lookup) {
+      return;
+    }
+    const findDetail = (club) => {
+      const ref = sanitiseFfeRef(club?.ffeRef || club?.fiche_ffe);
+      if (ref && lookup.byRef && lookup.byRef.has(ref)) {
+        return lookup.byRef.get(ref);
+      }
+      const key = buildFfeLookupKey(club?.name || '', club?.postalCode || '', club?.commune || '');
+      if (key && lookup.byKey && lookup.byKey.has(key)) {
+        return lookup.byKey.get(key);
+      }
+      const namePostalKey = buildFfeNamePostalKey(club?.name || '', club?.postalCode || '');
+      if (namePostalKey && lookup.byNamePostal && lookup.byNamePostal.has(namePostalKey)) {
+        return lookup.byNamePostal.get(namePostalKey);
+      }
+      return null;
+    };
+    const assignIfPresent = (club, key, value) => {
+      if (!club || typeof club !== 'object') {
+        return;
+      }
+      if (value != null && value !== '') {
+        club[key] = value;
+      }
+    };
+    clubs.forEach((club) => {
+      const detail = findDetail(club);
+      if (!detail) {
+        return;
+      }
+      const ffeClub = adaptClubRecord(detail);
+      assignIfPresent(club, 'name', ffeClub.name);
+      assignIfPresent(club, 'commune', ffeClub.commune);
+      assignIfPresent(club, 'address', ffeClub.address);
+      assignIfPresent(club, 'salle', ffeClub.salle);
+      assignIfPresent(club, 'siege', ffeClub.siege);
+      assignIfPresent(club, 'addressStandard', ffeClub.addressStandard);
+      assignIfPresent(club, 'phone', ffeClub.phone);
+      assignIfPresent(club, 'fax', ffeClub.fax);
+      assignIfPresent(club, 'email', ffeClub.email);
+      assignIfPresent(club, 'site', ffeClub.site);
+      assignIfPresent(club, 'president', ffeClub.president);
+      assignIfPresent(club, 'presidentEmail', ffeClub.presidentEmail);
+      assignIfPresent(club, 'contact', ffeClub.contact);
+      assignIfPresent(club, 'contactEmail', ffeClub.contactEmail);
+      assignIfPresent(club, 'hours', ffeClub.hours);
+      assignIfPresent(club, 'accesPmr', ffeClub.accesPmr);
+      assignIfPresent(club, 'interclubs', ffeClub.interclubs);
+      assignIfPresent(club, 'interclubsJeunes', ffeClub.interclubsJeunes);
+      assignIfPresent(club, 'interclubsFeminins', ffeClub.interclubsFeminins);
+      assignIfPresent(club, 'labelFederal', ffeClub.labelFederal);
+      assignIfPresent(club, 'postalCode', ffeClub.postalCode);
+      if (ffeClub.ffeRef) {
+        club.ffeRef = ffeClub.ffeRef;
+      }
+      if (ffeClub.fiche_ffe) {
+        club.fiche_ffe = ffeClub.fiche_ffe;
+      }
+    });
   };
 
   const resolveClubCoordinates = (club) => {
     if (!club) {
       return null;
+    }
+
+    const directLat = Number.parseFloat(club.latitude ?? club.lat);
+    const directLng = Number.parseFloat(club.longitude ?? club.lng ?? club.lon);
+    if (Number.isFinite(directLat) && Number.isFinite(directLng)) {
+      return {
+        lat: directLat,
+        lng: directLng,
+        label: club.commune || club.addressStandard || club.address || club.name || '',
+        postalCode: club.postalCode || '',
+      };
+    }
+
+    if (club.addressStandard) {
+      const addressFallback = lookupLocalCoordinates(club.addressStandard);
+      if (addressFallback) {
+        return {
+          lat: addressFallback.latitude,
+          lng: addressFallback.longitude,
+          label: addressFallback.label || club.addressStandard,
+          postalCode: addressFallback.postalCode || '',
+        };
+      }
     }
 
     if (club.commune) {
@@ -276,6 +644,18 @@
       const coords = getPostalCoordinates(postalCandidates[i]);
       if (coords) {
         return { lat: coords.lat, lng: coords.lng, label: coords.label, postalCode: coords.postalCode };
+      }
+    }
+
+    if (club.addressStandard) {
+      const addressFallback = lookupLocalCoordinates(club.addressStandard);
+      if (addressFallback) {
+        return {
+          lat: addressFallback.latitude,
+          lng: addressFallback.longitude,
+          label: addressFallback.label || club.addressStandard,
+          postalCode: addressFallback.postalCode || '',
+        };
       }
     }
 
@@ -315,27 +695,50 @@
 
   const createPopupContent = (club) => {
     const lines = [`<strong>${club.name}</strong>`];
-    if (club.commune) {
+    if (club.addressDisplay) {
+      lines.push(club.addressDisplay);
+    } else if (club.commune) {
       lines.push(club.commune);
     }
-    if (club.address) {
-      lines.push(club.address);
-    }
     const detailUrl = getClubDetailUrl(club);
-    lines.push(`<a href="${detailUrl}">Voir la fiche</a>`);
+    lines.push(`<a class="clubs-map__detail-link" href="${detailUrl}">Voir la fiche</a>`);
     return lines.join('<br>');
   };
 
-  updateStatus('Chargement de la carte…', 'info');
+  const handleMapLinkInteraction = (event) => {
+    const target = event.target;
+    if (!target || !(target instanceof Element)) {
+      return;
+    }
+    if (!target.classList.contains('clubs-map__detail-link')) {
+      return;
+    }
+    if (event.type === 'auxclick' && event.button !== 1) {
+      return;
+    }
+    rememberNavigation('detail:map', '/carte-des-clubs-92');
+  };
 
-  fetch(DATA_URL, { headers: { Accept: 'application/json' } })
-    .then((response) => {
+  mapElement.addEventListener('click', handleMapLinkInteraction);
+  mapElement.addEventListener('auxclick', handleMapLinkInteraction);
+
+  const fetchJson = (url) =>
+    fetch(url, { headers: { Accept: 'application/json' } }).then((response) => {
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
       return response.json();
-    })
-    .then((payload) => {
+    });
+
+  updateStatus('Chargement de la carte…', 'info');
+  const spinnerHost = mapElement.closest('.clubs-map__container') || mapElement;
+  const releaseSpinner =
+    typeof window !== 'undefined' && window.cdjeSpinner && typeof window.cdjeSpinner.show === 'function'
+      ? window.cdjeSpinner.show('Chargement de la carte…', { host: spinnerHost })
+      : () => {};
+
+  Promise.all([fetchJson(DATA_URL), fetchJson(FFE_DETAILS_URL).catch(() => [])])
+    .then(([payload, ffeDetails]) => {
       const data = Array.isArray(payload) ? payload : [];
       if (!data.length) {
         updateStatus('Aucun club à afficher pour le moment.', 'error');
@@ -343,6 +746,10 @@
       }
 
       const clubs = data.map(adaptClubRecord);
+      if (Array.isArray(ffeDetails) && ffeDetails.length) {
+        applyFfeDetails(clubs, buildFfeDetailsLookup(ffeDetails));
+        clubs.forEach(refreshClubDisplay);
+      }
       const features = [];
 
       clubs.forEach((club) => {
@@ -400,5 +807,8 @@
     })
     .catch(() => {
       updateStatus('Impossible de charger la carte pour le moment. Veuillez réessayer plus tard.', 'error');
+    })
+    .finally(() => {
+      releaseSpinner();
     });
 })();
