@@ -5,18 +5,12 @@ on:
     branches: [ "main" ]
     paths:
       - "wp-content/**"
-  workflow_run:
-    workflows:
-      - "Sync FFE clubs data"
-      - "Sync FFE license counts"
-      - "Sync FFE address hints"
-    types:
-      - completed
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repo

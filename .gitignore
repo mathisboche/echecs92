@@ -1,2 +1,14 @@
 # Secrets
 wp-content/.secrets/
+
+# OS noise
+.DS_Store
+
+# Generated / sensitive content (keep out of public repo)
+archive-wayback/
+archive-wayback.zip
+wp-content/uploads/*
+!wp-content/uploads/.gitkeep
+wp-content/upgrade/
+wp-content/themes/echecs92-child/assets/data/*
+!wp-content/themes/echecs92-child/assets/data/README.md

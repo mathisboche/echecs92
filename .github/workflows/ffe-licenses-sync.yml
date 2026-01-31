@@ -9,12 +9,10 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
@@ -22,17 +20,13 @@ jobs:
       - name: Refresh license counts
         run: |
           node scripts/sync-ffe-clubs.js --licenses-only
-      - name: Commit and push if needed
-        id: commit
-        run: |
-          if git status --porcelain | grep -q .; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add wp-content/themes/echecs92-child/assets/data/clubs-france \
-              wp-content/themes/echecs92-child/assets/data/clubs.json
-            git commit -m "chore(data): refresh FFE licenses"
-            git push
-            echo "pushed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "pushed=false" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Deploy generated data via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          server-dir: /www/wp-content/themes/echecs92-child/assets/data/
+          local-dir: wp-content/themes/echecs92-child/assets/data/
+          dangerous-clean-slate: false
