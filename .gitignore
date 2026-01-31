@@ -12,3 +12,6 @@ wp-content/uploads/*
 wp-content/upgrade/
 wp-content/themes/echecs92-child/assets/data/*
 !wp-content/themes/echecs92-child/assets/data/README.md
+
+# Local secrets (do not commit)
+wp-content/themes/echecs92-child/config/recaptcha.php
