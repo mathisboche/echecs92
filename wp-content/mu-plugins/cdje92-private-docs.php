@@ -122,6 +122,41 @@ add_filter('the_content', 'cdje92_docs_filter_content', 20);
 add_filter('widget_text', 'cdje92_docs_filter_content', 20);
 add_filter('widget_text_content', 'cdje92_docs_filter_content', 20);
 
+function cdje92_docs_filter_block_content($block_content, $block) {
+    if (is_admin() || !is_string($block_content) || $block_content === '') {
+        return $block_content;
+    }
+    return cdje92_docs_filter_content($block_content);
+}
+add_filter('render_block', 'cdje92_docs_filter_block_content', 20, 2);
+
+function cdje92_docs_filter_attachment_url($url, $post_id) {
+    if (is_admin() || !cdje92_docs_get_secret()) {
+        return $url;
+    }
+    $updated = cdje92_docs_build_secure_url_from_public($url);
+    return $updated ?: $url;
+}
+add_filter('wp_get_attachment_url', 'cdje92_docs_filter_attachment_url', 20, 2);
+
+function cdje92_docs_filter_acf_file($value) {
+    if (is_admin() || !cdje92_docs_get_secret()) {
+        return $value;
+    }
+    if (is_string($value)) {
+        $updated = cdje92_docs_build_secure_url_from_public($value);
+        return $updated ?: $value;
+    }
+    if (is_array($value) && isset($value['url']) && is_string($value['url'])) {
+        $updated = cdje92_docs_build_secure_url_from_public($value['url']);
+        if ($updated) {
+            $value['url'] = $updated;
+        }
+    }
+    return $value;
+}
+add_filter('acf/format_value/type=file', 'cdje92_docs_filter_acf_file', 20, 3);
+
 function cdje92_docs_register_rewrite() {
     add_rewrite_rule(
         '^' . CDJE92_DOCS_URL_PREFIX . '/(.+)$',
