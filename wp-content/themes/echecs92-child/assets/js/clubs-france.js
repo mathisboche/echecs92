@@ -1543,6 +1543,14 @@
     }
     return element.getClientRects().length > 0;
   };
+  const isElementInViewport = (element) => {
+    if (!element || typeof element.getBoundingClientRect !== 'function' || typeof window === 'undefined') {
+      return false;
+    }
+    const rect = element.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || document.documentElement?.clientHeight || 0;
+    return rect.bottom > 0 && rect.top < viewportHeight;
+  };
 
   const getAdminBarHeight = () => {
     if (typeof document === 'undefined') {
@@ -2347,14 +2355,30 @@
     } else {
       updateListScrollAnchor('window');
     }
+    const scrollIntoView = () => {
+      if (!target || typeof target.scrollIntoView !== 'function') {
+        return;
+      }
+      try {
+        target.scrollIntoView({ behavior, block: 'start', inline: 'nearest' });
+      } catch {
+        target.scrollIntoView({ block: 'start' });
+      }
+    };
     if (scrollToTarget(target, { behavior, offset })) {
+      if (typeof window !== 'undefined' && typeof window.setTimeout === 'function') {
+        const fallbackDelay = behavior === 'auto' ? 0 : 220;
+        window.setTimeout(() => {
+          if (!isElementInViewport(target)) {
+            scrollIntoView();
+          }
+        }, fallbackDelay);
+      } else if (!isElementInViewport(target)) {
+        scrollIntoView();
+      }
       return;
     }
-    try {
-      target.scrollIntoView({ behavior, block: 'start', inline: 'nearest' });
-    } catch {
-      target.scrollIntoView({ block: 'start' });
-    }
+    scrollIntoView();
   };
 
   const getCurrentBackPath = () => {
