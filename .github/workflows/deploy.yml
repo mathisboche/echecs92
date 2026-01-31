@@ -4,7 +4,10 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - "wp-content/**"
+      - "wp-content/themes/**"
+      - "wp-content/plugins/**"
+      - "wp-content/mu-plugins/**"
+      - "wp-content/languages/**"
 
 jobs:
   deploy:
@@ -16,13 +19,46 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Deploy via FTP
+      - name: Deploy themes via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftp
-          server-dir: /www/wp-content/
-          local-dir: wp-content/
+          server-dir: /www/wp-content/themes/
+          local-dir: wp-content/themes/
+          dangerous-clean-slate: false
+
+      - name: Deploy plugins via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          server-dir: /www/wp-content/plugins/
+          local-dir: wp-content/plugins/
+          dangerous-clean-slate: false
+
+      - name: Deploy mu-plugins via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          server-dir: /www/wp-content/mu-plugins/
+          local-dir: wp-content/mu-plugins/
+          dangerous-clean-slate: false
+
+      - name: Deploy languages via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          server-dir: /www/wp-content/languages/
+          local-dir: wp-content/languages/
           dangerous-clean-slate: false

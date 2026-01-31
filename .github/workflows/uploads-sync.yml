@@ -1,0 +1,30 @@
+name: Sync uploads from assets repo
+
+on:
+  schedule:
+    - cron: '15 2 * * 1'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout assets repo
+        uses: actions/checkout@v4
+        with:
+          repository: mathisboche/echecs92-assets
+          token: ${{ secrets.ASSETS_REPO_TOKEN }}
+          path: assets
+
+      - name: Deploy uploads via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          server-dir: /www/wp-content/uploads/
+          local-dir: assets/uploads/
+          dangerous-clean-slate: false

@@ -1,0 +1,48 @@
+name: Backup uploads from server
+
+on:
+  schedule:
+    - cron: '45 1 * * *'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout assets repo
+        uses: actions/checkout@v4
+        with:
+          repository: mathisboche/echecs92-assets
+          token: ${{ secrets.ASSETS_REPO_TOKEN }}
+          path: assets
+          persist-credentials: true
+
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: Mirror uploads from FTP
+        working-directory: assets
+        run: |
+          lftp -u "${FTP_USERNAME}","${FTP_PASSWORD}" "ftp://${FTP_SERVER}" <<EOF
+          set ssl:verify-certificate no
+          set ftp:passive-mode true
+          mirror --verbose --only-newer /www/wp-content/uploads/ uploads
+          bye
+          EOF
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+
+      - name: Commit and push if needed
+        working-directory: assets
+        run: |
+          if git status --porcelain | grep -q .; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add uploads
+            git commit -m "chore(uploads): sync from server"
+            git push
+          fi
