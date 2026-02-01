@@ -28,6 +28,7 @@ jobs:
           set ftp:passive-mode true
           mirror --verbose --only-newer /www/wp-content/themes/echecs92-child/assets/data/clubs-france/ wp-content/themes/echecs92-child/assets/data/clubs-france/
           get /www/wp-content/themes/echecs92-child/assets/data/clubs-france.json -o wp-content/themes/echecs92-child/assets/data/clubs-france.json
+          get /www/wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json -o wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json
           EOF
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -36,7 +37,7 @@ jobs:
       - name: Regenerate address hints
         run: |
           node scripts/update-postal-coordinates-fr.js
-          node scripts/generate-clubs-france-hints.js
+          node scripts/generate-clubs-france-hints.js --resume
       - name: Deploy generated data via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
