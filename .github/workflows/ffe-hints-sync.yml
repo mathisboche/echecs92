@@ -13,6 +13,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Install lftp
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lftp
+      - name: Fetch clubs data from server
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          mkdir -p wp-content/themes/echecs92-child/assets/data
+          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_SERVER:21" <<'EOF'
+          set ftp:passive-mode true
+          mirror --verbose --only-newer /www/wp-content/themes/echecs92-child/assets/data/clubs-france/ wp-content/themes/echecs92-child/assets/data/clubs-france/
+          get /www/wp-content/themes/echecs92-child/assets/data/clubs-france.json -o wp-content/themes/echecs92-child/assets/data/clubs-france.json
+          EOF
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
