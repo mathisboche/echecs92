@@ -228,6 +228,14 @@
     return ffeRefsPromise;
   };
 
+  const loadClubsDataset = () =>
+    fetchJson(DATA_URL)
+      .then((payload) => (Array.isArray(payload) ? payload : null))
+      .catch((error) => {
+        console.warn('[club-detail-92] Données clubs.json indisponibles, repli vers la base FFE 92.', error);
+        return null;
+      });
+
   const renderMessage = (message, tone = 'error') => {
     detailContainer.innerHTML = `<p class="clubs-empty" data-tone="${tone}">${message}</p>`;
   };
@@ -1789,14 +1797,15 @@
 
     schedulePlaceholder();
     Promise.all([
-      fetchJson(DATA_URL),
+      loadClubsDataset(),
       loadFfeRefs(),
       fetchJson(FFE_DETAILS_URL).catch(() => []),
     ])
       .then(async ([data, ffeRefs, ffeDetails]) => {
+        const basePayload = Array.isArray(data) ? data : Array.isArray(ffeDetails) ? ffeDetails : [];
         const ffeLookup = buildFfeLookup(ffeRefs);
         const ffeDetailsLookup = buildFfeDetailsLookup(ffeDetails);
-        const clubs = (Array.isArray(data) ? data : []).map(hydrateClub);
+        const clubs = basePayload.map(hydrateClub);
         applyFfeRefs(clubs, ffeLookup);
         applyFfeDetails(clubs, ffeDetailsLookup);
         clubs.forEach(updateLicenseTotals);

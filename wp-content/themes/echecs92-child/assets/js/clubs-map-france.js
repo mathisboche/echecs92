@@ -105,22 +105,40 @@
     }
   };
 
+  const loadLegacyDataset = () => {
+    if (!clubsDataUrl) {
+      return Promise.resolve(null);
+    }
+    return fetchJson(clubsDataUrl)
+      .then((payload) => (Array.isArray(payload) ? payload : null))
+      .catch((error) => {
+        console.warn('[clubs-fr-map] Données clubs.json indisponibles, repli vers le manifest.', error);
+        return null;
+      });
+  };
+
+  const loadManifestDataset = () =>
+    loadManifest().then(async (manifestMeta) => {
+      const departments = manifestMeta.departments || [];
+      const filteredDepartments = departments.filter(shouldIncludeDepartment);
+      if (!filteredDepartments.length) {
+        return [];
+      }
+      const chunks = await Promise.all(filteredDepartments.map((entry) => fetchDepartmentClubs(entry, manifestMeta)));
+      return chunks.flat();
+    });
+
   const loadFranceClubsDataset = () => {
     if (!datasetPromise) {
       if (clubsDataUrl) {
-        datasetPromise = fetchJson(clubsDataUrl)
-          .then((payload) => (Array.isArray(payload) ? payload : []))
-          .catch(() => []);
-      } else {
-        datasetPromise = loadManifest().then(async (manifestMeta) => {
-          const departments = manifestMeta.departments || [];
-          const filteredDepartments = departments.filter(shouldIncludeDepartment);
-          if (!filteredDepartments.length) {
-            return [];
+        datasetPromise = loadLegacyDataset().then((data) => {
+          if (Array.isArray(data)) {
+            return data;
           }
-          const chunks = await Promise.all(filteredDepartments.map((entry) => fetchDepartmentClubs(entry, manifestMeta)));
-          return chunks.flat();
+          return loadManifestDataset();
         });
+      } else {
+        datasetPromise = loadManifestDataset();
       }
     }
     return datasetPromise;
