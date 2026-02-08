@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import gzip
 import re
 import sys
 import time
+from http.client import RemoteDisconnected
 from pathlib import Path
 from typing import Iterable
 from urllib.error import HTTPError, URLError
@@ -11,7 +13,7 @@ from urllib.parse import quote, urlparse, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 
-WAYBACK_RE = re.compile(r"https://web\.archive\.org/web/\d+(?:[a-z_]+)?/(.+)")
+WAYBACK_RE = re.compile(r"https?://web\.archive\.org/web/\d+(?:[a-z_]+)?/(.+)")
 
 ALLOWED_HOSTS = {
     "www.echecs92.fr",
@@ -21,6 +23,14 @@ ALLOWED_HOSTS = {
     "api.dmp.jimdo-server.com",
     "fonts.jimstatic.com",
     "www.billetweb.fr",
+}
+
+# If Wayback doesn't have a capture (or is flaky), these hosts are usually still
+# downloadable directly and can make the archive more self-contained.
+DIRECT_FALLBACK_HOSTS = {
+    "assets.jimstatic.com",
+    "u.jimcdn.com",
+    "image.jimcdn.com",
 }
 
 
@@ -58,16 +68,32 @@ def load_missing(path: Path) -> Iterable[str]:
 
 def download(url: str, target: Path, delay: float, retries: int = 3) -> bool:
     normalized_url = normalize_url(url)
+    # web.archive.org HTTPS is occasionally unavailable from some networks; HTTP works.
+    if normalized_url.startswith("https://web.archive.org/"):
+        normalized_url = "http://web.archive.org/" + normalized_url[len("https://web.archive.org/") :]
     for attempt in range(1, retries + 1):
         try:
-            req = Request(normalized_url, headers={"User-Agent": "echecs92-archive/1.0"})
+            req = Request(
+                normalized_url,
+                headers={
+                    "User-Agent": (
+                        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/120.0.0.0 Safari/537.36"
+                    ),
+                    "Accept-Encoding": "gzip",
+                },
+            )
             with urlopen(req, timeout=30) as resp:
                 if resp.status >= 400:
                     return False
                 target.parent.mkdir(parents=True, exist_ok=True)
                 with open(target, "wb") as f:
+                    stream = resp
+                    if (resp.headers.get("Content-Encoding") or "").lower() == "gzip":
+                        stream = gzip.GzipFile(fileobj=resp)
                     while True:
-                        chunk = resp.read(8192)
+                        chunk = stream.read(8192)
                         if not chunk:
                             break
                         f.write(chunk)
@@ -80,6 +106,11 @@ def download(url: str, target: Path, delay: float, retries: int = 3) -> bool:
                 continue
             return False
         except URLError:
+            if attempt < retries:
+                time.sleep(delay + attempt)
+                continue
+            return False
+        except (ConnectionResetError, TimeoutError, RemoteDisconnected):
             if attempt < retries:
                 time.sleep(delay + attempt)
                 continue
@@ -111,11 +142,26 @@ def main() -> int:
         return 1
 
     missing = load_missing(missing_path)
+    # Prioritize the stuff that matters for completeness/UX:
+    # 1) downloads/documents, 2) HTML pages, 3) images, 4) other assets.
+    def sort_key(url: str) -> tuple[int, str]:
+        if "/app/download/" in url:
+            return (0, url)
+        if "https://www.echecs92.fr/" in url:
+            return (1, url)
+        if "image.jimcdn.com/" in url:
+            return (2, url)
+        if "assets.jimstatic.com/" in url or "u.jimcdn.com/" in url:
+            return (3, url)
+        return (4, url)
+
+    missing = sorted(missing, key=sort_key)
     ok = 0
     skipped = 0
     failed = 0
 
-    for line in missing:
+    total = len(missing)
+    for idx, line in enumerate(missing, start=1):
         match = WAYBACK_RE.match(line)
         if not match:
             skipped += 1
@@ -133,12 +179,23 @@ def main() -> int:
             skipped += 1
             continue
 
-        if download(line, target, delay):
+        downloaded = download(line, target, delay)
+        if not downloaded:
+            # For Jimdo file downloads, the live endpoint is often accessible even
+            # when the site itself is behind bot protection.
+            is_jimdo_download = host == "www.echecs92.fr" and "/app/download/" in (parsed.path or "")
+            if is_jimdo_download or host in DIRECT_FALLBACK_HOSTS:
+                downloaded = download(original, target, delay)
+
+        if downloaded:
             ok += 1
         else:
             failed += 1
 
-    print(f"Downloaded: {ok}, skipped: {skipped}, failed: {failed}")
+        if idx == 1 or idx == total or idx % 25 == 0:
+            print(f"[{idx}/{total}] Downloaded: {ok}, skipped: {skipped}, failed: {failed}", flush=True)
+
+    print(f"Downloaded: {ok}, skipped: {skipped}, failed: {failed}", flush=True)
     return 0
 
 

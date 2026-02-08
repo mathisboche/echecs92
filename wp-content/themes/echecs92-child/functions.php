@@ -1211,7 +1211,7 @@ function cdje92_render_contact_form() {
             'incomplete'    => __('Merci de renseigner les champs obligatoires.', 'echecs92-child'),
             'invalid_email' => __('L’adresse e-mail semble invalide.', 'echecs92-child'),
             'recaptcha_failed' => __('Merci de confirmer que vous n’êtes pas un robot pour envoyer le message.', 'echecs92-child'),
-            'recaptcha_unavailable' => __('La vérification anti-robot est indisponible pour le moment. Merci de réessayer plus tard.', 'echecs92-child'),
+            'recaptcha_unavailable' => __('Le formulaire de contact est temporairement indisponible. Merci de réessayer plus tard ou d’envoyer un e-mail à contact@echecs92.com.', 'echecs92-child'),
             'send_failed'   => __('L’envoi a échoué. Merci de réessayer ou d’utiliser les coordonnées directes.', 'echecs92-child'),
         ],
     ];

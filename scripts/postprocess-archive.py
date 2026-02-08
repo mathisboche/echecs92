@@ -4,7 +4,8 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+import shutil
+from urllib.parse import quote, unquote, urlparse
 
 
 WAYBACK_BLOCK_RE = re.compile(
@@ -12,16 +13,26 @@ WAYBACK_BLOCK_RE = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 
+ADMIN_LINKS_RE = re.compile(
+    r"<div[^>]+class=[\"'][^\"']*j-admin-links[^\"']*[\"'][^>]*>.*?</div>",
+    re.IGNORECASE | re.DOTALL,
+)
+
 WAYBACK_URL_RE = re.compile(
-    r"https://web\.archive\.org/web/\d+(?:[a-z_]+)?/(https?://[^\"'\s<>]+)",
+    r"https?://web\.archive\.org/web/\d+(?:[a-z_]+)?/(https?://[^\"'\s<>]+)",
     re.IGNORECASE,
 )
 WAYBACK_MAILTO_RE = re.compile(
-    r"https://web\.archive\.org/web/\d+(?:[a-z_]+)?/(mailto:[^\"'\s<>]+)",
+    r"https?://web\.archive\.org/web/\d+(?:[a-z_]+)?/(mailto:[^\"'\s<>]+)",
     re.IGNORECASE,
 )
 WAYBACK_TEL_RE = re.compile(
-    r"https://web\.archive\.org/web/\d+(?:[a-z_]+)?/(tel:[^\"'\s<>]+)",
+    r"https?://web\.archive\.org/web/\d+(?:[a-z_]+)?/(tel:[^\"'\s<>]+)",
+    re.IGNORECASE,
+)
+
+DIRECT_ASSET_URL_RE = re.compile(
+    r"https?://(?:www\.echecs92\.fr|assets\.jimstatic\.com|u\.jimcdn\.com|image\.jimcdn\.com|api\.dmp\.jimdo-server\.com|fonts\.jimstatic\.com)(?:/[^\"'\s<>]*)?",
     re.IGNORECASE,
 )
 
@@ -42,6 +53,16 @@ OG_URL_RE = re.compile(
     re.IGNORECASE,
 )
 
+ARCHIVE_HOSTS = {
+    # Original site + Jimdo assets used by the site.
+    "www.echecs92.fr",
+    "assets.jimstatic.com",
+    "u.jimcdn.com",
+    "image.jimcdn.com",
+    "api.dmp.jimdo-server.com",
+    "fonts.jimstatic.com",
+}
+
 
 def usage() -> None:
     print("Usage: postprocess-archive.py <archive_root> <archive_domain>", file=sys.stderr)
@@ -52,17 +73,27 @@ def promote_site_root(root: Path) -> Path:
     if not site_dir.is_dir():
         return root
 
-    for entry in site_dir.iterdir():
-        target = root / entry.name
-        if target.exists():
-            if entry.is_dir() and target.is_dir():
-                for sub in entry.iterdir():
-                    sub_target = target / sub.name
-                    if sub_target.exists():
-                        continue
-                    sub.rename(sub_target)
-            continue
-        entry.rename(target)
+    def merge_move(src: Path, dst: Path) -> None:
+        # Move a directory tree into dst, overwriting files. This keeps the archive
+        # flat (root-level site) while allowing repeated runs to refresh content.
+        dst.mkdir(parents=True, exist_ok=True)
+        for entry in src.iterdir():
+            target = dst / entry.name
+            if entry.is_dir():
+                if target.exists() and not target.is_dir():
+                    target.unlink()
+                merge_move(entry, target)
+                try:
+                    entry.rmdir()
+                except OSError:
+                    pass
+                continue
+
+            if target.exists() and target.is_dir():
+                shutil.rmtree(target)
+            entry.replace(target)
+
+    merge_move(site_dir, root)
 
     try:
         site_dir.rmdir()
@@ -102,38 +133,65 @@ def inject_meta(html: str, domain: str, html_path: Path, root: Path) -> str:
 def normalize_path(path: str) -> str:
     if not path.startswith("/"):
         path = "/" + path
-    path = unquote(path)
     return path.replace(":", "%3A")
+
+
+def normalize_path_variants(path: str) -> list[str]:
+    # `wget --restrict-file-names=windows` is inconsistent depending on the page:
+    # sometimes it keeps UTF-8 characters, sometimes it stores %-escaped segments.
+    # Try multiple equivalents so we can resolve local files reliably.
+    raw = normalize_path(path)
+    decoded = normalize_path(unquote(path))
+    encoded = normalize_path(quote(unquote(path), safe="/"))
+
+    variants: list[str] = []
+    for candidate in (raw, decoded, encoded):
+        if candidate not in variants:
+            variants.append(candidate)
+    return variants
+
+
+def jimcdn_image_fallback_paths(path: str) -> list[str]:
+    # Some pages reference a 4096px transform, but Wayback doesn't always capture it.
+    # Try a smaller (more common) transform if we have it locally.
+    if "dimension=4096x4096:format=" in path:
+        return [path.replace("dimension=4096x4096:format=", "dimension=2048x2048:format=", 1)]
+    return []
 
 
 def resolve_local_url(root: Path, host: str, path: str, query: str) -> str | None:
     if host == "www.echecs92.fr":
-        base = Path(normalize_path(path).lstrip("/"))
-        base_root = root
+        base_prefix = Path()
     else:
         host_dir = root / host
         if not host_dir.is_dir():
             return None
-        base = Path(host) / normalize_path(path).lstrip("/")
-        base_root = root
+        base_prefix = Path(host)
 
     candidates: list[Path] = []
     query_suffix = ""
     if query:
         query_suffix = "@" + query.replace("&", "%26")
-        candidates.append(base.parent / (base.name + query_suffix))
-        if base.suffix:
-            candidates.append(base.parent / (base.name + query_suffix + base.suffix))
+        # Query suffix rules depend on what was downloaded. We'll apply the suffix
+        # after generating each base variant.
 
-    candidates.append(base)
+    for path_variant in normalize_path_variants(path):
+        base = base_prefix / path_variant.lstrip("/")
+        candidates.append(base)
 
-    if path.endswith("/"):
-        candidates.append(base / "index.html")
-    elif not base.suffix:
-        candidates.append(base / "index.html")
+        if query_suffix:
+            candidates.append(base.parent / (base.name + query_suffix))
+            if base.suffix:
+                candidates.append(base.parent / (base.name + query_suffix + base.suffix))
+
+        if path_variant.endswith("/"):
+            candidates.append(base / "index.html")
+        elif not base.suffix:
+            candidates.append(base / "index.html")
 
     for candidate in candidates:
-        if (base_root / candidate).is_file():
+        # `candidate` is already rooted at `root` via `base_prefix`.
+        if (root / candidate).is_file():
             return "/" + candidate.as_posix()
 
     return None
@@ -152,8 +210,21 @@ def replace_wayback_urls(
         local_url = resolve_local_url(root, host, path, parsed.query)
         if local_url:
             return local_url
-        missing_urls.add(match.group(0))
-        return match.group(0)
+
+        if host == "image.jimcdn.com":
+            for alt_path in jimcdn_image_fallback_paths(path):
+                alt_local = resolve_local_url(root, host, alt_path, parsed.query)
+                if alt_local:
+                    return alt_local
+
+        # Only report as "missing" when it's something we intend to serve locally
+        # (the Jimdo site itself, or its asset hosts).
+        if host in ARCHIVE_HOSTS:
+            missing_urls.add(match.group(0))
+            return match.group(0)
+
+        # External links: unwrap the Wayback wrapper so navigation stays natural.
+        return original
 
     html = WAYBACK_URL_RE.sub(repl, html)
     html = WAYBACK_MAILTO_RE.sub(lambda m: m.group(1), html)
@@ -161,10 +232,33 @@ def replace_wayback_urls(
     return html
 
 
+def replace_direct_asset_urls(html: str, root: Path) -> str:
+    def repl(match: re.Match) -> str:
+        original = match.group(0)
+        parsed = urlparse(original)
+        host = parsed.netloc
+        if host not in ARCHIVE_HOSTS:
+            return original
+        path = parsed.path or "/"
+        local_url = resolve_local_url(root, host, path, parsed.query)
+        if local_url:
+            return local_url
+        if host == "image.jimcdn.com":
+            for alt_path in jimcdn_image_fallback_paths(path):
+                alt_local = resolve_local_url(root, host, alt_path, parsed.query)
+                if alt_local:
+                    return alt_local
+        return original
+
+    return DIRECT_ASSET_URL_RE.sub(repl, html)
+
+
 def process_html(html_path: Path, root: Path, domain: str, missing_urls: set[str]) -> None:
     text = html_path.read_text(encoding="utf-8", errors="ignore")
     text = WAYBACK_BLOCK_RE.sub("", text)
+    text = ADMIN_LINKS_RE.sub("", text)
     text = replace_wayback_urls(text, root, missing_urls)
+    text = replace_direct_asset_urls(text, root)
     text = inject_meta(text, domain, html_path, root)
     html_path.write_text(text, encoding="utf-8")
 
@@ -196,9 +290,11 @@ def main() -> int:
 
     write_robots(target_root)
 
+    report_path = target_root / "missing-wayback-urls.txt"
     if missing_urls:
-        report_path = target_root / "missing-wayback-urls.txt"
         report_path.write_text("\n".join(sorted(missing_urls)) + "\n", encoding="utf-8")
+    else:
+        report_path.write_text("", encoding="utf-8")
     return 0
 
 

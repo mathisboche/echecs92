@@ -53,7 +53,9 @@
   const REOPEN_RESULTS_FLAG_KEY = `${storageKeyBase}:reopen-results`;
   const VISIBLE_RESULTS_DEFAULT = 12;
   const VISIBLE_RESULTS_STEP = VISIBLE_RESULTS_DEFAULT;
-  const MIN_RESULTS_SCROLL_DELAY_MS = 1100;
+  // Kept at 0 to avoid "random" / delayed scroll behaviour after searches.
+  // The global spinner already has its own show/min-visible delays.
+  const MIN_RESULTS_SCROLL_DELAY_MS = 0;
   const SORT_SCROLL_DELAY_MS = Math.max(180, Math.round(MIN_RESULTS_SCROLL_DELAY_MS / 4));
   const COUNTER_LOADING_TEXT = 'Recherche en cours…';
   const SORT_COUNTER_LOADING_TEXT = 'Tri en cours…';
@@ -316,24 +318,14 @@
   let manifestPromise = null;
   let datasetPromise = null;
 
-  const jitterDelay = (base) => {
-    if (!Number.isFinite(base) || base <= 0) {
-      return 0;
-    }
-    const spread = Math.min(240, Math.max(40, Math.round(base * 0.18)));
-    const offset = Math.round((Math.random() - 0.5) * spread);
-    return Math.max(0, base + offset);
-  };
-
   const scheduleAfterMinimumDelay = (startedAt, callback, minDelay = MIN_RESULTS_SCROLL_DELAY_MS) => {
     if (typeof callback !== 'function') {
       return;
     }
     const reference = Number.isFinite(startedAt) ? startedAt : Date.now();
-    const minimum = Number.isFinite(minDelay) ? minDelay : MIN_RESULTS_SCROLL_DELAY_MS;
-    const jitteredMinimum = jitterDelay(minimum);
+    const minimum = Number.isFinite(minDelay) ? Math.max(0, minDelay) : MIN_RESULTS_SCROLL_DELAY_MS;
     const elapsed = Date.now() - reference;
-    const remaining = Math.max(0, jitteredMinimum - elapsed);
+    const remaining = Math.max(0, minimum - elapsed);
     const timerHost =
       typeof window !== 'undefined' && typeof window.setTimeout === 'function'
         ? window
@@ -1911,7 +1903,9 @@
   const showLoadingOverlay = (label) => {
     const globalSpinner = getGlobalSpinner();
     if (globalSpinner) {
-      return globalSpinner.show(label, { host: clubsPageShell, lockScroll: true, pinToViewport: true });
+      // Do not lock scrolling: the "jump to results" relies on scrollTo/scrollIntoView.
+      // Locking scroll here makes the behaviour flaky (sometimes no scroll at all).
+      return globalSpinner.show(label, { host: clubsPageShell, lockScroll: false, pinToViewport: true });
     }
     const overlay = ensureLoadingOverlay();
     if (!overlay) {
@@ -2351,6 +2345,37 @@
     resultsHistoryPushed = false;
   };
 
+  const RESULTS_STICKY_BASE_GAP_PX = 12;
+  const getHeaderOffsetPx = () => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return 0;
+    }
+    const raw = window.getComputedStyle(document.documentElement).getPropertyValue('--cm-header-offset');
+    const parsed = Number.parseFloat(raw);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+    return getHeaderHeight();
+  };
+
+  const getResultsStickyTopPx = () => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return 0;
+    }
+    const header =
+      (resultsShell && resultsShell.querySelector('.clubs-results-shell__header')) ||
+      (resultsCloseButton ? resultsCloseButton.closest('.clubs-results-shell__header') : null);
+    if (header) {
+      const raw = window.getComputedStyle(header).top;
+      const parsed = Number.parseFloat(raw);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+    // Fallback: mimic `--clubs-results-sticky-top` calc (without safe-area).
+    return getAdminBarHeight() + getHeaderOffsetPx() + getScopeBannerHeight() + RESULTS_STICKY_BASE_GAP_PX;
+  };
+
   const jumpToResults = (options = {}) => {
     if (!resultsEl) {
       return;
@@ -2359,14 +2384,17 @@
       openResultsShell();
       return;
     }
-    const target = isElementVisible(resultsCloseButton) ? resultsCloseButton : totalCounter || resultsEl;
     const behavior = options.behavior === 'instant' ? 'auto' : options.behavior || 'smooth';
     const marginOverride = Number.isFinite(options.margin) ? options.margin : null;
     const scrollMargin = Number.isFinite(marginOverride) ? marginOverride : resultsScrollMargin;
-    if (marginOverride != null && target) {
-      target.style.setProperty('--clubs-results-scroll-margin', `${marginOverride}px`);
-    }
-    const offset = getAdminBarHeight() + getScopeBannerHeight() + (Number.isFinite(scrollMargin) ? scrollMargin : 0);
+    const stickyTop = getResultsStickyTopPx();
+    const extraGap = Number.isFinite(scrollMargin)
+      ? Math.max(0, scrollMargin - RESULTS_STICKY_BASE_GAP_PX)
+      : 0;
+    const offset = stickyTop + extraGap;
+    // Avoid sticky elements as anchors: the close button is sticky, which makes its
+    // bounding box unreliable when already scrolled inside results.
+    const target = resultsShell || totalCounter || resultsEl;
     const targetTop = getScrollTargetTop(target, offset);
     if (Number.isFinite(targetTop)) {
       updateListScrollAnchor('window', targetTop);
@@ -2394,9 +2422,23 @@
       } else if (!isElementInViewport(target)) {
         scrollIntoView();
       }
+      if (typeof resultsEl.focus === 'function') {
+        try {
+          resultsEl.focus({ preventScroll: true });
+        } catch {
+          resultsEl.focus();
+        }
+      }
       return;
     }
     scrollIntoView();
+    if (typeof resultsEl.focus === 'function') {
+      try {
+        resultsEl.focus({ preventScroll: true });
+      } catch {
+        resultsEl.focus();
+      }
+    }
   };
 
   const getCurrentBackPath = () => {

@@ -100,50 +100,168 @@
     return `${FFE_PLAYER_URL_BASE}${encodeURIComponent(id)}`;
   };
 
+  const formatUpdatedDate = (value) => {
+    if (!value) {
+      return '';
+    }
+    try {
+      const date = new Date(value);
+      if (!Number.isFinite(date.getTime())) {
+        return '';
+      }
+      return new Intl.DateTimeFormat('fr-FR', { year: 'numeric', month: 'short', day: '2-digit' }).format(date);
+    } catch (error) {
+      return '';
+    }
+  };
+
+  const appendMetaChip = (host, label, value) => {
+    if (!host || !label || value == null || value === '') {
+      return false;
+    }
+    const chip = document.createElement('span');
+    chip.className = 'player-chip';
+
+    const labelNode = document.createElement('span');
+    labelNode.className = 'player-chip__label';
+    labelNode.textContent = label;
+    chip.appendChild(labelNode);
+
+    const valueNode = document.createElement('span');
+    valueNode.className = 'player-chip__value';
+    valueNode.textContent = value;
+    chip.appendChild(valueNode);
+
+    host.appendChild(chip);
+    return true;
+  };
+
+  const splitRating = (value) => {
+    const str = (value || '').toString().trim();
+    if (!str) {
+      return { main: '—', tag: '' };
+    }
+    const match = str.match(/^(\d{1,4})(?:\s*([a-z]+))?$/i);
+    if (match) {
+      return { main: match[1], tag: (match[2] || '').trim() };
+    }
+    const digitMatch = str.match(/(\d{1,4})/);
+    if (digitMatch) {
+      const main = digitMatch[1];
+      const tag = str.replace(main, '').trim();
+      return { main, tag };
+    }
+    return { main: str, tag: '' };
+  };
+
+  const createRatingCard = (label, value, options = {}) => {
+    const { main, tag } = splitRating(value);
+    const card = document.createElement('div');
+    card.className = options.primary ? 'player-stat player-stat--primary' : 'player-stat';
+
+    const labelNode = document.createElement('div');
+    labelNode.className = 'player-stat__label';
+    labelNode.textContent = label;
+    card.appendChild(labelNode);
+
+    const valueRow = document.createElement('div');
+    valueRow.className = 'player-stat__value-row';
+
+    const valueNode = document.createElement('div');
+    valueNode.className = 'player-stat__value';
+    valueNode.textContent = main || '—';
+    valueRow.appendChild(valueNode);
+
+    if (tag) {
+      const tagNode = document.createElement('span');
+      tagNode.className = 'player-rating-tag';
+      tagNode.textContent = tag;
+      valueRow.appendChild(tagNode);
+    }
+
+    card.appendChild(valueRow);
+    return card;
+  };
+
   const renderPlayer = (player) => {
     detailContainer.innerHTML = '';
 
     const sheet = document.createElement('div');
-    sheet.className = 'club-sheet';
+    sheet.className = 'club-sheet player-sheet';
 
-    const header = document.createElement('header');
-    header.className = 'club-sheet__header';
+    const hero = document.createElement('header');
+    hero.className = 'player-hero';
 
-    const titleRow = document.createElement('div');
-    titleRow.className = 'club-sheet__title-row';
+    const heroIdentity = document.createElement('div');
+    heroIdentity.className = 'player-hero__identity';
 
     const title = document.createElement('h1');
-    title.className = 'club-sheet__title';
+    title.className = 'player-hero__name';
     title.textContent = player.name || 'Fiche joueur';
-    titleRow.appendChild(title);
-    header.appendChild(titleRow);
-    sheet.appendChild(header);
+    heroIdentity.appendChild(title);
+
+    const meta = document.createElement('div');
+    meta.className = 'player-hero__meta';
+    appendMetaChip(meta, 'Nr FFE', player.nrFfe || '');
+    appendMetaChip(meta, 'Club', player.club || '');
+    if (meta.childElementCount) {
+      heroIdentity.appendChild(meta);
+    }
+
+    const officialUrl = buildOfficialPlayerUrl(player.id || '');
+    if (officialUrl) {
+      const actions = document.createElement('div');
+      actions.className = 'player-hero__actions';
+      const link = document.createElement('a');
+      link.className = 'btn btn-secondary player-hero__action';
+      link.href = officialUrl;
+      link.rel = 'noopener';
+      link.target = '_blank';
+      link.textContent = 'Voir la fiche FFE';
+      actions.appendChild(link);
+      heroIdentity.appendChild(actions);
+    }
+    hero.appendChild(heroIdentity);
+
+    const ratingsGrid = document.createElement('div');
+    ratingsGrid.className = 'player-hero__ratings';
+    ratingsGrid.appendChild(createRatingCard('Elo', player.elo || '', { primary: true }));
+    ratingsGrid.appendChild(createRatingCard('Rapide', player.rapid || ''));
+    ratingsGrid.appendChild(createRatingCard('Blitz', player.blitz || ''));
+    hero.appendChild(ratingsGrid);
+
+    sheet.appendChild(hero);
+
+    const content = document.createElement('div');
+    content.className = 'player-sheet__content';
 
     const identity = createSection('Identité');
     appendDetail(identity.list, 'Nr FFE', player.nrFfe || '');
     appendDetail(identity.list, 'Club', player.club || '');
+    appendDetail(identity.list, 'Mis à jour', formatUpdatedDate(player.updated || ''));
     if (identity.list.childElementCount) {
-      sheet.appendChild(identity.section);
+      content.appendChild(identity.section);
     }
 
-    const ratings = createSection('Classements');
-    appendDetail(ratings.list, 'Elo', player.elo || '');
-    appendDetail(ratings.list, 'Rapide', player.rapid || '');
-    appendDetail(ratings.list, 'Blitz', player.blitz || '');
-    appendDetail(ratings.list, 'Catégorie', player.category || '');
-    appendDetail(ratings.list, 'Sexe', player.gender || '');
-    appendDetail(ratings.list, 'Affiliation', player.aff || '');
-    if (ratings.list.childElementCount) {
-      sheet.appendChild(ratings.section);
+    const profile = createSection('Profil');
+    appendDetail(profile.list, 'Catégorie', player.category || '');
+    appendDetail(profile.list, 'Sexe', player.gender || '');
+    appendDetail(profile.list, 'Affiliation', player.aff || '');
+    if (profile.list.childElementCount) {
+      content.appendChild(profile.section);
     }
 
     const resources = createSection('Ressources');
-    appendDetail(resources.list, 'Fiche FFE', buildOfficialPlayerUrl(player.id || ''), {
+    appendDetail(resources.list, 'Fiche FFE', officialUrl, {
       type: 'link',
       label: 'Voir la fiche officielle FFE',
     });
     if (resources.list.childElementCount) {
-      sheet.appendChild(resources.section);
+      content.appendChild(resources.section);
+    }
+
+    if (content.childElementCount) {
+      sheet.appendChild(content);
     }
 
     detailContainer.appendChild(sheet);
@@ -181,4 +299,3 @@
 
   init();
 })();
-

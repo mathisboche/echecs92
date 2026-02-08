@@ -4,6 +4,8 @@
     return;
   }
 
+  const FALLBACK_EMAIL = 'contact@echecs92.com';
+
   const captchaField = form.querySelector('[data-recaptcha-field]');
   const captchaEl = captchaField ? captchaField.querySelector('.g-recaptcha') : null;
   const siteKey = captchaEl && captchaEl.dataset ? (captchaEl.dataset.sitekey || '').trim() : '';
@@ -51,9 +53,33 @@
     return hint;
   };
 
-  if (!captchaField || !captchaEl || !siteKey) {
+  const setMessageWithEmailFallback = (prefixText, email = FALLBACK_EMAIL, suffixText = '') => {
     const hint = ensureMessageEl();
-    hint.textContent = 'Verification anti-robot indisponible. Envoi impossible.';
+    while (hint.firstChild) {
+      hint.removeChild(hint.firstChild);
+    }
+
+    hint.appendChild(document.createTextNode(prefixText || ''));
+
+    const address = (email || '').trim();
+    if (address) {
+      const link = document.createElement('a');
+      link.href = `mailto:${address}`;
+      link.textContent = address;
+      hint.appendChild(link);
+    }
+
+    if (suffixText) {
+      hint.appendChild(document.createTextNode(suffixText));
+    }
+  };
+
+  if (!captchaField || !captchaEl || !siteKey) {
+    setMessageWithEmailFallback(
+      "Le formulaire de contact est temporairement indisponible. Merci de réessayer plus tard ou d'envoyer un e-mail à ",
+      FALLBACK_EMAIL,
+      '.'
+    );
     if (submitButton) {
       submitButton.disabled = true;
     }
@@ -162,14 +188,18 @@
       event.preventDefault();
       pendingSubmit = true;
       showCaptcha();
-      setMessage("Merci de confirmer que vous n'etes pas un robot pour envoyer.");
+      setMessage("Merci de confirmer que vous n'êtes pas un robot pour envoyer.");
       loadRecaptchaScript()
         .then(() => {
           renderRecaptcha();
         })
         .catch(() => {
           pendingSubmit = false;
-          setMessage("Le captcha n'a pas pu etre charge. Envoi impossible pour le moment.");
+          setMessageWithEmailFallback(
+            "Le formulaire de contact est temporairement indisponible. Merci de réessayer plus tard ou d'envoyer un e-mail à ",
+            FALLBACK_EMAIL,
+            '.'
+          );
         });
       return;
     }
@@ -179,7 +209,7 @@
       event.preventDefault();
       pendingSubmit = true;
       showCaptcha();
-      setMessage("Merci de confirmer que vous n'etes pas un robot pour envoyer.");
+      setMessage("Merci de confirmer que vous n'êtes pas un robot pour envoyer.");
     }
   });
 })();
