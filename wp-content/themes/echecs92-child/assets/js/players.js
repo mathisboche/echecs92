@@ -1,0 +1,546 @@
+/**
+ * Players directory interactions for echecs92.fr.
+ * Provides a top players spotlight + local search over a generated index.
+ */
+(function () {
+  const DEFAULT_INDEX_URL = '/wp-content/themes/echecs92-child/assets/data/ffe-players/search-index.json';
+  const DEFAULT_TOP_URL = '/wp-content/themes/echecs92-child/assets/data/ffe-players/top-elo.json';
+  const DEFAULT_DETAIL_BASE = '/joueur/';
+  const DASH_RX = /[\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uFE63\uFF0D]/g;
+
+  const normaliseDashes = (value) => (value == null ? '' : String(value)).replace(DASH_RX, '-');
+
+  const normalise = (value) =>
+    normaliseDashes(value || '')
+      .toString()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const parseEloValue = (value) => {
+    const str = value == null ? '' : String(value);
+    const match = str.match(/(\d{1,4})/);
+    if (!match) {
+      return 0;
+    }
+    const n = Number.parseInt(match[1], 10);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const fetchJson = (url) =>
+    fetch(url, { headers: { Accept: 'application/json' } }).then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return response.json();
+    });
+
+  const shell = typeof document !== 'undefined' ? document.querySelector('.players-page') : null;
+  if (!shell) {
+    return;
+  }
+
+  const indexUrl = (shell.dataset.playerIndexUrl || DEFAULT_INDEX_URL).trim() || DEFAULT_INDEX_URL;
+  const topUrl = (shell.dataset.playerTopUrl || DEFAULT_TOP_URL).trim() || DEFAULT_TOP_URL;
+  const detailBase = (shell.dataset.playerDetailBase || DEFAULT_DETAIL_BASE).trim() || DEFAULT_DETAIL_BASE;
+
+  const spotlightSection = shell.querySelector('.players-spotlight');
+  const topHost = document.getElementById('players-top');
+  const topStatus = document.getElementById('players-top-status');
+
+  const input = document.getElementById('players-search');
+  const clearButton = document.getElementById('players-search-clear');
+  const submitButton = document.getElementById('players-search-submit');
+  const statusNode = document.getElementById('players-search-status');
+  const resultsHost = document.getElementById('players-results');
+  const moreButton = document.getElementById('players-more-button');
+
+  if (!input || !statusNode || !resultsHost) {
+    return;
+  }
+
+  const VISIBLE_DEFAULT = 20;
+  const VISIBLE_STEP = 20;
+  const MIN_QUERY_LEN = 2;
+
+  const indexState = {
+    loaded: false,
+    loading: null,
+    rows: [],
+  };
+
+  let currentMatches = [];
+  let visibleCount = VISIBLE_DEFAULT;
+  let lastRenderedQuery = '';
+
+  const getDetailBasePath = () => {
+    const raw = detailBase || DEFAULT_DETAIL_BASE;
+    if (raw.includes('?')) {
+      return raw.split('?')[0];
+    }
+    return raw.endsWith('/') ? raw : `${raw}/`;
+  };
+
+  const buildPlayerUrl = (playerId) => {
+    const id = (playerId || '').toString().trim();
+    if (!id) {
+      return '';
+    }
+    const basePath = getDetailBasePath();
+    const params = new URLSearchParams();
+    params.set('ffe_player', id);
+    const from = window.location.pathname + window.location.search + window.location.hash;
+    if (from) {
+      params.set('from', from);
+    }
+    return `${basePath}?${params.toString()}`;
+  };
+
+  const setStatus = (message, tone) => {
+    statusNode.textContent = message || '';
+    if (tone) {
+      statusNode.dataset.tone = tone;
+    } else {
+      delete statusNode.dataset.tone;
+    }
+  };
+
+  const clearResults = () => {
+    resultsHost.innerHTML = '';
+    currentMatches = [];
+    visibleCount = VISIBLE_DEFAULT;
+    if (moreButton) {
+      moreButton.hidden = true;
+    }
+  };
+
+  const toggleClearButton = () => {
+    if (!clearButton) {
+      return;
+    }
+    const hasValue = Boolean((input.value || '').trim());
+    clearButton.hidden = !hasValue;
+  };
+
+  const createResultRow = (row) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'player-row';
+    wrap.setAttribute('role', 'listitem');
+
+    const link = document.createElement('a');
+    link.className = 'player-row__card';
+    link.href = buildPlayerUrl(row.id);
+    link.rel = 'noopener';
+    wrap.appendChild(link);
+
+    const top = document.createElement('div');
+    top.className = 'player-row__top';
+    link.appendChild(top);
+
+    const heading = document.createElement('div');
+    heading.className = 'player-row__heading';
+    top.appendChild(heading);
+
+    const name = document.createElement('p');
+    name.className = 'player-row__name';
+    name.textContent = normaliseDashes(row.name || '') || `Joueur ${row.id}`;
+    heading.appendChild(name);
+
+    if (row.club) {
+      const club = document.createElement('p');
+      club.className = 'player-row__club';
+      club.textContent = normaliseDashes(row.club || '');
+      heading.appendChild(club);
+    }
+
+    const badgeWrap = document.createElement('div');
+    badgeWrap.className = 'player-row__badges';
+    top.appendChild(badgeWrap);
+
+    const badge = document.createElement('span');
+    badge.className = 'player-row__badge';
+    if (row.elo) {
+      badge.dataset.tone = 'elo';
+      badge.textContent = `Elo ${row.elo}`;
+    } else {
+      badge.dataset.tone = 'muted';
+      badge.textContent = 'Elo -';
+    }
+    badgeWrap.appendChild(badge);
+
+    const footer = document.createElement('div');
+    footer.className = 'player-row__footer';
+    link.appendChild(footer);
+
+    const cta = document.createElement('span');
+    cta.className = 'player-row__cta';
+    cta.textContent = 'Voir la fiche';
+    footer.appendChild(cta);
+
+    return wrap;
+  };
+
+  const renderResults = () => {
+    resultsHost.innerHTML = '';
+    currentMatches.slice(0, visibleCount).forEach((row) => {
+      resultsHost.appendChild(createResultRow(row));
+    });
+    if (moreButton) {
+      moreButton.hidden = currentMatches.length <= visibleCount;
+    }
+  };
+
+  const ensureIndexLoaded = () => {
+    if (indexState.loaded) {
+      return Promise.resolve(indexState.rows);
+    }
+    if (indexState.loading) {
+      return indexState.loading;
+    }
+
+    setStatus("Chargement de l'index...", 'info');
+    const loading = fetchJson(indexUrl)
+      .then((payload) => {
+        const columns = Array.isArray(payload?.columns) ? payload.columns : null;
+        const rows = Array.isArray(payload?.rows) ? payload.rows : [];
+        const colIndex = (name, fallback) => {
+          if (!columns) {
+            return fallback;
+          }
+          const idx = columns.indexOf(name);
+          return idx === -1 ? fallback : idx;
+        };
+
+        const ID = colIndex('id', 0);
+        const NAME = colIndex('name', 1);
+        const CLUB = colIndex('club', 2);
+        const ELO = colIndex('elo', 3);
+
+        const mapped = [];
+        for (const entry of rows) {
+          if (!Array.isArray(entry)) {
+            continue;
+          }
+          const id = (entry[ID] || '').toString().trim();
+          if (!id) {
+            continue;
+          }
+          const name = (entry[NAME] || '').toString().trim();
+          const club = (entry[CLUB] || '').toString().trim();
+          const elo = (entry[ELO] || '').toString().trim();
+
+          const nameKey = normalise(name);
+          const clubKey = normalise(club);
+          const searchKey = `${nameKey} ${clubKey} ${id}`;
+
+          mapped.push({
+            id,
+            name,
+            club,
+            elo,
+            eloValue: parseEloValue(elo),
+            nameKey,
+            clubKey,
+            searchKey,
+          });
+        }
+        indexState.rows = mapped;
+        indexState.loaded = true;
+        return mapped;
+      })
+      .catch((error) => {
+        indexState.loaded = false;
+        indexState.rows = [];
+        throw error;
+      })
+      .finally(() => {
+        indexState.loading = null;
+      });
+
+    indexState.loading = loading;
+    return loading;
+  };
+
+  const scoreMatch = (row, qNorm, qDigits) => {
+    let score = 0;
+    if (qDigits) {
+      if (row.id === qDigits) {
+        score += 100;
+      } else if (row.id.startsWith(qDigits)) {
+        score += 80;
+      } else if (row.id.includes(qDigits)) {
+        score += 50;
+      }
+    }
+    if (qNorm) {
+      if (row.nameKey === qNorm) {
+        score += 90;
+      } else if (row.nameKey.startsWith(qNorm)) {
+        score += 70;
+      } else if (row.nameKey.includes(qNorm)) {
+        score += 50;
+      } else if (row.clubKey.includes(qNorm)) {
+        score += 20;
+      } else if (row.searchKey.includes(qNorm)) {
+        score += 10;
+      }
+    }
+    score += Math.min(9, Math.floor((row.eloValue || 0) / 300));
+    return score;
+  };
+
+  const runSearch = (query) => {
+    const raw = (query || '').toString().trim();
+    lastRenderedQuery = raw;
+    toggleClearButton();
+
+    if (!raw) {
+      setStatus('');
+      clearResults();
+      if (spotlightSection) {
+        spotlightSection.hidden = false;
+      }
+      return;
+    }
+
+    if (raw.length < MIN_QUERY_LEN) {
+      setStatus(`Tapez au moins ${MIN_QUERY_LEN} caracteres.`, 'info');
+      clearResults();
+      if (spotlightSection) {
+        spotlightSection.hidden = false;
+      }
+      return;
+    }
+
+    if (spotlightSection) {
+      spotlightSection.hidden = true;
+    }
+
+    const qDigits = raw.replace(/\D/g, '');
+    const isPureDigits = qDigits && qDigits === raw.replace(/\s+/g, '');
+    const qNorm = isPureDigits ? '' : normalise(raw);
+
+    ensureIndexLoaded()
+      .then((rows) => {
+        if (lastRenderedQuery !== raw) {
+          return;
+        }
+
+        const matches = [];
+        const q = isPureDigits ? qDigits : qNorm;
+        for (const row of rows) {
+          if (!row) {
+            continue;
+          }
+          if (isPureDigits) {
+            if (row.id.includes(qDigits)) {
+              matches.push(row);
+            }
+            continue;
+          }
+          if (row.searchKey.includes(q)) {
+            matches.push(row);
+          }
+        }
+
+        matches.sort((a, b) => {
+          const sa = scoreMatch(a, qNorm, isPureDigits ? qDigits : '');
+          const sb = scoreMatch(b, qNorm, isPureDigits ? qDigits : '');
+          if (sb !== sa) {
+            return sb - sa;
+          }
+          if ((b.eloValue || 0) !== (a.eloValue || 0)) {
+            return (b.eloValue || 0) - (a.eloValue || 0);
+          }
+          return (a.name || '').localeCompare(b.name || '', 'fr', { sensitivity: 'base' });
+        });
+
+        currentMatches = matches;
+        visibleCount = VISIBLE_DEFAULT;
+
+        if (!matches.length) {
+          setStatus('Aucun joueur trouve.', 'error');
+          clearResults();
+          return;
+        }
+
+        const total = matches.length;
+        setStatus(total === 1 ? '1 joueur trouve.' : `${total} joueurs trouves.`, 'success');
+        renderResults();
+      })
+      .catch(() => {
+        if (lastRenderedQuery !== raw) {
+          return;
+        }
+        setStatus("Impossible de charger l'index des joueurs pour le moment.", 'error');
+        clearResults();
+      });
+  };
+
+  const debounce = (fn, delayMs) => {
+    let t = null;
+    return (...args) => {
+      if (t) {
+        window.clearTimeout(t);
+      }
+      t = window.setTimeout(() => fn(...args), delayMs);
+    };
+  };
+
+  const debouncedSearch = debounce(() => runSearch(input.value || ''), 180);
+
+  const initEvents = () => {
+    toggleClearButton();
+
+    input.addEventListener('input', () => {
+      toggleClearButton();
+      debouncedSearch();
+    });
+
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        runSearch(input.value || '');
+      } else if (event.key === 'Escape') {
+        if ((input.value || '').trim()) {
+          input.value = '';
+          toggleClearButton();
+          runSearch('');
+        }
+      }
+    });
+
+    if (submitButton) {
+      submitButton.addEventListener('click', () => runSearch(input.value || ''));
+    }
+
+    if (clearButton) {
+      clearButton.addEventListener('click', () => {
+        input.value = '';
+        input.focus();
+        toggleClearButton();
+        runSearch('');
+      });
+    }
+
+    if (moreButton) {
+      moreButton.addEventListener('click', () => {
+        visibleCount = Math.min(currentMatches.length, visibleCount + VISIBLE_STEP);
+        renderResults();
+      });
+    }
+  };
+
+  const renderTop = (payload) => {
+    if (!topHost) {
+      return;
+    }
+    topHost.innerHTML = '';
+
+    const columns = Array.isArray(payload?.columns) ? payload.columns : null;
+    const rows = Array.isArray(payload?.rows) ? payload.rows : [];
+    const colIndex = (name, fallback) => {
+      if (!columns) {
+        return fallback;
+      }
+      const idx = columns.indexOf(name);
+      return idx === -1 ? fallback : idx;
+    };
+
+    const ID = colIndex('id', 0);
+    const NAME = colIndex('name', 1);
+    const CLUB = colIndex('club', 2);
+    const ELO = colIndex('elo', 3);
+
+    rows.slice(0, 12).forEach((entry, idx) => {
+      if (!Array.isArray(entry)) {
+        return;
+      }
+      const id = (entry[ID] || '').toString().trim();
+      if (!id) {
+        return;
+      }
+      const name = (entry[NAME] || '').toString().trim();
+      const club = (entry[CLUB] || '').toString().trim();
+      const elo = (entry[ELO] || '').toString().trim();
+
+      const card = document.createElement('a');
+      card.className = 'player-top-card';
+      card.href = buildPlayerUrl(id);
+      card.setAttribute('role', 'listitem');
+
+      const rank = document.createElement('div');
+      rank.className = 'player-top-card__rank';
+      rank.textContent = `#${idx + 1}`;
+      card.appendChild(rank);
+
+      const body = document.createElement('div');
+      body.className = 'player-top-card__body';
+      card.appendChild(body);
+
+      const title = document.createElement('div');
+      title.className = 'player-top-card__name';
+      title.textContent = normaliseDashes(name) || `Joueur ${id}`;
+      body.appendChild(title);
+
+      if (club) {
+        const meta = document.createElement('div');
+        meta.className = 'player-top-card__club';
+        meta.textContent = normaliseDashes(club);
+        body.appendChild(meta);
+      }
+
+      const rating = document.createElement('div');
+      rating.className = 'player-top-card__rating';
+      rating.textContent = elo ? normaliseDashes(elo) : '-';
+      card.appendChild(rating);
+
+      topHost.appendChild(card);
+    });
+  };
+
+  const initTop = () => {
+    if (!topHost || !topStatus) {
+      return;
+    }
+    topStatus.textContent = 'Chargement du classement...';
+    fetchJson(topUrl)
+      .then((payload) => {
+        renderTop(payload);
+        topStatus.textContent = '';
+      })
+      .catch(() => {
+        topStatus.textContent = 'Classement indisponible pour le moment.';
+      });
+  };
+
+  initTop();
+  initEvents();
+
+  // /joueurs?focus=1
+  try {
+    const params = new URLSearchParams(window.location.search || '');
+    if (params.get('focus') === '1') {
+      input.focus();
+    }
+  } catch (error) {
+    // ignore
+  }
+
+  // /joueurs?q=Dupont
+  try {
+    const params = new URLSearchParams(window.location.search || '');
+    const q = (params.get('q') || '').trim();
+    if (q) {
+      input.value = q;
+      toggleClearButton();
+      runSearch(q);
+    }
+  } catch (error) {
+    // ignore
+  }
+})();
+

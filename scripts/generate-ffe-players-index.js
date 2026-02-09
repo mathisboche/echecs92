@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 /**
  * Builds a local player index from the downloaded FFE club member lists.
- * Output: wp-content/themes/echecs92-child/assets/data/ffe-players/by-id/<00-99>.json
+ * Output:
+ * - wp-content/themes/echecs92-child/assets/data/ffe-players/by-id/<00-99>.json
+ * - wp-content/themes/echecs92-child/assets/data/ffe-players/manifest.json
+ * - wp-content/themes/echecs92-child/assets/data/ffe-players/search-index.json
+ * - wp-content/themes/echecs92-child/assets/data/ffe-players/top-elo.json
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -11,6 +15,8 @@ const DATA_ROOT = path.join(ROOT, 'wp-content', 'themes', 'echecs92-child', 'ass
 const FFE_DETAILS_DIR = path.join(DATA_ROOT, 'clubs-france-ffe-details');
 const OUTPUT_DIR = path.join(DATA_ROOT, 'ffe-players', 'by-id');
 const MANIFEST_PATH = path.join(DATA_ROOT, 'ffe-players', 'manifest.json');
+const SEARCH_INDEX_PATH = path.join(DATA_ROOT, 'ffe-players', 'search-index.json');
+const TOP_ELO_PATH = path.join(DATA_ROOT, 'ffe-players', 'top-elo.json');
 
 const LIST_KEYS = ['members', 'members_by_elo', 'arbitrage', 'animation', 'entrainement', 'initiation'];
 
@@ -91,6 +97,19 @@ const getShardPrefix = (playerId) => {
   const padded = str.padStart(2, '0');
   const prefix = padded.slice(0, 2);
   return /^\d{2}$/.test(prefix) ? prefix : '00';
+};
+
+const parseRatingValue = (value) => {
+  const str = toStringOrEmpty(value);
+  if (!str) {
+    return 0;
+  }
+  const match = str.match(/(\d{1,4})/);
+  if (!match) {
+    return 0;
+  }
+  const parsed = Number.parseInt(match[1], 10);
+  return Number.isFinite(parsed) ? parsed : 0;
 };
 
 const ensureDir = (dirPath) => {
@@ -180,12 +199,63 @@ const main = () => {
     basePath: '/wp-content/themes/echecs92-child/assets/data/ffe-players/by-id/',
     shards: shardFiles,
     totalPlayers: playersById.size,
+    searchIndex: '/wp-content/themes/echecs92-child/assets/data/ffe-players/search-index.json',
+    topElo: '/wp-content/themes/echecs92-child/assets/data/ffe-players/top-elo.json',
   };
   ensureDir(path.dirname(MANIFEST_PATH));
   writeJson(MANIFEST_PATH, manifest);
+
+  const indexColumns = ['id', 'name', 'club', 'elo'];
+  const indexRows = Array.from(playersById.values())
+    .map((record) => [
+      normalisePlayerId(record?.id),
+      toStringOrEmpty(record?.name),
+      toStringOrEmpty(record?.club),
+      toStringOrEmpty(record?.elo),
+    ])
+    .filter((row) => row[0] && row[1])
+    .sort((a, b) => {
+      const nameCompare = a[1].localeCompare(b[1], 'fr', { sensitivity: 'base' });
+      if (nameCompare !== 0) {
+        return nameCompare;
+      }
+      return a[0].localeCompare(b[0], 'en', { numeric: true, sensitivity: 'base' });
+    });
+
+  writeJson(SEARCH_INDEX_PATH, {
+    version: 1,
+    updated,
+    columns: indexColumns,
+    rows: indexRows,
+  });
+
+  const topRows = Array.from(playersById.values())
+    .map((record) => ({
+      id: normalisePlayerId(record?.id),
+      name: toStringOrEmpty(record?.name),
+      club: toStringOrEmpty(record?.club),
+      elo: toStringOrEmpty(record?.elo),
+      eloValue: parseRatingValue(record?.elo),
+    }))
+    .filter((entry) => entry.id && entry.name && entry.eloValue > 0)
+    .sort((a, b) => {
+      if (b.eloValue !== a.eloValue) {
+        return b.eloValue - a.eloValue;
+      }
+      return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
+    })
+    .slice(0, 80)
+    .map((entry) => [entry.id, entry.name, entry.club, entry.elo]);
+
+  writeJson(TOP_ELO_PATH, {
+    version: 1,
+    updated,
+    kind: 'elo',
+    columns: indexColumns,
+    rows: topRows,
+  });
 
   console.log(`→ ${playersById.size} joueurs indexés.`);
 };
 
 main();
-

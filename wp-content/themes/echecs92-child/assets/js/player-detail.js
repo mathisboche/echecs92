@@ -23,6 +23,9 @@
       return 'search';
     }
     const cleaned = path.split('?')[0].split('#')[0];
+    if (/^\/joueurs\b/i.test(cleaned)) {
+      return 'players';
+    }
     if (/^\/club-92\/[^/]+/i.test(cleaned) || /^\/club\/[^/]+/i.test(cleaned) || /^\/club-france\/[^/]+/i.test(cleaned)) {
       return 'club';
     }
@@ -42,6 +45,9 @@
   const getBackLabel = (kind) => {
     if (kind === 'club') {
       return '← Retour à la fiche du club';
+    }
+    if (kind === 'players') {
+      return '← Retour à la recherche des joueurs';
     }
     if (kind === 'clubs') {
       return '← Retour à la recherche des clubs';
