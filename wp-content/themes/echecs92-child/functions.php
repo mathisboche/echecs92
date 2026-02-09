@@ -5,6 +5,49 @@ if ( ! defined( 'CDJE92_REDIRECT_PERSONAL_PAGES' ) ) {
     define( 'CDJE92_REDIRECT_PERSONAL_PAGES', true );
 }
 
+function cdje92_normalise_dashes_text($value) {
+    if (!is_string($value) || $value === '') {
+        return $value;
+    }
+
+    // Replace dash-like Unicode characters with a plain hyphen-minus.
+    return strtr($value, [
+        "\u{2010}" => '-', // Hyphen
+        "\u{2011}" => '-', // Non-breaking hyphen
+        "\u{2012}" => '-', // Figure dash
+        "\u{2013}" => '-', // En dash
+        "\u{2014}" => '-', // Em dash
+        "\u{2015}" => '-', // Horizontal bar
+        "\u{2212}" => '-', // Minus sign
+        "\u{FE63}" => '-', // Small hyphen-minus
+        "\u{FF0D}" => '-', // Fullwidth hyphen-minus
+    ]);
+}
+
+add_action('init', function () {
+    if (is_admin()) {
+        return;
+    }
+
+    add_filter('the_title', 'cdje92_normalise_dashes_text', 99);
+    add_filter('the_content', 'cdje92_normalise_dashes_text', 99);
+    add_filter('the_excerpt', 'cdje92_normalise_dashes_text', 99);
+    add_filter('wp_nav_menu_items', 'cdje92_normalise_dashes_text', 99);
+    add_filter('widget_text', 'cdje92_normalise_dashes_text', 99);
+    add_filter('widget_text_content', 'cdje92_normalise_dashes_text', 99);
+    add_filter('wp_get_document_title', 'cdje92_normalise_dashes_text', 99);
+
+    add_filter('document_title_parts', function ($parts) {
+        if (!is_array($parts)) {
+            return $parts;
+        }
+        foreach ($parts as $key => $part) {
+            $parts[$key] = cdje92_normalise_dashes_text($part);
+        }
+        return $parts;
+    }, 99);
+});
+
 function cdje92_contact_form_get_recaptcha_keys() {
     $site_key = defined('CDJE92_RECAPTCHA_SITE_KEY') ? trim(CDJE92_RECAPTCHA_SITE_KEY) : '';
     $secret_key = defined('CDJE92_RECAPTCHA_SECRET_KEY') ? trim(CDJE92_RECAPTCHA_SECRET_KEY) : '';
@@ -562,6 +605,164 @@ add_action('init', function () {
         return;
     }
 }, 12);
+
+/* ---------- FFE Player Extras (server-side proxy) ---------- */
+
+function cdje92_ffe_player_clean_text( $value ) {
+    $text = is_string( $value ) ? $value : (string) $value;
+    // FFE often uses &nbsp; which becomes a non-breaking space.
+    $text = str_replace( "\xc2\xa0", ' ', $text );
+    $text = preg_replace( '/\s+/u', ' ', $text );
+    return trim( $text );
+}
+
+function cdje92_ffe_player_xpath_text( DOMXPath $xpath, $id ) {
+    $nodes = $xpath->query( "//*[@id='{$id}']" );
+    if ( ! $nodes || $nodes->length < 1 ) {
+        return '';
+    }
+    $node = $nodes->item( 0 );
+    if ( ! $node ) {
+        return '';
+    }
+    return (string) $node->textContent;
+}
+
+function cdje92_ffe_player_xpath_attr( DOMXPath $xpath, $id, $attr ) {
+    $nodes = $xpath->query( "//*[@id='{$id}']" );
+    if ( ! $nodes || $nodes->length < 1 ) {
+        return '';
+    }
+    $node = $nodes->item( 0 );
+    if ( ! $node || ! $node->hasAttributes() ) {
+        return '';
+    }
+    $value = $node->attributes->getNamedItem( $attr );
+    if ( ! $value ) {
+        return '';
+    }
+    return (string) $value->nodeValue;
+}
+
+function cdje92_ffe_player_extract_extras_from_html( $html ) {
+    $body = is_string( $html ) ? $html : (string) $html;
+
+    $doc = new DOMDocument();
+    $previous = libxml_use_internal_errors( true );
+    $doc->loadHTML(
+        '<?xml encoding="utf-8" ?>' . $body,
+        LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING
+    );
+    libxml_clear_errors();
+    libxml_use_internal_errors( $previous );
+
+    $xpath = new DOMXPath( $doc );
+
+    $title = cdje92_ffe_player_clean_text( cdje92_ffe_player_xpath_text( $xpath, 'ctl00_ContentPlaceHolderMain_LabelTitreFide' ) );
+
+    $roles = [];
+    $has_arbitre_national = cdje92_ffe_player_clean_text( cdje92_ffe_player_xpath_text( $xpath, 'ctl00_ContentPlaceHolderMain_LabelArbitreNational' ) ) !== '';
+    $has_arbitre_fide = cdje92_ffe_player_clean_text( cdje92_ffe_player_xpath_text( $xpath, 'ctl00_ContentPlaceHolderMain_LabelArbitreFide' ) ) !== '';
+    $has_initiateur = cdje92_ffe_player_clean_text( cdje92_ffe_player_xpath_text( $xpath, 'ctl00_ContentPlaceHolderMain_LabelInitiateur' ) ) !== '';
+    $has_animateur = cdje92_ffe_player_clean_text( cdje92_ffe_player_xpath_text( $xpath, 'ctl00_ContentPlaceHolderMain_LabelFormateur' ) ) !== '';
+    $has_entraineur = cdje92_ffe_player_clean_text( cdje92_ffe_player_xpath_text( $xpath, 'ctl00_ContentPlaceHolderMain_LabelEntraineur' ) ) !== '';
+
+    if ( $has_arbitre_national ) {
+        $roles[] = 'Arbitre national';
+    }
+    if ( $has_arbitre_fide ) {
+        $roles[] = 'Arbitre FIDE';
+    }
+    if ( $has_initiateur ) {
+        $roles[] = 'Initiateur';
+    }
+    if ( $has_animateur ) {
+        $roles[] = 'Animateur';
+    }
+    if ( $has_entraineur ) {
+        $roles[] = 'Entraîneur';
+    }
+
+    $fide_url = cdje92_ffe_player_clean_text( cdje92_ffe_player_xpath_attr( $xpath, 'ctl00_ContentPlaceHolderMain_LinkFide', 'href' ) );
+
+    return [
+        'title' => $title,
+        'roles' => $roles,
+        'fide_url' => $fide_url,
+    ];
+}
+
+function cdje92_rest_get_ffe_player( WP_REST_Request $request ) {
+    $id = preg_replace( '/\D+/', '', (string) $request->get_param( 'id' ) );
+    if ( $id === '' ) {
+        return new WP_Error( 'cdje92_invalid_player_id', 'ID joueur invalide.', [ 'status' => 400 ] );
+    }
+
+    if ( ! class_exists( 'DOMDocument' ) || ! class_exists( 'DOMXPath' ) ) {
+        return new WP_Error( 'cdje92_dom_missing', 'Fonctionnalite indisponible sur ce serveur.', [ 'status' => 500 ] );
+    }
+
+    $cache_key = 'cdje92_ffe_player_' . $id;
+    $cached = get_transient( $cache_key );
+    if ( is_array( $cached ) ) {
+        return rest_ensure_response( $cached );
+    }
+
+    $url = 'https://www.echecs.asso.fr/FicheJoueur.aspx?Id=' . rawurlencode( $id );
+    $response = wp_remote_get( $url, [
+        'timeout' => 10,
+        'redirection' => 3,
+        'headers' => [
+            'Accept' => 'text/html,application/xhtml+xml',
+        ],
+        'user-agent' => 'echecs92/1.0; WordPress',
+    ] );
+
+    if ( is_wp_error( $response ) ) {
+        return new WP_Error( 'cdje92_ffe_fetch_failed', 'Impossible de recuperer la fiche FFE.', [ 'status' => 502 ] );
+    }
+
+    $status = (int) wp_remote_retrieve_response_code( $response );
+    if ( $status !== 200 ) {
+        return new WP_Error( 'cdje92_ffe_bad_status', 'La fiche FFE est indisponible.', [ 'status' => 502 ] );
+    }
+
+    $body = wp_remote_retrieve_body( $response );
+    if ( ! is_string( $body ) || $body === '' ) {
+        return new WP_Error( 'cdje92_ffe_empty_body', 'La fiche FFE est vide.', [ 'status' => 502 ] );
+    }
+
+    $extras = cdje92_ffe_player_extract_extras_from_html( $body );
+    $payload = [
+        'id' => $id,
+        'title' => $extras['title'] ?? '',
+        'roles' => $extras['roles'] ?? [],
+        'fide_url' => $extras['fide_url'] ?? '',
+    ];
+
+    set_transient( $cache_key, $payload, DAY_IN_SECONDS );
+
+    return rest_ensure_response( $payload );
+}
+
+add_action( 'rest_api_init', function () {
+    register_rest_route( 'cdje92/v1', '/ffe-player', [
+        'methods' => WP_REST_Server::READABLE,
+        'callback' => 'cdje92_rest_get_ffe_player',
+        'permission_callback' => '__return_true',
+        'args' => [
+            'id' => [
+                'required' => true,
+                'sanitize_callback' => function ( $value ) {
+                    return preg_replace( '/\D+/', '', (string) $value );
+                },
+                'validate_callback' => function ( $value ) {
+                    return is_string( $value ) && $value !== '' && strlen( $value ) <= 12;
+                },
+            ],
+        ],
+    ] );
+} );
 
 add_action('template_redirect', function () {
     $request_path = isset($_SERVER['REQUEST_URI']) ? wp_parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : '';

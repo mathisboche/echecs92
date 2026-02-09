@@ -440,8 +440,8 @@ msgstr "Hyatt Regency San Francisco, San Francisco, États-Unis d’Amérique"
 
 #: patterns/banner-project-description.php:17
 msgctxt "Sample title for a project or post"
-msgid "Art Gallery — Overview"
-msgstr "Galerie d’art — Aperçu"
+msgid "Art Gallery - Overview"
+msgstr "Galerie d’art - Aperçu"
 
 #: patterns/banner-hero.php
 msgctxt "Pattern title"
@@ -972,7 +972,7 @@ msgstr "Restez à jour, restons en contact."
 
 #: patterns/cta-services-image-left.php:32
 msgctxt "Sample description of the services pattern"
-msgid "Experience the fusion of imagination and expertise with Études—the catalyst for architectural transformations that enrich the world around us."
+msgid "Experience the fusion of imagination and expertise with Études-the catalyst for architectural transformations that enrich the world around us."
 msgstr "Vivez la fusion de l’imagination et de l’expertise avec Études, le catalyseur des transformations architecturales qui enrichissent le monde qui nous entoure."
 
 #: patterns/cta-services-image-left.php
@@ -1482,7 +1482,7 @@ msgid "Architectural Solutions"
 msgstr "Architectural Solutions"
 
 #: patterns/text-centered-statement.php:21
-msgid "<em>Études</em> is not confined to the past—we are passionate about the cutting edge designs shaping our world today."
+msgid "<em>Études</em> is not confined to the past-we are passionate about the cutting edge designs shaping our world today."
 msgstr "<em>Études</em> ne se limite pas au passé - nous sommes passionnés par les conceptions d’avant-garde qui façonnent le monde d’aujourd’hui."
 
 #: patterns/team-4-col.php:16

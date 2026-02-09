@@ -118,12 +118,12 @@ const extractCityFromAddress = (value) => {
   if (postal) {
     const idx = str.indexOf(postal);
     if (idx >= 0) {
-      const after = str.slice(idx + postal.length).trim();
-      if (after) {
-        return after.replace(/^[,;–—\-]+/, '').trim();
-      }
-    }
-  }
+	      const after = str.slice(idx + postal.length).trim();
+	      if (after) {
+	        return after.replace(/^[,;\u2013\u2014\\-]+/, '').trim();
+	      }
+	    }
+	  }
   const parts = str
     .split(',')
     .map((part) => part.trim())

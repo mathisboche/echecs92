@@ -168,13 +168,13 @@ const extractAddressParts = (value) => {
     return result;
   }
 
-  const cleanCity = (raw) =>
-    (raw || '')
-      .toString()
-      .replace(/\b\d{4,5}\b/g, ' ')
-      .replace(/^[,;\s-–—]+/, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+	  const cleanCity = (raw) =>
+	    (raw || '')
+	      .toString()
+	      .replace(/\b\d{4,5}\b/g, ' ')
+	      .replace(/^[,;\s\-\u2013\u2014]+/, '')
+	      .replace(/\s+/g, ' ')
+	      .trim();
 
   const postal = parsePostalCodeFromString(result.full);
   if (postal) {
@@ -289,10 +289,10 @@ const deriveCityFromPostal = (address, postalHint = '') => {
     return '';
   }
   const idx = Number.isFinite(match.index) ? match.index : raw.indexOf(match[0]);
-  const after = raw.slice(idx + match[0].length).trim();
-  if (after) {
-    return after.replace(/^[,;\s-–—]+/, '').trim();
-  }
+	  const after = raw.slice(idx + match[0].length).trim();
+	  if (after) {
+	    return after.replace(/^[,;\s\-\u2013\u2014]+/, '').trim();
+	  }
   const before = raw.slice(0, idx).trim();
   if (!before) {
     return '';
@@ -306,12 +306,12 @@ const cleanCommuneCandidate = (value, postalCode) => {
     return '';
   }
   const postal = (postalCode || '').toString().replace(/\D/g, '');
-  let cleaned = value
-    .toString()
-    .replace(/\b\d{4,5}\b/g, ' ')
-    .replace(/^[,;\s-–—]+/, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+	  let cleaned = value
+	    .toString()
+	    .replace(/\b\d{4,5}\b/g, ' ')
+	    .replace(/^[,;\s\-\u2013\u2014]+/, ' ')
+	    .replace(/\s+/g, ' ')
+	    .trim();
   if (postal) {
     const pattern = new RegExp(`\\b${postal.slice(0, 2)}\\s*${postal.slice(2)}\\b`, 'gi');
     cleaned = cleaned.replace(pattern, ' ').trim();

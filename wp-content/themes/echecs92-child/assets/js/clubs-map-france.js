@@ -5,6 +5,8 @@
   const FFE_DETAILS_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france/';
   const GEO_HINTS_REMOTE_URL = `/wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json?v=${GEO_HINTS_VERSION}`;
   const POSTAL_COORDINATES_DATA_URL = '/wp-content/themes/echecs92-child/assets/data/postal-coordinates-fr.json';
+  const DASH_RX = /[\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uFE63\uFF0D]/g;
+  const normaliseDashes = (value) => (value == null ? '' : value.toString()).replace(DASH_RX, '-');
   const normalisePathname = (value) => (value || '').replace(/\/+$/u, '') || '/';
   const mapElement = document.getElementById('clubs-map');
   const mapBackLink = document.querySelector('[data-clubs-map-back]');
@@ -433,11 +435,11 @@
     if (!raw.trim()) {
       return '';
     }
-    const withoutPostal = raw.replace(/\b\d{4,5}\b/g, ' ');
-    const segments = withoutPostal
-      .split(/[,;\/]+/g)
-      .map((part) => part.replace(/^[\s-–—]+|[\s-–—]+$/g, '').trim())
-      .filter(Boolean);
+	    const withoutPostal = raw.replace(/\b\d{4,5}\b/g, ' ');
+	    const segments = withoutPostal
+	      .split(/[,;\/]+/g)
+	      .map((part) => part.replace(/^[\s\-\u2013\u2014]+|[\s\-\u2013\u2014]+$/g, '').trim())
+	      .filter(Boolean);
 
     const collapseRepeatedPhrase = (formatted) => {
       const key = normaliseCommuneForCompare(formatted);
@@ -617,36 +619,36 @@
     return '';
   };
 
-  const stripCedexSuffix = (value) => {
-    if (!value) {
-      return '';
-    }
-    return value
-      .toString()
-      .replace(/\bcedex\b(?:\s*[-/]?\s*\d{1,3})?/gi, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  };
+	  const stripCedexSuffix = (value) => {
+	    if (!value) {
+	      return '';
+	    }
+	    return normaliseDashes(value.toString())
+	      .replace(/\bcedex\b(?:\s*[-/]?\s*\d{1,3})?/gi, ' ')
+	      .replace(/\s+/g, ' ')
+	      .trim();
+	  };
 
-  const extractAddressParts = (value) => {
-    const result = {
-      full: value ? String(value).trim() : '',
-      postalCode: '',
-      city: '',
-    };
+	  const extractAddressParts = (value) => {
+	    const result = {
+	      full: value ? normaliseDashes(String(value)).trim() : '',
+	      postalCode: '',
+	      city: '',
+	    };
     if (!result.full) {
       return result;
     }
 
-    const cleanCity = (raw) =>
-      stripCedexSuffix(
-        (raw || '')
-          .toString()
-          .replace(/\b\d{4,5}\b/g, ' ')
-          .replace(/^[,;\s-–—]+/, '')
-          .replace(/\s+/g, ' ')
-          .trim()
-      );
+	    const cleanCity = (raw) =>
+	      stripCedexSuffix(
+	        (raw || '')
+	          .toString()
+	          .replace(DASH_RX, '-')
+	          .replace(/\b\d{4,5}\b/g, ' ')
+	          .replace(/^[,;\s\-\u2013\u2014]+/, '')
+	          .replace(/\s+/g, ' ')
+	          .trim()
+	      );
 
     const postal = parsePostalCodeFromString(result.full);
     if (postal) {
@@ -697,12 +699,12 @@
     return segment
       .replace(/\bpendant\s+la\s+semaine\b.*$/gi, '')
       .replace(/\b(?:en\s+semaine|semaine)\b.*$/gi, '')
-      .replace(/\b(?:le|du)?\s*(?:w\.?e\.?|w-?e|week[-\s]?end|weekend)\b.*$/gi, '')
-      .replace(/\(\s*(?:we|w-?e|week[-\s]?end|weekend)[^)]*\)/gi, ' ')
-      .replace(/\s+/g, ' ')
-      .replace(/^[,;\s-–—]+|[,;\s-–—]+$/g, '')
-      .trim();
-  };
+	      .replace(/\b(?:le|du)?\s*(?:w\.?e\.?|w-?e|week[-\s]?end|weekend)\b.*$/gi, '')
+	      .replace(/\(\s*(?:we|w-?e|week[-\s]?end|weekend)[^)]*\)/gi, ' ')
+	      .replace(/\s+/g, ' ')
+	      .replace(/^[,;\s\-\u2013\u2014]+|[,;\s\-\u2013\u2014]+$/g, '')
+	      .trim();
+	  };
 
   const scoreAddressSegment = (segment) => {
     if (!segment) {
@@ -776,25 +778,25 @@
     }
     const formattedCity = formatCommune(city);
     if (formattedCity) {
-      const escapedCity = formattedCity.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-      const cityPatterns = [
-        new RegExp(`^${escapedCity}\\s*[,:;\\-–—]?\\s*`, 'i'),
-        new RegExp(`\\s*[,:;\\-–—]?\\s*${escapedCity}$`, 'i'),
-      ];
+	      const escapedCity = formattedCity.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+	      const cityPatterns = [
+	        new RegExp(`^${escapedCity}\\s*[,:;\\-\\u2013\\u2014]?\\s*`, 'i'),
+	        new RegExp(`\\s*[,:;\\-\\u2013\\u2014]?\\s*${escapedCity}$`, 'i'),
+	      ];
       cityPatterns.forEach((pattern) => {
         result = result.replace(pattern, ' ');
       });
     }
-    const postal = (postalCode || '').toString();
-    if (/^75\d{3}$/.test(postal)) {
-      const arrondissementOnly = /^(?:[,;\s\-–—]*)\d{1,2}(?:er|e|eme|ème)?(?:\s*arr(?:\.|t|ondissement)?)?(?:[,;\s\-–—]*)$/i;
-      if (arrondissementOnly.test(result)) {
-        result = '';
-      }
-    }
-    result = result.replace(/^[,;\-–—\s]+|[,;\-–—\s]+$/g, '');
-    return result.replace(/\s+/g, ' ').trim();
-  };
+	    const postal = (postalCode || '').toString();
+	    if (/^75\d{3}$/.test(postal)) {
+	      const arrondissementOnly = /^(?:[,;\s\-\u2013\u2014]*)\d{1,2}(?:er|e|eme|ème)?(?:\s*arr(?:\.|t|ondissement)?)?(?:[,;\s\-\u2013\u2014]*)$/i;
+	      if (arrondissementOnly.test(result)) {
+	        result = '';
+	      }
+	    }
+	    result = result.replace(/^[,;\-\u2013\u2014\s]+|[,;\-\u2013\u2014\s]+$/g, '');
+	    return result.replace(/\s+/g, ' ').trim();
+	  };
 
   const normalizeCityForPostal = (city, postalCode) => {
     const formatted = formatCommune(city);
@@ -892,11 +894,11 @@
     return { full: orderedSegments.join(', '), best, streetLike: streetCandidate || '' };
   };
 
-  const deriveCityFromPostal = (address, postalHint = '') => {
-    const raw = (address || '').toString();
-    if (!raw.trim()) {
-      return '';
-    }
+	  const deriveCityFromPostal = (address, postalHint = '') => {
+	    const raw = normaliseDashes((address || '').toString());
+	    if (!raw.trim()) {
+	      return '';
+	    }
     const postal = parsePostalCodeFromString(raw) || (postalHint || '').toString().replace(/\D/g, '');
     if (!postal) {
       return '';
@@ -906,11 +908,11 @@
     if (!match) {
       return '';
     }
-    const idx = Number.isFinite(match.index) ? match.index : raw.indexOf(match[0]);
-    const after = raw.slice(idx + match[0].length).trim();
-    if (after) {
-      return stripCedexSuffix(after.replace(/^[,;\s-–—]+/, '').trim());
-    }
+	    const idx = Number.isFinite(match.index) ? match.index : raw.indexOf(match[0]);
+	    const after = raw.slice(idx + match[0].length).trim();
+	    if (after) {
+	      return stripCedexSuffix(after.replace(/^[,;\s\-\u2013\u2014]+/, '').trim());
+	    }
     const before = raw.slice(0, idx).trim();
     if (!before) {
       return '';
@@ -924,12 +926,13 @@
       return '';
     }
     const postal = (postalCode || '').toString().replace(/\D/g, '');
-    let cleaned = value
-      .toString()
-      .replace(/\b\d{4,5}\b/g, ' ')
-      .replace(/^[,;\s-–—]+/, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+	    let cleaned = value
+	      .toString()
+	      .replace(DASH_RX, '-')
+	      .replace(/\b\d{4,5}\b/g, ' ')
+	      .replace(/^[,;\s\-\u2013\u2014]+/, ' ')
+	      .replace(/\s+/g, ' ')
+	      .trim();
     if (postal) {
       const pattern = new RegExp(`\\b${postal.slice(0, 2)}\\s*${postal.slice(2)}\\b`, 'gi');
       cleaned = cleaned.replace(pattern, ' ').trim();
@@ -1750,7 +1753,7 @@
     if (raw.id && raw.name) {
       return raw;
     }
-    const name = raw.nom || raw.name || '';
+	    const name = normaliseDashes(raw.nom || raw.name || '');
     const primaryAddressMeta = normaliseAddressField(raw.salle_jeu || raw.salle || raw.adresse || raw.address || '');
     const secondaryAddressMeta = normaliseAddressField(raw.siege || raw.siege_social || raw.address2 || '');
     const primaryAddress = primaryAddressMeta.full;
@@ -1774,7 +1777,7 @@
       deriveCityFromPostal(secondaryAddress, postalForCommune),
     ];
     const baseCommune = dedupeCommuneLabel(pickBestCommune(communeCandidates, postalForCommune));
-    const commune = formatCommuneWithPostal(baseCommune, postalForCommune);
+	    const commune = normaliseDashes(formatCommuneWithPostal(baseCommune, postalForCommune));
     const streetHint = primaryAddressMeta.streetLike || secondaryAddressMeta.streetLike || '';
     const standardAddress = buildStandardAddress(
       streetHint,
@@ -1806,27 +1809,27 @@
       null;
     const initialFfeRef = sanitiseFfeRef(raw.ffe_ref ?? raw.ffeRef ?? raw.fiche_ffe);
 
-    return {
-      id,
-      name: name || commune || 'Club sans nom',
-      commune,
-      address: primaryAddress || secondaryAddress || '',
-      siege: secondaryAddress || '',
-      salle: raw.salle_jeu || raw.salle || '',
-      phone: raw.telephone || raw.phone || '',
-      fax: raw.fax || '',
-      email: raw.email || '',
-      site,
-      president: raw.president || '',
-      presidentEmail: raw.president_email || raw.presidentEmail || '',
-      contact: raw.contact || '',
-      contactEmail: raw.contact_email || raw.contactEmail || '',
-      hours: raw.horaires || raw.hours || '',
-      accesPmr: raw.acces_pmr || '',
-      interclubs: raw.interclubs || '',
-      interclubsJeunes: raw.interclubs_jeunes || '',
-      interclubsFeminins: raw.interclubs_feminins || '',
-      labelFederal: raw.label_federal || '',
+	    return {
+	      id,
+	      name: name || commune || 'Club sans nom',
+	      commune,
+	      address: primaryAddress || secondaryAddress || '',
+	      siege: secondaryAddress || '',
+	      salle: normaliseDashes(raw.salle_jeu || raw.salle || ''),
+	      phone: normaliseDashes(raw.telephone || raw.phone || ''),
+	      fax: normaliseDashes(raw.fax || ''),
+	      email: normaliseDashes(raw.email || ''),
+	      site,
+	      president: normaliseDashes(raw.president || ''),
+	      presidentEmail: normaliseDashes(raw.president_email || raw.presidentEmail || ''),
+	      contact: normaliseDashes(raw.contact || ''),
+	      contactEmail: normaliseDashes(raw.contact_email || raw.contactEmail || ''),
+	      hours: normaliseDashes(raw.horaires || raw.hours || ''),
+	      accesPmr: normaliseDashes(raw.acces_pmr || ''),
+	      interclubs: normaliseDashes(raw.interclubs || ''),
+	      interclubsJeunes: normaliseDashes(raw.interclubs_jeunes || ''),
+	      interclubsFeminins: normaliseDashes(raw.interclubs_feminins || ''),
+	      labelFederal: normaliseDashes(raw.label_federal || ''),
       ffeRef: initialFfeRef,
       postalCode,
       addressStandard: standardAddress,
@@ -1842,10 +1845,10 @@
         raw.departement ||
         raw.dept ||
         '',
-      departmentName: raw.departmentName || raw.department_name || raw.departement_nom || raw.departmentLabel || '',
-      departmentSlug: raw.departmentSlug || raw.department_slug || raw.departement_slug || '',
-    };
-  };
+	      departmentName: normaliseDashes(raw.departmentName || raw.department_name || raw.departement_nom || raw.departmentLabel || ''),
+	      departmentSlug: normaliseDashes(raw.departmentSlug || raw.department_slug || raw.departement_slug || ''),
+	    };
+	  };
 
   const refreshClubDisplay = (club) => {
     if (!club || typeof club !== 'object') {

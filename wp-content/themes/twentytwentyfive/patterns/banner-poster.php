@@ -36,7 +36,7 @@
 			<!-- wp:column {"width":"20%"} -->
 			<div class="wp-block-column" style="flex-basis:20%">
 				<!-- wp:paragraph {"align":"right"} -->
-				<p class="has-text-align-right"><?php echo esc_html_x( 'Aug 08—10 2025', 'Example event date in pattern.', 'twentytwentyfive' ); ?><br><?php esc_html_e( 'Fuego Bar, Mexico City', 'twentytwentyfive' ); ?></p>
+				<p class="has-text-align-right"><?php echo esc_html_x( 'Aug 08-10 2025', 'Example event date in pattern.', 'twentytwentyfive' ); ?><br><?php esc_html_e( 'Fuego Bar, Mexico City', 'twentytwentyfive' ); ?></p>
 				<!-- /wp:paragraph -->
 			</div>
 			<!-- /wp:column -->

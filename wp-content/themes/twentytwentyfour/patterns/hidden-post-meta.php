@@ -13,7 +13,7 @@
 		<!-- wp:post-date {"format":"M j, Y","isLink":true} /-->
 
 		<!-- wp:paragraph {"textColor":"contrast-2"} -->
-		<p class="has-contrast-2-color has-text-color">—</p>
+		<p class="has-contrast-2-color has-text-color">-</p>
 		<!-- /wp:paragraph -->
 
 		<!-- wp:paragraph {"fontSize":"small","textColor":"contrast-2"} -->

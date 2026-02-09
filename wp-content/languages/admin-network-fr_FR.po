@@ -475,8 +475,8 @@ msgstr "Jamais"
 
 #. translators: 1: Site title, 2: Site tagline.
 #: wp-admin/includes/class-wp-ms-sites-list-table.php:479
-msgid "%1$s &#8211; %2$s"
-msgstr "%1$s &#8211; %2$s"
+msgid "%1$s - %2$s"
+msgstr "%1$s - %2$s"
 
 #: wp-admin/includes/class-wp-ms-sites-list-table.php:369
 #: wp-admin/includes/class-wp-ms-sites-list-table.php:404

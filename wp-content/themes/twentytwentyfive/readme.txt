@@ -75,7 +75,7 @@ Reference: https://github.com/sharanda/manrope
 Source: https://fonts.google.com/specimen/Manrope
 
 Vollkorn Font
-Copyright (c) 2005–2018, Friedrich Althausen
+Copyright (c) 2005-2018, Friedrich Althausen
 License: SIL Open Font License, 1.1, https://opensource.org/licenses/OFL-1.1
 Reference: https://github.com/FAlthausen/Vollkorn-Typeface
 Source: https://fonts.google.com/specimen/Vollkorn

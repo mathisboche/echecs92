@@ -29,8 +29,8 @@ const htmlEntities = {
   yuml: 'ÿ',
   rsquo: '’',
   lsquo: '’',
-  ndash: '–',
-  mdash: '—',
+  ndash: '-',
+  mdash: '-',
 };
 
 const decodeHtml = (value) => {
@@ -96,4 +96,3 @@ module.exports = {
   stripTags,
   toBase36,
 };
-

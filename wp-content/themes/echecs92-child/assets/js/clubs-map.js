@@ -2,6 +2,8 @@
   const DATA_URL = '/wp-content/themes/echecs92-child/assets/data/clubs.json';
   const FFE_DETAILS_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france/92.json';
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs:last-listing';
+  const DASH_RX = /[\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uFE63\uFF0D]/g;
+  const normaliseDashes = (value) => (value == null ? '' : value.toString()).replace(DASH_RX, '-');
   const mapElement = document.getElementById('clubs-map');
   const mapBackLink = document.querySelector('[data-clubs-map-back]');
   if (!mapElement || typeof L === 'undefined') {
@@ -130,23 +132,23 @@
     return `club-${Math.random().toString(36).slice(2, 10)}`;
   };
 
-  const extractAddressParts = (value) => {
-    const result = {
-      full: value ? String(value).trim() : '',
-      postalCode: '',
-      city: '',
-    };
+	  const extractAddressParts = (value) => {
+	    const result = {
+	      full: value ? normaliseDashes(String(value)).trim() : '',
+	      postalCode: '',
+	      city: '',
+	    };
     if (!result.full) {
       return result;
     }
     const postalMatch = result.full.match(/\b(\d{5})\b/);
     if (postalMatch) {
-      result.postalCode = postalMatch[1];
-      const after = result.full.slice(postalMatch.index + postalMatch[0].length).trim();
-      if (after) {
-        result.city = after.replace(/^[,;\-–—]+/, '').trim();
-      }
-    }
+	      result.postalCode = postalMatch[1];
+	      const after = result.full.slice(postalMatch.index + postalMatch[0].length).trim();
+	      if (after) {
+	        result.city = after.replace(/^[,;\-\u2013\u2014]+/, '').trim();
+	      }
+	    }
     if (!result.city) {
       const parts = result.full
         .split(',')
@@ -204,25 +206,25 @@
     }
     const formattedCity = formatCommune(city);
     if (formattedCity) {
-      const escapedCity = formattedCity.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-      const cityPatterns = [
-        new RegExp(`^${escapedCity}\\s*[,:;\\-–—]?\\s*`, 'i'),
-        new RegExp(`\\s*[,:;\\-–—]?\\s*${escapedCity}$`, 'i'),
-      ];
+	      const escapedCity = formattedCity.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+	      const cityPatterns = [
+	        new RegExp(`^${escapedCity}\\s*[,:;\\-\\u2013\\u2014]?\\s*`, 'i'),
+	        new RegExp(`\\s*[,:;\\-\\u2013\\u2014]?\\s*${escapedCity}$`, 'i'),
+	      ];
       cityPatterns.forEach((pattern) => {
         result = result.replace(pattern, ' ');
       });
     }
-    const postal = (postalCode || '').toString();
-    if (/^75\d{3}$/.test(postal)) {
-      const arrondissementOnly = /^(?:[,;\s\-–—]*)\d{1,2}(?:er|e|eme|ème)?(?:\s*arr(?:\.|t|ondissement)?)?(?:[,;\s\-–—]*)$/i;
-      if (arrondissementOnly.test(result)) {
-        result = '';
-      }
-    }
-    result = result.replace(/^[,;\-–—\s]+|[,;\-–—\s]+$/g, '');
-    return result.replace(/\s+/g, ' ').trim();
-  };
+	    const postal = (postalCode || '').toString();
+	    if (/^75\d{3}$/.test(postal)) {
+	      const arrondissementOnly = /^(?:[,;\s\-\u2013\u2014]*)\d{1,2}(?:er|e|eme|ème)?(?:\s*arr(?:\.|t|ondissement)?)?(?:[,;\s\-\u2013\u2014]*)$/i;
+	      if (arrondissementOnly.test(result)) {
+	        result = '';
+	      }
+	    }
+	    result = result.replace(/^[,;\-\u2013\u2014\s]+|[,;\-\u2013\u2014\s]+$/g, '');
+	    return result.replace(/\s+/g, ' ').trim();
+	  };
 
   const normalizeCityForPostal = (city, postalCode) => {
     const formatted = formatCommune(city);
@@ -465,13 +467,13 @@
     if (raw.id && raw.name) {
       return raw;
     }
-    const name = raw.nom || raw.name || '';
-    const primaryAddress = raw.salle_jeu || raw.salle || raw.adresse || raw.address || '';
-    const addressParts = extractAddressParts(primaryAddress);
-    const secondaryAddress = raw.siege || raw.siege_social || raw.address2 || '';
-    const secondaryParts = extractAddressParts(secondaryAddress);
-    const communeRaw = raw.commune || raw.ville || addressParts.city || secondaryParts.city || '';
-    const commune = formatCommune(communeRaw);
+	    const name = normaliseDashes(raw.nom || raw.name || '');
+	    const primaryAddress = normaliseDashes(raw.salle_jeu || raw.salle || raw.adresse || raw.address || '');
+	    const addressParts = extractAddressParts(primaryAddress);
+	    const secondaryAddress = normaliseDashes(raw.siege || raw.siege_social || raw.address2 || '');
+	    const secondaryParts = extractAddressParts(secondaryAddress);
+	    const communeRaw = normaliseDashes(raw.commune || raw.ville || addressParts.city || secondaryParts.city || '');
+	    const commune = normaliseDashes(formatCommune(communeRaw));
     const postalCode = raw.code_postal || raw.postal_code || addressParts.postalCode || secondaryParts.postalCode || '';
     const slugSource = commune || name || postalCode || primaryAddress || secondaryAddress;
     const standardAddress = buildStandardAddress(
@@ -503,33 +505,33 @@
       null;
     const initialFfeRef = sanitiseFfeRef(raw.ffe_ref ?? raw.ffeRef ?? raw.fiche_ffe);
 
-    return {
-      id,
-      name: name || commune || 'Club sans nom',
-      commune,
-      address: primaryAddress || secondaryAddress || '',
-      siege: secondaryAddress || '',
-      salle: raw.salle_jeu || raw.salle || '',
-      phone: raw.telephone || raw.phone || '',
-      fax: raw.fax || '',
-      email: raw.email || '',
-      site,
-      president: raw.president || '',
-      presidentEmail: raw.president_email || raw.presidentEmail || '',
-      contact: raw.contact || '',
-      contactEmail: raw.contact_email || raw.contactEmail || '',
-      hours: raw.horaires || raw.hours || '',
-      accesPmr: raw.acces_pmr || '',
-      interclubs: raw.interclubs || '',
-      interclubsJeunes: raw.interclubs_jeunes || '',
-      interclubsFeminins: raw.interclubs_feminins || '',
-      labelFederal: raw.label_federal || '',
-      ffeRef: initialFfeRef,
-      postalCode,
-      addressStandard: standardAddress,
-      addressDisplay: standardAddress || primaryAddress || secondaryAddress || '',
-      latitude,
-      longitude,
+	    return {
+	      id,
+	      name: name || commune || 'Club sans nom',
+	      commune,
+	      address: primaryAddress || secondaryAddress || '',
+	      siege: secondaryAddress || '',
+	      salle: normaliseDashes(raw.salle_jeu || raw.salle || ''),
+	      phone: normaliseDashes(raw.telephone || raw.phone || ''),
+	      fax: normaliseDashes(raw.fax || ''),
+	      email: normaliseDashes(raw.email || ''),
+	      site,
+	      president: normaliseDashes(raw.president || ''),
+	      presidentEmail: normaliseDashes(raw.president_email || raw.presidentEmail || ''),
+	      contact: normaliseDashes(raw.contact || ''),
+	      contactEmail: normaliseDashes(raw.contact_email || raw.contactEmail || ''),
+	      hours: normaliseDashes(raw.horaires || raw.hours || ''),
+	      accesPmr: normaliseDashes(raw.acces_pmr || ''),
+	      interclubs: normaliseDashes(raw.interclubs || ''),
+	      interclubsJeunes: normaliseDashes(raw.interclubs_jeunes || ''),
+	      interclubsFeminins: normaliseDashes(raw.interclubs_feminins || ''),
+	      labelFederal: normaliseDashes(raw.label_federal || ''),
+	      ffeRef: initialFfeRef,
+	      postalCode,
+	      addressStandard: standardAddress,
+	      addressDisplay: standardAddress || primaryAddress || secondaryAddress || '',
+	      latitude,
+	      longitude,
       slug: slugify(slugSource || id || name || 'club'),
     };
   };

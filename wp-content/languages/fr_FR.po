@@ -668,8 +668,8 @@ msgstr[1] "%d résultats trouvés"
 #. translators: 1: Start index of posts, 2: End index of posts, 3: Total number
 #. of posts
 #: wp-includes/blocks/query-total.php:54
-msgid "Displaying %1$s – %2$s of %3$s"
-msgstr "Affichage de %1$s – %2$s sur %3$s"
+msgid "Displaying %1$s - %2$s of %3$s"
+msgstr "Affichage de %1$s - %2$s sur %3$s"
 
 #. translators: 1: Start index of posts, 2: Total number of posts
 #: wp-includes/blocks/query-total.php:47
@@ -1551,25 +1551,25 @@ msgstr "Google Fonts"
 #: wp-includes/customize/class-wp-customize-site-icon-control.php:81
 #: wp-admin/options-general.php:134 wp-admin/js/site-icon.js:161
 msgid "App icon preview: The current image has no alternative text. The file name is: %s"
-msgstr "Aperçu de l’icône de l’application – l’image actuelle n’a pas de texte alternatif. Le nom du fichier est : %s"
+msgstr "Aperçu de l’icône de l’application - l’image actuelle n’a pas de texte alternatif. Le nom du fichier est : %s"
 
 #. translators: %s: The selected image alt text.
 #: wp-includes/customize/class-wp-customize-site-icon-control.php:73
 #: wp-admin/options-general.php:147 wp-admin/js/site-icon.js:150
 msgid "App icon preview: Current image: %s"
-msgstr "Aperçu de l’icône de l’application – image actuelle : %s"
+msgstr "Aperçu de l’icône de l’application - image actuelle : %s"
 
 #. translators: %s: The selected image filename.
 #: wp-includes/customize/class-wp-customize-site-icon-control.php:103
 #: wp-admin/options-general.php:140 wp-admin/js/site-icon.js:168
 msgid "Browser icon preview: The current image has no alternative text. The file name is: %s"
-msgstr "Aperçu de l’icône du navigateur – l’image actuelle n’a aucun texte alternatif. Le nom du fichier est : %s"
+msgstr "Aperçu de l’icône du navigateur - l’image actuelle n’a aucun texte alternatif. Le nom du fichier est : %s"
 
 #. translators: %s: The selected image alt text.
 #: wp-includes/customize/class-wp-customize-site-icon-control.php:95
 #: wp-admin/options-general.php:153 wp-admin/js/site-icon.js:155
 msgid "Browser icon preview: Current image: %s"
-msgstr "Aperçu de l’icône du navigateur – image actuelle : %s"
+msgstr "Aperçu de l’icône du navigateur - image actuelle : %s"
 
 #: wp-includes/customize/class-wp-customize-nav-menu-item-control.php:73
 #: wp-includes/customize/class-wp-customize-nav-menu-item-control.php:75
@@ -8339,8 +8339,8 @@ msgstr "Une erreur s’est produite sur un point de terminaison non protégé."
 #. translators: %s: Login screen title.
 #. translators: %s: Admin screen title.
 #: wp-login.php:80 wp-admin/admin-header.php:78
-msgid "Recovery Mode &#8212; %s"
-msgstr "Mode de récupération &#8212; %s"
+msgid "Recovery Mode - %s"
+msgstr "Mode de récupération - %s"
 
 #. translators: Login details notification email subject. %s: Site title.
 #: wp-includes/pluggable.php:2290
@@ -8818,8 +8818,8 @@ msgstr "Créer"
 
 #: wp-includes/blocks/quote/block.json
 msgctxt "block description"
-msgid "Give quoted text visual emphasis. \"In quoting others, we cite ourselves.\" — Julio Cortázar"
-msgstr "Donnez une emphase visuelle à vos citations. « En citant les autres, nous nous citons nous mêmes » — Julio Cortázar"
+msgid "Give quoted text visual emphasis. \"In quoting others, we cite ourselves.\" - Julio Cortázar"
+msgstr "Donnez une emphase visuelle à vos citations. « En citant les autres, nous nous citons nous mêmes » - Julio Cortázar"
 
 #: wp-includes/blocks/query-pagination.php:26
 #: wp-includes/js/dist/edit-site.js:24034
@@ -9748,8 +9748,8 @@ msgstr "Titre du site : %s"
 #. translators: Admin screen title. 1: Admin screen name, 2: Network or site
 #. name.
 #: wp-login.php:76 wp-admin/admin-header.php:73
-msgid "%1$s &lsaquo; %2$s &#8212; WordPress"
-msgstr "%1$s &lsaquo; %2$s &#8212; WordPress"
+msgid "%1$s &lsaquo; %2$s - WordPress"
+msgstr "%1$s &lsaquo; %2$s - WordPress"
 
 #. translators: 1: Number of placeholders, 2: Number of arguments passed.
 #: wp-includes/class-wpdb.php:1699
@@ -10332,21 +10332,21 @@ msgstr "Sélectionner un fichier sonore"
 
 #. translators: %s: Header height in pixels.
 #: wp-includes/customize/class-wp-customize-header-image-control.php:231
-msgid "Click &#8220;Add Image&#8221; to upload an image file from your computer. Your theme works best with an image with a header height of %s pixels &#8212; you&#8217;ll be able to crop your image once you upload it for a perfect fit."
+msgid "Click &#8220;Add Image&#8221; to upload an image file from your computer. Your theme works best with an image with a header height of %s pixels - you&#8217;ll be able to crop your image once you upload it for a perfect fit."
 msgstr "Cliquez sur « Ajouter une image » pour téléverser un fichier image depuis votre ordinateur. Votre thème fonctionne mieux avec une image avec la hauteur d’entête de %s pixels. Vous pourrez recadrer l’image dès qu’elle sera téléversée pour un ajustement parfait."
 
 #. translators: %s: Header width in pixels.
 #: wp-includes/customize/class-wp-customize-header-image-control.php:225
-msgid "Click &#8220;Add Image&#8221; to upload an image file from your computer. Your theme works best with an image with a header width of %s pixels &#8212; you&#8217;ll be able to crop your image once you upload it for a perfect fit."
+msgid "Click &#8220;Add Image&#8221; to upload an image file from your computer. Your theme works best with an image with a header width of %s pixels - you&#8217;ll be able to crop your image once you upload it for a perfect fit."
 msgstr "Cliquez sur « Ajouter une image » pour téléverser un fichier image depuis votre ordinateur. Votre thème fonctionne mieux avec une image avec la largeur d’entête de %s pixels. Vous pourrez recadrer l’image dès qu’elle sera téléversée pour un ajustement parfait."
 
 #. translators: %s: Header size in pixels.
 #: wp-includes/customize/class-wp-customize-header-image-control.php:219
-msgid "Click &#8220;Add Image&#8221; to upload an image file from your computer. Your theme works best with an image with a header size of %s pixels &#8212; you&#8217;ll be able to crop your image once you upload it for a perfect fit."
+msgid "Click &#8220;Add Image&#8221; to upload an image file from your computer. Your theme works best with an image with a header size of %s pixels - you&#8217;ll be able to crop your image once you upload it for a perfect fit."
 msgstr "Cliquez sur « Ajouter une image » pour téléverser un fichier image depuis votre ordinateur. Votre thème fonctionne mieux avec une image de taille d’entête de %s pixels. Vous pourrez recadrer l’image dès qu’elle sera téléversée pour un ajustement parfait."
 
 #: wp-includes/customize/class-wp-customize-header-image-control.php:215
-msgid "Click &#8220;Add Image&#8221; to upload an image file from your computer. Your theme works best with an image that matches the size of your video &#8212; you&#8217;ll be able to crop your image once you upload it for a perfect fit."
+msgid "Click &#8220;Add Image&#8221; to upload an image file from your computer. Your theme works best with an image that matches the size of your video - you&#8217;ll be able to crop your image once you upload it for a perfect fit."
 msgstr "Cliquez sur « Ajouter une image » pour téléverser un fichier image depuis votre ordinateur. Votre thème fonctionne mieux avec une image de la même taille que votre vidéo. Vous pourrez recadrer l’image dès qu’elle sera téléversée pour un ajustement parfait."
 
 #. translators: 1: Month number (01, 02, etc.), 2: Month abbreviation.
@@ -11600,13 +11600,13 @@ msgstr "Rechercher"
 
 #: wp-includes/theme.php:2303
 msgctxt "Theme starter content"
-msgid "Saturday &amp; Sunday: 11:00AM&ndash;3:00PM"
-msgstr "Les samedi et dimanche : 11h00&ndash;15h00"
+msgid "Saturday &amp; Sunday: 11:00AM-3:00PM"
+msgstr "Les samedi et dimanche : 11h00-15h00"
 
 #: wp-includes/theme.php:2302
 msgctxt "Theme starter content"
-msgid "Monday&ndash;Friday: 9:00AM&ndash;5:00PM"
-msgstr "Du lundi au vendredi : 9h00—17h00"
+msgid "Monday-Friday: 9:00AM-5:00PM"
+msgstr "Du lundi au vendredi : 9h00-17h00"
 
 #: wp-includes/theme.php:2301
 msgctxt "Theme starter content"
@@ -13186,8 +13186,8 @@ msgstr "Aucun média n’a été trouvé."
 
 #. translators: 1: Post title, 2: Site title.
 #: wp-includes/embed.php:506
-msgid "&#8220;%1$s&#8221; &#8212; %2$s"
-msgstr "« %1$s » &#8212; %2$s"
+msgid "&#8220;%1$s&#8221; - %2$s"
+msgstr "« %1$s » - %2$s"
 
 #. translators: 1: VHOST, 2: SUBDOMAIN_INSTALL, 3: wp-config.php, 4:
 #. is_subdomain_install()
@@ -17318,8 +17318,8 @@ msgstr "Personnalisez %s"
 #: wp-admin/includes/template.php:752 wp-admin/nav-menus.php:983
 #: wp-admin/options-privacy.php:302 wp-admin/options-reading.php:121
 #: wp-admin/options-reading.php:138 wp-admin/widgets-form.php:318
-msgid "&mdash; Select &mdash;"
-msgstr "&mdash; Sélectionner &mdash;"
+msgid "- Select -"
+msgstr "- Sélectionner -"
 
 #: wp-includes/class-wp-customize-manager.php:5170 wp-includes/option.php:2746
 #: wp-admin/options-general.php:95
@@ -17558,14 +17558,14 @@ msgstr "Tous les liens"
 #. translators: Em dash.
 #: wp-includes/formatting.php:104
 msgctxt "em dash"
-msgid "&#8212;"
-msgstr "&#8212;"
+msgid "-"
+msgstr "-"
 
 #. translators: En dash.
 #: wp-includes/formatting.php:102
 msgctxt "en dash"
-msgid "&#8211;"
-msgstr "&#8211;"
+msgid "-"
+msgstr "-"
 
 #: wp-includes/class-wp-admin-bar.php:140
 msgid "The menu ID should not be empty."

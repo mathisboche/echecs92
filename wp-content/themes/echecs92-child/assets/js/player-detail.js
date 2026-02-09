@@ -5,6 +5,9 @@
 (function () {
   const PLAYER_SHARDS_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/ffe-players/by-id/';
   const FFE_PLAYER_URL_BASE = 'https://www.echecs.asso.fr/FicheJoueur.aspx?Id=';
+  const FFE_EXTRAS_ENDPOINT = '/wp-json/cdje92/v1/ffe-player';
+  const DASH_RX = /[\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uFE63\uFF0D]/g;
+  const normaliseDashes = (value) => (value == null ? '' : value.toString()).replace(DASH_RX, '-');
 
   const detailContainer = document.getElementById('player-detail');
   if (!detailContainer) {
@@ -14,31 +17,90 @@
   const backLink = document.querySelector('.player-detail__back, [data-player-back]');
   detailContainer.classList.add('is-loading');
 
-  const updateBackLinkHref = () => {
+  const getBackKindForPath = (value) => {
+    const path = (value || '').toString().trim();
+    if (!path) {
+      return 'search';
+    }
+    const cleaned = path.split('?')[0].split('#')[0];
+    if (/^\/club-92\/[^/]+/i.test(cleaned) || /^\/club\/[^/]+/i.test(cleaned) || /^\/club-france\/[^/]+/i.test(cleaned)) {
+      return 'club';
+    }
+    if (
+      /^\/clubs-92\b/i.test(cleaned) ||
+      /^\/clubs\b/i.test(cleaned) ||
+      /^\/clubs-france\b/i.test(cleaned) ||
+      /^\/carte-des-clubs-92\b/i.test(cleaned) ||
+      /^\/carte-des-clubs\b/i.test(cleaned) ||
+      /^\/carte-des-clubs-france\b/i.test(cleaned)
+    ) {
+      return 'clubs';
+    }
+    return 'search';
+  };
+
+  const getBackLabel = (kind) => {
+    if (kind === 'club') {
+      return '← Retour à la fiche du club';
+    }
+    if (kind === 'clubs') {
+      return '← Retour à la recherche des clubs';
+    }
+    return '← Retour à la recherche';
+  };
+
+  const deriveBackHrefFromParam = () => {
+    try {
+      const params = new URLSearchParams(window.location.search || '');
+      const from = (params.get('from') || '').trim();
+      if (!from || !from.startsWith('/')) {
+        return '';
+      }
+      return from;
+    } catch (error) {
+      return '';
+    }
+  };
+
+  const updateBackLink = () => {
     if (!backLink) {
       return;
     }
     const fallback = backLink.getAttribute('href') || '/clubs-92';
+    const fallbackKind = getBackKindForPath(fallback);
     const referrer = document.referrer;
+
+    const fromParam = deriveBackHrefFromParam();
+    if (fromParam) {
+      backLink.href = fromParam;
+      backLink.textContent = getBackLabel(getBackKindForPath(fromParam));
+      return;
+    }
+
     if (!referrer) {
       backLink.href = fallback;
+      backLink.textContent = getBackLabel(fallbackKind);
       return;
     }
     try {
       const refUrl = new URL(referrer, window.location.origin);
       if (refUrl.origin !== window.location.origin) {
         backLink.href = fallback;
+        backLink.textContent = getBackLabel(fallbackKind);
         return;
       }
       const href = refUrl.pathname + refUrl.search + refUrl.hash;
       const current = window.location.pathname + window.location.search + window.location.hash;
-      backLink.href = href && href !== current ? href : fallback;
+      const resolved = href && href !== current ? href : fallback;
+      backLink.href = resolved;
+      backLink.textContent = getBackLabel(getBackKindForPath(resolved));
     } catch (error) {
       backLink.href = fallback;
+      backLink.textContent = getBackLabel(fallbackKind);
     }
   };
 
-  updateBackLinkHref();
+  updateBackLink();
 
   const fetchJson = (url) =>
     fetch(url, { headers: { Accept: 'application/json' } }).then((response) => {
@@ -119,19 +181,36 @@
     return `${FFE_PLAYER_URL_BASE}${encodeURIComponent(id)}`;
   };
 
-  const formatUpdatedDate = (value) => {
-    if (!value) {
-      return '';
+  const fetchFfeExtras = (id) => {
+    const raw = (id || '').toString().trim();
+    if (!raw) {
+      return Promise.resolve(null);
     }
-    try {
-      const date = new Date(value);
-      if (!Number.isFinite(date.getTime())) {
-        return '';
-      }
-      return new Intl.DateTimeFormat('fr-FR', { year: 'numeric', month: 'short', day: '2-digit' }).format(date);
-    } catch (error) {
-      return '';
+    const url = `${FFE_EXTRAS_ENDPOINT}?id=${encodeURIComponent(raw)}`;
+    return fetchJson(url).catch(() => null);
+  };
+
+  const formatTitlePrefix = (value) => {
+    const raw = (value || '').toString().replace(/\s+/g, ' ').trim();
+    if (!raw) {
+      return { short: '', long: '' };
     }
+    const key = raw.toLowerCase();
+    const map = [
+      { rx: /grand\s+ma[îi]tre\s+f[ée]minin/i, short: 'WGM', long: 'Grand Maître Féminin' },
+      { rx: /grand\s+ma[îi]tre/i, short: 'GM', long: 'Grand Maître' },
+      { rx: /ma[îi]tre\s+international\s+f[ée]minin/i, short: 'WIM', long: 'Maître International Féminin' },
+      { rx: /ma[îi]tre\s+international/i, short: 'IM', long: 'Maître International' },
+      { rx: /ma[îi]tre\s+fide\s+f[ée]minin/i, short: 'WFM', long: 'Maître FIDE Féminin' },
+      { rx: /ma[îi]tre\s+fide/i, short: 'FM', long: 'Maître FIDE' },
+      { rx: /candidat\s+ma[îi]tre\s+f[ée]minin/i, short: 'WCM', long: 'Candidat Maître Féminin' },
+      { rx: /candidat\s+ma[îi]tre/i, short: 'CM', long: 'Candidat Maître' },
+    ];
+    const entry = map.find((item) => item.rx.test(key)) || null;
+    if (entry) {
+      return { short: entry.short, long: entry.long };
+    }
+    return { short: raw, long: raw };
   };
 
   const appendMetaChip = (host, label, value, options = {}) => {
@@ -169,7 +248,7 @@
   const splitRating = (value) => {
     const str = (value || '').toString().trim();
     if (!str) {
-      return { main: '—', tag: '' };
+      return { main: '-', tag: '' };
     }
     const match = str.match(/^(\d{1,4})(?:\s*([a-z]+))?$/i);
     if (match) {
@@ -212,7 +291,7 @@
 
     const valueNode = document.createElement('div');
     valueNode.className = 'player-stat__value';
-    valueNode.textContent = main || '—';
+    valueNode.textContent = main || '-';
     valueRow.appendChild(valueNode);
 
     if (tag) {
@@ -238,7 +317,18 @@
 
     const title = document.createElement('h1');
     title.className = 'player-hero__name';
-    title.textContent = player.name || 'Fiche joueur';
+
+    const titlePrefix = document.createElement('span');
+    titlePrefix.className = 'player-hero__title-prefix';
+    titlePrefix.hidden = true;
+    title.appendChild(titlePrefix);
+
+    const nameNode = document.createElement('span');
+    nameNode.className = 'player-hero__name-text';
+    const playerName = normaliseDashes(player.name || '');
+    nameNode.textContent = playerName || 'Fiche joueur';
+    title.appendChild(nameNode);
+
     hero.appendChild(title);
 
     const ratingsGrid = document.createElement('div');
@@ -260,6 +350,11 @@
     if (meta.childElementCount) {
       hero.appendChild(meta);
     }
+
+    const rolesWrap = document.createElement('div');
+    rolesWrap.className = 'player-hero__roles';
+    rolesWrap.hidden = true;
+    hero.appendChild(rolesWrap);
 
     sheet.appendChild(hero);
 
@@ -304,8 +399,7 @@
     };
 
     appendExtraItem('Licence', formatLicence(player.aff || ''));
-    appendExtraItem('Nr FFE', player.nrFfe || '');
-    appendExtraItem('Mis à jour', formatUpdatedDate(player.updated || ''));
+    appendExtraItem('N° FFE', player.nrFfe || '');
     appendExtraItem('Fiche FFE', officialUrl, { type: 'link', label: 'Ouvrir sur echecs.asso.fr' });
 
     if (extraList.childElementCount) {
@@ -314,9 +408,40 @@
 
     detailContainer.appendChild(sheet);
 
-    if (player.name) {
-      document.title = `${player.name} – Joueur`;
+    if (playerName) {
+      document.title = `${playerName} - Joueur`;
     }
+
+    fetchFfeExtras(player.id || '').then((extras) => {
+      if (!extras || typeof extras !== 'object') {
+        return;
+      }
+
+      const formatted = formatTitlePrefix(extras.title || '');
+      if (formatted.short) {
+        titlePrefix.hidden = false;
+        titlePrefix.textContent = formatted.short;
+        titlePrefix.title = formatted.long || formatted.short;
+        titlePrefix.setAttribute('aria-label', formatted.long || formatted.short);
+      }
+
+      const roles = Array.isArray(extras.roles) ? extras.roles.filter(Boolean) : [];
+      if (roles.length) {
+        rolesWrap.hidden = false;
+        rolesWrap.innerHTML = '';
+        roles.forEach((label) => {
+          const badge = document.createElement('span');
+          badge.className = 'player-badge';
+          badge.textContent = label;
+          rolesWrap.appendChild(badge);
+        });
+      }
+
+      if (playerName) {
+        const docPrefix = formatted.short ? `${formatted.short} ` : '';
+        document.title = `${docPrefix}${playerName} - Joueur`;
+      }
+    });
   };
 
   const init = () => {

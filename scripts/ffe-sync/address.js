@@ -21,7 +21,7 @@ const extractCityFromAddress = (value) => {
     if (idx >= 0) {
       const after = str.slice(idx + postal.length).trim();
       if (after) {
-        return after.replace(/^[,;–—-]+/, '').trim();
+        return after.replace(/^[,;\u2013\u2014-]+/, '').trim();
       }
     }
   }
@@ -102,4 +102,3 @@ module.exports = {
   getParisArrondissementFromPostal,
   tidyAddress,
 };
-

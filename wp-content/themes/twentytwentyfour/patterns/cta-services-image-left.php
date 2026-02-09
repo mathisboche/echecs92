@@ -29,7 +29,7 @@
 			<!-- /wp:heading -->
 
 			<!-- wp:paragraph -->
-			<p><?php echo esc_html_x( 'Experience the fusion of imagination and expertise with Études—the catalyst for architectural transformations that enrich the world around us.', 'Sample description of the services pattern', 'twentytwentyfour' ); ?></p>
+			<p><?php echo esc_html_x( 'Experience the fusion of imagination and expertise with Études-the catalyst for architectural transformations that enrich the world around us.', 'Sample description of the services pattern', 'twentytwentyfour' ); ?></p>
 			<!-- /wp:paragraph -->
 
 			<!-- wp:buttons -->

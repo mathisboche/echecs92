@@ -1722,8 +1722,8 @@ msgstr "Conférence de la <a href=\"#\">Professeure Malika Desgranges</a>"
 #: patterns/event-schedule.php:60 patterns/event-schedule.php:92
 #: patterns/event-schedule.php:145 patterns/event-schedule.php:177
 msgctxt "Example event time in pattern."
-msgid "9 AM — 11 AM"
-msgstr "9h — 11h"
+msgid "9 AM - 11 AM"
+msgstr "9h - 11h"
 
 #: patterns/event-schedule.php:57
 msgid "Fauna from North America and its characteristics"
@@ -2278,7 +2278,7 @@ msgstr "Fuego Bar, Mexico City"
 
 #: patterns/banner-poster.php:39
 msgctxt "Example event date in pattern."
-msgid "Aug 08—10 2025"
+msgid "Aug 08-10 2025"
 msgstr "Du 8 au 10 août 2025"
 
 #. translators: This string contains the word "Stories" in four different

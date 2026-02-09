@@ -12,6 +12,8 @@
   const FFE_LISTS_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france-ffe-details/';
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs:last-listing';
   const CLUBS_NAV_SESSION_KEY = `${CLUBS_NAV_STORAGE_KEY}:session`;
+  const DASH_RX = /[\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uFE63\uFF0D]/g;
+  const normaliseDashes = (value) => (value == null ? '' : value.toString()).replace(DASH_RX, '-');
   const detailContainer = document.getElementById('club-detail');
   const backLink = document.querySelector('[data-club-back]');
   const backLinkMap = document.querySelector('[data-club-back-map]');
@@ -436,7 +438,7 @@
 
   const extractAddressParts = (value) => {
     const result = {
-      full: value ? String(value).trim() : '',
+      full: value ? normaliseDashes(String(value)).trim() : '',
       postalCode: '',
       city: '',
     };
@@ -448,7 +450,7 @@
       result.postalCode = postalMatch[1];
       const after = result.full.slice(postalMatch.index + postalMatch[0].length).trim();
       if (after) {
-        result.city = after.replace(/^[,;\-–—]+/, '').trim();
+        result.city = after.replace(/^[,;\-\u2013\u2014]+/, '').trim();
       }
     }
     if (!result.city) {
@@ -955,13 +957,13 @@
     if (raw.id && raw.name) {
       return raw;
     }
-    const name = raw.nom || raw.name || '';
-    const primaryAddress = raw.salle_jeu || raw.salle || raw.adresse || raw.address || '';
+    const name = normaliseDashes(raw.nom || raw.name || '');
+    const primaryAddress = normaliseDashes(raw.salle_jeu || raw.salle || raw.adresse || raw.address || '');
     const addressParts = extractAddressParts(primaryAddress);
-    const secondaryAddress = raw.siege || raw.siege_social || raw.address2 || '';
+    const secondaryAddress = normaliseDashes(raw.siege || raw.siege_social || raw.address2 || '');
     const secondaryParts = extractAddressParts(secondaryAddress);
-    const communeRaw = raw.commune || raw.ville || addressParts.city || secondaryParts.city || '';
-    const commune = formatCommune(communeRaw);
+    const communeRaw = normaliseDashes(raw.commune || raw.ville || addressParts.city || secondaryParts.city || '');
+    const commune = normaliseDashes(formatCommune(communeRaw));
     const postalCode = raw.code_postal || raw.postal_code || addressParts.postalCode || secondaryParts.postalCode || '';
     const slugSource = commune || name || postalCode || primaryAddress || secondaryAddress;
     const standardAddress = buildStandardAddress(
@@ -1007,25 +1009,25 @@
       commune,
       address: primaryAddress || secondaryAddress || '',
       siege: secondaryAddress || '',
-      salle: raw.salle_jeu || raw.salle || '',
+      salle: normaliseDashes(raw.salle_jeu || raw.salle || ''),
       addressStandard: standardAddress,
-      phone: raw.telephone || raw.phone || '',
-      fax: raw.fax || '',
-      email: raw.email || '',
+      phone: normaliseDashes(raw.telephone || raw.phone || ''),
+      fax: normaliseDashes(raw.fax || ''),
+      email: normaliseDashes(raw.email || ''),
       site,
-      president: raw.president || '',
-      presidentEmail: raw.president_email || raw.presidentEmail || '',
-      contact: raw.contact || '',
-      contactEmail: raw.contact_email || raw.contactEmail || '',
-      hours: raw.horaires || raw.hours || '',
-      publics: raw.publics || '',
-      tarifs: raw.tarifs || '',
-      notes: raw.notes || '',
-      accesPmr: raw.acces_pmr || '',
-      interclubs: raw.interclubs || '',
-      interclubsJeunes: raw.interclubs_jeunes || '',
-      interclubsFeminins: raw.interclubs_feminins || '',
-      labelFederal: raw.label_federal || '',
+      president: normaliseDashes(raw.president || ''),
+      presidentEmail: normaliseDashes(raw.president_email || raw.presidentEmail || ''),
+      contact: normaliseDashes(raw.contact || ''),
+      contactEmail: normaliseDashes(raw.contact_email || raw.contactEmail || ''),
+      hours: normaliseDashes(raw.horaires || raw.hours || ''),
+      publics: normaliseDashes(raw.publics || ''),
+      tarifs: normaliseDashes(raw.tarifs || ''),
+      notes: normaliseDashes(raw.notes || ''),
+      accesPmr: normaliseDashes(raw.acces_pmr || ''),
+      interclubs: normaliseDashes(raw.interclubs || ''),
+      interclubsJeunes: normaliseDashes(raw.interclubs_jeunes || ''),
+      interclubsFeminins: normaliseDashes(raw.interclubs_feminins || ''),
+      labelFederal: normaliseDashes(raw.label_federal || ''),
       ffeRef: initialFfeRef,
       fiche_ffe: raw.fiche_ffe || '',
       tags: Array.isArray(raw.tags) ? raw.tags : [],
@@ -1145,7 +1147,13 @@
     if (!playerId) {
       return '';
     }
-    return `${window.location.origin}/joueur/?ffe_player=${encodeURIComponent(playerId)}`;
+    const params = new URLSearchParams();
+    params.set('ffe_player', playerId);
+    const from = window.location.pathname + window.location.search + window.location.hash;
+    if (from) {
+      params.set('from', from);
+    }
+    return `${window.location.origin}/joueur/?${params.toString()}`;
   };
 
   const buildOfficialPlayerUrl = (playerId) => {
@@ -2060,13 +2068,13 @@
 	      if (ffeSection) {
 	        sheet.appendChild(ffeSection);
 	      }
-	      detailContainer.appendChild(sheet);
+		      detailContainer.appendChild(sheet);
 
-	      if (club.name) {
-	        document.title = `${club.name} – Listes FFE`;
-	      }
-	      return;
-	    }
+		      if (club.name) {
+		        document.title = `${normaliseDashes(club.name)} - Listes FFE`;
+		      }
+		      return;
+		    }
 	    document.body?.classList.remove('club-ffe-view');
 
 	    const sections = [];
@@ -2245,12 +2253,12 @@
 
     detailContainer.appendChild(mapSection);
 
-    renderClubMap(club, mapContainer, mapStatus, directionsButton);
+	    renderClubMap(club, mapContainer, mapStatus, directionsButton);
 
-    if (club.name) {
-      document.title = `${club.name} – Clubs du 92`;
-    }
-  };
+	    if (club.name) {
+	      document.title = `${normaliseDashes(club.name)} - Clubs du 92`;
+	    }
+	  };
 
   const updateLicenseTotals = (club) => {
     const licenseA = Number.parseInt(club?.licenses?.A, 10);
