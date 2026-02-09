@@ -1,162 +1,150 @@
 <!-- wp:template-part {"slug":"header","tagName":"header","theme":"echecs92-child"} /-->
 
 <!-- wp:html -->
-<div class="committee committee--presentation">
-  <header class="committee-hero">
-    <p class="committee-hero__eyebrow">CDJE 92 · Association loi 1901</p>
-    <h1 class="committee-hero__title">Présentation</h1>
-    <p class="committee-hero__description">
-      Le Comité des Échecs des Hauts-de-Seine (CDJE 92) est, selon ses statuts (2017), un organe déconcentré de
-      la Fédération Française des Échecs (FFE) pour le département des Hauts-de-Seine et il est rattaché à la
-      Ligue Île-de-France des Échecs.
-    </p>
-  </header>
+<style>
+  .committee .reading-progress{
+    position:sticky;
+    top:calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-offset, 0px));
+    left:0;
+    width:100%;
+    height:8px;
+    background:rgba(11,46,76,0.22);
+    border-radius:999px;
+    overflow:hidden;
+    z-index:5;
+    transition:top .3s ease;
+  }
+  .committee .reading-progress__bar{
+    width:0;
+    height:100%;
+    background:#0b2e4c;
+    transition:width 0.08s linear;
+  }
+  .committee .reading-ui{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    font-size:14px;
+    color:#1f2937;
+    margin:30px 0 0px;
+    flex-wrap:wrap;
+  }
+  .committee .reading-ui__time{
+    padding:6px 10px;
+    border:1px solid #cbd5e1;
+    border-radius:12px;
+    background:#f8fafc;
+    color:#0f172a;
+    font-weight:600;
+  }
+  .committee h1{
+    margin:18px 0 12px;
+    font-size:32px;
+    line-height:1.2;
+    font-weight:800;
+    color:#0b2e4c;
+  }
+  .committee h2{
+    margin:18px 0 10px;
+    font-size:22px;
+    line-height:1.3;
+    font-weight:750;
+    color:#0f172a;
+  }
+  .committee strong{
+    font-weight:800;
+    color:#0b2e4c;
+  }
+</style>
+<div class="committee">
+  <div class="reading-progress" aria-hidden="true">
+    <div class="reading-progress__bar" data-progress-bar></div>
+  </div>
+  <div class="reading-ui">
+    <div class="reading-ui__time">Temps de lecture estimé : <span data-reading-time>—</span> min</div>
+  </div>
+  <div class="committee-content">
+    <h1>Présentation du Comité des Échecs des Hauts-de-Seine</h1>
 
-  <section class="committee-section" aria-labelledby="committee-identity-title">
-    <div class="committee-section__header">
-      <h2 id="committee-identity-title">Fiche d’identité</h2>
-      <p class="committee-section__lead">Résumé factuel (statuts du CDJE 92, version 2017).</p>
-    </div>
-    <div class="committee-governance__grid">
-      <article class="gov-card">
-        <h3 class="gov-card__title">Statut et rattachement</h3>
-        <ul class="gov-card__list">
-          <li>Association loi 1901.</li>
-          <li>Organe déconcentré de la FFE.</li>
-          <li>Rattaché à la Ligue Île-de-France des Échecs.</li>
-        </ul>
-      </article>
+    <p>Le <strong>Comité des Échecs des Hauts-de-Seine</strong> (CDJE 92) est l'instance départementale qui fédère et coordonne l’activité échiquéenne dans les Hauts-de-Seine. Il s’agit d’une association à but non lucratif (loi 1901) créée en 1984, qui sert de relais local de la Fédération Française des Échecs (FFE) dans le département. À ce titre, le CDJE 92 organise, encadre et promeut la pratique du jeu d’échecs sur son territoire, en lien avec la Ligue d’Île-de-France des Échecs (structure régionale de la FFE). L’ensemble des clubs d’échecs haut-seinois affiliés à la FFE sont membres du Comité, qui représente ainsi tous les joueurs licenciés du 92 au niveau départemental.</p>
 
-      <article class="gov-card">
-        <h3 class="gov-card__title">Ressort territorial</h3>
-        <ul class="gov-card__list">
-          <li>Département des Hauts-de-Seine (92).</li>
-          <li>Ressort territorial départemental (au sens des statuts et du Code du sport).</li>
-        </ul>
-      </article>
+    <h2>Cadre légal et structure</h2>
 
-      <article class="gov-card">
-        <h3 class="gov-card__title">Siège et durée</h3>
-        <ul class="gov-card__list">
-          <li>Siège social dans les Hauts-de-Seine, au domicile du président.</li>
-          <li>Transfert possible sur décision du Comité directeur.</li>
-          <li>Durée illimitée.</li>
-        </ul>
-      </article>
+    <p>Le Comité des Échecs 92 a le statut d’<strong>association déclarée</strong> régie par la loi du 1er juillet 1901. Fondé le <strong>7 août 1984</strong>, il a été enregistré en préfecture cette même année (annonce publiée au Journal Officiel fin août 1984). En tant qu’<strong>organe déconcentré de la FFE</strong>, le Comité agit sous l’égide de la fédération pour appliquer sa politique sportive au niveau local. Il est rattaché à la <strong>Ligue d’Île-de-France des Échecs</strong>, qui regroupe les comités des autres départements de la région. Le CDJE 92 est une structure <strong>collégiale</strong> : ce sont les clubs d’échecs du département qui en sont adhérents et participent aux décisions lors des assemblées générales. Le Comité est administré par un <strong>Comité Directeur</strong> élu, composé de bénévoles (huit membres élus forment le comité directeur, assistés d’un bureau incluant le président, vice-président, etc.). Des élections internes sont organisées tous les quatre ans environ, conformément aux statuts de l’association, pour renouveler ces instances dirigeantes.</p>
 
-      <article class="gov-card">
-        <h3 class="gov-card__title">Composition</h3>
-        <ul class="gov-card__list">
-          <li>Clubs (associations sportives) affiliés à la FFE dont le siège social est situé dans le département.</li>
-        </ul>
-      </article>
-    </div>
-  </section>
+    <h2>Missions et rôle du Comité</h2>
 
-  <section class="committee-section" aria-labelledby="committee-missions-title">
-    <div class="committee-section__header">
-      <h2 id="committee-missions-title">Objet et attributions</h2>
-      <p class="committee-section__lead">
-        Les statuts disposent que le Comité a pour objet d’organiser, diriger, contrôler, promouvoir et favoriser
-        l’enseignement et la pratique du jeu d’échecs dans son ressort territorial.
-      </p>
-    </div>
+    <p>Les missions du CDJE 92 sont définies par ses statuts et par le rôle qui lui est confié par la FFE. Concrètement, le Comité départemental exerce notamment les fonctions suivantes&nbsp;:</p>
 
-    <div class="committee-governance__grid">
-      <article class="gov-card">
-        <h3 class="gov-card__title">Compétitions</h3>
-        <ul class="gov-card__list">
-          <li>Organisation des compétitions de la FFE (coupes et championnats) à l’échelon départemental.</li>
-          <li>Décernement des titres correspondants et sélection des représentants aux compétitions régionales et nationales.</li>
-        </ul>
-      </article>
-
-      <article class="gov-card">
-        <h3 class="gov-card__title">Suivi des clubs</h3>
-        <ul class="gov-card__list">
-          <li>Contrôle de l’exercice de missions relevant du ressort territorial (accès statutaire à certains documents de gestion).</li>
-          <li>Contrôle de compatibilité des statuts des clubs avec les statuts et prescriptions obligatoires de la FFE.</li>
-        </ul>
-      </article>
-
-      <article class="gov-card">
-        <h3 class="gov-card__title">Politique fédérale et développement</h3>
-        <ul class="gov-card__list">
-          <li>Relais et application de la politique fédérale.</li>
-          <li>Relations avec les collectivités territoriales et la presse régionale, et projets de développement justifiés par des besoins locaux.</li>
-        </ul>
-      </article>
-    </div>
-  </section>
-
-  <section class="committee-section" aria-labelledby="committee-governance-title">
-    <div class="committee-section__header">
-      <h2 id="committee-governance-title">Gouvernance</h2>
-      <p class="committee-section__lead">Organisation des instances prévue par les statuts.</p>
-    </div>
-    <div class="committee-governance__grid">
-      <article class="gov-card">
-        <h3 class="gov-card__title">Instances</h3>
-        <ul class="gov-card__list">
-          <li>Assemblée générale.</li>
-          <li>Comité directeur (8 membres).</li>
-          <li>Bureau (organe exécutif, composé au sein du Comité directeur).</li>
-        </ul>
-      </article>
-
-      <article class="gov-card">
-        <h3 class="gov-card__title">Mandat et réunions</h3>
-        <ul class="gov-card__list">
-          <li>Élection du Comité directeur tous les 4 ans (Assemblée générale élective).</li>
-          <li>Comité directeur réuni au moins 3 fois par an.</li>
-          <li>Bureau réuni au moins une fois tous les 3 mois.</li>
-        </ul>
-      </article>
-    </div>
-  </section>
-
-  <section class="committee-section" aria-labelledby="committee-principles-title">
-    <div class="committee-section__header">
-      <h2 id="committee-principles-title">Principes</h2>
-      <p class="committee-section__lead">
-        Les statuts disposent notamment que le Comité s’interdit toute discrimination et veille au respect de la
-        charte de déontologie du sport (CNOSF) ainsi que de la charte d’éthique et de déontologie de la FFE.
-      </p>
-    </div>
-  </section>
-
-  <section class="committee-section" aria-labelledby="committee-resources-title">
-    <div class="committee-section__header">
-      <h2 id="committee-resources-title">Textes et documents</h2>
-      <p class="committee-section__lead">
-        Statuts, rapports, procès-verbaux et synthèses sont disponibles en consultation. En cas de divergence,
-        les statuts font foi.
-      </p>
-    </div>
-
-    <ul class="committee-docs__list">
-      <li>
-        <span class="committee-docs__title">Statuts (2017)</span>
-        <span class="committee-docs__actions">
-          <a href="/wp-content/uploads/documents/statuts-2017.pdf" target="_blank" rel="noopener">Consulter</a>
-        </span>
-      </li>
-      <li>
-        <span class="committee-docs__title">Gouvernance (composition actuelle)</span>
-        <span class="committee-docs__actions">
-          <a href="/comite/gouvernance">Voir</a>
-        </span>
-      </li>
-      <li>
-        <span class="committee-docs__title">Documents officiels</span>
-        <span class="committee-docs__actions">
-          <a href="/comite/documents">Consulter</a>
-        </span>
-      </li>
+    <ul>
+      <li><strong>Organisation des compétitions locales&nbsp;:</strong> il planifie et gère les compétitions d’échecs à l’échelle du département, qu’il s’agisse des championnats individuels (par exemple le championnat des Hauts-de-Seine toutes catégories ou par âge) ou des interclubs départementaux. Il veille au respect des règlements fédéraux et assure la présence d’arbitres pour encadrer ces tournois.</li>
+      <li><strong>Promotion du jeu d’échecs auprès de tous les publics&nbsp;:</strong> le Comité mène des actions pour développer la pratique des échecs, en particulier auprès des <strong>jeunes</strong>. Il soutient l’initiation dans les écoles et les collèges du 92, via des projets scolaires et périscolaires, afin de favoriser l’émergence de nouveaux joueurs.</li>
+      <li><strong>Soutien aux clubs d’échecs du département&nbsp;:</strong> le CDJE 92 appuie les clubs affiliés dans leurs démarches et leur développement. Il peut conseiller les dirigeants, contribuer à la création de nouvelles associations d’échecs locales et coordonner des actions inter-clubs (stages de formation, open départemental, etc.).</li>
+      <li><strong>Représentation et coordination fédérale&nbsp;:</strong> en tant que relais de la FFE, le Comité applique sur le terrain la politique fédérale et les directives nationales ou régionales. Il assure la <strong>coordination</strong> entre la fédération, la ligue régionale et les clubs du département, garantissant une cohérence dans la promotion et la gestion du jeu d’échecs au niveau local.</li>
     </ul>
-  </section>
+
+    <h2>Historique du Comité</h2>
+
+    <p>Le <strong>Comité des Hauts-de-Seine</strong> a plus de <strong>40 ans d’existence</strong>. Il a été fondé en 1984 à l’initiative des clubs d’échecs du département, dans le contexte de la structuration de la FFE en échelons locaux (ligues régionales et comités départementaux). Depuis sa création, le CDJE 92 a connu une croissance régulière de son activité. Au fil des décennies, le nombre de clubs affiliés et de joueurs licenciés n’a cessé d’augmenter, reflétant le développement du jeu d’échecs dans le 92. À titre d’illustration, en 2025 le Comité fédère <strong>20 clubs</strong> pour un total de plus de <strong>2 500 licenciés</strong> sur le territoire des Hauts-de-Seine.</p>
+
+    <p>Plusieurs mises à jour statutaires et évolutions structurelles ont jalonné l’histoire de l’association. Par exemple, les <strong>statuts ont été révisés en 2017</strong> afin d’adapter le fonctionnement du Comité aux nouvelles orientations fédérales et réglementaires. Le siège social de l’association, initialement situé à Bois-Colombes, a été déplacé au fil du temps en fonction des équipes dirigeantes (il se trouve actuellement à Colombes, 92700). Le CDJE 92 a également organisé de nombreuses assemblées générales et élections internes, permettant de renouveler régulièrement ses instances dirigeantes et d’orienter son action. La continuité de son fonctionnement a ainsi été assurée par l’engagement bénévole de ses dirigeants successifs et par le soutien actif des clubs membres.</p>
+
+    <h2>Actions et réalisations marquantes</h2>
+
+    <p>En tant qu’acteur majeur des échecs dans le département, le Comité 92 peut se prévaloir de nombreuses actions concrètes qui illustrent son rôle fédérateur et son impact local&nbsp;:</p>
+
+    <ul>
+      <li><strong>Championnats des jeunes du 92&nbsp;:</strong> chaque saison, le Comité organise le championnat départemental des jeunes (par catégories d’âge). Cet événement phare réunit plus d’une centaine de jeunes joueurs du département et sert de qualification pour le championnat régional. Par exemple, l’édition 2025 s’est déroulée sur plusieurs sites (Bois-Colombes, Puteaux, Courbevoie) afin d’accueillir les différentes catégories, avec un total de participants approchant la limite de 160 inscrits fixée par l’organisation.</li>
+      <li><strong>Compétitions interclubs départementales&nbsp;:</strong> le CDJE 92 met en place des championnats par équipes réservés aux clubs hauts-de-seine. Notamment, il organise la <strong>Nationale 5 Hauts-de-Seine</strong> (compétition par équipes de club au niveau départemental, qualificative pour la division régionale supérieure) ainsi que la <strong>Nationale 4 Jeunes</strong> (championnat départemental par équipes de jeunes). Le Comité a également créé le <strong>Challenge Olivier Delpech</strong>, une coupe départementale par équipes de quatre joueurs se déroulant le samedi, divisée en plusieurs divisions pour permettre à des clubs de tous niveaux de participer. Ces compétitions structurent la vie échiquéenne locale en offrant des occasions régulières de jeu aux clubs du 92.</li>
+      <li><strong>Développement des échecs scolaires&nbsp;:</strong> afin de promouvoir le jeu d’échecs auprès des élèves, le Comité organise chaque année les <strong>championnats scolaires des Hauts-de-Seine</strong>. Ces tournois scolaires, généralement organisés par zones (nord et sud du département), rassemblent de nombreuses écoles et collèges autour de rencontres amicales et compétitives. L’initiative contribue à populariser les échecs chez les jeunes et sert de tremplin vers une pratique en club pour de nouveaux joueurs.</li>
+      <li><strong>Formation et arbitrage&nbsp;:</strong> le CDJE 92 encourage la formation d’arbitres et d’animateurs locaux afin d’accompagner la croissance du nombre de joueurs. Le département compte aujourd’hui une <strong>équipe importante d’arbitres et de formateurs</strong> actifs (environ 80 personnes certifiées) pour encadrer les compétitions et les stages. Ce vivier de bénévoles formés est le fruit d’un travail continu du Comité pour organiser des stages d’arbitrage, des sessions de formation d’entraîneurs, et pour sensibiliser les joueurs expérimentés à s’investir dans l’encadrement.</li>
+      <li><strong>Clubs d’excellence et dynamisme local&nbsp;:</strong> le territoire des Hauts-de-Seine s’illustre enfin par la réussite de certains de ses clubs phares, témoignant du <strong>dynamisme échiquéen</strong> local. Le <strong>club de Clichy-Échecs 92</strong>, membre du Comité, est par exemple le club le plus titré de l’élite échiquéenne française, avec de multiples titres de champion de France des clubs à son palmarès. D’autres clubs du département, tels qu’Asnières – Le Grand Échiquier ou Bois-Colombes, évoluent également au plus haut niveau national et remportent régulièrement des trophées. Le Comité départemental s’enorgueillit de ces succès qui reflètent la vitalité des échecs dans les Hauts-de-Seine, même si ceux-ci sont avant tout le fait des clubs eux-mêmes. Il apporte son soutien logistique et institutionnel à ces structures d’excellence tout en veillant à développer la pratique pour l’ensemble des clubs, grands et petits.</li>
+    </ul>
+
+    <p>En résumé, le Comité des Échecs des Hauts-de-Seine joue un rôle central dans l’organisation, la promotion et le développement du jeu d’échecs au niveau local. Fort de son histoire depuis 1984 et de l’engagement de ses clubs membres, il contribue à la fois à la structuration de la compétition échiquéenne (du niveau débutant jusqu’à l’élite) et à la diffusion du jeu d’échecs auprès de nouveaux publics. Par une approche réaliste et sans artifice, le CDJE 92 s’attache à <strong>“dire ce qu’il fait et faire ce qu’il dit”</strong>, en privilégiant une action concrète et transparente au service des échecs dans le département. Les faits et chiffres parlent d’eux-mêmes&nbsp;: grâce à ses efforts, les Hauts-de-Seine comptent aujourd’hui une communauté échiquéenne dynamique, structurée et rayonnante, insérée dans le cadre fédéral national tout en conservant son identité locale. </p>
+  </div>
 </div>
 <!-- /wp:html -->
 
-<!-- wp:template-part {"slug":"footer","tagName":"footer","theme":"echecs92-child"} /-->
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var committee = document.querySelector('.committee');
+    var content = document.querySelector('.committee-content');
+    var timeEl = document.querySelector('[data-reading-time]');
+    var bar = document.querySelector('[data-progress-bar]');
 
+    var setReadingTime = function () {
+      if (!content || !timeEl) return;
+      var text = content.innerText || '';
+      var words = text.trim().split(/\s+/).filter(Boolean).length;
+      var minutes = Math.max(1, Math.round(words / 200));
+      timeEl.textContent = minutes.toString();
+    };
+
+    var setProgress = function () {
+      if (!bar || !committee) return;
+      var scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
+      var sectionTop = committee.getBoundingClientRect().top + scrollTop;
+      var sectionHeight = committee.offsetHeight;
+      var scrollDistance = sectionHeight - window.innerHeight;
+      var progress = 0;
+
+      if (scrollDistance > 0) {
+        progress = ((scrollTop - sectionTop) / scrollDistance) * 100;
+      } else if (scrollTop >= sectionTop) {
+        progress = 100;
+      }
+
+      if (progress < 0) progress = 0;
+      if (progress > 100) progress = 100;
+      bar.style.width = progress + '%';
+    };
+
+    setReadingTime();
+    setProgress();
+    window.addEventListener('scroll', setProgress, { passive: true });
+    window.addEventListener('resize', setProgress);
+  });
+</script>
+
+<!-- wp:template-part {"slug":"footer","tagName":"footer","theme":"echecs92-child"} /-->
