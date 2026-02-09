@@ -572,9 +572,10 @@ add_action('init', function () {
     add_rewrite_rule('^club/([^/]+)/ffe/?$', 'index.php?pagename=club&club_commune=$matches[1]', 'top');
     add_rewrite_rule('^club-france/([^/]+)/ffe/?$', 'index.php?pagename=club&club_commune=$matches[1]', 'top');
 
+    add_rewrite_rule('^joueurs/?$', 'index.php?pagename=joueurs', 'top');
     add_rewrite_rule('^joueur/([^/]+)/?$', 'index.php?pagename=joueur&ffe_player=$matches[1]', 'top');
 
-    $rewrite_version = '2026-01-18';
+    $rewrite_version = '2026-02-09';
     if (is_admin() && current_user_can('manage_options') && get_option('cdje92_rewrite_rules_version') !== $rewrite_version) {
         flush_rewrite_rules(false);
         update_option('cdje92_rewrite_rules_version', $rewrite_version);
@@ -586,23 +587,32 @@ add_action('init', function () {
         return;
     }
 
-    if (get_page_by_path('joueur', OBJECT, 'page')) {
-        return;
-    }
+    $pages = [
+        [
+            'slug' => 'joueur',
+            'title' => 'Joueur',
+        ],
+        [
+            'slug' => 'joueurs',
+            'title' => 'Joueurs',
+        ],
+    ];
 
-    $page_id = wp_insert_post([
-        'post_type' => 'page',
-        'post_status' => 'publish',
-        'post_title' => 'Joueur',
-        'post_name' => 'joueur',
-        'post_content' => '',
-        'post_author' => get_current_user_id(),
-        'comment_status' => 'closed',
-        'ping_status' => 'closed',
-    ], true);
+    foreach ($pages as $page) {
+        if (get_page_by_path($page['slug'], OBJECT, 'page')) {
+            continue;
+        }
 
-    if (is_wp_error($page_id)) {
-        return;
+        wp_insert_post([
+            'post_type' => 'page',
+            'post_status' => 'publish',
+            'post_title' => $page['title'],
+            'post_name' => $page['slug'],
+            'post_content' => '',
+            'post_author' => get_current_user_id(),
+            'comment_status' => 'closed',
+            'ping_status' => 'closed',
+        ], true);
     }
 }, 12);
 
