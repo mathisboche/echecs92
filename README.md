@@ -1,77 +1,26 @@
-# Echecs92 (CDJE 92)
+# Échecs92 (CDJE 92)
 
-Dépôt du site web officiel du **Comité Départemental du Jeu d'Échecs des Hauts-de-Seine (CDJE 92)**.
+Site web officiel du **Comité Départemental du Jeu d'Échecs des Hauts-de-Seine (CDJE 92)**.
 
-Site : https://echecs92.com
+https://echecs92.com
 
-## Contenu du dépôt
+## À propos
 
-- `wp-content/` : thèmes, plugins et assets du site (WordPress core n'est pas versionné ici).
-- `wp-content/themes/echecs92-child/` : thème enfant (basé sur `twentytwentyfive`).
-- `scripts/` : scripts de maintenance (synchronisation et génération de données).
-- `.github/workflows/` : automatisations (déploiement, synchronisations, sauvegardes).
-- `deploy/` : snippets de configuration (OVH, etc.).
-- `archive-wayback/` : archive historique (si utile).
+Le CDJE 92 participe au développement du jeu d'échecs dans les Hauts-de-Seine :
+informations pratiques, vie des clubs, compétitions, actualités et ressources utiles.
 
-<details>
-<summary>Maintenance : formulaire de contact (reCAPTCHA)</summary>
+## Ce que vous trouverez sur le site
 
-Le formulaire de contact est fourni par le thème enfant `echecs92-child` via le shortcode :
+- Actualités et annonces
+- Compétitions, calendrier et résultats
+- Clubs (annuaires et carte)
+- Documents et ressources
+- Informations sur le comité, son organisation et ses contacts
+- Contact (via le formulaire sur le site)
 
-- `[cdje92_contact_form]`
+## À propos de ce dépôt GitHub
 
-Il est protégé par **Google reCAPTCHA v2** (case "Je ne suis pas un robot").
-Si reCAPTCHA n'est pas configuré, le formulaire est désactivé.
+Ce dépôt sert à conserver et maintenir les sources du site.
+Pour les informations grand public, rendez-vous sur https://echecs92.com.
 
-### Configuration des clés
-
-Option 1 (recommandée) : dans l'admin WordPress :
-
-1. `Réglages` -> `Contact CDJE 92`
-2. Renseigner la clé du site + la clé secrète
-3. Enregistrer
-
-Option 2 : définir les clés côté serveur (pratique sur OVH mutualisé), par exemple dans `wp-config.php` :
-
-```php
-define('CDJE92_RECAPTCHA_SITE_KEY', '...');
-define('CDJE92_RECAPTCHA_SECRET_KEY', '...');
-```
-
-Snippets prêts à l'emploi :
-
-- `deploy/ovh/wp-config.recaptcha.snippet.php`
-- `deploy/ovh/htaccess.recaptcha.snippet.conf`
-
-Option 3 : fournir un fichier de secrets (non commité) :
-
-- `wp-content/.secrets/recaptcha.php` (ou `wp-content/themes/echecs92-child/config/recaptcha.php`)
-
-Exemple : `wp-content/themes/echecs92-child/config/recaptcha.example.php`.
-
-### En local (Docker + localhost)
-
-Sur `http://localhost:8080`, reCAPTCHA peut refuser des clés limitées au domaine de production.
-Utiliser des clés dédiées à `localhost` ou les **clés de test** (voir `wp-content/themes/echecs92-child/config/recaptcha.example.php`).
-
-</details>
-
-<details>
-<summary>Maintenance : développement local (Docker)</summary>
-
-Ce dépôt inclut un environnement WordPress + MySQL via `docker-compose.yml` :
-
-```bash
-docker compose up
-```
-
-Puis ouvrir `http://localhost:8080`.
-
-</details>
-
-<details>
-<summary>Maintenance : déploiement</summary>
-
-Le déploiement du contenu de `wp-content/` est automatisé via GitHub Actions (workflows dans `.github/workflows/`).
-
-</details>
+(Maintenance du site : `docs/maintenance.md`.)
