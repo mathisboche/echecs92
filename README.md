@@ -1,82 +1,77 @@
-## Contact + reCAPTCHA (formulaire)
+# Echecs92 (CDJE 92)
 
-Le formulaire de contact du site est fourni par le thème enfant `echecs92-child` via le shortcode:
+Dépôt du site web officiel du **Comité Départemental du Jeu d'Échecs des Hauts-de-Seine (CDJE 92)**.
+
+Site : https://echecs92.com
+
+## Contenu du dépôt
+
+- `wp-content/` : thèmes, plugins et assets du site (WordPress core n'est pas versionné ici).
+- `wp-content/themes/echecs92-child/` : thème enfant (basé sur `twentytwentyfive`).
+- `scripts/` : scripts de maintenance (synchronisation et génération de données).
+- `.github/workflows/` : automatisations (déploiement, synchronisations, sauvegardes).
+- `deploy/` : snippets de configuration (OVH, etc.).
+- `archive-wayback/` : archive historique (si utile).
+
+<details>
+<summary>Maintenance : formulaire de contact (reCAPTCHA)</summary>
+
+Le formulaire de contact est fourni par le thème enfant `echecs92-child` via le shortcode :
 
 - `[cdje92_contact_form]`
 
-Il est protégé par **Google reCAPTCHA v2 (case "Je ne suis pas un robot")**. Si reCAPTCHA n'est pas configuré, le formulaire est désactivé.
+Il est protégé par **Google reCAPTCHA v2** (case "Je ne suis pas un robot").
+Si reCAPTCHA n'est pas configuré, le formulaire est désactivé.
 
-### 1) Créer des clés reCAPTCHA (Google)
+### Configuration des clés
 
-1. Aller dans la console reCAPTCHA (Google).
-2. Créer un nouveau site en choisissant **reCAPTCHA v2** (checkbox).
-3. Ajouter les domaines autorisés (ex: `echecs92.com`, `www.echecs92.com`).
-4. Récupérer:
-   - `site key` (clé du site)
-   - `secret key` (clé secrète)
-
-### 2) Renseigner les clés dans WordPress (solution la plus simple)
-
-Dans l'admin WordPress:
+Option 1 (recommandée) : dans l'admin WordPress :
 
 1. `Réglages` -> `Contact CDJE 92`
 2. Renseigner la clé du site + la clé secrète
 3. Enregistrer
 
-### 3) Alternative: fichier de secrets (serveur / déploiement)
-
-Le thème sait aussi lire les clés depuis un fichier (non commité):
-
-- `wp-content/.secrets/recaptcha.php`
-
-Format attendu:
-
-```php
-<?php
-if (!defined('ABSPATH')) { exit; }
-
-return [
-  'site_key' => '...',
-  'secret_key' => '...',
-];
-```
-
-Ou via:
-
-- `wp-content/themes/echecs92-child/config/recaptcha.php`
-
-(voir `wp-content/themes/echecs92-child/config/recaptcha.example.php`).
-
-### 3bis) OVH (mutualisé) - approche "déploiement"
-
-Sur un hébergement web mutualisé OVH, l'approche la plus courante est de **définir les clés dans `wp-config.php`**
-(ça évite de les stocker en base via l'admin WordPress).
-
-Dans `wp-config.php` (avant la ligne "That's all, stop editing"):
+Option 2 : définir les clés côté serveur (pratique sur OVH mutualisé), par exemple dans `wp-config.php` :
 
 ```php
 define('CDJE92_RECAPTCHA_SITE_KEY', '...');
 define('CDJE92_RECAPTCHA_SECRET_KEY', '...');
 ```
 
-Snippets prêts à l'emploi dans ce dépôt:
+Snippets prêts à l'emploi :
 
 - `deploy/ovh/wp-config.recaptcha.snippet.php`
 - `deploy/ovh/htaccess.recaptcha.snippet.conf`
 
-Alternative (si tu préfères des variables d'environnement au niveau Apache): tu peux aussi utiliser `SetEnv`
-dans `.htaccess` au niveau de WordPress:
+Option 3 : fournir un fichier de secrets (non commité) :
 
-```apacheconf
-SetEnv CDJE92_RECAPTCHA_SITE_KEY "..."
-SetEnv CDJE92_RECAPTCHA_SECRET_KEY "..."
+- `wp-content/.secrets/recaptcha.php` (ou `wp-content/themes/echecs92-child/config/recaptcha.php`)
+
+Exemple : `wp-content/themes/echecs92-child/config/recaptcha.example.php`.
+
+### En local (Docker + localhost)
+
+Sur `http://localhost:8080`, reCAPTCHA peut refuser des clés limitées au domaine de production.
+Utiliser des clés dédiées à `localhost` ou les **clés de test** (voir `wp-content/themes/echecs92-child/config/recaptcha.example.php`).
+
+</details>
+
+<details>
+<summary>Maintenance : développement local (Docker)</summary>
+
+Ce dépôt inclut un environnement WordPress + MySQL via `docker-compose.yml` :
+
+```bash
+docker compose up
 ```
 
-### 4) En local (Docker + localhost)
+Puis ouvrir `http://localhost:8080`.
 
-Si tu testes sur `http://localhost:8080`, reCAPTCHA peut afficher "Invalid domain for site key" si tes clés sont limitées au domaine de prod.
+</details>
 
-Options:
+<details>
+<summary>Maintenance : déploiement</summary>
 
-1. Créer des clés dédiées au local en autorisant `localhost`.
-2. Utiliser les **clés de test** Google (reCAPTCHA v2) uniquement en local (voir `wp-content/themes/echecs92-child/config/recaptcha.example.php`).
+Le déploiement du contenu de `wp-content/` est automatisé via GitHub Actions (workflows dans `.github/workflows/`).
+
+</details>
