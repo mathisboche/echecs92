@@ -11,6 +11,34 @@
     return;
   }
 
+  const backLink = document.querySelector('.player-detail__back, [data-player-back]');
+
+  const updateBackLinkHref = () => {
+    if (!backLink) {
+      return;
+    }
+    const fallback = backLink.getAttribute('href') || '/clubs-92';
+    const referrer = document.referrer;
+    if (!referrer) {
+      backLink.href = fallback;
+      return;
+    }
+    try {
+      const refUrl = new URL(referrer, window.location.origin);
+      if (refUrl.origin !== window.location.origin) {
+        backLink.href = fallback;
+        return;
+      }
+      const href = refUrl.pathname + refUrl.search + refUrl.hash;
+      const current = window.location.pathname + window.location.search + window.location.hash;
+      backLink.href = href && href !== current ? href : fallback;
+    } catch (error) {
+      backLink.href = fallback;
+    }
+  };
+
+  updateBackLinkHref();
+
   const fetchJson = (url) =>
     fetch(url, { headers: { Accept: 'application/json' } }).then((response) => {
       if (!response.ok) {
@@ -21,6 +49,41 @@
 
   const renderMessage = (message, tone = 'error') => {
     detailContainer.innerHTML = `<p class="clubs-empty" data-tone="${tone}">${message}</p>`;
+  };
+
+  const CATEGORY_MAP = {
+    Ppo: { label: 'Petit poussin', hint: '6-7 ans (U8)' },
+    Pou: { label: 'Poussin', hint: '8-9 ans (U10)' },
+    Pup: { label: 'Pupille', hint: '10-11 ans (U12)' },
+    Ben: { label: 'Benjamin', hint: '12-13 ans (U14)' },
+    Min: { label: 'Minime', hint: '14-15 ans (U16)' },
+    Cad: { label: 'Cadet', hint: '16-17 ans (U18)' },
+    Jun: { label: 'Junior', hint: '18-19 ans (U20)' },
+    Sen: { label: 'Senior', hint: '20 ans et +' },
+    Vet: { label: 'Vétéran', hint: '50-64 ans' },
+    Sep: { label: 'Super-vétéran', hint: '65 ans et +' },
+  };
+
+  const formatCategory = (value) => {
+    const raw = (value || '').toString().trim();
+    if (!raw) {
+      return { label: '', hint: '' };
+    }
+    const prefixMatch = raw.match(/^([A-Za-z]{3})/);
+    const prefix = prefixMatch ? prefixMatch[1] : raw;
+    const entry = CATEGORY_MAP[prefix] || null;
+    if (entry) {
+      return { label: entry.label, hint: entry.hint };
+    }
+    return { label: raw, hint: '' };
+  };
+
+  const formatLicence = (value) => {
+    const raw = (value || '').toString().trim();
+    if (!raw) {
+      return '';
+    }
+    return raw.toUpperCase();
   };
 
   const derivePlayerIdFromPath = () => {
@@ -37,52 +100,6 @@
   };
 
   const playerId = derivePlayerIdFromPath();
-
-  const createSection = (title) => {
-    const section = document.createElement('section');
-    section.className = 'club-section';
-
-    const heading = document.createElement('h2');
-    heading.textContent = title;
-    section.appendChild(heading);
-
-    const list = document.createElement('ul');
-    list.className = 'club-section__list';
-    section.appendChild(list);
-
-    return { section, list };
-  };
-
-  const appendDetail = (list, label, value, options = {}) => {
-    if (value == null || value === '') {
-      return false;
-    }
-    const item = document.createElement('li');
-    item.className = 'club-section__item';
-
-    const labelNode = document.createElement('span');
-    labelNode.className = 'club-section__label';
-    labelNode.textContent = label;
-    item.appendChild(labelNode);
-
-    const valueContainer = document.createElement('div');
-    valueContainer.className = 'club-section__value';
-
-    if (options.type === 'link') {
-      const link = document.createElement('a');
-      link.href = value;
-      link.rel = 'noopener';
-      link.target = '_blank';
-      link.textContent = options.label || value;
-      valueContainer.appendChild(link);
-    } else {
-      valueContainer.textContent = value;
-    }
-
-    item.appendChild(valueContainer);
-    list.appendChild(item);
-    return true;
-  };
 
   const buildShardPrefix = (id) => {
     const str = (id || '').toString().trim();
@@ -115,10 +132,11 @@
     }
   };
 
-  const appendMetaChip = (host, label, value) => {
+  const appendMetaChip = (host, label, value, options = {}) => {
     if (!host || !label || value == null || value === '') {
       return false;
     }
+
     const chip = document.createElement('span');
     chip.className = 'player-chip';
 
@@ -131,6 +149,16 @@
     valueNode.className = 'player-chip__value';
     valueNode.textContent = value;
     chip.appendChild(valueNode);
+
+    if (options.hint) {
+      const hint = document.createElement('span');
+      hint.className = 'player-chip__hint';
+      hint.setAttribute('tabindex', '0');
+      hint.setAttribute('role', 'note');
+      hint.setAttribute('aria-label', `Tranche d'âge: ${options.hint}`);
+      hint.dataset.tooltip = options.hint;
+      chip.appendChild(hint);
+    }
 
     host.appendChild(chip);
     return true;
@@ -159,10 +187,23 @@
     const card = document.createElement('div');
     card.className = options.primary ? 'player-stat player-stat--primary' : 'player-stat';
 
+    const head = document.createElement('div');
+    head.className = 'player-stat__head';
+
+    if (options.icon) {
+      const icon = document.createElement('span');
+      icon.className = 'player-stat__icon';
+      icon.dataset.icon = options.icon;
+      icon.setAttribute('aria-hidden', 'true');
+      head.appendChild(icon);
+    }
+
     const labelNode = document.createElement('div');
     labelNode.className = 'player-stat__label';
     labelNode.textContent = label;
-    card.appendChild(labelNode);
+    head.appendChild(labelNode);
+
+    card.appendChild(head);
 
     const valueRow = document.createElement('div');
     valueRow.className = 'player-stat__value-row';
@@ -202,8 +243,13 @@
 
     const meta = document.createElement('div');
     meta.className = 'player-hero__meta';
-    appendMetaChip(meta, 'Nr FFE', player.nrFfe || '');
+
+    const formattedCategory = formatCategory(player.category || '');
+    if (formattedCategory.label) {
+      appendMetaChip(meta, 'Catégorie', formattedCategory.label, { hint: formattedCategory.hint });
+    }
     appendMetaChip(meta, 'Club', player.club || '');
+
     if (meta.childElementCount) {
       heroIdentity.appendChild(meta);
     }
@@ -212,56 +258,79 @@
     if (officialUrl) {
       const actions = document.createElement('div');
       actions.className = 'player-hero__actions';
+
       const link = document.createElement('a');
-      link.className = 'btn btn-secondary player-hero__action';
+      link.className = 'link-button player-hero__action';
       link.href = officialUrl;
       link.rel = 'noopener';
       link.target = '_blank';
-      link.textContent = 'Voir la fiche FFE';
+      link.textContent = 'Voir la fiche officielle FFE';
+
       actions.appendChild(link);
       heroIdentity.appendChild(actions);
     }
+
     hero.appendChild(heroIdentity);
 
     const ratingsGrid = document.createElement('div');
     ratingsGrid.className = 'player-hero__ratings';
-    ratingsGrid.appendChild(createRatingCard('Elo', player.elo || '', { primary: true }));
-    ratingsGrid.appendChild(createRatingCard('Rapide', player.rapid || ''));
-    ratingsGrid.appendChild(createRatingCard('Blitz', player.blitz || ''));
+    ratingsGrid.appendChild(createRatingCard('Elo (lent)', player.elo || '', { primary: true, icon: 'classic' }));
+    ratingsGrid.appendChild(createRatingCard('Rapide', player.rapid || '', { icon: 'rapid' }));
+    ratingsGrid.appendChild(createRatingCard('Blitz', player.blitz || '', { icon: 'blitz' }));
     hero.appendChild(ratingsGrid);
 
     sheet.appendChild(hero);
 
-    const content = document.createElement('div');
-    content.className = 'player-sheet__content';
+    const extra = document.createElement('details');
+    extra.className = 'player-extra';
 
-    const identity = createSection('Identité');
-    appendDetail(identity.list, 'Nr FFE', player.nrFfe || '');
-    appendDetail(identity.list, 'Club', player.club || '');
-    appendDetail(identity.list, 'Mis à jour', formatUpdatedDate(player.updated || ''));
-    if (identity.list.childElementCount) {
-      content.appendChild(identity.section);
-    }
+    const summary = document.createElement('summary');
+    summary.textContent = 'Infos (FFE)';
+    extra.appendChild(summary);
 
-    const profile = createSection('Profil');
-    appendDetail(profile.list, 'Catégorie', player.category || '');
-    appendDetail(profile.list, 'Sexe', player.gender || '');
-    appendDetail(profile.list, 'Affiliation', player.aff || '');
-    if (profile.list.childElementCount) {
-      content.appendChild(profile.section);
-    }
+    const extraList = document.createElement('ul');
+    extraList.className = 'player-extra__list';
+    extra.appendChild(extraList);
 
-    const resources = createSection('Ressources');
-    appendDetail(resources.list, 'Fiche FFE', officialUrl, {
-      type: 'link',
-      label: 'Voir la fiche officielle FFE',
-    });
-    if (resources.list.childElementCount) {
-      content.appendChild(resources.section);
-    }
+    const appendExtraItem = (label, value, options = {}) => {
+      if (value == null || value === '') {
+        return false;
+      }
 
-    if (content.childElementCount) {
-      sheet.appendChild(content);
+      const item = document.createElement('li');
+      item.className = 'player-extra__item';
+
+      const labelNode = document.createElement('span');
+      labelNode.className = 'player-extra__label';
+      labelNode.textContent = label;
+      item.appendChild(labelNode);
+
+      const valueNode = document.createElement('span');
+      valueNode.className = 'player-extra__value';
+
+      if (options.type === 'link') {
+        const link = document.createElement('a');
+        link.href = value;
+        link.rel = 'noopener';
+        link.target = '_blank';
+        link.textContent = options.label || value;
+        valueNode.appendChild(link);
+      } else {
+        valueNode.textContent = value;
+      }
+
+      item.appendChild(valueNode);
+      extraList.appendChild(item);
+      return true;
+    };
+
+    appendExtraItem('Licence', formatLicence(player.aff || ''));
+    appendExtraItem('Nr FFE', player.nrFfe || '');
+    appendExtraItem('Mis à jour', formatUpdatedDate(player.updated || ''));
+    appendExtraItem('Fiche FFE', officialUrl, { type: 'link', label: 'Ouvrir sur echecs.asso.fr' });
+
+    if (extraList.childElementCount) {
+      sheet.appendChild(extra);
     }
 
     detailContainer.appendChild(sheet);

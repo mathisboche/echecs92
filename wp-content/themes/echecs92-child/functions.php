@@ -1167,12 +1167,28 @@ function cdje92_contact_form_get_request_ip() {
     return '';
 }
 
+function cdje92_contact_form_set_recaptcha_last_error( $error ) {
+    // Stored for the current request only; do not persist secrets.
+    $GLOBALS['cdje92_contact_form_recaptcha_last_error'] = $error;
+}
+
+function cdje92_contact_form_get_recaptcha_last_error() {
+    return isset($GLOBALS['cdje92_contact_form_recaptcha_last_error'])
+        ? $GLOBALS['cdje92_contact_form_recaptcha_last_error']
+        : null;
+}
+
 function cdje92_contact_form_verify_recaptcha_token( $token ) {
+    cdje92_contact_form_set_recaptcha_last_error(null);
+
     if (! cdje92_contact_form_use_recaptcha()) {
         return true;
     }
 
     if (empty($token)) {
+        cdje92_contact_form_set_recaptcha_last_error([
+            'type' => 'missing_token',
+        ]);
         return false;
     }
 
@@ -1187,12 +1203,52 @@ function cdje92_contact_form_verify_recaptcha_token( $token ) {
     ]);
 
     if (is_wp_error($response)) {
+        cdje92_contact_form_set_recaptcha_last_error([
+            'type' => 'request_failed',
+            'message' => $response->get_error_message(),
+        ]);
         return false;
     }
 
-    $body = json_decode(wp_remote_retrieve_body($response), true);
+    $status_code = (int) wp_remote_retrieve_response_code($response);
+    if ($status_code !== 200) {
+        cdje92_contact_form_set_recaptcha_last_error([
+            'type' => 'bad_response',
+            'status_code' => $status_code,
+        ]);
+        return false;
+    }
 
-    return (is_array($body) && ! empty($body['success']));
+    $body_raw = wp_remote_retrieve_body($response);
+    $body = json_decode($body_raw, true);
+
+    if (! is_array($body)) {
+        cdje92_contact_form_set_recaptcha_last_error([
+            'type' => 'bad_response',
+            'status_code' => $status_code,
+        ]);
+        return false;
+    }
+
+    if (! empty($body['success'])) {
+        return true;
+    }
+
+    $error_codes = [];
+    if (isset($body['error-codes'])) {
+        $codes = $body['error-codes'];
+        if (is_string($codes) && $codes !== '') {
+            $error_codes = [$codes];
+        } elseif (is_array($codes)) {
+            $error_codes = array_values(array_filter($codes, 'is_string'));
+        }
+    }
+    cdje92_contact_form_set_recaptcha_last_error([
+        'type' => 'verification_failed',
+        'error_codes' => $error_codes,
+    ]);
+
+    return false;
 }
 
 function cdje92_render_contact_form() {
@@ -1439,9 +1495,43 @@ function cdje92_handle_contact_form() {
 
     $token = isset($_POST['g-recaptcha-response']) ? sanitize_text_field(wp_unslash($_POST['g-recaptcha-response'])) : '';
     if (! cdje92_contact_form_verify_recaptcha_token($token)) {
+        $recaptcha_error = cdje92_contact_form_get_recaptcha_last_error();
+        $is_unavailable = false;
+
+        if (is_array($recaptcha_error)) {
+            $type = isset($recaptcha_error['type']) ? (string) $recaptcha_error['type'] : '';
+            if ($type === 'request_failed' || $type === 'bad_response') {
+                $is_unavailable = true;
+            } elseif ($type === 'verification_failed') {
+                $codes = isset($recaptcha_error['error_codes']) && is_array($recaptcha_error['error_codes'])
+                    ? $recaptcha_error['error_codes']
+                    : [];
+                $config_codes = ['missing-input-secret', 'invalid-input-secret'];
+                if (array_intersect($config_codes, $codes)) {
+                    $is_unavailable = true;
+                }
+            }
+        }
+
+        if (defined('WP_DEBUG') && WP_DEBUG && ! empty($recaptcha_error)) {
+            $log = [
+                'type' => $recaptcha_error['type'] ?? 'unknown',
+            ];
+            if (! empty($recaptcha_error['status_code'])) {
+                $log['status_code'] = $recaptcha_error['status_code'];
+            }
+            if (! empty($recaptcha_error['error_codes'])) {
+                $log['error_codes'] = $recaptcha_error['error_codes'];
+            }
+            if (! empty($recaptcha_error['message'])) {
+                $log['message'] = $recaptcha_error['message'];
+            }
+            error_log('[cdje92] contact form reCAPTCHA error: ' . wp_json_encode($log));
+        }
+
         cdje92_contact_form_safe_redirect([
             'contact_status' => 'error',
-            'contact_error'  => 'recaptcha_failed',
+            'contact_error'  => $is_unavailable ? 'recaptcha_unavailable' : 'recaptcha_failed',
             'contact_email'  => $email,
             'contact_club'   => $club,
             'contact_message'=> $message,
