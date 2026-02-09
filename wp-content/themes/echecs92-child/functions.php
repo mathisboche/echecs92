@@ -15,6 +15,13 @@ function cdje92_contact_form_get_recaptcha_keys() {
     if (empty($secret_key)) {
         $secret_key = trim((string) getenv('CDJE92_RECAPTCHA_SECRET_KEY'));
     }
+    // Some hosts (or Apache SetEnv) expose env vars via $_SERVER/$_ENV but not getenv().
+    if (empty($site_key)) {
+        $site_key = trim((string) ($_SERVER['CDJE92_RECAPTCHA_SITE_KEY'] ?? ($_ENV['CDJE92_RECAPTCHA_SITE_KEY'] ?? '')));
+    }
+    if (empty($secret_key)) {
+        $secret_key = trim((string) ($_SERVER['CDJE92_RECAPTCHA_SECRET_KEY'] ?? ($_ENV['CDJE92_RECAPTCHA_SECRET_KEY'] ?? '')));
+    }
 
     if (empty($site_key) || empty($secret_key)) {
         $secrets_path = WP_CONTENT_DIR . '/.secrets/recaptcha.php';
@@ -119,7 +126,9 @@ function cdje92_contact_form_render_settings_page() {
     $secret_key = get_option('cdje92_recaptcha_secret_key', '');
     $has_constants = (defined('CDJE92_RECAPTCHA_SITE_KEY') && CDJE92_RECAPTCHA_SITE_KEY) ||
         (defined('CDJE92_RECAPTCHA_SECRET_KEY') && CDJE92_RECAPTCHA_SECRET_KEY);
-    $has_env = getenv('CDJE92_RECAPTCHA_SITE_KEY') || getenv('CDJE92_RECAPTCHA_SECRET_KEY');
+    $has_env = getenv('CDJE92_RECAPTCHA_SITE_KEY') || getenv('CDJE92_RECAPTCHA_SECRET_KEY')
+        || ! empty($_SERVER['CDJE92_RECAPTCHA_SITE_KEY']) || ! empty($_SERVER['CDJE92_RECAPTCHA_SECRET_KEY'])
+        || ! empty($_ENV['CDJE92_RECAPTCHA_SITE_KEY']) || ! empty($_ENV['CDJE92_RECAPTCHA_SECRET_KEY']);
     ?>
     <div class="wrap">
         <h1><?php esc_html_e('Contact CDJE 92', 'echecs92-child'); ?></h1>

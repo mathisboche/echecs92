@@ -47,6 +47,26 @@ Ou via:
 
 (voir `wp-content/themes/echecs92-child/config/recaptcha.example.php`).
 
+### 3bis) OVH (mutualisé) - approche "déploiement"
+
+Sur un hébergement web mutualisé OVH, l'approche la plus courante est de **définir les clés dans `wp-config.php`**
+(ça évite de les stocker en base via l'admin WordPress).
+
+Dans `wp-config.php` (avant la ligne "That's all, stop editing"):
+
+```php
+define('CDJE92_RECAPTCHA_SITE_KEY', '...');
+define('CDJE92_RECAPTCHA_SECRET_KEY', '...');
+```
+
+Alternative (si tu préfères des variables d'environnement au niveau Apache): tu peux aussi utiliser `SetEnv`
+dans `.htaccess` au niveau de WordPress:
+
+```apacheconf
+SetEnv CDJE92_RECAPTCHA_SITE_KEY "..."
+SetEnv CDJE92_RECAPTCHA_SECRET_KEY "..."
+```
+
 ### 4) En local (Docker + localhost)
 
 Si tu testes sur `http://localhost:8080`, reCAPTCHA peut afficher "Invalid domain for site key" si tes clés sont limitées au domaine de prod.
