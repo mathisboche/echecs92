@@ -6028,15 +6028,9 @@ body.mathis-mode .mathis-fragment{
   padding:18px;
   background:#ffffff;
   box-shadow:none;
-  display:grid;
-  grid-template-columns:1fr;
+  display:flex;
+  flex-direction:column;
   gap:16px;
-}
-@media (min-width:780px){
-  .player-hero{
-    grid-template-columns:minmax(0, 1fr) 360px;
-    align-items:start;
-  }
 }
 .player-hero__identity{
   display:flex;
@@ -6268,7 +6262,7 @@ body.mathis-mode .mathis-fragment{
 .player-extra__list{
   list-style:none;
   margin:0;
-  padding:0 16px 16px;
+  padding:16px;
   display:flex;
   flex-direction:column;
   font-size:15px;

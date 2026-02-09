@@ -3,10 +3,29 @@
 <!-- wp:html -->
 <div class="clubs-page clubs-page--detail legal">
   <div class="club-detail__actions player-detail__actions">
-    <a class="link-button player-detail__back" href="/clubs-92" data-player-back>← Retour</a>
+    <a class="link-button club-detail__back player-detail__back" href="/clubs-92" data-player-back>← Retour</a>
   </div>
-  <div id="player-detail" class="club-detail-page" data-empty-message="Ce joueur est introuvable ou n'est plus référencé.">
-    <p class="clubs-search__status" role="status">Chargement de la fiche joueur…</p>
+  <div id="player-detail" class="club-detail-page is-loading" data-empty-message="Ce joueur est introuvable ou n'est plus référencé.">
+    <p class="clubs-search__status sr-only" role="status" aria-live="polite">Chargement de la fiche joueur…</p>
+
+    <div class="club-detail-placeholder" aria-hidden="true">
+      <div class="club-detail-placeholder__header">
+        <div class="club-detail-placeholder__title clubs-skeleton"></div>
+        <div class="club-detail-placeholder__meta">
+          <div class="club-detail-placeholder__chip clubs-skeleton"></div>
+          <div class="club-detail-placeholder__chip clubs-skeleton"></div>
+        </div>
+        <div class="club-detail-placeholder__line clubs-skeleton"></div>
+        <div class="club-detail-placeholder__line club-detail-placeholder__line--short clubs-skeleton"></div>
+      </div>
+
+      <div class="club-detail-placeholder__section">
+        <div class="club-detail-placeholder__section-title clubs-skeleton"></div>
+        <div class="club-detail-placeholder__row clubs-skeleton"></div>
+        <div class="club-detail-placeholder__row clubs-skeleton"></div>
+        <div class="club-detail-placeholder__row club-detail-placeholder__row--short clubs-skeleton"></div>
+      </div>
+    </div>
   </div>
 </div>
 

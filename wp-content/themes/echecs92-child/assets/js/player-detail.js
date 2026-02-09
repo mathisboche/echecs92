@@ -12,6 +12,7 @@
   }
 
   const backLink = document.querySelector('.player-detail__back, [data-player-back]');
+  detailContainer.classList.add('is-loading');
 
   const updateBackLinkHref = () => {
     if (!backLink) {
@@ -48,6 +49,7 @@
     });
 
   const renderMessage = (message, tone = 'error') => {
+    detailContainer.classList.remove('is-loading');
     detailContainer.innerHTML = `<p class="clubs-empty" data-tone="${tone}">${message}</p>`;
   };
 
@@ -225,6 +227,7 @@
   };
 
   const renderPlayer = (player) => {
+    detailContainer.classList.remove('is-loading');
     detailContainer.innerHTML = '';
 
     const sheet = document.createElement('div');
@@ -233,13 +236,17 @@
     const hero = document.createElement('header');
     hero.className = 'player-hero';
 
-    const heroIdentity = document.createElement('div');
-    heroIdentity.className = 'player-hero__identity';
-
     const title = document.createElement('h1');
     title.className = 'player-hero__name';
     title.textContent = player.name || 'Fiche joueur';
-    heroIdentity.appendChild(title);
+    hero.appendChild(title);
+
+    const ratingsGrid = document.createElement('div');
+    ratingsGrid.className = 'player-hero__ratings';
+    ratingsGrid.appendChild(createRatingCard('Elo (lent)', player.elo || '', { primary: true, icon: 'classic' }));
+    ratingsGrid.appendChild(createRatingCard('Rapide', player.rapid || '', { icon: 'rapid' }));
+    ratingsGrid.appendChild(createRatingCard('Blitz', player.blitz || '', { icon: 'blitz' }));
+    hero.appendChild(ratingsGrid);
 
     const meta = document.createElement('div');
     meta.className = 'player-hero__meta';
@@ -251,42 +258,14 @@
     appendMetaChip(meta, 'Club', player.club || '');
 
     if (meta.childElementCount) {
-      heroIdentity.appendChild(meta);
+      hero.appendChild(meta);
     }
-
-    const officialUrl = buildOfficialPlayerUrl(player.id || '');
-    if (officialUrl) {
-      const actions = document.createElement('div');
-      actions.className = 'player-hero__actions';
-
-      const link = document.createElement('a');
-      link.className = 'link-button player-hero__action';
-      link.href = officialUrl;
-      link.rel = 'noopener';
-      link.target = '_blank';
-      link.textContent = 'Voir la fiche officielle FFE';
-
-      actions.appendChild(link);
-      heroIdentity.appendChild(actions);
-    }
-
-    hero.appendChild(heroIdentity);
-
-    const ratingsGrid = document.createElement('div');
-    ratingsGrid.className = 'player-hero__ratings';
-    ratingsGrid.appendChild(createRatingCard('Elo (lent)', player.elo || '', { primary: true, icon: 'classic' }));
-    ratingsGrid.appendChild(createRatingCard('Rapide', player.rapid || '', { icon: 'rapid' }));
-    ratingsGrid.appendChild(createRatingCard('Blitz', player.blitz || '', { icon: 'blitz' }));
-    hero.appendChild(ratingsGrid);
 
     sheet.appendChild(hero);
 
-    const extra = document.createElement('details');
+    const officialUrl = buildOfficialPlayerUrl(player.id || '');
+    const extra = document.createElement('div');
     extra.className = 'player-extra';
-
-    const summary = document.createElement('summary');
-    summary.textContent = 'Infos (FFE)';
-    extra.appendChild(summary);
 
     const extraList = document.createElement('ul');
     extraList.className = 'player-extra__list';

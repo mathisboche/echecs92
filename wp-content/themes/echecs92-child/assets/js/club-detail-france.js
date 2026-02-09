@@ -13,6 +13,7 @@
   const GEO_HINTS_REMOTE_URL = `/wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json?v=${GEO_HINTS_VERSION}`;
   const FFE_LISTS_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france-ffe-details/';
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs-fr:last-listing';
+  const CLUBS_NAV_SESSION_KEY = `${CLUBS_NAV_STORAGE_KEY}:session`;
   const detailContainer = document.getElementById('club-detail');
   const backLink = document.querySelector('[data-club-back]');
   const backLinkMap = document.querySelector('[data-club-back-map]');
@@ -167,17 +168,11 @@
     return;
   }
 
-  const consumeStoredClubsNavigation = () => {
-    try {
-      const storage = window.localStorage;
-      if (!storage) {
-        return null;
-      }
-      const raw = storage.getItem(CLUBS_NAV_STORAGE_KEY);
-      if (!raw) {
-        return null;
-      }
-      storage.removeItem(CLUBS_NAV_STORAGE_KEY);
+  const readStoredClubsNavigation = () => {
+    const MAX_AGE_MS = 10 * 60 * 1000;
+    const now = Date.now();
+
+    const parsePayload = (raw) => {
       let payload;
       try {
         payload = JSON.parse(raw);
@@ -188,16 +183,53 @@
       if (!timestamp) {
         return null;
       }
-      if (Date.now() - timestamp > 10 * 60 * 1000) {
+      if (now - timestamp > MAX_AGE_MS) {
         return null;
       }
       return payload;
+    };
+
+    try {
+      const local = window.localStorage;
+      const session = window.sessionStorage;
+
+      if (local) {
+        const raw = local.getItem(CLUBS_NAV_STORAGE_KEY);
+        if (raw) {
+          local.removeItem(CLUBS_NAV_STORAGE_KEY);
+          const payload = parsePayload(raw);
+          if (payload) {
+            const refreshed = { ...payload, ts: now };
+            if (session) {
+              session.setItem(CLUBS_NAV_SESSION_KEY, JSON.stringify(refreshed));
+            }
+            return refreshed;
+          }
+        }
+      }
+
+      if (session) {
+        const raw = session.getItem(CLUBS_NAV_SESSION_KEY);
+        if (!raw) {
+          return null;
+        }
+        const payload = parsePayload(raw);
+        if (!payload) {
+          session.removeItem(CLUBS_NAV_SESSION_KEY);
+          return null;
+        }
+        const refreshed = { ...payload, ts: now };
+        session.setItem(CLUBS_NAV_SESSION_KEY, JSON.stringify(refreshed));
+        return refreshed;
+      }
+
+      return null;
     } catch (error) {
       return null;
     }
   };
 
-  const storedNavigation = consumeStoredClubsNavigation();
+  const storedNavigation = readStoredClubsNavigation();
 
   const getStoredBackPath = (fallback) => {
     if (storedNavigation && storedNavigation.back) {

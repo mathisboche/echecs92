@@ -11,6 +11,7 @@
   const FFE_DETAILS_URL = '/wp-content/themes/echecs92-child/assets/data/clubs-france/92.json';
   const FFE_LISTS_BASE_PATH = '/wp-content/themes/echecs92-child/assets/data/clubs-france-ffe-details/';
   const CLUBS_NAV_STORAGE_KEY = 'echecs92:clubs:last-listing';
+  const CLUBS_NAV_SESSION_KEY = `${CLUBS_NAV_STORAGE_KEY}:session`;
   const detailContainer = document.getElementById('club-detail');
   const backLink = document.querySelector('[data-club-back]');
   const backLinkMap = document.querySelector('[data-club-back-map]');
@@ -21,17 +22,11 @@
     return;
   }
 
-  const consumeStoredClubsNavigation = () => {
-    try {
-      const storage = window.localStorage;
-      if (!storage) {
-        return null;
-      }
-      const raw = storage.getItem(CLUBS_NAV_STORAGE_KEY);
-      if (!raw) {
-        return null;
-      }
-      storage.removeItem(CLUBS_NAV_STORAGE_KEY);
+  const readStoredClubsNavigation = () => {
+    const MAX_AGE_MS = 10 * 60 * 1000;
+    const now = Date.now();
+
+    const parsePayload = (raw) => {
       let payload;
       try {
         payload = JSON.parse(raw);
@@ -42,16 +37,53 @@
       if (!timestamp) {
         return null;
       }
-      if (Date.now() - timestamp > 10 * 60 * 1000) {
+      if (now - timestamp > MAX_AGE_MS) {
         return null;
       }
       return payload;
+    };
+
+    try {
+      const local = window.localStorage;
+      const session = window.sessionStorage;
+
+      if (local) {
+        const raw = local.getItem(CLUBS_NAV_STORAGE_KEY);
+        if (raw) {
+          local.removeItem(CLUBS_NAV_STORAGE_KEY);
+          const payload = parsePayload(raw);
+          if (payload) {
+            const refreshed = { ...payload, ts: now };
+            if (session) {
+              session.setItem(CLUBS_NAV_SESSION_KEY, JSON.stringify(refreshed));
+            }
+            return refreshed;
+          }
+        }
+      }
+
+      if (session) {
+        const raw = session.getItem(CLUBS_NAV_SESSION_KEY);
+        if (!raw) {
+          return null;
+        }
+        const payload = parsePayload(raw);
+        if (!payload) {
+          session.removeItem(CLUBS_NAV_SESSION_KEY);
+          return null;
+        }
+        const refreshed = { ...payload, ts: now };
+        session.setItem(CLUBS_NAV_SESSION_KEY, JSON.stringify(refreshed));
+        return refreshed;
+      }
+
+      return null;
     } catch (error) {
       return null;
     }
   };
 
-  const storedNavigation = consumeStoredClubsNavigation();
+  const storedNavigation = readStoredClubsNavigation();
 
   const getStoredBackPath = (fallback) => {
     if (storedNavigation && storedNavigation.back) {
@@ -1164,7 +1196,147 @@
     return wrap;
   };
 
+  const FFE_TABLE_PAGE_SIZE = 50;
+  const FFE_TABLE_PAGE_STEP = 50;
+
+  const stripFfeHeaderRow = (rows) => {
+    const list = Array.isArray(rows) ? rows : [];
+    if (!list.length) {
+      return [];
+    }
+    const first = list[0] || {};
+    const nr = normalise(first.nrFfe || first.nrffe || '').replace(/\s+/g, '');
+    const name = normalise(first.name || '');
+    // Many FFE exports include a first row that repeats table headers.
+    if (nr === 'nrffe' && (name.includes('nom') || name.includes('prenom'))) {
+      return list.slice(1);
+    }
+    return list.slice();
+  };
+
+  const parseRatingMeta = (value) => {
+    const str = (value == null ? '' : String(value)).trim();
+    if (!str) {
+      return { score: null, main: '', tag: '' };
+    }
+    const match = str.match(/(\d{1,4})(?:\s*([a-z]+))?/i);
+    if (!match) {
+      return { score: null, main: str, tag: '' };
+    }
+    const score = Number.parseInt(match[1], 10);
+    return { score: Number.isFinite(score) ? score : null, main: match[1], tag: (match[2] || '').trim() };
+  };
+
+  const renderRatingNode = (value) => {
+    const meta = parseRatingMeta(value);
+    if (!meta.main && !meta.tag) {
+      return document.createTextNode('');
+    }
+    if (!meta.tag) {
+      return document.createTextNode(meta.main);
+    }
+    const wrap = document.createElement('span');
+    wrap.className = 'ffe-rating';
+
+    const main = document.createElement('span');
+    main.className = 'ffe-rating__num';
+    main.textContent = meta.main;
+    wrap.appendChild(main);
+
+    const tag = document.createElement('span');
+    tag.className = 'ffe-rating__tag';
+    tag.textContent = meta.tag;
+    wrap.appendChild(tag);
+
+    return wrap;
+  };
+
+  const parseSeasonStart = (value) => {
+    const str = (value == null ? '' : String(value)).trim();
+    const match = str.match(/(\d{4})/);
+    if (!match) {
+      return null;
+    }
+    const year = Number.parseInt(match[1], 10);
+    return Number.isFinite(year) ? year : null;
+  };
+
+  const compareText = (a, b) => normalise(a).localeCompare(normalise(b));
+
+  const buildQuickFilterHaystack = (row, keys) => {
+    const parts = [];
+    (Array.isArray(keys) ? keys : []).forEach((key) => {
+      if (!key) {
+        return;
+      }
+      const value = row && row[key];
+      if (value == null || value === '') {
+        return;
+      }
+      parts.push(String(value));
+    });
+    return normalise(parts.join(' '));
+  };
+
   const renderMembersTable = (rows) => {
+    const allRows = stripFfeHeaderRow(rows);
+    const root = document.createElement('div');
+    root.className = 'club-table-listing';
+
+    const controls = document.createElement('div');
+    controls.className = 'club-table-controls';
+    root.appendChild(controls);
+
+    const searchWrap = document.createElement('div');
+    searchWrap.className = 'club-table-controls__search';
+    controls.appendChild(searchWrap);
+
+    const inputWrap = document.createElement('div');
+    inputWrap.className = 'clubs-input-wrap';
+    searchWrap.appendChild(inputWrap);
+
+    const filterInput = document.createElement('input');
+    filterInput.className = 'clubs-input club-table-controls__input';
+    filterInput.type = 'search';
+    filterInput.placeholder = 'Filtrer (nom, Nr FFE)…';
+    filterInput.setAttribute('aria-label', 'Filtrer la liste');
+    inputWrap.appendChild(filterInput);
+
+    const filterClear = document.createElement('button');
+    filterClear.type = 'button';
+    filterClear.className = 'clubs-input__clear';
+    filterClear.setAttribute('aria-label', 'Effacer le filtre');
+    filterClear.hidden = true;
+    inputWrap.appendChild(filterClear);
+
+    const sortWrap = document.createElement('div');
+    sortWrap.className = 'club-table-controls__sort';
+    controls.appendChild(sortWrap);
+
+    const sortSelect = document.createElement('select');
+    sortSelect.className = 'club-table-controls__select';
+    sortSelect.setAttribute('aria-label', 'Trier la liste');
+    [
+      { value: 'elo_desc', label: 'Elo (fort → faible)' },
+      { value: 'name_asc', label: 'Nom (A → Z)' },
+      { value: 'name_desc', label: 'Nom (Z → A)' },
+      { value: 'rapid_desc', label: 'Rapide (fort → faible)' },
+      { value: 'blitz_desc', label: 'Blitz (fort → faible)' },
+      { value: 'category_asc', label: 'Catégorie (A → Z)' },
+      { value: 'nrffe_asc', label: 'Nr FFE (A → Z)' },
+    ].forEach((entry) => {
+      const opt = document.createElement('option');
+      opt.value = entry.value;
+      opt.textContent = entry.label;
+      sortSelect.appendChild(opt);
+    });
+    sortSelect.value = 'elo_desc';
+    sortWrap.appendChild(sortSelect);
+
+    const countNode = document.createElement('div');
+    countNode.className = 'club-table-controls__count';
+    controls.appendChild(countNode);
+
     const table = document.createElement('table');
     table.className = 'club-table';
     const thead = document.createElement('thead');
@@ -1188,26 +1360,240 @@
     table.appendChild(thead);
 
     const tbody = document.createElement('tbody');
-    rows.forEach((row) => {
-      const tr = document.createElement('tr');
-      appendTextCell(tr, row.nrFfe);
-      const nameCell = document.createElement('td');
-      nameCell.appendChild(createNameBlock(row));
-      tr.appendChild(nameCell);
-      appendTextCell(tr, row.aff);
-      appendTextCell(tr, row.elo);
-      appendTextCell(tr, row.rapid);
-      appendTextCell(tr, row.blitz);
-      appendTextCell(tr, row.category);
-      appendTextCell(tr, row.gender);
-      appendTextCell(tr, row.club);
-      tbody.appendChild(tr);
-    });
     table.appendChild(tbody);
-    return createTableWrap(table);
+
+    const tableWrap = createTableWrap(table);
+    root.appendChild(tableWrap);
+
+    const footer = document.createElement('div');
+    footer.className = 'club-table-controls__footer';
+    root.appendChild(footer);
+
+    const footerText = document.createElement('div');
+    footerText.className = 'club-table-controls__footer-text';
+    footer.appendChild(footerText);
+
+    const footerActions = document.createElement('div');
+    footerActions.className = 'club-table-controls__footer-actions';
+    footer.appendChild(footerActions);
+
+    const moreButton = document.createElement('button');
+    moreButton.type = 'button';
+    moreButton.className = 'btn btn-secondary club-table-controls__more';
+    moreButton.textContent = 'Afficher plus';
+    footerActions.appendChild(moreButton);
+
+    const showAllButton = document.createElement('button');
+    showAllButton.type = 'button';
+    showAllButton.className = 'link-button club-table-controls__showall';
+    showAllButton.textContent = 'Tout afficher';
+    footerActions.appendChild(showAllButton);
+
+    const state = {
+      sort: 'elo_desc',
+      visibleCount: Math.min(FFE_TABLE_PAGE_SIZE, allRows.length),
+      lastTotal: allRows.length,
+    };
+
+    const compareMembers = (a, b, sortMode) => {
+      switch (sortMode) {
+        case 'name_desc':
+          return compareText(b?.name || '', a?.name || '');
+        case 'name_asc':
+          return compareText(a?.name || '', b?.name || '');
+        case 'rapid_desc': {
+          const av = parseRatingMeta(a?.rapid).score;
+          const bv = parseRatingMeta(b?.rapid).score;
+          if (av == null && bv == null) return compareText(a?.name || '', b?.name || '');
+          if (av == null) return 1;
+          if (bv == null) return -1;
+          if (bv !== av) return bv - av;
+          return compareText(a?.name || '', b?.name || '');
+        }
+        case 'blitz_desc': {
+          const av = parseRatingMeta(a?.blitz).score;
+          const bv = parseRatingMeta(b?.blitz).score;
+          if (av == null && bv == null) return compareText(a?.name || '', b?.name || '');
+          if (av == null) return 1;
+          if (bv == null) return -1;
+          if (bv !== av) return bv - av;
+          return compareText(a?.name || '', b?.name || '');
+        }
+        case 'category_asc':
+          return compareText(a?.category || '', b?.category || '') || compareText(a?.name || '', b?.name || '');
+        case 'nrffe_asc':
+          return compareText(a?.nrFfe || '', b?.nrFfe || '') || compareText(a?.name || '', b?.name || '');
+        case 'elo_desc':
+        default: {
+          const av = parseRatingMeta(a?.elo).score;
+          const bv = parseRatingMeta(b?.elo).score;
+          if (av == null && bv == null) return compareText(a?.name || '', b?.name || '');
+          if (av == null) return 1;
+          if (bv == null) return -1;
+          if (bv !== av) return bv - av;
+          return compareText(a?.name || '', b?.name || '');
+        }
+      }
+    };
+
+    const renderRows = (visibleRows) => {
+      tbody.innerHTML = '';
+      const fragment = document.createDocumentFragment();
+      visibleRows.forEach((row) => {
+        const tr = document.createElement('tr');
+        appendTextCell(tr, row.nrFfe);
+        const nameCell = document.createElement('td');
+        nameCell.appendChild(createNameBlock(row));
+        tr.appendChild(nameCell);
+        appendTextCell(tr, row.aff);
+
+        const eloCell = document.createElement('td');
+        eloCell.className = 'club-table__rating club-table__rating--elo';
+        eloCell.appendChild(renderRatingNode(row.elo));
+        tr.appendChild(eloCell);
+
+        const rapidCell = document.createElement('td');
+        rapidCell.className = 'club-table__rating';
+        rapidCell.appendChild(renderRatingNode(row.rapid));
+        tr.appendChild(rapidCell);
+
+        const blitzCell = document.createElement('td');
+        blitzCell.className = 'club-table__rating';
+        blitzCell.appendChild(renderRatingNode(row.blitz));
+        tr.appendChild(blitzCell);
+
+        appendTextCell(tr, row.category);
+        appendTextCell(tr, row.gender);
+        appendTextCell(tr, row.club);
+        fragment.appendChild(tr);
+      });
+      tbody.appendChild(fragment);
+    };
+
+    const applyState = () => {
+      const raw = filterInput.value || '';
+      const query = normalise(raw).trim();
+      state.sort = sortSelect.value || 'elo_desc';
+
+      filterClear.hidden = !raw.trim();
+
+      let filtered = allRows;
+      if (query) {
+        filtered = allRows.filter((row) => {
+          const hay = buildQuickFilterHaystack(row, [
+            'nrFfe',
+            'name',
+            'aff',
+            'elo',
+            'rapid',
+            'blitz',
+            'category',
+            'club',
+          ]);
+          return hay.includes(query);
+        });
+      }
+
+      filtered = filtered.slice().sort((a, b) => compareMembers(a, b, state.sort));
+      state.lastTotal = filtered.length;
+      if (state.visibleCount > filtered.length) {
+        state.visibleCount = filtered.length;
+      }
+      const visible = filtered.slice(0, state.visibleCount);
+
+      countNode.textContent = `${filtered.length} joueur${filtered.length > 1 ? 's' : ''}`;
+      footerText.textContent = filtered.length ? `Affichage ${visible.length} / ${filtered.length}` : 'Aucun résultat';
+
+      moreButton.hidden = visible.length >= filtered.length;
+      showAllButton.hidden = filtered.length <= state.visibleCount || filtered.length <= FFE_TABLE_PAGE_SIZE;
+
+      renderRows(visible);
+    };
+
+    filterInput.addEventListener('input', () => {
+      state.visibleCount = Math.min(FFE_TABLE_PAGE_SIZE, allRows.length);
+      applyState();
+    });
+    filterClear.addEventListener('click', () => {
+      filterInput.value = '';
+      state.visibleCount = Math.min(FFE_TABLE_PAGE_SIZE, allRows.length);
+      applyState();
+      filterInput.focus();
+    });
+    sortSelect.addEventListener('change', () => {
+      state.visibleCount = Math.min(state.visibleCount || FFE_TABLE_PAGE_SIZE, state.lastTotal);
+      applyState();
+    });
+    moreButton.addEventListener('click', () => {
+      state.visibleCount = Math.min(state.visibleCount + FFE_TABLE_PAGE_STEP, state.lastTotal);
+      applyState();
+    });
+    showAllButton.addEventListener('click', () => {
+      state.visibleCount = state.lastTotal;
+      applyState();
+    });
+
+    applyState();
+    return root;
   };
 
   const renderStaffTable = (rows) => {
+    const allRows = stripFfeHeaderRow(rows);
+    const root = document.createElement('div');
+    root.className = 'club-table-listing';
+
+    const controls = document.createElement('div');
+    controls.className = 'club-table-controls';
+    root.appendChild(controls);
+
+    const searchWrap = document.createElement('div');
+    searchWrap.className = 'club-table-controls__search';
+    controls.appendChild(searchWrap);
+
+    const inputWrap = document.createElement('div');
+    inputWrap.className = 'clubs-input-wrap';
+    searchWrap.appendChild(inputWrap);
+
+    const filterInput = document.createElement('input');
+    filterInput.className = 'clubs-input club-table-controls__input';
+    filterInput.type = 'search';
+    filterInput.placeholder = 'Filtrer (nom, Nr FFE)…';
+    filterInput.setAttribute('aria-label', 'Filtrer la liste');
+    inputWrap.appendChild(filterInput);
+
+    const filterClear = document.createElement('button');
+    filterClear.type = 'button';
+    filterClear.className = 'clubs-input__clear';
+    filterClear.setAttribute('aria-label', 'Effacer le filtre');
+    filterClear.hidden = true;
+    inputWrap.appendChild(filterClear);
+
+    const sortWrap = document.createElement('div');
+    sortWrap.className = 'club-table-controls__sort';
+    controls.appendChild(sortWrap);
+
+    const sortSelect = document.createElement('select');
+    sortSelect.className = 'club-table-controls__select';
+    sortSelect.setAttribute('aria-label', 'Trier la liste');
+    [
+      { value: 'name_asc', label: 'Nom (A → Z)' },
+      { value: 'name_desc', label: 'Nom (Z → A)' },
+      { value: 'role_asc', label: 'Niveau (A → Z)' },
+      { value: 'validity_desc', label: 'Validité (récent → ancien)' },
+      { value: 'nrffe_asc', label: 'Nr FFE (A → Z)' },
+    ].forEach((entry) => {
+      const opt = document.createElement('option');
+      opt.value = entry.value;
+      opt.textContent = entry.label;
+      sortSelect.appendChild(opt);
+    });
+    sortSelect.value = 'name_asc';
+    sortWrap.appendChild(sortSelect);
+
+    const countNode = document.createElement('div');
+    countNode.className = 'club-table-controls__count';
+    controls.appendChild(countNode);
+
     const table = document.createElement('table');
     table.className = 'club-table';
     const thead = document.createElement('thead');
@@ -1221,19 +1607,137 @@
     table.appendChild(thead);
 
     const tbody = document.createElement('tbody');
-    rows.forEach((row) => {
-      const tr = document.createElement('tr');
-      appendTextCell(tr, row.nrFfe);
-      const nameCell = document.createElement('td');
-      nameCell.appendChild(createNameBlock(row));
-      tr.appendChild(nameCell);
-      appendTextCell(tr, row.role);
-      appendTextCell(tr, row.validity);
-      appendTextCell(tr, row.club);
-      tbody.appendChild(tr);
-    });
     table.appendChild(tbody);
-    return createTableWrap(table);
+
+    const tableWrap = createTableWrap(table);
+    root.appendChild(tableWrap);
+
+    const footer = document.createElement('div');
+    footer.className = 'club-table-controls__footer';
+    root.appendChild(footer);
+
+    const footerText = document.createElement('div');
+    footerText.className = 'club-table-controls__footer-text';
+    footer.appendChild(footerText);
+
+    const footerActions = document.createElement('div');
+    footerActions.className = 'club-table-controls__footer-actions';
+    footer.appendChild(footerActions);
+
+    const moreButton = document.createElement('button');
+    moreButton.type = 'button';
+    moreButton.className = 'btn btn-secondary club-table-controls__more';
+    moreButton.textContent = 'Afficher plus';
+    footerActions.appendChild(moreButton);
+
+    const showAllButton = document.createElement('button');
+    showAllButton.type = 'button';
+    showAllButton.className = 'link-button club-table-controls__showall';
+    showAllButton.textContent = 'Tout afficher';
+    footerActions.appendChild(showAllButton);
+
+    const state = {
+      sort: 'name_asc',
+      visibleCount: Math.min(FFE_TABLE_PAGE_SIZE, allRows.length),
+      lastTotal: allRows.length,
+    };
+
+    const compareStaff = (a, b, sortMode) => {
+      switch (sortMode) {
+        case 'name_desc':
+          return compareText(b?.name || '', a?.name || '');
+        case 'role_asc':
+          return compareText(a?.role || '', b?.role || '') || compareText(a?.name || '', b?.name || '');
+        case 'validity_desc': {
+          const av = parseSeasonStart(a?.validity);
+          const bv = parseSeasonStart(b?.validity);
+          if (av == null && bv == null) return compareText(a?.name || '', b?.name || '');
+          if (av == null) return 1;
+          if (bv == null) return -1;
+          if (bv !== av) return bv - av;
+          return compareText(a?.name || '', b?.name || '');
+        }
+        case 'nrffe_asc':
+          return compareText(a?.nrFfe || '', b?.nrFfe || '') || compareText(a?.name || '', b?.name || '');
+        case 'name_asc':
+        default:
+          return compareText(a?.name || '', b?.name || '');
+      }
+    };
+
+    const renderRows = (visibleRows) => {
+      tbody.innerHTML = '';
+      const fragment = document.createDocumentFragment();
+      visibleRows.forEach((row) => {
+        const tr = document.createElement('tr');
+        appendTextCell(tr, row.nrFfe);
+        const nameCell = document.createElement('td');
+        nameCell.appendChild(createNameBlock(row));
+        tr.appendChild(nameCell);
+        appendTextCell(tr, row.role);
+        appendTextCell(tr, row.validity);
+        appendTextCell(tr, row.club);
+        fragment.appendChild(tr);
+      });
+      tbody.appendChild(fragment);
+    };
+
+    const applyState = () => {
+      const raw = filterInput.value || '';
+      const query = normalise(raw).trim();
+      state.sort = sortSelect.value || 'name_asc';
+
+      filterClear.hidden = !raw.trim();
+
+      let filtered = allRows;
+      if (query) {
+        filtered = allRows.filter((row) => {
+          const hay = buildQuickFilterHaystack(row, ['nrFfe', 'name', 'email', 'role', 'validity', 'club']);
+          return hay.includes(query);
+        });
+      }
+
+      filtered = filtered.slice().sort((a, b) => compareStaff(a, b, state.sort));
+      state.lastTotal = filtered.length;
+      if (state.visibleCount > filtered.length) {
+        state.visibleCount = filtered.length;
+      }
+      const visible = filtered.slice(0, state.visibleCount);
+
+      countNode.textContent = `${filtered.length} personne${filtered.length > 1 ? 's' : ''}`;
+      footerText.textContent = filtered.length ? `Affichage ${visible.length} / ${filtered.length}` : 'Aucun résultat';
+
+      moreButton.hidden = visible.length >= filtered.length;
+      showAllButton.hidden = filtered.length <= state.visibleCount || filtered.length <= FFE_TABLE_PAGE_SIZE;
+
+      renderRows(visible);
+    };
+
+    filterInput.addEventListener('input', () => {
+      state.visibleCount = Math.min(FFE_TABLE_PAGE_SIZE, allRows.length);
+      applyState();
+    });
+    filterClear.addEventListener('click', () => {
+      filterInput.value = '';
+      state.visibleCount = Math.min(FFE_TABLE_PAGE_SIZE, allRows.length);
+      applyState();
+      filterInput.focus();
+    });
+    sortSelect.addEventListener('change', () => {
+      state.visibleCount = Math.min(state.visibleCount || FFE_TABLE_PAGE_SIZE, state.lastTotal);
+      applyState();
+    });
+    moreButton.addEventListener('click', () => {
+      state.visibleCount = Math.min(state.visibleCount + FFE_TABLE_PAGE_STEP, state.lastTotal);
+      applyState();
+    });
+    showAllButton.addEventListener('click', () => {
+      state.visibleCount = state.lastTotal;
+      applyState();
+    });
+
+    applyState();
+    return root;
   };
 
   const buildClubUrl = (club) => {
@@ -1286,10 +1790,8 @@
     const section = document.createElement('section');
     section.className = 'club-section club-section--ffe club-ffe-lists';
 
-    const membersCount =
-      (lists?.members && typeof lists.members.count === 'number' && lists.members.count) ||
-      (lists?.members_by_elo && typeof lists.members_by_elo.count === 'number' && lists.members_by_elo.count) ||
-      0;
+    const getListCount = (list) => stripFfeHeaderRow(Array.isArray(list?.rows) ? list.rows : []).length;
+    const membersCount = Math.max(getListCount(lists?.members_by_elo), getListCount(lists?.members));
     const disclosureLabel = membersCount
       ? `FFE - Joueurs et encadrement (${membersCount})`
       : 'FFE - Joueurs et encadrement';
@@ -1310,9 +1812,22 @@
       return section;
     }
 
+    const membersKey = (() => {
+      const byEloCount = getListCount(lists?.members_by_elo);
+      const membersCount = getListCount(lists?.members);
+      const byEloOk = lists?.members_by_elo && !lists.members_by_elo.error && byEloCount > 0;
+      const membersOk = lists?.members && !lists.members.error && membersCount > 0;
+      if (byEloOk) {
+        return 'members_by_elo';
+      }
+      if (membersOk) {
+        return 'members';
+      }
+      return lists?.members_by_elo ? 'members_by_elo' : 'members';
+    })();
+
     const listDefs = [
-      { key: 'members', label: 'Membres', type: 'members' },
-      { key: 'members_by_elo', label: 'Par Elo', type: 'members' },
+      { key: membersKey, label: 'Joueurs', type: 'members' },
       { key: 'arbitrage', label: 'Arbitrage', type: 'staff' },
       { key: 'animation', label: 'Animation', type: 'staff' },
       { key: 'entrainement', label: 'Entraînement', type: 'staff' },
@@ -1343,7 +1858,7 @@
     available.forEach((def, index) => {
       const list = lists[def.key] || {};
       const rows = Array.isArray(list.rows) ? list.rows : [];
-      const count = typeof list.count === 'number' ? list.count : rows.length;
+      const count = stripFfeHeaderRow(rows).length;
       const label = count ? `${def.label} (${count})` : def.label;
 
       const tabId = `${tabPrefix}-tab-${def.key}`;
@@ -1383,7 +1898,7 @@
       panel.dataset.rendered = 'true';
       if (list.error) {
         panel.appendChild(createEmptyMessage('Données indisponibles pour le moment.'));
-      } else if (!rows.length) {
+      } else if (!stripFfeHeaderRow(rows).length) {
         panel.appendChild(createEmptyMessage('Aucune donnée disponible pour ce club.'));
       } else if (def.type === 'members') {
         panel.appendChild(renderMembersTable(rows));
