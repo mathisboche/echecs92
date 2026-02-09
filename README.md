@@ -59,6 +59,11 @@ define('CDJE92_RECAPTCHA_SITE_KEY', '...');
 define('CDJE92_RECAPTCHA_SECRET_KEY', '...');
 ```
 
+Snippets prêts à l'emploi dans ce dépôt:
+
+- `deploy/ovh/wp-config.recaptcha.snippet.php`
+- `deploy/ovh/htaccess.recaptcha.snippet.conf`
+
 Alternative (si tu préfères des variables d'environnement au niveau Apache): tu peux aussi utiliser `SetEnv`
 dans `.htaccess` au niveau de WordPress:
 
