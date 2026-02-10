@@ -1120,11 +1120,17 @@
       link.href = value;
       link.rel = 'noopener';
       link.target = '_blank';
+      if (options.button) {
+        link.className = `btn btn-secondary club-action${options.buttonClassName ? ` ${options.buttonClassName}` : ''}`;
+      }
       link.textContent = options.label || value;
       valueContainer.appendChild(link);
     } else if (options.type === 'mail') {
       const link = document.createElement('a');
       link.href = `mailto:${value}`;
+      if (options.button) {
+        link.className = `btn btn-secondary club-action${options.buttonClassName ? ` ${options.buttonClassName}` : ''}`;
+      }
       link.textContent = options.label || value;
       valueContainer.appendChild(link);
     } else if (options.type === 'phone') {
@@ -1132,8 +1138,49 @@
       const cleaned = value.replace(/[^\d+]/g, '');
       const link = document.createElement('a');
       link.href = `tel:${cleaned || value}`;
+      if (options.button) {
+        link.className = `btn btn-secondary club-action${options.buttonClassName ? ` ${options.buttonClassName}` : ''}`;
+      }
       link.textContent = formatted;
       valueContainer.appendChild(link);
+    } else if (options.type === 'copy') {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `club-copy${options.className ? ` ${options.className}` : ''}`;
+      button.textContent = value;
+      button.setAttribute('aria-label', options.ariaLabel || `Copier ${label.toLowerCase()}`);
+      button.title = options.title || 'Copier';
+
+      let resetTimer = null;
+      button.addEventListener('click', async () => {
+        const onCopy = options.onCopy;
+        if (typeof onCopy !== 'function') {
+          return;
+        }
+        if (resetTimer) {
+          clearTimeout(resetTimer);
+          resetTimer = null;
+        }
+        button.dataset.copyState = 'copying';
+        try {
+          const ok = await onCopy(value);
+          if (ok) {
+            button.dataset.copyState = 'copied';
+            button.title = 'Copié';
+          } else {
+            button.dataset.copyState = 'error';
+            button.title = 'Copie impossible';
+          }
+        } catch (error) {
+          button.dataset.copyState = 'error';
+          button.title = 'Copie impossible';
+        }
+        resetTimer = window.setTimeout(() => {
+          delete button.dataset.copyState;
+          button.title = options.title || 'Copier';
+        }, 1600);
+      });
+      valueContainer.appendChild(button);
     } else {
       valueContainer.textContent = value;
     }
@@ -2015,13 +2062,55 @@
       }
     });
 
-    shareBlock.appendChild(shareButton);
-    header.appendChild(titleRow);
+	    shareBlock.appendChild(shareButton);
+	    header.appendChild(titleRow);
 
-    const summaryText = club.publics || club.notes;
-    if (summaryText) {
-      const summary = document.createElement('p');
-      summary.className = 'club-sheet__summary';
+      const meta = document.createElement('div');
+      meta.className = 'club-sheet__meta';
+      const tokeniseWords = (value) =>
+        normalise(value || '')
+          .replace(/[^a-z0-9]+/g, ' ')
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean);
+      const cityStopWords = new Set(['sur', 'sous', 'de', 'des', 'du', 'la', 'le', 'les', 'l', 'd', 'au', 'aux']);
+      const nameTokens = new Set(tokeniseWords(club.name));
+      const communeTokens = tokeniseWords(club.commune).filter(
+        (token) => token.length >= 4 && !cityStopWords.has(token)
+      );
+      const communeInName =
+        communeTokens.length && communeTokens.some((token) => nameTokens.has(token));
+      if (club.commune && !communeInName) {
+        meta.appendChild(createChip(club.commune, 'city'));
+      }
+      if (club.totalLicenses) {
+        meta.appendChild(
+          createChip(
+            `${club.totalLicenses} licencié${club.totalLicenses > 1 ? 's' : ''}`,
+            'licenses'
+          )
+        );
+      }
+      if (club.labelFederal) {
+        meta.appendChild(createChip(club.labelFederal, 'label'));
+      }
+      if (club.accesPmr) {
+        const chip = createChip('PMR', 'pmr');
+        const tip = `Accès PMR : ${club.accesPmr}`;
+        chip.dataset.tooltip = tip;
+        chip.setAttribute('aria-label', tip);
+        chip.setAttribute('title', tip);
+        chip.setAttribute('tabindex', '0');
+        meta.appendChild(chip);
+      }
+      if (meta.childElementCount) {
+        header.appendChild(meta);
+      }
+
+	    const summaryText = club.publics || club.notes;
+	    if (summaryText) {
+	      const summary = document.createElement('p');
+	      summary.className = 'club-sheet__summary';
       summary.textContent = summaryText;
       header.appendChild(summary);
     }
@@ -2070,19 +2159,37 @@
 		    }
 	    document.body?.classList.remove('club-ffe-view');
 
-	    const sections = [];
+		    const sections = [];
 
-    const essentials = createSection('Infos essentielles');
-    appendDetail(essentials.list, 'Site internet', club.site, {
-      type: 'link',
-      label: 'Accéder au site du club',
-    });
-    appendDetail(essentials.list, 'Email', club.email, { type: 'mail' });
-    appendDetail(essentials.list, 'Téléphone', club.phone, { type: 'phone' });
-    appendDetail(essentials.list, 'Salle de jeu', club.address || club.salle || club.addressDisplay || '');
-    if (essentials.list.childElementCount) {
-      sections.push(essentials.section);
-    }
+	    const essentials = createSection('Infos essentielles');
+	    appendDetail(essentials.list, 'Site internet', club.site, {
+	      type: 'link',
+	      label: (() => {
+          const raw = (club.site || '').toString().trim();
+          if (!raw) return 'Site web';
+          const candidate = /^https?:\/\//i.test(raw) ? raw : /^www\./i.test(raw) ? `https://${raw}` : raw;
+          try {
+            const parsed = new URL(candidate);
+            return parsed.hostname.replace(/^www\./i, '') || 'Site web';
+          } catch (error) {
+            return 'Site web';
+          }
+        })(),
+        icon: 'site',
+        button: true,
+	    });
+	    appendDetail(essentials.list, 'Email', club.email, { type: 'mail', icon: 'mail', button: true });
+	    appendDetail(essentials.list, 'Téléphone', club.phone, { type: 'phone', icon: 'phone', button: true });
+	    appendDetail(essentials.list, 'Adresse', club.addressDisplay || club.address || club.salle || '', {
+        type: 'copy',
+        icon: 'location',
+        onCopy: copyToClipboard,
+        ariaLabel: 'Copier l’adresse',
+        title: 'Copier l’adresse',
+      });
+	    if (essentials.list.childElementCount) {
+	      sections.push(essentials.section);
+	    }
 
     const highlights = createSection('Infos club');
     if (club.president || club.presidentEmail) {
@@ -2091,17 +2198,13 @@
           type: 'mail',
           label: club.president || club.presidentEmail,
         });
-      } else {
-        appendDetail(highlights.list, 'Président·e', club.president);
-      }
-    }
-    if (club.totalLicenses) {
-      const label = `${club.totalLicenses} licencié${club.totalLicenses > 1 ? 's' : ''}`;
-      appendDetail(highlights.list, 'Total licenciés', label);
-    }
-    if (highlights.list.childElementCount) {
-      sections.push(highlights.section);
-    }
+	      } else {
+	        appendDetail(highlights.list, 'Président·e', club.president);
+	      }
+	    }
+	    if (highlights.list.childElementCount) {
+	      sections.push(highlights.section);
+	    }
 
     const coords = createSection('Coordonnées');
     const normalizeAddress = (value) =>
@@ -2120,15 +2223,13 @@
       club.siege &&
       siegeKey &&
       !isSameLocation
-    ) {
-      appendDetail(coords.list, 'Siège social', club.siege);
-    }
-    appendDetail(coords.list, 'Ville', club.commune);
-    appendDetail(coords.list, 'Fax', club.fax);
-    appendDetail(coords.list, 'Accès PMR', club.accesPmr);
-    if (coords.list.childElementCount) {
-      sections.push(coords.section);
-    }
+	    ) {
+	      appendDetail(coords.list, 'Siège social', club.siege);
+	    }
+	    appendDetail(coords.list, 'Fax', club.fax);
+	    if (coords.list.childElementCount) {
+	      sections.push(coords.section);
+	    }
 
     const activities = createSection('Activités');
     appendDetail(activities.list, 'Publics accueillis', club.publics);
@@ -2156,43 +2257,42 @@
           label: club.contact || club.contactEmail,
         });
       } else {
-        appendDetail(organisation.list, 'Contact', club.contact);
-      }
-    }
-    appendDetail(organisation.list, 'Label fédéral', club.labelFederal);
-    if (club.licenses && (club.licenses.A || club.licenses.B)) {
-      const licenseParts = [];
-      if (club.licenses.A) {
-        licenseParts.push(`Licence A : ${club.licenses.A}`);
-      }
-      if (club.licenses.B) {
-        licenseParts.push(`Licence B : ${club.licenses.B}`);
-      }
-      appendDetail(organisation.list, 'Répartition licences', licenseParts.join(' · '));
-    }
-    if (organisation.list.childElementCount) {
-      sections.push(organisation.section);
-    }
+	        appendDetail(organisation.list, 'Contact', club.contact);
+	      }
+	    }
+	    if (organisation.list.childElementCount) {
+	      sections.push(organisation.section);
+	    }
 
     const competitions = createSection('Compétitions');
     appendDetail(competitions.list, 'Interclubs', club.interclubs);
     appendDetail(competitions.list, 'Interclubs Jeunes', club.interclubsJeunes);
     appendDetail(competitions.list, 'Interclubs Féminins', club.interclubsFeminins);
-    if (competitions.list.childElementCount) {
-      sections.push(competitions.section);
-    }
+	    if (competitions.list.childElementCount) {
+	      sections.push(competitions.section);
+	    }
 
-    const resources = createSection('Ressources');
-    const ficheFfeUrl =
-      club.fiche_ffe ||
-      (club.ffeRef ? `${FFE_URL_BASE}${encodeURIComponent(club.ffeRef)}` : '');
-    appendDetail(resources.list, 'Fiche FFE', ficheFfeUrl, {
-      type: 'link',
-      label: 'Consulter la fiche FFE',
-    });
-    if (resources.list.childElementCount) {
-      sections.push(resources.section);
-    }
+	    const ffeInfo = createSection('FFE');
+	    if (club.licenses && (club.licenses.A || club.licenses.B)) {
+	      const licenseParts = [];
+	      if (club.licenses.A) {
+	        licenseParts.push(`Licence A : ${club.licenses.A}`);
+	      }
+	      if (club.licenses.B) {
+	        licenseParts.push(`Licence B : ${club.licenses.B}`);
+	      }
+	      appendDetail(ffeInfo.list, 'Licences (détail)', licenseParts.join(' · '));
+	    }
+	    const ficheFfeUrl =
+	      club.fiche_ffe ||
+	      (club.ffeRef ? `${FFE_URL_BASE}${encodeURIComponent(club.ffeRef)}` : '');
+	    appendDetail(ffeInfo.list, 'Fiche officielle FFE', ficheFfeUrl, {
+	      type: 'link',
+	      label: 'Ouvrir la fiche officielle sur le site de la FFE',
+	    });
+	    if (ffeInfo.list.childElementCount) {
+	      sections.push(ffeInfo.section);
+	    }
 
     const ffeSection = renderFfeListsSection(club, ffeLists);
     if (ffeSection) {
