@@ -269,6 +269,30 @@
     return { main: str, tag: '' };
   };
 
+  const shouldShowRatingTagTooltip = (tag, options = {}) => {
+    const normalizedTag = (tag || '').toString().trim().toUpperCase();
+    if (!normalizedTag) {
+      return false;
+    }
+    const hint = getRatingTagHint(normalizedTag);
+    if (!hint) {
+      return false;
+    }
+
+    const policy = options.tagTooltip || 'differs';
+    if (policy === 'always') {
+      return true;
+    }
+    if (policy === 'never') {
+      return false;
+    }
+    const ref = (options.tagTooltipRef || '').toString().trim().toUpperCase();
+    if (!ref) {
+      return true;
+    }
+    return normalizedTag !== ref;
+  };
+
   const createRatingCard = (label, value, options = {}) => {
     const { main, tag } = splitRating(value);
     const card = document.createElement('div');
@@ -304,8 +328,8 @@
       const tagNode = document.createElement('span');
       tagNode.className = 'player-rating-tag';
       tagNode.textContent = tag;
-      const hint = getRatingTagHint(tag);
-      if (hint) {
+      if (shouldShowRatingTagTooltip(tag, options)) {
+        const hint = getRatingTagHint(tag);
         tagNode.dataset.tooltip = hint;
         tagNode.setAttribute('tabindex', '0');
         tagNode.setAttribute('role', 'note');
@@ -344,11 +368,13 @@
 
     hero.appendChild(title);
 
+    const standardTag = (splitRating(player.elo || '').tag || '').toString().trim().toUpperCase();
+
     const ratingsGrid = document.createElement('div');
     ratingsGrid.className = 'player-hero__ratings';
-    ratingsGrid.appendChild(createRatingCard('Elo standard', player.elo || '', { primary: true, icon: 'classic' }));
-    ratingsGrid.appendChild(createRatingCard('Rapide', player.rapid || '', { icon: 'rapid' }));
-    ratingsGrid.appendChild(createRatingCard('Blitz', player.blitz || '', { icon: 'blitz' }));
+    ratingsGrid.appendChild(createRatingCard('Elo standard', player.elo || '', { primary: true, icon: 'classic', tagTooltip: 'always' }));
+    ratingsGrid.appendChild(createRatingCard('Rapide', player.rapid || '', { icon: 'rapid', tagTooltip: 'differs', tagTooltipRef: standardTag }));
+    ratingsGrid.appendChild(createRatingCard('Blitz', player.blitz || '', { icon: 'blitz', tagTooltip: 'differs', tagTooltipRef: standardTag }));
     hero.appendChild(ratingsGrid);
 
     const meta = document.createElement('div');
@@ -428,7 +454,7 @@
       const titleLabel = formatTitleLabel(extras.title || '');
       if (titleLabel) {
         titlePrefix.hidden = false;
-        titlePrefix.textContent = titleLabel;
+        titlePrefix.textContent = `${titleLabel} `;
         titlePrefix.setAttribute('aria-label', titleLabel);
       }
 

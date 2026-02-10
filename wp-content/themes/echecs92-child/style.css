@@ -6332,10 +6332,6 @@ body.mathis-mode .mathis-fragment{
 }
 .player-hero__name{
   margin:0;
-  display:flex;
-  flex-wrap:wrap;
-  align-items:baseline;
-  gap:10px;
   font-size:clamp(26px, 3.2vw, 34px);
   line-height:1.12;
   color:#0f172a;
@@ -6511,7 +6507,6 @@ body.mathis-mode .mathis-fragment{
   background:rgba(15,23,42,0.06);
   color:#334155;
   position:relative;
-  cursor:help;
 }
 .player-rating-tag[data-tooltip]::after{
   content:attr(data-tooltip);

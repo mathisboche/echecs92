@@ -2849,34 +2849,41 @@
     }
     document.body?.classList.remove('club-ffe-view');
 
-	    const sections = [];
+		    const sections = [];
 
-	    const essentials = createSection('Infos essentielles');
-	    appendDetail(essentials.list, 'Site internet', club.site, {
-	      type: 'link',
-	      label: (() => {
-          const raw = (club.site || '').toString().trim();
-          if (!raw) return 'Site web';
-          const candidate = /^https?:\/\//i.test(raw) ? raw : /^www\./i.test(raw) ? `https://${raw}` : raw;
-          try {
-            const parsed = new URL(candidate);
-            return parsed.hostname.replace(/^www\./i, '') || 'Site web';
-          } catch (error) {
-            return 'Site web';
-          }
-        })(),
-        icon: 'site',
-        button: true,
-	    });
-	    appendDetail(essentials.list, 'Email', club.email, { type: 'mail', icon: 'mail', button: true });
-	    appendDetail(essentials.list, 'Téléphone', club.phone, { type: 'phone', icon: 'phone', button: true });
-	    appendDetail(essentials.list, 'Adresse', club.addressDisplay || club.address || club.salle || '', {
-        type: 'copy',
-        icon: 'location',
-        onCopy: copyToClipboard,
-        ariaLabel: 'Copier l’adresse',
-        title: 'Copier l’adresse',
-      });
+		    const essentials = createSection('Infos essentielles');
+		    const siteUrl = (() => {
+        const raw = (club.site || '').toString().trim();
+        if (!raw) return '';
+        if (/^https?:\/\//i.test(raw)) return raw;
+        if (/^www\./i.test(raw)) return `https://${raw}`;
+        if (/^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}(?:\/\S*)?$/i.test(raw)) return `https://${raw}`;
+        return raw;
+      })();
+		    const siteLabel = (() => {
+        if (!siteUrl) return 'Site web';
+        try {
+          const parsed = new URL(siteUrl);
+          return parsed.hostname.replace(/^www\./i, '') || 'Site web';
+        } catch (error) {
+          return 'Site web';
+        }
+      })();
+		    appendDetail(essentials.list, 'Site internet', siteUrl, {
+		      type: 'link',
+		      label: siteLabel,
+	        icon: 'site',
+	        button: true,
+		    });
+		    appendDetail(essentials.list, 'Email', club.email, { type: 'mail', icon: 'mail', button: true });
+		    appendDetail(essentials.list, 'Téléphone', club.phone, { type: 'phone', icon: 'phone', button: true });
+		    appendDetail(essentials.list, 'Adresse', club.addressDisplay || club.address || club.salle || '', {
+	        type: 'copy',
+	        icon: 'location',
+	        onCopy: copyToClipboard,
+	        ariaLabel: "Copier l'adresse",
+	        title: "Copier l'adresse",
+	      });
 	    if (essentials.list.childElementCount) {
 	      sections.push(essentials.section);
 	    }
@@ -2962,6 +2969,11 @@
 	      sections.push(competitions.section);
 	    }
 
+	    const ffeSection = renderFfeListsSection(club, ffeLists);
+	    if (ffeSection) {
+	      sections.push(ffeSection);
+	    }
+
 	    const ffeInfo = createSection('FFE');
 	    if (club.licenses && (club.licenses.A || club.licenses.B)) {
 	      const licenseParts = [];
@@ -2983,11 +2995,6 @@
 	    if (ffeInfo.list.childElementCount) {
 	      sections.push(ffeInfo.section);
 	    }
-
-    const ffeSection = renderFfeListsSection(club, ffeLists);
-    if (ffeSection) {
-      sections.push(ffeSection);
-    }
 
     sections.forEach((section) => sheet.appendChild(section));
 
