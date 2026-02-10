@@ -3367,6 +3367,8 @@
   const MATHIS_REVEAL_DELAY = 650;
   let mathisSequenceActive = false;
   let mathisEggPending = false;
+  let mathisEggCache = null;
+  let mathisEggPrefetchPromise = null;
   let mathisCollapsedTargets = [];
   let mathisExitStarted = false;
   let mathisFragmentsPrepared = false;
@@ -3395,7 +3397,42 @@
     if (!payload || typeof payload.url !== 'string') {
       throw new Error('Invalid Mathis egg API payload');
     }
-    return payload.url;
+    const expiresIn = Number.isFinite(payload.expiresIn) ? payload.expiresIn : 60;
+    return {
+      url: payload.url,
+      expiresAt: Date.now() + Math.max(1, expiresIn) * 1000,
+    };
+  };
+
+  const getCachedMathisEggUrl = () => {
+    if (!mathisEggCache) {
+      return '';
+    }
+    // Avoid opening a token close to expiry (navigation + redirects can take time).
+    if (Date.now() > mathisEggCache.expiresAt - 2000) {
+      mathisEggCache = null;
+      return '';
+    }
+    return mathisEggCache.url;
+  };
+
+  const prefetchMathisEggUrl = () => {
+    const cached = getCachedMathisEggUrl();
+    if (cached) {
+      return Promise.resolve(cached);
+    }
+    if (mathisEggPrefetchPromise) {
+      return mathisEggPrefetchPromise;
+    }
+    mathisEggPrefetchPromise = requestMathisEggUrl()
+      .then((payload) => {
+        mathisEggCache = payload;
+        return payload.url;
+      })
+      .finally(() => {
+        mathisEggPrefetchPromise = null;
+      });
+    return mathisEggPrefetchPromise;
   };
 
   const ensureMathisEggHandler = (anchor) => {
@@ -3416,6 +3453,25 @@
       }
       mathisEggPending = true;
 
+      const cachedUrl = getCachedMathisEggUrl();
+      if (cachedUrl) {
+        // Consume the cached token locally (it is one-time on the server anyway).
+        mathisEggCache = null;
+        const popup = window.open(cachedUrl, '_blank', 'noopener');
+        if (popup) {
+          try {
+            popup.opener = null;
+          } catch (error) {
+            // noop
+          }
+        } else {
+          window.location.href = cachedUrl;
+        }
+        mathisEggPending = false;
+        return;
+      }
+
+      // Fallback: open a temporary tab immediately (popup-safe), then navigate once we have a fresh token.
       const popup = window.open('about:blank', '_blank', 'noopener');
       if (popup) {
         try {
@@ -3425,7 +3481,7 @@
         }
       }
 
-      requestMathisEggUrl()
+      prefetchMathisEggUrl()
         .then((url) => {
           if (popup) {
             popup.location.href = url;
@@ -4129,6 +4185,10 @@
   const startMathisSequence = (overlay) => {
     mathisSequenceActive = true;
     mathisExitStarted = false;
+    mathisEggCache = null;
+    prefetchMathisEggUrl().catch(() => {
+      // If the prefetch fails we'll fallback to the popup flow on click.
+    });
     resetMathisRectCache();
     const mathisPerf = getMathisPerfProfile();
     prepareMathisFragments(overlay, mathisPerf);
