@@ -306,8 +306,10 @@
       tagNode.textContent = tag;
       const hint = getRatingTagHint(tag);
       if (hint) {
-        tagNode.title = hint;
-        tagNode.setAttribute('aria-label', hint);
+        tagNode.dataset.tooltip = hint;
+        tagNode.setAttribute('tabindex', '0');
+        tagNode.setAttribute('role', 'note');
+        tagNode.setAttribute('aria-label', `${tag}: ${hint}`);
       }
       valueRow.appendChild(tagNode);
     }

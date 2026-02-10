@@ -6255,18 +6255,14 @@ body.mathis-mode .mathis-fragment{
   letter-spacing:-0.01em;
 }
 .player-hero__title-prefix{
-  display:inline-flex;
-  align-items:center;
-  height:26px;
-  padding:0 10px;
-  border-radius:999px;
-  background:rgba(15,23,42,0.05);
-  border:1px solid rgba(15,23,42,0.12);
-  font-size:13px;
-  font-weight:800;
-  letter-spacing:0;
-  text-transform:none;
-  color:#0f172a;
+  display:inline;
+  padding:0;
+  border:none;
+  background:transparent;
+  border-radius:0;
+  height:auto;
+  font:inherit;
+  color:inherit;
 }
 .player-hero__meta{
   display:flex;
@@ -6427,6 +6423,39 @@ body.mathis-mode .mathis-fragment{
   text-transform:uppercase;
   background:rgba(15,23,42,0.06);
   color:#334155;
+  position:relative;
+  cursor:help;
+}
+.player-rating-tag[data-tooltip]::after{
+  content:attr(data-tooltip);
+  position:absolute;
+  left:50%;
+  top:calc(100% + 8px);
+  transform:translateX(-50%);
+  background:#0f172a;
+  color:#ffffff;
+  padding:6px 8px;
+  border-radius:10px;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:0;
+  text-transform:none;
+  white-space:normal;
+  width:max-content;
+  max-width:min(260px, 70vw);
+  text-align:center;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .15s ease;
+  z-index:30;
+}
+.player-rating-tag[data-tooltip]:hover::after,
+.player-rating-tag[data-tooltip]:focus::after{
+  opacity:1;
+}
+.player-rating-tag:focus{
+  outline:2px solid rgba(11,46,76,0.35);
+  outline-offset:2px;
 }
 .player-stat--primary{
   grid-column:1/-1;
