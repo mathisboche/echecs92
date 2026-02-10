@@ -755,6 +755,133 @@ function cdje92_rest_get_ffe_player( WP_REST_Request $request ) {
     return rest_ensure_response( $payload );
 }
 
+/* ---------- Home Stats (92) ---------- */
+
+function cdje92_home_stats_load_json_file( $path ) {
+    if ( ! is_string( $path ) || $path === '' || ! file_exists( $path ) ) {
+        return null;
+    }
+
+    $raw = file_get_contents( $path );
+    if ( ! is_string( $raw ) || $raw === '' ) {
+        return null;
+    }
+
+    $decoded = json_decode( $raw, true );
+    if ( json_last_error() !== JSON_ERROR_NONE ) {
+        return null;
+    }
+
+    return $decoded;
+}
+
+function cdje92_home_stats_safe_int( $value ) {
+    if ( is_int( $value ) ) {
+        return $value;
+    }
+    if ( is_float( $value ) ) {
+        return (int) round( $value );
+    }
+    if ( is_string( $value ) && $value !== '' ) {
+        $digits = preg_replace( '/[^\d]+/', '', $value );
+        return $digits !== '' ? (int) $digits : 0;
+    }
+    return 0;
+}
+
+function cdje92_home_stats_compute_staff_count_for_department( $clubs ) {
+    if ( ! is_array( $clubs ) ) {
+        return 0;
+    }
+
+    $details_dir = trailingslashit( get_stylesheet_directory() ) . 'assets/data/clubs-france-ffe-details';
+    $categories = [ 'arbitrage', 'animation', 'entrainement', 'initiation' ];
+    $people = [];
+
+    foreach ( $clubs as $club ) {
+        if ( ! is_array( $club ) ) {
+            continue;
+        }
+        $ref = trim( (string) ( $club['ffe_ref'] ?? '' ) );
+        if ( $ref === '' ) {
+            continue;
+        }
+        $detail_path = trailingslashit( $details_dir ) . $ref . '.json';
+        $detail = cdje92_home_stats_load_json_file( $detail_path );
+        if ( ! is_array( $detail ) ) {
+            continue;
+        }
+
+        foreach ( $categories as $category ) {
+            $rows = ( $detail[ $category ] ?? [] )['rows'] ?? null;
+            if ( ! is_array( $rows ) ) {
+                continue;
+            }
+            foreach ( $rows as $row ) {
+                if ( ! is_array( $row ) ) {
+                    continue;
+                }
+                $nr_ffe = trim( (string) ( $row['nrFfe'] ?? '' ) );
+                if ( $nr_ffe === 'NrFFE' ) {
+                    continue; // header row
+                }
+                $player_id = trim( (string) ( $row['playerId'] ?? '' ) );
+                $name = trim( (string) ( $row['name'] ?? '' ) );
+                if ( $player_id === '' && $nr_ffe === '' && $name === '' ) {
+                    continue;
+                }
+                $key = $player_id !== '' ? 'id:' . $player_id : ( $nr_ffe !== '' ? 'nr:' . $nr_ffe : 'name:' . strtolower( $name ) );
+                $people[ $key ] = true;
+            }
+        }
+    }
+
+    return count( $people );
+}
+
+function cdje92_rest_get_home_stats_92( WP_REST_Request $request ) {
+    $data_dir = trailingslashit( trailingslashit( get_stylesheet_directory() ) . 'assets/data' );
+    $manifest_path = $data_dir . 'clubs-france.json';
+    $version = file_exists( $manifest_path ) ? (int) filemtime( $manifest_path ) : 0;
+
+    $cache_key = 'cdje92_home_stats_92';
+    $cached = get_transient( $cache_key );
+    if ( is_array( $cached ) && (int) ( $cached['version'] ?? 0 ) === $version && isset( $cached['data'] ) ) {
+        return rest_ensure_response( $cached['data'] );
+    }
+
+    $clubs = cdje92_home_stats_load_json_file( $data_dir . 'clubs-france/92.json' );
+    if ( ! is_array( $clubs ) ) {
+        $clubs = cdje92_home_stats_load_json_file( $data_dir . 'clubs.json' );
+    }
+    if ( ! is_array( $clubs ) ) {
+        $clubs = [];
+    }
+
+    $club_count = count( $clubs );
+
+    $licenses_total = 0;
+    foreach ( $clubs as $club ) {
+        if ( ! is_array( $club ) ) {
+            continue;
+        }
+        $licenses_total += cdje92_home_stats_safe_int( $club['licences_a'] ?? ( ( $club['licenses'] ?? [] )['A'] ?? 0 ) );
+        $licenses_total += cdje92_home_stats_safe_int( $club['licences_b'] ?? ( ( $club['licenses'] ?? [] )['B'] ?? 0 ) );
+    }
+
+    $staff_count = cdje92_home_stats_compute_staff_count_for_department( $clubs );
+
+    $payload = [
+        'clubs_affilies' => $club_count,
+        'licencies' => $licenses_total,
+        'arbitres_formateurs' => $staff_count,
+    ];
+
+    set_transient( $cache_key, [ 'version' => $version, 'data' => $payload ], DAY_IN_SECONDS );
+
+    return rest_ensure_response( $payload );
+}
+
 add_action( 'rest_api_init', function () {
     register_rest_route( 'cdje92/v1', '/ffe-player', [
         'methods' => WP_REST_Server::READABLE,
@@ -771,6 +898,12 @@ add_action( 'rest_api_init', function () {
                 },
             ],
         ],
+    ] );
+
+    register_rest_route( 'cdje92/v1', '/home-stats-92', [
+        'methods' => WP_REST_Server::READABLE,
+        'callback' => 'cdje92_rest_get_home_stats_92',
+        'permission_callback' => '__return_true',
     ] );
 } );
 
