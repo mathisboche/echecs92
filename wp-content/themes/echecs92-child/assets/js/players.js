@@ -101,7 +101,9 @@
   };
 
   const setStatus = (message, tone) => {
-    statusNode.textContent = message || '';
+    const text = (message || '').toString();
+    statusNode.textContent = text;
+    statusNode.hidden = !text;
     if (tone) {
       statusNode.dataset.tone = tone;
     } else {
@@ -483,7 +485,7 @@
     const CLUB = colIndex('club', 2);
     const ELO = colIndex('elo', 3);
 
-    rows.slice(0, 12).forEach((entry, idx) => {
+    rows.slice(0, 10).forEach((entry, idx) => {
       if (!Array.isArray(entry)) {
         return;
       }

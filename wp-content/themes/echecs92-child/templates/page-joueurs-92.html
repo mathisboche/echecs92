@@ -2,12 +2,17 @@
 
 <!-- wp:html -->
 <div
-  class="clubs-page legal players-page"
+  class="clubs-page legal players-page players-page--92 clubs-page--has-scope-banner"
   data-player-detail-base="/joueur/"
-  data-player-index-url="/wp-content/themes/echecs92-child/assets/data/ffe-players/search-index.json"
-  data-player-top-url="/wp-content/themes/echecs92-child/assets/data/ffe-players/top-elo.json"
+  data-player-index-url="/wp-content/themes/echecs92-child/assets/data/ffe-players/search-index-92.json"
+  data-player-top-url="/wp-content/themes/echecs92-child/assets/data/ffe-players/top-elo-92.json"
 >
-  <h1>Joueurs</h1>
+  <div class="clubs-scope-banner" role="note" aria-label="Recherche de joueurs en France">
+    <span class="clubs-scope-banner__text">Joueurs partout en France ?</span>
+    <a class="clubs-scope-banner__link" href="/joueurs">Voir</a>
+  </div>
+
+  <h1>Joueurs du 92</h1>
 
   <section class="clubs-search-block players-search-block" role="search" aria-label="Rechercher un joueur">
     <p class="clubs-search-panel__title">Rechercher un joueur</p>
@@ -56,3 +61,4 @@
 <!-- /wp:html -->
 
 <!-- wp:template-part {"slug":"footer","tagName":"footer","theme":"echecs92-child"} /-->
+

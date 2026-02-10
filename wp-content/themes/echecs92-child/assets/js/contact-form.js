@@ -1,4 +1,61 @@
 (() => {
+  const DRAFT_KEY = 'cdje92_contact_form_draft_v1';
+
+  const getStorage = () => {
+    try {
+      return window.sessionStorage;
+    } catch (_err) {
+      return null;
+    }
+  };
+
+  const storage = getStorage();
+
+  const readDraft = () => {
+    if (!storage) {
+      return null;
+    }
+    try {
+      const raw = storage.getItem(DRAFT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_err) {
+      return null;
+    }
+  };
+
+  const writeDraft = (draft) => {
+    if (!storage) {
+      return;
+    }
+    try {
+      storage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch (_err) {
+      // Ignore quota / blocked storage.
+    }
+  };
+
+  const clearDraft = () => {
+    if (!storage) {
+      return;
+    }
+    try {
+      storage.removeItem(DRAFT_KEY);
+    } catch (_err) {
+      // Ignore blocked storage.
+    }
+  };
+
+  // If we landed on the success state, we can safely drop the stored draft.
+  try {
+    const params = new URLSearchParams(window.location ? window.location.search : '');
+    const status = (params.get('contact_status') || '').toLowerCase();
+    if (status === 'success') {
+      clearDraft();
+    }
+  } catch (_err) {
+    // noop
+  }
+
   const form = document.getElementById('cdje92-contact-form');
   if (!form) {
     return;
@@ -13,7 +70,89 @@
   const submitButton = form.querySelector('.contact-form__submit');
   const wrapper = form.closest('.cdje92-contact-form-wrapper') || form.parentElement;
   const emailInput = form.querySelector('#cdje92-contact-email');
+  const clubInput = form.querySelector('#cdje92-contact-club');
   const messageInput = form.querySelector('#cdje92-contact-message');
+
+  // Persist user inputs across refresh (session scope).
+  let saveDraftTimer = null;
+
+  const getValue = (el) => (el && typeof el.value === 'string' ? el.value : '');
+
+  const captureDraft = () => ({
+    email: getValue(emailInput),
+    club: getValue(clubInput),
+    message: getValue(messageInput),
+  });
+
+  const isEmptyDraft = (draft) => {
+    if (!draft || typeof draft !== 'object') {
+      return true;
+    }
+    const email = typeof draft.email === 'string' ? draft.email.trim() : '';
+    const club = typeof draft.club === 'string' ? draft.club.trim() : '';
+    const message = typeof draft.message === 'string' ? draft.message.trim() : '';
+    return email === '' && club === '' && message === '';
+  };
+
+  const saveDraftNow = () => {
+    const draft = captureDraft();
+    if (isEmptyDraft(draft)) {
+      clearDraft();
+      return;
+    }
+    writeDraft(draft);
+  };
+
+  const scheduleDraftSave = () => {
+    if (!storage) {
+      return;
+    }
+    if (saveDraftTimer) {
+      window.clearTimeout(saveDraftTimer);
+    }
+    saveDraftTimer = window.setTimeout(() => {
+      saveDraftTimer = null;
+      saveDraftNow();
+    }, 200);
+  };
+
+  const restoreDraft = () => {
+    const draft = readDraft();
+    if (!draft || typeof draft !== 'object') {
+      return;
+    }
+
+    const restoreIfEmpty = (el, value) => {
+      if (!el || typeof value !== 'string') {
+        return;
+      }
+      if (el.value && el.value.trim() !== '') {
+        return;
+      }
+      const next = value.trim();
+      if (next === '') {
+        return;
+      }
+      el.value = value;
+    };
+
+    restoreIfEmpty(emailInput, draft.email);
+    restoreIfEmpty(clubInput, draft.club);
+    restoreIfEmpty(messageInput, draft.message);
+  };
+
+  restoreDraft();
+
+  if (emailInput) {
+    emailInput.addEventListener('input', scheduleDraftSave);
+  }
+  if (clubInput) {
+    clubInput.addEventListener('input', scheduleDraftSave);
+  }
+  if (messageInput) {
+    messageInput.addEventListener('input', scheduleDraftSave);
+  }
+  window.addEventListener('pagehide', saveDraftNow);
 
   const ensureNoticeEl = () => {
     if (!wrapper) {

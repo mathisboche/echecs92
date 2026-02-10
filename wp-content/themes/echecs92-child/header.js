@@ -491,6 +491,16 @@ document.addEventListener('DOMContentLoaded', () => {
     return path.startsWith('/actualite/');
   };
 
+  const isPlayersSectionPath = (path) => {
+    if (!path) {
+      return false;
+    }
+    if (path === '/joueurs' || path === '/joueurs-92') {
+      return true;
+    }
+    return path.startsWith('/joueur/');
+  };
+
   const markCurrentLinks = (links) => {
     if (!links.length) {
       return;
@@ -505,6 +515,8 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (!isCurrent && matchGroup === 'comite' && isComiteSectionPath(currentPath)) {
         isCurrent = true;
       } else if (!isCurrent && matchGroup === 'actualites' && isActualitesSectionPath(currentPath)) {
+        isCurrent = true;
+      } else if (!isCurrent && matchGroup === 'joueurs' && isPlayersSectionPath(currentPath)) {
         isCurrent = true;
       }
       link.classList.toggle('is-current', isCurrent);

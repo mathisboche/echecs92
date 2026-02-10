@@ -135,6 +135,31 @@
 
   updateBackLink();
 
+  const toInternalPath = (value) => {
+    const raw = (value || '').toString().trim();
+    if (!raw) {
+      return '';
+    }
+    try {
+      const url = new URL(raw, window.location.origin);
+      if (url.origin !== window.location.origin) {
+        return '';
+      }
+      return `${url.pathname}${url.search}${url.hash}`;
+    } catch (error) {
+      return raw.startsWith('/') ? raw : '';
+    }
+  };
+
+  const getClubHrefFromBackLink = () => {
+    if (!backLink) {
+      return '';
+    }
+    const raw = backLink.getAttribute('href') || backLink.href || '';
+    const path = toInternalPath(raw);
+    return getBackKindForPath(path) === 'club' ? path : '';
+  };
+
   const fetchJson = (url) =>
     fetch(url, { headers: { Accept: 'application/json' } }).then((response) => {
       if (!response.ok) {
@@ -181,6 +206,27 @@
       return '';
     }
     return raw.toUpperCase();
+  };
+
+  const slugify = (value) => {
+    const raw = normaliseDashes(value || '').toString().trim();
+    if (!raw) {
+      return '';
+    }
+    return raw
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  };
+
+  const buildClubDetailHrefFromName = (clubName) => {
+    const slug = slugify(clubName);
+    if (!slug) {
+      return '';
+    }
+    return `/club/${encodeURIComponent(slug)}/`;
   };
 
   const derivePlayerIdFromPath = () => {
@@ -267,8 +313,12 @@
       return false;
     }
 
-    const chip = document.createElement('span');
-    chip.className = 'player-chip';
+    const href = (options.href || '').toString().trim();
+    const chip = document.createElement(href ? 'a' : 'span');
+    chip.className = href ? 'player-chip player-chip--link' : 'player-chip';
+    if (href) {
+      chip.href = href;
+    }
 
     const labelNode = document.createElement('span');
     labelNode.className = 'player-chip__label';
@@ -427,7 +477,10 @@
     if (formattedCategory.label) {
       appendMetaChip(meta, 'Catégorie', formattedCategory.label, { hint: formattedCategory.hint });
     }
-    appendMetaChip(meta, 'Club', player.club || '');
+    const clubName = player.club || '';
+    appendMetaChip(meta, 'Club', clubName, {
+      href: getClubHrefFromBackLink() || buildClubDetailHrefFromName(clubName),
+    });
 
     if (meta.childElementCount) {
       hero.appendChild(meta);

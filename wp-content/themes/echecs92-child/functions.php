@@ -572,10 +572,11 @@ add_action('init', function () {
     add_rewrite_rule('^club/([^/]+)/ffe/?$', 'index.php?pagename=club&club_commune=$matches[1]', 'top');
     add_rewrite_rule('^club-france/([^/]+)/ffe/?$', 'index.php?pagename=club&club_commune=$matches[1]', 'top');
 
+    add_rewrite_rule('^joueurs-92/?$', 'index.php?pagename=joueurs-92', 'top');
     add_rewrite_rule('^joueurs/?$', 'index.php?pagename=joueurs', 'top');
     add_rewrite_rule('^joueur/([^/]+)/?$', 'index.php?pagename=joueur&ffe_player=$matches[1]', 'top');
 
-    $rewrite_version = '2026-02-09';
+    $rewrite_version = '2026-02-10';
     if (is_admin() && current_user_can('manage_options') && get_option('cdje92_rewrite_rules_version') !== $rewrite_version) {
         flush_rewrite_rules(false);
         update_option('cdje92_rewrite_rules_version', $rewrite_version);
@@ -595,6 +596,10 @@ add_action('init', function () {
         [
             'slug' => 'joueurs',
             'title' => 'Joueurs',
+        ],
+        [
+            'slug' => 'joueurs-92',
+            'title' => 'Joueurs du 92',
         ],
     ];
 
