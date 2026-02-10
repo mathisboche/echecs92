@@ -196,27 +196,27 @@
     return fetchJson(url).catch(() => null);
   };
 
-  const formatTitlePrefix = (value) => {
+  const formatTitleLabel = (value) => {
     const raw = (value || '').toString().replace(/\s+/g, ' ').trim();
     if (!raw) {
-      return { short: '', long: '' };
+      return '';
     }
-    const key = raw.toLowerCase();
-    const map = [
-      { rx: /grand\s+ma[îi]tre\s+f[ée]minin/i, short: 'WGM', long: 'Grand Maître Féminin' },
-      { rx: /grand\s+ma[îi]tre/i, short: 'GM', long: 'Grand Maître' },
-      { rx: /ma[îi]tre\s+international\s+f[ée]minin/i, short: 'WIM', long: 'Maître International Féminin' },
-      { rx: /ma[îi]tre\s+international/i, short: 'IM', long: 'Maître International' },
-      { rx: /ma[îi]tre\s+fide\s+f[ée]minin/i, short: 'WFM', long: 'Maître FIDE Féminin' },
-      { rx: /ma[îi]tre\s+fide/i, short: 'FM', long: 'Maître FIDE' },
-      { rx: /candidat\s+ma[îi]tre\s+f[ée]minin/i, short: 'WCM', long: 'Candidat Maître Féminin' },
-      { rx: /candidat\s+ma[îi]tre/i, short: 'CM', long: 'Candidat Maître' },
-    ];
-    const entry = map.find((item) => item.rx.test(key)) || null;
-    if (entry) {
-      return { short: entry.short, long: entry.long };
+    return raw;
+  };
+
+  const getRatingTagHint = (value) => {
+    const tag = (value || '').toString().trim().toUpperCase();
+    if (!tag) {
+      return '';
     }
-    return { short: raw, long: raw };
+    const mapping = {
+      F: 'Classement FIDE (international)',
+      N: 'Classement national (FFE)',
+      E: 'Classement estimé',
+      R: 'Classement rapide (FFE)',
+      S: 'Sans classement',
+    };
+    return mapping[tag] || '';
   };
 
   const appendMetaChip = (host, label, value, options = {}) => {
@@ -304,6 +304,11 @@
       const tagNode = document.createElement('span');
       tagNode.className = 'player-rating-tag';
       tagNode.textContent = tag;
+      const hint = getRatingTagHint(tag);
+      if (hint) {
+        tagNode.title = hint;
+        tagNode.setAttribute('aria-label', hint);
+      }
       valueRow.appendChild(tagNode);
     }
 
@@ -339,7 +344,7 @@
 
     const ratingsGrid = document.createElement('div');
     ratingsGrid.className = 'player-hero__ratings';
-    ratingsGrid.appendChild(createRatingCard('Elo (lent)', player.elo || '', { primary: true, icon: 'classic' }));
+    ratingsGrid.appendChild(createRatingCard('Elo (classique)', player.elo || '', { primary: true, icon: 'classic' }));
     ratingsGrid.appendChild(createRatingCard('Rapide', player.rapid || '', { icon: 'rapid' }));
     ratingsGrid.appendChild(createRatingCard('Blitz', player.blitz || '', { icon: 'blitz' }));
     hero.appendChild(ratingsGrid);
@@ -357,11 +362,6 @@
       hero.appendChild(meta);
     }
 
-    const rolesWrap = document.createElement('div');
-    rolesWrap.className = 'player-hero__roles';
-    rolesWrap.hidden = true;
-    hero.appendChild(rolesWrap);
-
     sheet.appendChild(hero);
 
     const officialUrl = buildOfficialPlayerUrl(player.id || '');
@@ -374,7 +374,7 @@
 
     const appendExtraItem = (label, value, options = {}) => {
       if (value == null || value === '') {
-        return false;
+        return null;
       }
 
       const item = document.createElement('li');
@@ -401,11 +401,11 @@
 
       item.appendChild(valueNode);
       extraList.appendChild(item);
-      return true;
+      return item;
     };
 
-    appendExtraItem('Licence', formatLicence(player.aff || ''));
-    appendExtraItem('N° FFE', player.nrFfe || '');
+    const licenceItem = appendExtraItem('Licence', formatLicence(player.aff || ''));
+    const nrFfeItem = appendExtraItem('N° FFE', player.nrFfe || '');
     appendExtraItem('Fiche FFE', officialUrl, { type: 'link', label: 'Ouvrir sur echecs.asso.fr' });
 
     if (extraList.childElementCount) {
@@ -423,28 +423,43 @@
         return;
       }
 
-      const formatted = formatTitlePrefix(extras.title || '');
-      if (formatted.short) {
+      const titleLabel = formatTitleLabel(extras.title || '');
+      if (titleLabel) {
         titlePrefix.hidden = false;
-        titlePrefix.textContent = formatted.short;
-        titlePrefix.title = formatted.long || formatted.short;
-        titlePrefix.setAttribute('aria-label', formatted.long || formatted.short);
+        titlePrefix.textContent = titleLabel;
+        titlePrefix.setAttribute('aria-label', titleLabel);
       }
 
       const roles = Array.isArray(extras.roles) ? extras.roles.filter(Boolean) : [];
       if (roles.length) {
-        rolesWrap.hidden = false;
-        rolesWrap.innerHTML = '';
-        roles.forEach((label) => {
-          const badge = document.createElement('span');
-          badge.className = 'player-badge';
-          badge.textContent = label;
-          rolesWrap.appendChild(badge);
-        });
+        const item = document.createElement('li');
+        item.className = 'player-extra__item';
+
+        const labelNode = document.createElement('span');
+        labelNode.className = 'player-extra__label';
+        labelNode.textContent = 'Fonctions';
+        item.appendChild(labelNode);
+
+        const valueNode = document.createElement('span');
+        valueNode.className = 'player-extra__value';
+        valueNode.textContent = roles.join(', ');
+        item.appendChild(valueNode);
+
+        if (nrFfeItem && nrFfeItem.parentNode === extraList) {
+          extraList.insertBefore(item, nrFfeItem);
+        } else if (licenceItem && licenceItem.parentNode === extraList) {
+          if (licenceItem.nextSibling) {
+            extraList.insertBefore(item, licenceItem.nextSibling);
+          } else {
+            extraList.appendChild(item);
+          }
+        } else {
+          extraList.insertBefore(item, extraList.firstChild);
+        }
       }
 
       if (playerName) {
-        const docPrefix = formatted.short ? `${formatted.short} ` : '';
+        const docPrefix = titleLabel ? `${titleLabel} ` : '';
         document.title = `${docPrefix}${playerName} - Joueur`;
       }
     });
