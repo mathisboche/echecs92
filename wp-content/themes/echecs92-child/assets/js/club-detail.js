@@ -2298,15 +2298,12 @@
 	    const ficheFfeUrl =
 	      club.fiche_ffe ||
 	      (club.ffeRef ? `${FFE_URL_BASE}${encodeURIComponent(club.ffeRef)}` : '');
-	    appendDetail(ffeInfo.list, 'Fiche officielle FFE', ficheFfeUrl, {
-	      type: 'link',
-	      label: 'Ouvrir la fiche officielle sur le site de la FFE',
-	    });
-	    if (ffeInfo.list.childElementCount) {
-	      sections.push(ffeInfo.section);
-	    }
+		    appendDetail(ffeInfo.list, 'Fiche officielle FFE', ficheFfeUrl, {
+		      type: 'link',
+		      label: 'Ouvrir la fiche officielle sur le site de la FFE',
+		    });
 
-    sections.forEach((section) => sheet.appendChild(section));
+	    sections.forEach((section) => sheet.appendChild(section));
 
     detailContainer.appendChild(sheet);
 
@@ -2345,14 +2342,18 @@
 	    directionsButton.hidden = true;
 	    mapSection.appendChild(directionsButton);
 
-    detailContainer.appendChild(mapSection);
+	    detailContainer.appendChild(mapSection);
 
-	    renderClubMap(club, mapContainer, mapStatus, directionsButton);
+		    renderClubMap(club, mapContainer, mapStatus, directionsButton);
 
-	    if (club.name) {
-	      document.title = `${normaliseDashes(club.name)} - Clubs du 92`;
-	    }
-	  };
+		    if (ffeInfo.list.childElementCount) {
+		      detailContainer.appendChild(ffeInfo.section);
+		    }
+
+		    if (club.name) {
+		      document.title = `${normaliseDashes(club.name)} - Clubs du 92`;
+		    }
+		  };
 
   const updateLicenseTotals = (club) => {
     const licenseA = Number.parseInt(club?.licenses?.A, 10);
