@@ -448,10 +448,13 @@
     const title = document.createElement('h1');
     title.className = 'player-hero__name';
 
-    const titlePrefix = document.createElement('span');
-    titlePrefix.className = 'player-hero__title-prefix';
-    titlePrefix.hidden = true;
-    title.appendChild(titlePrefix);
+	    const titlePrefix = document.createElement('span');
+	    titlePrefix.className = 'player-hero__title-prefix';
+	    titlePrefix.hidden = true;
+	    const titlePrefixText = document.createElement('span');
+	    titlePrefixText.className = 'player-hero__title-prefix-text';
+	    titlePrefix.appendChild(titlePrefixText);
+	    title.appendChild(titlePrefix);
 
     const nameNode = document.createElement('span');
     nameNode.className = 'player-hero__name-text';
@@ -547,14 +550,14 @@
         return;
       }
 
-      const formattedTitle = formatTitlePrefix(extras.title || '');
-      if (formattedTitle.short) {
-        titlePrefix.hidden = false;
-        titlePrefix.textContent = formattedTitle.short;
-        titlePrefix.dataset.tooltip = formattedTitle.long || formattedTitle.short;
-        titlePrefix.setAttribute('tabindex', '0');
-        titlePrefix.setAttribute('role', 'note');
-        titlePrefix.setAttribute('aria-label', formattedTitle.long || formattedTitle.short);
+	      const formattedTitle = formatTitlePrefix(extras.title || '');
+	      if (formattedTitle.short) {
+	        titlePrefix.hidden = false;
+	        titlePrefixText.textContent = formattedTitle.short;
+	        titlePrefix.dataset.tooltip = formattedTitle.long || formattedTitle.short;
+	        titlePrefix.setAttribute('tabindex', '0');
+	        titlePrefix.setAttribute('role', 'note');
+	        titlePrefix.setAttribute('aria-label', formattedTitle.long || formattedTitle.short);
 
         const formatted = formatNameGivenFirst(playerName);
         if (formatted) {
