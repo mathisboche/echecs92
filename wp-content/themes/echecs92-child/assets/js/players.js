@@ -74,7 +74,8 @@
 
   let currentMatches = [];
   let visibleCount = VISIBLE_DEFAULT;
-  let lastRenderedQuery = '';
+  let activeSearchToken = 0;
+  let indexPrefetchStarted = false;
 
   const getDetailBasePath = () => {
     const raw = detailBase || DEFAULT_DETAIL_BASE;
@@ -106,6 +107,22 @@
     } else {
       delete statusNode.dataset.tone;
     }
+  };
+
+  const setResultsLoading = (label) => {
+    if (!resultsHost) {
+      return;
+    }
+    resultsHost.dataset.loadingLabel = label || 'Recherche en cours...';
+    resultsHost.classList.add('is-loading');
+  };
+
+  const clearResultsLoading = () => {
+    if (!resultsHost) {
+      return;
+    }
+    resultsHost.classList.remove('is-loading');
+    delete resultsHost.dataset.loadingLabel;
   };
 
   const clearResults = () => {
@@ -201,7 +218,6 @@
       return indexState.loading;
     }
 
-    setStatus("Chargement de l'index...", 'info');
     const loading = fetchJson(indexUrl)
       .then((payload) => {
         const columns = Array.isArray(payload?.columns) ? payload.columns : null;
@@ -293,12 +309,13 @@
   };
 
   const runSearch = (query) => {
+    const token = (activeSearchToken += 1);
     const raw = (query || '').toString().trim();
-    lastRenderedQuery = raw;
     toggleClearButton();
 
     if (!raw) {
       setStatus('');
+      clearResultsLoading();
       clearResults();
       if (spotlightSection) {
         spotlightSection.hidden = false;
@@ -308,6 +325,7 @@
 
     if (raw.length < MIN_QUERY_LEN) {
       setStatus(`Tapez au moins ${MIN_QUERY_LEN} caracteres.`, 'info');
+      clearResultsLoading();
       clearResults();
       if (spotlightSection) {
         spotlightSection.hidden = false;
@@ -319,13 +337,17 @@
       spotlightSection.hidden = true;
     }
 
+    setStatus('Recherche en cours...', 'info');
+    setResultsLoading(indexState.loaded ? 'Recherche en cours...' : "Chargement de l'index...");
+    clearResults();
+
     const qDigits = raw.replace(/\D/g, '');
     const isPureDigits = qDigits && qDigits === raw.replace(/\s+/g, '');
     const qNorm = isPureDigits ? '' : normalise(raw);
 
     ensureIndexLoaded()
       .then((rows) => {
-        if (lastRenderedQuery !== raw) {
+        if (token !== activeSearchToken) {
           return;
         }
 
@@ -358,6 +380,7 @@
           return (a.name || '').localeCompare(b.name || '', 'fr', { sensitivity: 'base' });
         });
 
+        clearResultsLoading();
         currentMatches = matches;
         visibleCount = VISIBLE_DEFAULT;
 
@@ -372,32 +395,37 @@
         renderResults();
       })
       .catch(() => {
-        if (lastRenderedQuery !== raw) {
+        if (token !== activeSearchToken) {
           return;
         }
+        clearResultsLoading();
         setStatus("Impossible de charger l'index des joueurs pour le moment.", 'error');
         clearResults();
       });
   };
-
-  const debounce = (fn, delayMs) => {
-    let t = null;
-    return (...args) => {
-      if (t) {
-        window.clearTimeout(t);
-      }
-      t = window.setTimeout(() => fn(...args), delayMs);
-    };
-  };
-
-  const debouncedSearch = debounce(() => runSearch(input.value || ''), 180);
 
   const initEvents = () => {
     toggleClearButton();
 
     input.addEventListener('input', () => {
       toggleClearButton();
-      debouncedSearch();
+      activeSearchToken += 1;
+      clearResultsLoading();
+      setStatus('');
+      clearResults();
+      if (spotlightSection) {
+        spotlightSection.hidden = false;
+      }
+    });
+
+    input.addEventListener('focus', () => {
+      if (indexPrefetchStarted) {
+        return;
+      }
+      indexPrefetchStarted = true;
+      ensureIndexLoaded().catch(() => {
+        // ignore prefetch failures; search will show a proper error.
+      });
     });
 
     input.addEventListener('keydown', (event) => {
@@ -537,10 +565,8 @@
     if (q) {
       input.value = q;
       toggleClearButton();
-      runSearch(q);
     }
   } catch (error) {
     // ignore
   }
 })();
-

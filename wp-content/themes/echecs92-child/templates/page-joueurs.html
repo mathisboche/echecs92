@@ -9,50 +9,45 @@
 >
   <h1>Joueurs</h1>
 
-  <section class="players-spotlight" aria-label="Meilleurs joueurs">
+  <section class="clubs-search-block players-search-block" role="search" aria-label="Rechercher un joueur">
+    <p class="clubs-search-panel__title">Rechercher un joueur</p>
+    <div class="clubs-input-wrap">
+      <input
+        id="players-search"
+        class="clubs-input"
+        type="search"
+        placeholder="Nom, prénom, id FFE…"
+        aria-label="Rechercher un joueur par nom ou identifiant"
+        autocomplete="off"
+        inputmode="search"
+        enterkeyhint="search"
+      >
+      <button id="players-search-clear" class="clubs-input__clear" type="button" aria-label="Effacer la recherche" hidden></button>
+      <button
+        id="players-search-submit"
+        class="clubs-input__submit"
+        type="button"
+        aria-label="Lancer la recherche"
+      >
+        <span class="clubs-input__submit-icon" aria-hidden="true"></span>
+      </button>
+    </div>
+    <p id="players-search-status" class="clubs-search__status" role="status" aria-live="polite"></p>
+  </section>
+
+  <section class="players-results" aria-label="Résultats de la recherche">
+    <div id="players-results" class="players-list" role="list" aria-label="Liste des joueurs"></div>
+    <button id="players-more-button" class="link-button clubs-more-button" type="button" hidden>Afficher plus</button>
+  </section>
+
+  <section class="players-spotlight" aria-label="Top joueurs">
     <header class="players-spotlight__head">
-      <h2 class="players-spotlight__title">Meilleurs joueurs (Elo lent)</h2>
-      <p class="players-spotlight__subtitle">Données issues des listes de licenciés FFE.</p>
+      <h2 class="players-spotlight__title">Top joueurs (Elo standard)</h2>
+      <p class="players-spotlight__subtitle">Source : listes de licenciés FFE</p>
     </header>
 
     <div id="players-top" class="players-top" role="list" aria-label="Top joueurs"></div>
     <p id="players-top-status" class="clubs-search__status" role="status" aria-live="polite"></p>
-  </section>
-
-  <section class="clubs-search-block clubs-search-panel players-search" role="search" aria-label="Rechercher un joueur">
-    <div class="clubs-search-panel__layout">
-      <div class="clubs-search-panel__group clubs-search-panel__group--primary">
-        <p class="clubs-search-panel__title">Nom ou identifiant</p>
-        <div class="clubs-input-wrap">
-          <input
-            id="players-search"
-            class="clubs-input clubs-search-panel__input"
-            type="search"
-            placeholder="Nom, prénom, id FFE…"
-            aria-label="Rechercher un joueur par nom ou identifiant"
-            autocomplete="off"
-            inputmode="search"
-            enterkeyhint="search"
-          >
-          <button id="players-search-clear" class="clubs-input__clear" type="button" aria-label="Effacer la recherche" hidden></button>
-          <button
-            id="players-search-submit"
-            class="clubs-input__submit"
-            type="button"
-            aria-label="Lancer la recherche"
-          >
-            <span class="clubs-input__submit-icon" aria-hidden="true"></span>
-          </button>
-        </div>
-        <p class="players-search__hint">Exemples : "Dupont", "Léo", "1086387"</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="players-results" aria-label="Résultats de la recherche">
-    <p id="players-search-status" class="clubs-search__status" role="status" aria-live="polite"></p>
-    <div id="players-results" class="players-list" role="list" aria-label="Liste des joueurs"></div>
-    <button id="players-more-button" class="link-button clubs-more-button" type="button" hidden>Afficher plus</button>
   </section>
 </div>
 
@@ -60,4 +55,3 @@
 <!-- /wp:html -->
 
 <!-- wp:template-part {"slug":"footer","tagName":"footer","theme":"echecs92-child"} /-->
-

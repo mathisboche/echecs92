@@ -116,8 +116,90 @@ const ensureDir = (dirPath) => {
   fs.mkdirSync(dirPath, { recursive: true });
 };
 
-const writeJson = (filePath, data) => {
-  fs.writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`);
+const writeJson = (filePath, data, options = {}) => {
+  const pretty = options.pretty !== false;
+  const json = pretty ? JSON.stringify(data, null, 2) : JSON.stringify(data);
+  fs.writeFileSync(filePath, `${json}\n`);
+};
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const decodeHtmlEntities = (value) => {
+  const str = toStringOrEmpty(value);
+  if (!str) {
+    return '';
+  }
+  return str
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+};
+
+const fetchText = async (url, timeoutMs = 12_000) => {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        Accept: 'text/html,*/*',
+        'User-Agent': 'echecs92/1.0 (+https://echecs92.com)',
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return await response.text();
+  } finally {
+    clearTimeout(t);
+  }
+};
+
+const extractFideUrlFromFfeHtml = (html) => {
+  const body = toStringOrEmpty(html);
+  if (!body) {
+    return '';
+  }
+  const match = body.match(
+    /id=(?:\"|')ctl00_ContentPlaceHolderMain_LinkFide(?:\"|')[^>]*href=(?:\"|')([^\"']+)(?:\"|')/i
+  );
+  if (!match) {
+    return '';
+  }
+  return decodeHtmlEntities(match[1]);
+};
+
+const extractFederationFromFideHtml = (html) => {
+  const body = toStringOrEmpty(html);
+  if (!body) {
+    return '';
+  }
+  const match = body.match(/images\/flags\/([a-z]{2})\.svg/i);
+  if (!match) {
+    return '';
+  }
+  return match[1].toLowerCase();
+};
+
+const mapWithConcurrency = async (items, limit, worker) => {
+  const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.floor(limit)) : 1;
+  const results = new Array(items.length);
+  let cursor = 0;
+  const runWorker = async () => {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      try {
+        results[index] = await worker(items[index], index);
+      } catch (error) {
+        results[index] = null;
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(safeLimit, items.length) }, () => runWorker()));
+  return results;
 };
 
 const buildEmptyShards = () => {
@@ -128,7 +210,7 @@ const buildEmptyShards = () => {
   return shards;
 };
 
-const main = () => {
+const main = async () => {
   if (!fs.existsSync(FFE_DETAILS_DIR)) {
     throw new Error(`Dossier introuvable: ${FFE_DETAILS_DIR}`);
   }
@@ -227,7 +309,24 @@ const main = () => {
     updated,
     columns: indexColumns,
     rows: indexRows,
-  });
+  }, { pretty: false });
+
+  const ffePlayerUrl = (playerId) =>
+    `https://www.echecs.asso.fr/FicheJoueur.aspx?Id=${encodeURIComponent(normalisePlayerId(playerId))}`;
+
+  const getFideFederationForPlayer = async (playerId) => {
+    const id = normalisePlayerId(playerId);
+    if (!id) {
+      return '';
+    }
+    const ffeHtml = await fetchText(ffePlayerUrl(id)).catch(() => '');
+    const fideUrl = extractFideUrlFromFfeHtml(ffeHtml);
+    if (!fideUrl) {
+      return '';
+    }
+    const fideHtml = await fetchText(fideUrl).catch(() => '');
+    return extractFederationFromFideHtml(fideHtml);
+  };
 
   const topRows = Array.from(playersById.values())
     .map((record) => ({
@@ -235,27 +334,44 @@ const main = () => {
       name: toStringOrEmpty(record?.name),
       club: toStringOrEmpty(record?.club),
       elo: toStringOrEmpty(record?.elo),
+      aff: toStringOrEmpty(record?.aff).toUpperCase(),
       eloValue: parseRatingValue(record?.elo),
     }))
-    .filter((entry) => entry.id && entry.name && entry.eloValue > 0)
+    .filter((entry) => entry.id && entry.name && entry.eloValue > 0 && entry.aff === 'A')
     .sort((a, b) => {
       if (b.eloValue !== a.eloValue) {
         return b.eloValue - a.eloValue;
       }
       return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
-    })
-    .slice(0, 80)
-    .map((entry) => [entry.id, entry.name, entry.club, entry.elo]);
+    });
+
+  const TOP_CANDIDATE_LIMIT = 220;
+  const TOP_OUTPUT_LIMIT = 80;
+  const candidates = topRows.slice(0, TOP_CANDIDATE_LIMIT);
+  const federations = await mapWithConcurrency(candidates, 4, async (entry) => {
+    const fed = await getFideFederationForPlayer(entry.id);
+    // Keep a small delay between each worker iteration (FIDE/FFE are public, but let's stay polite).
+    await sleep(90);
+    return fed;
+  });
+
+  const french = candidates.filter((entry, index) => (federations[index] || '') === 'fr');
+  const selected = french.length ? french : candidates;
+
+  const topPayloadRows = selected.slice(0, TOP_OUTPUT_LIMIT).map((entry) => [entry.id, entry.name, entry.club, entry.elo]);
 
   writeJson(TOP_ELO_PATH, {
     version: 1,
     updated,
     kind: 'elo',
     columns: indexColumns,
-    rows: topRows,
+    rows: topPayloadRows,
   });
 
   console.log(`→ ${playersById.size} joueurs indexés.`);
 };
 
-main();
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

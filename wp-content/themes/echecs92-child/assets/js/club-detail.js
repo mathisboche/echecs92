@@ -1799,14 +1799,7 @@
     section.className = 'club-section club-section--ffe club-ffe-lists';
 
     const getListCount = (list) => stripFfeHeaderRow(Array.isArray(list?.rows) ? list.rows : []).length;
-    const membersCount = Math.max(getListCount(lists?.members_by_elo), getListCount(lists?.members));
-    const disclosureLabel = membersCount
-      ? `FFE - Joueurs et encadrement (${membersCount})`
-      : 'FFE - Joueurs et encadrement';
-
-    const heading = document.createElement('h2');
-    heading.textContent = disclosureLabel;
-    section.appendChild(heading);
+    // Intentionally omit the section heading in the full-screen FFE view to keep the grid compact.
 
     const createEmptyMessage = (message) => {
       const empty = document.createElement('p');
@@ -2110,9 +2103,7 @@
       sections.push(highlights.section);
     }
 
-    const more = createDisclosure('Toutes les informations', { className: 'club-disclosure--details' });
-
-    const coords = createSection('Coordonnées (détails)');
+    const coords = createSection('Coordonnées');
     const normalizeAddress = (value) =>
       normalise(value || '')
         .replace(/[^a-z0-9]+/g, '')
@@ -2136,7 +2127,7 @@
     appendDetail(coords.list, 'Fax', club.fax);
     appendDetail(coords.list, 'Accès PMR', club.accesPmr);
     if (coords.list.childElementCount) {
-      more.content.appendChild(coords.section);
+      sections.push(coords.section);
     }
 
     const activities = createSection('Activités');
@@ -2145,7 +2136,7 @@
     appendDetail(activities.list, 'Tarifs', club.tarifs);
     appendDetail(activities.list, 'Informations complémentaires', club.notes && club.publics ? club.notes : '');
     if (activities.list.childElementCount) {
-      more.content.appendChild(activities.section);
+      sections.push(activities.section);
     }
 
     const organisation = createSection('Organisation');
@@ -2180,7 +2171,7 @@
       appendDetail(organisation.list, 'Répartition licences', licenseParts.join(' · '));
     }
     if (organisation.list.childElementCount) {
-      more.content.appendChild(organisation.section);
+      sections.push(organisation.section);
     }
 
     const competitions = createSection('Compétitions');
@@ -2188,7 +2179,7 @@
     appendDetail(competitions.list, 'Interclubs Jeunes', club.interclubsJeunes);
     appendDetail(competitions.list, 'Interclubs Féminins', club.interclubsFeminins);
     if (competitions.list.childElementCount) {
-      more.content.appendChild(competitions.section);
+      sections.push(competitions.section);
     }
 
     const resources = createSection('Ressources');
@@ -2200,11 +2191,7 @@
       label: 'Consulter la fiche FFE',
     });
     if (resources.list.childElementCount) {
-      more.content.appendChild(resources.section);
-    }
-
-    if (more.content.childElementCount) {
-      sections.push(more.details);
+      sections.push(resources.section);
     }
 
     const ffeSection = renderFfeListsSection(club, ffeLists);
@@ -2243,13 +2230,13 @@
 
     mapSection.appendChild(mapContainerWrapper);
 
-    const directionsButton = document.createElement('a');
-    directionsButton.className = 'btn btn-secondary club-map__directions';
-    directionsButton.target = '_blank';
-    directionsButton.rel = 'noopener';
-    directionsButton.textContent = 'Ouvrir dans mon app de navigation';
-    directionsButton.hidden = true;
-    mapSection.appendChild(directionsButton);
+	    const directionsButton = document.createElement('a');
+	    directionsButton.className = 'link-button club-map__directions';
+	    directionsButton.target = '_blank';
+	    directionsButton.rel = 'noopener';
+	    directionsButton.textContent = 'Itinéraire';
+	    directionsButton.hidden = true;
+	    mapSection.appendChild(directionsButton);
 
     detailContainer.appendChild(mapSection);
 

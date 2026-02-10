@@ -6037,8 +6037,9 @@ body.mathis-mode .mathis-fragment{
 }
 .players-spotlight__subtitle{
   margin:0;
-  font-size:13px;
-  color:#475569;
+  font-size:12px;
+  color:#94a3b8;
+  opacity:0.85;
 }
 .players-top{
   display:grid;
@@ -6106,6 +6107,15 @@ body.mathis-mode .mathis-fragment{
   font-size:13px;
   color:#64748b;
 }
+.players-search-block .clubs-input-wrap #players-search{
+  padding-right:96px;
+}
+#players-search-clear{
+  right:52px;
+}
+#players-search-clear:not([hidden]) + #players-search-submit{
+  border-left:1px solid #d6dbe7;
+}
 .players-results{
   margin-top:18px;
 }
@@ -6113,6 +6123,37 @@ body.mathis-mode .mathis-fragment{
   display:flex;
   flex-direction:column;
   gap:12px;
+  position:relative;
+}
+#players-results.is-loading{
+  opacity:0.55;
+  pointer-events:none;
+  min-height:140px;
+}
+#players-results.is-loading::before{
+  content:'';
+  position:absolute;
+  left:0;
+  top:0;
+  height:3px;
+  width:100%;
+  background:linear-gradient(90deg,#1d4ed8 0%,#60a5fa 50%,#1d4ed8 100%);
+  transform-origin:left center;
+  animation:clubsLoadingBar 1.4s ease-in-out infinite;
+  z-index:2;
+}
+#players-results.is-loading::after{
+  content:attr(data-loading-label);
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:600;
+  font-size:15px;
+  color:#1d4ed8;
+  background:rgba(245,247,251,0.92);
+  z-index:1;
 }
 .player-row{
   list-style:none;
