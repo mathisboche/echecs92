@@ -8,6 +8,33 @@
   const FFE_EXTRAS_ENDPOINT = '/wp-json/cdje92/v1/ffe-player';
   const DASH_RX = /[\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uFE63\uFF0D]/g;
   const normaliseDashes = (value) => (value == null ? '' : value.toString()).replace(DASH_RX, '-');
+  const NAME_LETTER_RX = /[A-Za-zÀ-ÖØ-öø-ÿ]/;
+  const formatNameGivenFirst = (value) => {
+    const raw = normaliseDashes(value || '').toString().trim();
+    if (!raw) {
+      return '';
+    }
+    const parts = raw.split(/\s+/).filter(Boolean);
+    if (parts.length < 2) {
+      return raw;
+    }
+    const isAllCapsToken = (token) => {
+      if (!token || !NAME_LETTER_RX.test(token)) {
+        return false;
+      }
+      return token === token.toUpperCase() && token !== token.toLowerCase();
+    };
+    let idx = 0;
+    while (idx < parts.length && isAllCapsToken(parts[idx])) {
+      idx += 1;
+    }
+    if (idx <= 0 || idx >= parts.length) {
+      return raw;
+    }
+    const surname = parts.slice(0, idx).join(' ');
+    const given = parts.slice(idx).join(' ');
+    return `${given} ${surname}`.trim();
+  };
 
   const detailContainer = document.getElementById('player-detail');
   if (!detailContainer) {
@@ -454,8 +481,13 @@
       const titleLabel = formatTitleLabel(extras.title || '');
       if (titleLabel) {
         titlePrefix.hidden = false;
-        titlePrefix.textContent = `${titleLabel} `;
+        titlePrefix.textContent = titleLabel;
         titlePrefix.setAttribute('aria-label', titleLabel);
+
+        const formatted = formatNameGivenFirst(playerName);
+        if (formatted) {
+          nameNode.textContent = formatted;
+        }
       }
 
       const roles = Array.isArray(extras.roles) ? extras.roles.filter(Boolean) : [];
@@ -488,7 +520,8 @@
 
       if (playerName) {
         const docPrefix = titleLabel ? `${titleLabel} ` : '';
-        document.title = `${docPrefix}${playerName} - Joueur`;
+        const visibleName = titleLabel ? formatNameGivenFirst(playerName) || playerName : playerName;
+        document.title = `${docPrefix}${visibleName} - Joueur`;
       }
     });
   };

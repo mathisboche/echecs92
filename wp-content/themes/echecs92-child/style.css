@@ -6332,20 +6332,28 @@ body.mathis-mode .mathis-fragment{
 }
 .player-hero__name{
   margin:0;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:baseline;
+  gap:10px;
   font-size:clamp(26px, 3.2vw, 34px);
   line-height:1.12;
   color:#0f172a;
   letter-spacing:-0.01em;
 }
 .player-hero__title-prefix{
-  display:inline;
-  padding:0;
-  border:none;
-  background:transparent;
-  border-radius:0;
-  height:auto;
-  font:inherit;
-  color:inherit;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:6px 12px;
+  border-radius:999px;
+  background:rgba(15,23,42,0.06);
+  border:1px solid rgba(15,23,42,0.14);
+  font-size:0.62em;
+  font-weight:900;
+  letter-spacing:0.02em;
+  line-height:1;
+  color:#0f172a;
 }
 .player-hero__meta{
   display:flex;
