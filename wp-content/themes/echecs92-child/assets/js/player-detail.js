@@ -344,7 +344,7 @@
 
     const ratingsGrid = document.createElement('div');
     ratingsGrid.className = 'player-hero__ratings';
-    ratingsGrid.appendChild(createRatingCard('Elo (classique)', player.elo || '', { primary: true, icon: 'classic' }));
+    ratingsGrid.appendChild(createRatingCard('Elo (standard)', player.elo || '', { primary: true, icon: 'classic' }));
     ratingsGrid.appendChild(createRatingCard('Rapide', player.rapid || '', { icon: 'rapid' }));
     ratingsGrid.appendChild(createRatingCard('Blitz', player.blitz || '', { icon: 'blitz' }));
     hero.appendChild(ratingsGrid);
