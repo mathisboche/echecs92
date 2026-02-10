@@ -223,12 +223,28 @@
     return fetchJson(url).catch(() => null);
   };
 
-  const formatTitleLabel = (value) => {
+  const formatTitlePrefix = (value) => {
     const raw = (value || '').toString().replace(/\s+/g, ' ').trim();
     if (!raw) {
-      return '';
+      return { short: '', long: '' };
     }
-    return raw;
+
+    const key = raw.toLowerCase();
+    const map = [
+      { rx: /grand\s+ma[îi]tre\s+f[ée]minin/i, short: 'WGM', long: 'Grand Maître Féminin' },
+      { rx: /grand\s+ma[îi]tre/i, short: 'GM', long: 'Grand Maître' },
+      { rx: /ma[îi]tre\s+international\s+f[ée]minin/i, short: 'WIM', long: 'Maître International Féminin' },
+      { rx: /ma[îi]tre\s+international/i, short: 'IM', long: 'Maître International' },
+      { rx: /ma[îi]tre\s+fide\s+f[ée]minin/i, short: 'WFM', long: 'Maître FIDE Féminin' },
+      { rx: /ma[îi]tre\s+fide/i, short: 'FM', long: 'Maître FIDE' },
+      { rx: /candidat\s+ma[îi]tre\s+f[ée]minin/i, short: 'WCM', long: 'Candidat Maître Féminin' },
+      { rx: /candidat\s+ma[îi]tre/i, short: 'CM', long: 'Candidat Maître' },
+    ];
+    const entry = map.find((item) => item.rx.test(key)) || null;
+    if (entry) {
+      return { short: entry.short, long: entry.long };
+    }
+    return { short: raw, long: raw };
   };
 
   const getRatingTagHint = (value) => {
@@ -478,11 +494,14 @@
         return;
       }
 
-      const titleLabel = formatTitleLabel(extras.title || '');
-      if (titleLabel) {
+      const formattedTitle = formatTitlePrefix(extras.title || '');
+      if (formattedTitle.short) {
         titlePrefix.hidden = false;
-        titlePrefix.textContent = titleLabel;
-        titlePrefix.setAttribute('aria-label', titleLabel);
+        titlePrefix.textContent = formattedTitle.short;
+        titlePrefix.dataset.tooltip = formattedTitle.long || formattedTitle.short;
+        titlePrefix.setAttribute('tabindex', '0');
+        titlePrefix.setAttribute('role', 'note');
+        titlePrefix.setAttribute('aria-label', formattedTitle.long || formattedTitle.short);
 
         const formatted = formatNameGivenFirst(playerName);
         if (formatted) {
@@ -519,8 +538,8 @@
       }
 
       if (playerName) {
-        const docPrefix = titleLabel ? `${titleLabel} ` : '';
-        const visibleName = titleLabel ? formatNameGivenFirst(playerName) || playerName : playerName;
+        const docPrefix = formattedTitle.short ? `${formattedTitle.short} ` : '';
+        const visibleName = formattedTitle.short ? formatNameGivenFirst(playerName) || playerName : playerName;
         document.title = `${docPrefix}${visibleName} - Joueur`;
       }
     });

@@ -939,7 +939,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   background:#f7f8fb;
   border:1px solid #e6e9f2;
   color:#0f172a;
-  box-shadow:0 8px 24px rgba(15,23,42,0.04);
+  box-shadow:none;
 }
 
 .home-figures .home-section__header{
@@ -6345,15 +6345,47 @@ body.mathis-mode .mathis-fragment{
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  padding:6px 12px;
+  padding:4px 10px;
   border-radius:999px;
   background:rgba(15,23,42,0.06);
   border:1px solid rgba(15,23,42,0.14);
-  font-size:0.62em;
+  font-size:1em;
   font-weight:900;
   letter-spacing:0.02em;
   line-height:1;
   color:#0f172a;
+  position:relative;
+}
+.player-hero__title-prefix[data-tooltip]::after{
+  content:attr(data-tooltip);
+  position:absolute;
+  left:50%;
+  top:calc(100% + 10px);
+  transform:translateX(-50%);
+  background:#0f172a;
+  color:#ffffff;
+  padding:7px 10px;
+  border-radius:12px;
+  font-size:13px;
+  font-weight:800;
+  letter-spacing:0;
+  text-transform:none;
+  white-space:normal;
+  width:max-content;
+  max-width:min(320px, 80vw);
+  text-align:center;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .15s ease;
+  z-index:40;
+}
+.player-hero__title-prefix[data-tooltip]:hover::after,
+.player-hero__title-prefix[data-tooltip]:focus::after{
+  opacity:1;
+}
+.player-hero__title-prefix:focus{
+  outline:2px solid rgba(11,46,76,0.35);
+  outline-offset:2px;
 }
 .player-hero__meta{
   display:flex;
