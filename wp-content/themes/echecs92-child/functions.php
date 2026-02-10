@@ -796,7 +796,7 @@ function cdje92_home_stats_compute_staff_count_for_department( $clubs ) {
 
     $details_dir = trailingslashit( get_stylesheet_directory() ) . 'assets/data/clubs-france-ffe-details';
     $categories = [ 'arbitrage', 'animation', 'entrainement', 'initiation' ];
-    $people = [];
+    $count = 0;
 
     foreach ( $clubs as $club ) {
         if ( ! is_array( $club ) ) {
@@ -830,13 +830,12 @@ function cdje92_home_stats_compute_staff_count_for_department( $clubs ) {
                 if ( $player_id === '' && $nr_ffe === '' && $name === '' ) {
                     continue;
                 }
-                $key = $player_id !== '' ? 'id:' . $player_id : ( $nr_ffe !== '' ? 'nr:' . $nr_ffe : 'name:' . strtolower( $name ) );
-                $people[ $key ] = true;
+                $count += 1;
             }
         }
     }
 
-    return count( $people );
+    return $count;
 }
 
 function cdje92_rest_get_home_stats_92( WP_REST_Request $request ) {
@@ -844,7 +843,8 @@ function cdje92_rest_get_home_stats_92( WP_REST_Request $request ) {
     $manifest_path = $data_dir . 'clubs-france.json';
     $version = file_exists( $manifest_path ) ? (int) filemtime( $manifest_path ) : 0;
 
-    $cache_key = 'cdje92_home_stats_92';
+    // Bump this when computation logic changes (keeps transients coherent across deploys).
+    $cache_key = 'cdje92_home_stats_92_v2';
     $cached = get_transient( $cache_key );
     if ( is_array( $cached ) && (int) ( $cached['version'] ?? 0 ) === $version && isset( $cached['data'] ) ) {
         return rest_ensure_response( $cached['data'] );
