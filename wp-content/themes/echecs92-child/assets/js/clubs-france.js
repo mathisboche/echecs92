@@ -3448,6 +3448,9 @@
     anchor.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === 'function') {
+        event.stopImmediatePropagation();
+      }
       if (mathisEggPending) {
         return;
       }
@@ -3465,7 +3468,7 @@
             // noop
           }
         } else {
-          window.location.href = cachedUrl;
+          setSearchStatus("Autorise les popups pour ouvrir le lien secret.", 'error');
         }
         mathisEggPending = false;
         return;
@@ -3486,7 +3489,7 @@
           if (popup) {
             popup.location.href = url;
           } else {
-            window.location.href = url;
+            setSearchStatus("Autorise les popups pour ouvrir le lien secret.", 'error');
           }
         })
         .catch((error) => {
@@ -3884,7 +3887,7 @@
         <span></span>
       </button>
       <div class="mathis-clean__link">
-        <a class="mathis-clean__anchor" rel="noopener noreferrer" target="_blank">
+        <a class="mathis-clean__anchor" href="#">
           <span class="mathis-clean__letters" aria-hidden="true"></span>
           <span class="mathis-clean__sr">${MATHIS_LINK_TEXT}</span>
         </a>
@@ -4150,7 +4153,8 @@
     if (!lettersHost || !anchor) {
       return;
     }
-    anchor.setAttribute('href', LEGACY_EASTER_EGG.href || '#');
+    // Keep the real one-time URL out of the DOM to avoid accidental navigation (www.mathisboche.com redirects to Google).
+    anchor.setAttribute('href', '#');
     ensureMathisEggHandler(anchor);
     lettersHost.innerHTML = '';
     const letters = MATHIS_LINK_TEXT.split('');
