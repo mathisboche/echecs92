@@ -647,9 +647,20 @@
 
         if (!sortedMatches.length) {
           if (!isScope92) {
-            releaseBusy();
-            setStatus('Aucun joueur trouve.', 'error');
             clearResults();
+            const searchToken = token;
+            waitForMinimumSearchTime(searchStartedAt)
+              .then(() => {
+                if (searchToken !== activeSearchToken) {
+                  releaseBusy();
+                  return;
+                }
+                releaseBusy();
+                setStatus('Aucun joueur trouve.', 'error');
+              })
+              .catch(() => {
+                releaseBusy();
+              });
             return;
           }
           setStatus('Aucun joueur trouve dans le 92.', 'info');
