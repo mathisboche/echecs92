@@ -4212,8 +4212,8 @@ body.club-ffe-view .clubs-page{
   justify-content:center;
   gap:12px;
   position:sticky;
-  top:calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-height, 96px));
-  transform:translateY(calc(var(--cm-header-offset, var(--cm-header-height, 96px)) - var(--cm-header-height, 96px)));
+  top:calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-real-height, var(--cm-header-height, 96px)));
+  transform:translateY(calc(var(--cm-header-offset, var(--cm-header-real-height, var(--cm-header-height, 96px))) - var(--cm-header-real-height, var(--cm-header-height, 96px))));
   z-index:1900;
   width:100vw;
   margin:0 calc(50% - 50vw) 32px;

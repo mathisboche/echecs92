@@ -798,7 +798,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updateHeaderHeight = () => {
       headerHeight = headerWrapper.offsetHeight;
-      root.style.setProperty('--cm-header-height', `${headerHeight}px`);
+      root.style.setProperty('--cm-header-real-height', `${headerHeight}px`);
       if (!isHidden) {
         applyHeaderOffset(false);
       }
