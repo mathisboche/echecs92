@@ -6362,7 +6362,7 @@ body.mathis-mode .mathis-fragment{
   color:#0f172a;
   letter-spacing:-0.01em;
   --player-title-badge-height: 1em;
-  --player-title-badge-pad-x: 0.22em;
+  --player-title-badge-pad-x: 0.28em;
   --player-title-badge-text-size: 0.78em;
 }
 .player-hero__title-prefix{
