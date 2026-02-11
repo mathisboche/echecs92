@@ -5768,6 +5768,24 @@ body.mathis-mode .mathis-fragment{
   box-sizing:border-box;
   width:auto;
   margin:6px 0 0;
+  gap:10px;
+  font-weight:700;
+}
+.club-map__directions::before{
+  content:'';
+  width:16px;
+  height:16px;
+  flex:0 0 auto;
+  background:currentColor;
+  opacity:.88;
+  mask-repeat:no-repeat;
+  mask-position:center;
+  mask-size:contain;
+  -webkit-mask-repeat:no-repeat;
+  -webkit-mask-position:center;
+  -webkit-mask-size:contain;
+  mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%20fill%3D'none'%20stroke%3D'currentColor'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M12%2020s7-5.3%207-10a7%207%200%201%200-14%200c0%204.7%207%2010%207%2010z'%2F%3E%3Ccircle%20cx%3D'12'%20cy%3D'10'%20r%3D'2.5'%2F%3E%3C%2Fsvg%3E");
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%20fill%3D'none'%20stroke%3D'currentColor'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M12%2020s7-5.3%207-10a7%207%200%201%200-14%200c0%204.7%207%2010%207%2010z'%2F%3E%3Ccircle%20cx%3D'12'%20cy%3D'10'%20r%3D'2.5'%2F%3E%3C%2Fsvg%3E");
 }
 .club-detail-page{
   border:none;

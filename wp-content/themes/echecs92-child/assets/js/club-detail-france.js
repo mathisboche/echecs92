@@ -1629,7 +1629,13 @@
         directionsButton.hidden = true;
         return;
       }
+      const clubLabel = (club?.name || 'ce club').trim();
       directionsButton.href = url;
+      directionsButton.setAttribute(
+        'aria-label',
+        `Ouvrir l'itinéraire vers ${clubLabel} (nouvel onglet)`
+      );
+      directionsButton.setAttribute('title', `Ouvrir l'itinéraire vers ${clubLabel}`);
       directionsButton.hidden = false;
     };
 
@@ -3056,10 +3062,14 @@
     mapSection.appendChild(mapContainerWrapper);
 
     const directionsButton = document.createElement('a');
-    directionsButton.className = 'link-button club-map__directions';
+    directionsButton.className = 'btn btn-secondary club-map__directions';
     directionsButton.target = '_blank';
     directionsButton.rel = 'noopener';
-    directionsButton.textContent = 'Itinéraire';
+    directionsButton.textContent = "Calculer l'itinéraire vers ce club";
+    directionsButton.setAttribute(
+      'aria-label',
+      "Calculer l'itinéraire vers ce club (nouvel onglet)"
+    );
     directionsButton.hidden = true;
     mapSection.appendChild(directionsButton);
 
