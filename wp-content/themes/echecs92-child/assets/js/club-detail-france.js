@@ -247,6 +247,53 @@
     return fallback;
   };
 
+  const deriveBackHrefFromParam = () => {
+    try {
+      const params = new URLSearchParams(window.location.search || '');
+      const from = (params.get('from') || '').trim();
+      if (!from || !from.startsWith('/')) {
+        return '';
+      }
+      return from;
+    } catch (error) {
+      return '';
+    }
+  };
+
+  const getBackKindForPath = (value) => {
+    const path = (value || '').toString().trim();
+    if (!path) {
+      return '';
+    }
+    const cleaned = path.split('?')[0].split('#')[0];
+    if (/^\/joueur\b/i.test(cleaned)) {
+      return 'player';
+    }
+    if (/^\/joueurs(?:-92)?\b/i.test(cleaned)) {
+      return 'players';
+    }
+    if (/^\/clubs\b/i.test(cleaned)) {
+      return 'clubs';
+    }
+    if (/^\/carte-des-clubs\b/i.test(cleaned)) {
+      return 'map';
+    }
+    return '';
+  };
+
+  const getBackLabelForKind = (kind) => {
+    if (kind === 'player') {
+      return '← Retour à la fiche du joueur';
+    }
+    if (kind === 'players') {
+      return '← Retour à la recherche des joueurs';
+    }
+    if (kind === 'map') {
+      return '← Retour à la carte des clubs';
+    }
+    return '← Retour à la liste de clubs';
+  };
+
   const cameFromClubsSearch = () => {
     if (storedNavigation && storedNavigation.context === 'detail:list') {
       return true;
@@ -288,12 +335,31 @@
   };
 
   const updateBackLinkVisibility = () => {
+    const fromParam = deriveBackHrefFromParam();
+    if (fromParam) {
+      const kind = getBackKindForPath(fromParam);
+      if (backLink) {
+        backLink.href = fromParam;
+        backLink.textContent = getBackLabelForKind(kind);
+        backLink.removeAttribute('hidden');
+      }
+      if (backLinkMap) {
+        backLinkMap.setAttribute('hidden', '');
+      }
+      if (actionsContainer) {
+        const hasListBack = backLink && !backLink.hasAttribute('hidden');
+        actionsContainer.classList.toggle('club-detail__actions--solo-share', !hasListBack);
+      }
+      return;
+    }
+
     const showMapBack = cameFromClubsMap();
     const showListBack = !showMapBack && cameFromClubsSearch();
 
     if (backLink) {
       if (showListBack) {
         backLink.href = getStoredBackPath('/clubs');
+        backLink.textContent = '← Retour à la liste de clubs';
         backLink.removeAttribute('hidden');
       } else {
         backLink.setAttribute('hidden', '');
@@ -302,6 +368,7 @@
     if (backLinkMap) {
       if (showMapBack) {
         backLinkMap.href = getStoredBackPath('/carte-des-clubs');
+        backLinkMap.textContent = '← Retour à la carte des clubs';
         backLinkMap.removeAttribute('hidden');
       } else {
         backLinkMap.setAttribute('hidden', '');
@@ -1742,13 +1809,9 @@
     return span;
   };
 
-  const createSection = (title) => {
+  const createSection = (_title) => {
     const section = document.createElement('section');
     section.className = 'club-section';
-
-    const heading = document.createElement('h2');
-    heading.textContent = title;
-    section.appendChild(heading);
 
     const list = document.createElement('ul');
     list.className = 'club-section__list';
@@ -2507,15 +2570,11 @@
         return null;
       }
 
-      const section = document.createElement('section');
-      section.className = 'club-section club-section--ffe club-ffe-link';
+	      const section = document.createElement('section');
+	      section.className = 'club-section club-section--ffe club-ffe-link';
 
-      const heading = document.createElement('h2');
-      heading.textContent = 'Joueurs et encadrants (FFE)';
-      section.appendChild(heading);
-
-      const intro = document.createElement('p');
-      intro.className = 'club-ffe-link__intro';
+	      const intro = document.createElement('p');
+	      intro.className = 'club-ffe-link__intro';
       intro.textContent = 'Ouvrez la liste complète des joueurs et encadrants.';
       section.appendChild(intro);
 
@@ -2757,41 +2816,18 @@
 
       const meta = document.createElement('div');
       meta.className = 'club-sheet__meta';
-      const tokeniseWords = (value) =>
-        normalise(value || '')
-          .replace(/[^a-z0-9]+/g, ' ')
-          .trim()
-          .split(/\s+/)
-          .filter(Boolean);
-      const cityStopWords = new Set(['sur', 'sous', 'de', 'des', 'du', 'la', 'le', 'les', 'l', 'd', 'au', 'aux']);
-      const nameTokens = new Set(tokeniseWords(club.name));
-      const communeTokens = tokeniseWords(club.commune).filter(
-        (token) => token.length >= 4 && !cityStopWords.has(token)
+      const cityLabel = (club.commune || '').trim() || 'Ville non renseignée';
+      meta.appendChild(createChip(cityLabel, 'city'));
+      const licensesCount = Number.parseInt(club.totalLicenses, 10);
+      const safeLicensesCount = Number.isFinite(licensesCount) ? licensesCount : 0;
+      meta.appendChild(
+        createChip(
+          `${safeLicensesCount} licencié${safeLicensesCount > 1 ? 's' : ''}`,
+          'licenses'
+        )
       );
-      const communeInName =
-        communeTokens.length && communeTokens.some((token) => nameTokens.has(token));
-      if (club.commune && !communeInName) {
-        meta.appendChild(createChip(club.commune, 'city'));
-      }
-      if (club.totalLicenses) {
-        meta.appendChild(
-          createChip(
-            `${club.totalLicenses} licencié${club.totalLicenses > 1 ? 's' : ''}`,
-            'licenses'
-          )
-        );
-      }
       if (club.labelFederal) {
         meta.appendChild(createChip(club.labelFederal, 'label'));
-      }
-      if (club.accesPmr) {
-        const chip = createChip('PMR', 'pmr');
-        const tip = `Accès PMR : ${club.accesPmr}`;
-        chip.dataset.tooltip = tip;
-        chip.setAttribute('aria-label', tip);
-        chip.setAttribute('title', tip);
-        chip.setAttribute('tabindex', '0');
-        meta.appendChild(chip);
       }
       if (meta.childElementCount) {
         header.appendChild(meta);
@@ -3001,13 +3037,8 @@
     mapSection.className = 'club-map-section';
     mapSection.setAttribute('aria-label', `Carte de localisation pour ${club.name}`);
 
-    const mapHeading = document.createElement('h2');
-    mapHeading.className = 'club-map__heading';
-    mapHeading.textContent = 'Localisation sur la carte';
-    mapSection.appendChild(mapHeading);
-
-    const mapContainerWrapper = document.createElement('div');
-    mapContainerWrapper.className = 'club-map__container';
+	    const mapContainerWrapper = document.createElement('div');
+	    mapContainerWrapper.className = 'club-map__container';
 
     const mapContainer = document.createElement('div');
     mapContainer.className = 'club-map';
@@ -3039,6 +3070,12 @@
 	    if (ffeInfo.list.childElementCount) {
 	      detailContainer.appendChild(ffeInfo.section);
 	    }
+
+      const pmrInfo = createSection('Accessibilité');
+      appendDetail(pmrInfo.list, 'Accès PMR', club.accesPmr);
+      if (pmrInfo.list.childElementCount) {
+        detailContainer.appendChild(pmrInfo.section);
+      }
 
 		    if (club.name) {
 		      document.title = `${normaliseDashes(club.name)} - Clubs en France`;
@@ -3124,17 +3161,6 @@
         detailContainer.removeAttribute('aria-busy');
       });
   };
-
-  if (backLink && document.referrer) {
-    try {
-      const ref = new URL(document.referrer);
-      if (ref.origin === window.location.origin) {
-        backLink.href = ref.pathname + ref.search;
-      }
-    } catch (err) {
-      // Ignore malformed referrer
-    }
-  }
 
   loadGeocodeCache();
   init();

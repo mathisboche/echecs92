@@ -160,6 +160,23 @@
     return getBackKindForPath(path) === 'club' ? path : '';
   };
 
+  const appendFromToInternalHref = (value) => {
+    const path = toInternalPath(value || '');
+    if (!path) {
+      return '';
+    }
+    try {
+      const url = new URL(path, window.location.origin);
+      const from = `${window.location.pathname || ''}${window.location.search || ''}${window.location.hash || ''}`;
+      if (from && !url.searchParams.get('from')) {
+        url.searchParams.set('from', from);
+      }
+      return `${url.pathname}${url.search}${url.hash}`;
+    } catch (error) {
+      return path;
+    }
+  };
+
   const fetchJson = (url, options = {}) =>
     fetch(url, { headers: { Accept: 'application/json' }, ...options }).then((response) => {
       if (!response.ok) {
@@ -483,7 +500,7 @@
     }
     const clubName = player.club || '';
     appendMetaChip(meta, 'Club', clubName, {
-      href: getClubHrefFromBackLink() || buildClubDetailHrefFromName(clubName),
+      href: appendFromToInternalHref(getClubHrefFromBackLink() || buildClubDetailHrefFromName(clubName)),
     });
 
     if (meta.childElementCount) {

@@ -66,6 +66,7 @@
   const VISIBLE_DEFAULT = 20;
   const VISIBLE_STEP = 20;
   const MIN_QUERY_LEN = 2;
+  const MIN_NO_RESULT_MODAL_DELAY_MS = 520;
 
   const indexState = {
     loaded: false,
@@ -176,11 +177,11 @@
     actions.className = 'clubs-scope-modal__actions';
     panel.appendChild(actions);
 
-    const stayButton = document.createElement('button');
-    stayButton.type = 'button';
-    stayButton.className = 'btn btn-secondary clubs-scope-modal__stay';
-    stayButton.dataset.scopeAction = 'stay';
-    actions.appendChild(stayButton);
+    const ignoreButton = document.createElement('button');
+    ignoreButton.type = 'button';
+    ignoreButton.className = 'btn btn-secondary clubs-scope-modal__stay';
+    ignoreButton.dataset.scopeAction = 'close';
+    actions.appendChild(ignoreButton);
 
     const goButton = document.createElement('button');
     goButton.type = 'button';
@@ -194,7 +195,7 @@
       modal,
       title,
       text,
-      stayButton,
+      ignoreButton,
       goButton,
       lastFocus: null,
       resolve: null,
@@ -249,7 +250,7 @@
     modalState.text.textContent = raw
       ? `Aucun joueur n'a été trouvé dans le 92 pour "${raw}". Voulez-vous lancer la recherche sur toute la France ?`
       : "Aucun joueur n'a été trouvé dans le 92. Voulez-vous lancer la recherche sur toute la France ?";
-    modalState.stayButton.textContent = 'Rester sur le 92';
+    modalState.ignoreButton.textContent = 'Ignorer';
     modalState.goButton.textContent = 'Rechercher partout en France';
     modalState.lastFocus = typeof document !== 'undefined' ? document.activeElement : null;
     modalState.modal.removeAttribute('hidden');
@@ -260,11 +261,8 @@
   };
 
   const setResultsLoading = (label) => {
-    if (!resultsHost) {
-      return;
-    }
-    resultsHost.dataset.loadingLabel = label || 'Recherche en cours...';
-    resultsHost.classList.add('is-loading');
+    // Loading feedback is handled by the global logo spinner overlay.
+    void label;
   };
 
   const clearResultsLoading = () => {
@@ -395,6 +393,19 @@
     }
   };
 
+  const waitForMinimumSearchTime = (startedAt, minimum = MIN_NO_RESULT_MODAL_DELAY_MS) => {
+    const start = Number.isFinite(startedAt) ? startedAt : Date.now();
+    const minDelay = Number.isFinite(minimum) ? Math.max(0, minimum) : MIN_NO_RESULT_MODAL_DELAY_MS;
+    const elapsed = Date.now() - start;
+    const remaining = Math.max(0, minDelay - elapsed);
+    if (remaining <= 0) {
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      setTimeout(resolve, remaining);
+    });
+  };
+
   const ensureIndexLoaded = () => {
     if (indexState.loaded) {
       return Promise.resolve(indexState.rows);
@@ -516,6 +527,7 @@
   };
 
   const runSearch = (query) => {
+    const searchStartedAt = Date.now();
     const token = (activeSearchToken += 1);
     const raw = (query || '').toString().trim();
     toggleClearButton();
@@ -630,12 +642,12 @@
         searchCache.matches = sortedMatches;
 
         clearResultsLoading();
-        releaseBusy();
         currentMatches = sortedMatches;
         visibleCount = VISIBLE_DEFAULT;
 
         if (!sortedMatches.length) {
           if (!isScope92) {
+            releaseBusy();
             setStatus('Aucun joueur trouve.', 'error');
             clearResults();
             return;
@@ -643,17 +655,30 @@
           setStatus('Aucun joueur trouve dans le 92.', 'info');
           clearResults();
           const searchToken = token;
-          openScopeModal(raw).then((accepted) => {
-            if (!accepted || searchToken !== activeSearchToken) {
-              return;
-            }
-            if (typeof window !== 'undefined') {
-              window.location.assign(buildFrancePlayersSearchUrl(raw));
-            }
-          });
+          waitForMinimumSearchTime(searchStartedAt)
+            .then(() => {
+              if (searchToken !== activeSearchToken) {
+                releaseBusy();
+                return false;
+              }
+              releaseBusy();
+              return openScopeModal(raw);
+            })
+            .then((accepted) => {
+              if (!accepted || searchToken !== activeSearchToken) {
+                return;
+              }
+              if (typeof window !== 'undefined') {
+                window.location.assign(buildFrancePlayersSearchUrl(raw));
+              }
+            })
+            .catch(() => {
+              releaseBusy();
+            });
           return;
         }
 
+        releaseBusy();
         const total = sortedMatches.length;
         setStatus(total === 1 ? '1 joueur trouve.' : `${total} joueurs trouves.`, 'success');
         renderResults();
@@ -814,25 +839,23 @@
   initTop();
   initEvents();
 
-  // /joueurs?focus=1
+  let shouldFocus = false;
+  let queryFromUrl = '';
   try {
     const params = new URLSearchParams(window.location.search || '');
-    if (params.get('focus') === '1') {
-      input.focus();
-    }
+    shouldFocus = params.get('focus') === '1';
+    queryFromUrl = (params.get('q') || '').trim();
   } catch (error) {
     // ignore
   }
 
-  // /joueurs?q=Dupont
-  try {
-    const params = new URLSearchParams(window.location.search || '');
-    const q = (params.get('q') || '').trim();
-    if (q) {
-      input.value = q;
-      toggleClearButton();
-    }
-  } catch (error) {
-    // ignore
+  if (queryFromUrl) {
+    input.value = queryFromUrl;
+    toggleClearButton();
+    runSearch(queryFromUrl);
+  }
+
+  if (shouldFocus) {
+    input.focus();
   }
 })();
