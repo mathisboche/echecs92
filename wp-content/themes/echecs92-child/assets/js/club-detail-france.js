@@ -1910,6 +1910,11 @@
 	      button.textContent = value;
 	      button.setAttribute('aria-label', options.ariaLabel || `Copier ${label.toLowerCase()}`);
 	      button.title = options.title || 'Copier';
+	      const feedback = document.createElement('span');
+	      feedback.className = 'club-copy__feedback';
+	      feedback.setAttribute('aria-live', 'polite');
+	      feedback.setAttribute('aria-atomic', 'true');
+	      button.appendChild(feedback);
 
 	      let resetTimer = null;
 	      button.addEventListener('click', async () => {
@@ -1927,17 +1932,21 @@
 	          if (ok) {
 	            button.dataset.copyState = 'copied';
 	            button.title = 'Copié';
+	            feedback.textContent = 'copié';
 	          } else {
 	            button.dataset.copyState = 'error';
 	            button.title = 'Copie impossible';
+	            feedback.textContent = 'échec';
 	          }
 	        } catch (error) {
 	          button.dataset.copyState = 'error';
 	          button.title = 'Copie impossible';
+	          feedback.textContent = 'échec';
 	        }
 	        resetTimer = window.setTimeout(() => {
 	          delete button.dataset.copyState;
 	          button.title = options.title || 'Copier';
+	          feedback.textContent = '';
 	        }, 1600);
 	      });
 	      valueContainer.appendChild(button);
@@ -1948,6 +1957,64 @@
     item.appendChild(valueContainer);
     list.appendChild(item);
     return true;
+  };
+
+  const createLicenseBreakdownItem = (licenses) => {
+    const rawA = Number.parseInt(licenses?.A, 10);
+    const rawB = Number.parseInt(licenses?.B, 10);
+    const licenseA = Number.isFinite(rawA) && rawA > 0 ? rawA : 0;
+    const licenseB = Number.isFinite(rawB) && rawB > 0 ? rawB : 0;
+    const total = licenseA + licenseB;
+    if (!total) {
+      return null;
+    }
+
+    const item = document.createElement('li');
+    item.className = 'club-section__item club-section__item--licenses-breakdown';
+
+    const labelNode = document.createElement('span');
+    labelNode.className = 'club-section__label';
+    labelNode.textContent = 'Répartition';
+    item.appendChild(labelNode);
+
+    const valueContainer = document.createElement('div');
+    valueContainer.className = 'club-section__value';
+
+    const figures = document.createElement('p');
+    figures.className = 'club-license-breakdown__figures';
+    figures.textContent = `Licence A : ${licenseA} · Licence B : ${licenseB}`;
+    valueContainer.appendChild(figures);
+
+    if (licenseA > 0 && licenseB > 0) {
+      const bar = document.createElement('div');
+      bar.className = 'club-license-breakdown__bar';
+      bar.setAttribute(
+        'aria-label',
+        `Répartition des licences : ${licenseA} en A et ${licenseB} en B`
+      );
+
+      const partA = document.createElement('span');
+      partA.className = 'club-license-breakdown__part club-license-breakdown__part--a';
+      partA.style.width = `${(licenseA / total) * 100}%`;
+
+      const partB = document.createElement('span');
+      partB.className = 'club-license-breakdown__part club-license-breakdown__part--b';
+      partB.style.width = `${(licenseB / total) * 100}%`;
+
+      bar.appendChild(partA);
+      bar.appendChild(partB);
+      valueContainer.appendChild(bar);
+
+      const totalNode = document.createElement('p');
+      totalNode.className = 'club-license-breakdown__total';
+      totalNode.textContent = `Total : ${total}`;
+      valueContainer.appendChild(totalNode);
+    } else {
+      figures.textContent = `${total} licence${total > 1 ? 's' : ''}`;
+    }
+
+    item.appendChild(valueContainer);
+    return item;
   };
 
   const buildPlayerUrl = (playerId) => {
@@ -2822,8 +2889,6 @@
 
       const meta = document.createElement('div');
       meta.className = 'club-sheet__meta';
-      const cityLabel = (club.commune || '').trim() || 'Ville non renseignée';
-      meta.appendChild(createChip(cityLabel, 'city'));
       const licensesCount = Number.parseInt(club.totalLicenses, 10);
       const safeLicensesCount = Number.isFinite(licensesCount) ? licensesCount : 0;
       meta.appendChild(
@@ -2832,6 +2897,8 @@
           'licenses'
         )
       );
+      const cityLabel = (club.commune || '').trim() || 'Ville non renseignée';
+      meta.appendChild(createChip(cityLabel, 'city'));
       if (club.labelFederal) {
         meta.appendChild(createChip(club.labelFederal, 'label'));
       }
@@ -3022,15 +3089,9 @@
 	    }
 
 	    const ffeInfo = createSection('FFE');
-	    if (club.licenses && (club.licenses.A || club.licenses.B)) {
-	      const licenseParts = [];
-	      if (club.licenses.A) {
-	        licenseParts.push(`Licence A : ${club.licenses.A}`);
-	      }
-	      if (club.licenses.B) {
-	        licenseParts.push(`Licence B : ${club.licenses.B}`);
-	      }
-	      appendDetail(ffeInfo.list, 'Licences (détail)', licenseParts.join(' · '));
+	    const licensesItem = createLicenseBreakdownItem(club.licenses);
+	    if (licensesItem) {
+	      ffeInfo.list.appendChild(licensesItem);
 	    }
 	    const ficheFfeUrl =
 	      club.fiche_ffe ||

@@ -1851,10 +1851,9 @@
     if (icon && faviconUrl) {
       icon.setAttribute('src', faviconUrl);
     }
-    const host = clubsPageShell && document.body.contains(clubsPageShell) ? clubsPageShell : document.body;
-    if (host !== document.body) {
-      host.classList.add('clubs-loading-host');
-      overlay.classList.add('clubs-loading-overlay--scoped');
+    const host = document.body;
+    if (!host) {
+      return null;
     }
     host.appendChild(overlay);
     loadingOverlayElement = overlay;
@@ -1907,7 +1906,7 @@
     if (globalSpinner) {
       // Do not lock scrolling: the "jump to results" relies on scrollTo/scrollIntoView.
       // Locking scroll here makes the behaviour flaky (sometimes no scroll at all).
-      return globalSpinner.show(label, { host: clubsPageShell, lockScroll: false, pinToViewport: true });
+      return globalSpinner.show(label, { host: document.body, lockScroll: false, pinToViewport: true });
     }
     const overlay = ensureLoadingOverlay();
     if (!overlay) {
