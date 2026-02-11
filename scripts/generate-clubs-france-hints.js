@@ -12,6 +12,25 @@ const MANIFEST_PATH = path.join(DATA_ROOT, 'clubs-france.json');
 const OUTPUT_PATH = path.join(DATA_ROOT, 'clubs-france-hints.json');
 const POSTAL_COORDINATES_PATH = path.join(DATA_ROOT, 'postal-coordinates-fr.json');
 
+const writeJsonAtomic = async (filePath, payload) => {
+  const content = `${JSON.stringify(payload, null, 2)}\n`;
+  const targetDir = path.dirname(filePath);
+  const tempPath = path.join(
+    targetDir,
+    `.${path.basename(filePath)}.tmp-${process.pid}-${Date.now()}-${Math.random()
+      .toString(16)
+      .slice(2)}`
+  );
+
+  await fs.mkdir(targetDir, { recursive: true });
+  try {
+    await fs.writeFile(tempPath, content);
+    await fs.rename(tempPath, filePath);
+  } finally {
+    await fs.rm(tempPath, { force: true }).catch(() => {});
+  }
+};
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const normalise = (value) =>
@@ -1043,7 +1062,7 @@ const main = async () => {
       total: options.offset + processed,
       hints: sortedHints,
     };
-    await fs.writeFile(OUTPUT_PATH, `${JSON.stringify(payload, null, 2)}\n`);
+    await writeJsonAtomic(OUTPUT_PATH, payload);
     return sortedKeys.length;
   };
 

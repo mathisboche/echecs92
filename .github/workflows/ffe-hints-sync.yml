@@ -38,13 +38,10 @@ jobs:
         run: |
           node scripts/update-postal-coordinates-fr.js
           node scripts/generate-clubs-france-hints.js --resume
-      - name: Deploy generated data via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
-          server-dir: /www/wp-content/themes/echecs92-child/assets/data/
-          local-dir: wp-content/themes/echecs92-child/assets/data/
-          dangerous-clean-slate: false
+      - name: Deploy generated data atomically
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          bash scripts/deploy-data-atomic.sh

@@ -64,3 +64,12 @@ Puis ouvrir `http://localhost:8080`.
 ## Déploiement
 
 Le déploiement du contenu de `wp-content/` est automatisé via GitHub Actions (workflows dans `.github/workflows/`).
+
+### Données FFE (déploiement atomique)
+
+Les workflows de synchro FFE déploient désormais les données via un dossier de staging FTP puis un swap final :
+
+- upload dans `assets/data.__staging`
+- bascule atomique vers `assets/data` en fin de run
+
+Ce mécanisme évite les états intermédiaires visibles sur le site pendant la synchronisation.

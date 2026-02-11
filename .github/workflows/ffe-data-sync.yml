@@ -13,6 +13,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Install lftp
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lftp
+      - name: Fetch existing hint caches
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          mkdir -p wp-content/themes/echecs92-child/assets/data
+          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_SERVER:21" <<'EOF'
+          set ftp:passive-mode true
+          set cmd:fail-exit false
+          get /www/wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json -o wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json
+          get /www/wp-content/themes/echecs92-child/assets/data/postal-coordinates-fr.json -o wp-content/themes/echecs92-child/assets/data/postal-coordinates-fr.json
+          EOF
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
@@ -20,15 +37,12 @@ jobs:
       - name: Refresh FFE data
         run: |
           node scripts/sync-ffe-clubs.js
-          node scripts/generate-clubs-france-hints.js
+          node scripts/generate-clubs-france-hints.js --resume
           node scripts/generate-ffe-players-index.js
-      - name: Deploy generated data via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
-          server-dir: /www/wp-content/themes/echecs92-child/assets/data/
-          local-dir: wp-content/themes/echecs92-child/assets/data/
-          dangerous-clean-slate: false
+      - name: Deploy generated data atomically
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          bash scripts/deploy-data-atomic.sh

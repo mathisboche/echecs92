@@ -1,4 +1,5 @@
 const fs = require('node:fs');
+const path = require('node:path');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -34,7 +35,24 @@ const limitConcurrency = (concurrency) => {
 };
 
 const writeJson = (filePath, data) => {
-  fs.writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`);
+  const output = `${JSON.stringify(data, null, 2)}\n`;
+  const targetDir = path.dirname(filePath);
+  const tempPath = path.join(
+    targetDir,
+    `.${path.basename(filePath)}.tmp-${process.pid}-${Date.now()}-${Math.random()
+      .toString(16)
+      .slice(2)}`
+  );
+
+  fs.mkdirSync(targetDir, { recursive: true });
+  try {
+    fs.writeFileSync(tempPath, output);
+    fs.renameSync(tempPath, filePath);
+  } finally {
+    if (fs.existsSync(tempPath)) {
+      fs.rmSync(tempPath, { force: true });
+    }
+  }
 };
 
 module.exports = {
@@ -42,4 +60,3 @@ module.exports = {
   sleep,
   writeJson,
 };
-

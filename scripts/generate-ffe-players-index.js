@@ -124,7 +124,22 @@ const ensureDir = (dirPath) => {
 const writeJson = (filePath, data, options = {}) => {
   const pretty = options.pretty !== false;
   const json = pretty ? JSON.stringify(data, null, 2) : JSON.stringify(data);
-  fs.writeFileSync(filePath, `${json}\n`);
+  const targetDir = path.dirname(filePath);
+  const tempPath = path.join(
+    targetDir,
+    `.${path.basename(filePath)}.tmp-${process.pid}-${Date.now()}-${Math.random()
+      .toString(16)
+      .slice(2)}`
+  );
+  fs.mkdirSync(targetDir, { recursive: true });
+  try {
+    fs.writeFileSync(tempPath, `${json}\n`);
+    fs.renameSync(tempPath, filePath);
+  } finally {
+    if (fs.existsSync(tempPath)) {
+      fs.rmSync(tempPath, { force: true });
+    }
+  }
 };
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

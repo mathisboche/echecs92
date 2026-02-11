@@ -5,6 +5,7 @@ const {
   BASE_URL,
   CLUBS_92_PATH,
   CLUBS_DIR,
+  DATA_ROOT,
   DETAIL_CONCURRENCY,
   EXCLUDED_CLUB_NAME_PATTERNS,
   EXCLUDED_CLUB_REFS,
@@ -22,6 +23,60 @@ const { parseClubDetails, parseClubList, parseDepartments } = require('./parsers
 const { ensureUniqueSlugs } = require('./slugs');
 const { slugify } = require('./text');
 const { limitConcurrency, sleep, writeJson } = require('./util');
+
+const removeIfExists = (targetPath) => {
+  if (!targetPath || !fs.existsSync(targetPath)) {
+    return;
+  }
+  fs.rmSync(targetPath, { recursive: true, force: true });
+};
+
+const replacePathAtomically = (stagedPath, livePath, runId) => {
+  if (!fs.existsSync(stagedPath)) {
+    throw new Error(`Chemin de staging introuvable: ${stagedPath}`);
+  }
+  const backupPath = `${livePath}.bak-${runId}`;
+  removeIfExists(backupPath);
+
+  if (fs.existsSync(livePath)) {
+    fs.renameSync(livePath, backupPath);
+  }
+
+  try {
+    fs.renameSync(stagedPath, livePath);
+    removeIfExists(backupPath);
+  } catch (error) {
+    if (fs.existsSync(backupPath) && !fs.existsSync(livePath)) {
+      try {
+        fs.renameSync(backupPath, livePath);
+      } catch (_rollbackError) {
+        // Ignore rollback errors: the original error is surfaced below.
+      }
+    }
+    throw error;
+  }
+};
+
+const createStagingPaths = (runId) => {
+  const root = path.join(DATA_ROOT, `.ffe-sync-staging-${runId}`);
+  return {
+    root,
+    clubsDir: path.join(root, 'clubs-france'),
+    ffeDir: path.join(root, 'clubs-france-ffe'),
+    ffeDetailsDir: path.join(root, 'clubs-france-ffe-details'),
+    manifestPath: path.join(root, 'clubs-france.json'),
+    ffeManifestPath: path.join(root, 'clubs-france-ffe.json'),
+  };
+};
+
+const publishStagedData = (stagingPaths, runId) => {
+  replacePathAtomically(stagingPaths.clubsDir, CLUBS_DIR, runId);
+  replacePathAtomically(stagingPaths.ffeDir, FFE_DIR, runId);
+  replacePathAtomically(stagingPaths.ffeDetailsDir, FFE_DETAILS_DIR, runId);
+  replacePathAtomically(stagingPaths.manifestPath, MANIFEST_PATH, runId);
+  replacePathAtomically(stagingPaths.ffeManifestPath, FFE_MANIFEST_PATH, runId);
+  removeIfExists(stagingPaths.root);
+};
 
 const buildClubEntries = (detail, listEntry, dept) => {
   const postalCode = detail.postalCode || extractPostalCode(detail.adresse, detail.siege);
@@ -107,212 +162,249 @@ const emptyClubDetails = (ref) => ({
 });
 
 const syncFfeClubs = async ({ licensesOnly = false } = {}) => {
+  const runId = `${Date.now()}-${process.pid}`;
+  const stagingPaths = licensesOnly ? null : createStagingPaths(runId);
+  const outputPaths = stagingPaths
+    ? {
+        clubsDir: stagingPaths.clubsDir,
+        ffeDir: stagingPaths.ffeDir,
+        ffeDetailsDir: stagingPaths.ffeDetailsDir,
+        manifestPath: stagingPaths.manifestPath,
+        ffeManifestPath: stagingPaths.ffeManifestPath,
+      }
+    : {
+        clubsDir: CLUBS_DIR,
+        ffeDir: FFE_DIR,
+        ffeDetailsDir: FFE_DETAILS_DIR,
+        manifestPath: MANIFEST_PATH,
+        ffeManifestPath: FFE_MANIFEST_PATH,
+      };
+
+  if (stagingPaths) {
+    removeIfExists(stagingPaths.root);
+    fs.mkdirSync(outputPaths.clubsDir, { recursive: true });
+    fs.mkdirSync(outputPaths.ffeDir, { recursive: true });
+    fs.mkdirSync(outputPaths.ffeDetailsDir, { recursive: true });
+  } else {
+    fs.mkdirSync(CLUBS_DIR, { recursive: true });
+    fs.mkdirSync(FFE_DIR, { recursive: true });
+  }
+
+  let shouldCleanupStaging = Boolean(stagingPaths);
   console.log('→ Récupération de la liste des comités...');
-  const comitesHtml = await fetchText(`${BASE_URL}/Comites.aspx`);
-  const departments = parseDepartments(comitesHtml);
-  if (!departments.length) {
-    throw new Error('Aucun comité trouvé sur Comites.aspx');
-  }
-  console.log(`→ ${departments.length} comités trouvés.`);
-
-  fs.mkdirSync(CLUBS_DIR, { recursive: true });
-  fs.mkdirSync(FFE_DIR, { recursive: true });
-
-  const deptClubLists = new Map();
-  const allRefs = new Map();
-
-  for (const dept of departments) {
-    process.stdout.write(`→ Clubs du ${dept.code} ${dept.name}... `);
-    try {
-      const listHtml = await fetchText(
-        `${BASE_URL}/ListeClubs.aspx?Action=CLUBCOMITE&ComiteRef=${encodeURIComponent(dept.code)}`
-      );
-      const clubs = parseClubList(listHtml);
-      deptClubLists.set(dept.code, clubs);
-      clubs.forEach((club) => {
-        if (!allRefs.has(club.ref)) {
-          allRefs.set(club.ref, null);
-        }
-      });
-      console.log(`${clubs.length} club(s)`);
-    } catch (error) {
-      console.log('erreur', error.message);
-      deptClubLists.set(dept.code, []);
+  try {
+    const comitesHtml = await fetchText(`${BASE_URL}/Comites.aspx`);
+    const departments = parseDepartments(comitesHtml);
+    if (!departments.length) {
+      throw new Error('Aucun comité trouvé sur Comites.aspx');
     }
-    await sleep(120);
-  }
+    console.log(`→ ${departments.length} comités trouvés.`);
 
-  const refs = Array.from(allRefs.keys());
-  console.log(`→ Téléchargement des fiches clubs (${refs.length})...`);
-  const limiter = limitConcurrency(DETAIL_CONCURRENCY);
-  let done = 0;
-  await Promise.all(
-    refs.map((ref) =>
-      limiter(async () => {
-        try {
-          const html = await fetchText(`${BASE_URL}/FicheClub.aspx?Ref=${encodeURIComponent(ref)}`);
-          const detail = parseClubDetails(html, ref);
-          allRefs.set(ref, detail);
-        } catch (error) {
-          allRefs.set(ref, emptyClubDetails(ref));
-        } finally {
-          done += 1;
-          if (done % 50 === 0 || done === refs.length) {
-            process.stdout.write(`  ${done}/${refs.length} fiches\r`);
+    const deptClubLists = new Map();
+    const allRefs = new Map();
+
+    for (const dept of departments) {
+      process.stdout.write(`→ Clubs du ${dept.code} ${dept.name}... `);
+      try {
+        const listHtml = await fetchText(
+          `${BASE_URL}/ListeClubs.aspx?Action=CLUBCOMITE&ComiteRef=${encodeURIComponent(dept.code)}`
+        );
+        const clubs = parseClubList(listHtml);
+        deptClubLists.set(dept.code, clubs);
+        clubs.forEach((club) => {
+          if (!allRefs.has(club.ref)) {
+            allRefs.set(club.ref, null);
           }
-        }
-      })
-    )
-  );
-  process.stdout.write('\n');
-
-  const perDeptBase = new Map();
-  const perDeptFfe = new Map();
-  const allFfeEntries = [];
-  const includedRefs = new Map();
-
-  departments.forEach((dept) => {
-    const list = deptClubLists.get(dept.code) || [];
-    const baseEntries = [];
-    const ffeEntries = [];
-
-    list.forEach((entry) => {
-      const detail = allRefs.get(entry.ref) || { ref: entry.ref };
-      if (shouldExcludeClub(detail, entry)) {
-        console.log(`→ Club exclu (${entry.ref}) ${entry.name || detail.name || ''}`.trim());
-        return;
+        });
+        console.log(`${clubs.length} club(s)`);
+      } catch (error) {
+        console.log('erreur', error.message);
+        deptClubLists.set(dept.code, []);
       }
-      const refKey = detail.ref || entry.ref;
-      if (refKey && !includedRefs.has(refKey)) {
-        includedRefs.set(refKey, { name: detail.name || entry.name || '' });
-      }
-      const combined = buildClubEntries(detail, entry, dept);
-      baseEntries.push(combined.baseEntry);
-      ffeEntries.push(combined.ffeEntry);
-      allFfeEntries.push(combined.ffeEntry);
-    });
-
-    baseEntries.sort(
-      (a, b) =>
-        (a.nom || '').localeCompare(b.nom || '', 'fr', { sensitivity: 'base' }) ||
-        (a.adresse || '').localeCompare(b.adresse || '', 'fr', { sensitivity: 'base' })
-    );
-    ffeEntries.sort(
-      (a, b) =>
-        (a.name || '').localeCompare(b.name || '', 'fr', { sensitivity: 'base' }) ||
-        (a.commune || '').localeCompare(b.commune || '', 'fr', { sensitivity: 'base' })
-    );
-
-    perDeptBase.set(dept.code, baseEntries);
-    perDeptFfe.set(dept.code, ffeEntries);
-  });
-
-  if (licensesOnly) {
-    departments.forEach((dept) => {
-      const freshEntries = perDeptBase.get(dept.code) || [];
-      const lookup = buildLicenseLookup(freshEntries);
-      updateLicenseCountsInFile(path.join(CLUBS_DIR, dept.file), lookup);
-    });
-    if (perDeptBase.has('92')) {
-      const lookup92 = buildLicenseLookup(perDeptBase.get('92') || []);
-      updateLicenseCountsInFile(CLUBS_92_PATH, lookup92);
+      await sleep(120);
     }
-    console.log('→ Mise à jour des licences terminée.');
-    return;
-  }
 
-  ensureUniqueSlugs(allFfeEntries);
-
-  if (includedRefs.size) {
-    console.log(
-      '→ Téléchargement des listes FFE (membres, arbitrage, animation, entrainement, initiation)...'
-    );
-    fs.mkdirSync(FFE_DETAILS_DIR, { recursive: true });
-    const clubsToFetch = Array.from(includedRefs.entries()).map(([ref, meta]) => ({
-      ref,
-      name: meta?.name || '',
-    }));
-    const limiterLists = limitConcurrency(LIST_CONCURRENCY);
-    const errors = [];
-    let doneLists = 0;
-
+    const refs = Array.from(allRefs.keys());
+    console.log(`→ Téléchargement des fiches clubs (${refs.length})...`);
+    const limiter = limitConcurrency(DETAIL_CONCURRENCY);
+    let done = 0;
     await Promise.all(
-      clubsToFetch.map((entry) =>
-        limiterLists(async () => {
-          const payload = await fetchClubLists(entry.ref, entry.name, errors);
-          if (payload) {
-            const filePath = path.join(FFE_DETAILS_DIR, `${payload.ref}.json`);
-            writeJson(filePath, payload);
-          }
-          doneLists += 1;
-          if (doneLists % 25 === 0 || doneLists === clubsToFetch.length) {
-            process.stdout.write(`  ${doneLists}/${clubsToFetch.length} clubs traités\r`);
+      refs.map((ref) =>
+        limiter(async () => {
+          try {
+            const html = await fetchText(`${BASE_URL}/FicheClub.aspx?Ref=${encodeURIComponent(ref)}`);
+            const detail = parseClubDetails(html, ref);
+            allRefs.set(ref, detail);
+          } catch (error) {
+            allRefs.set(ref, emptyClubDetails(ref));
+          } finally {
+            done += 1;
+            if (done % 50 === 0 || done === refs.length) {
+              process.stdout.write(`  ${done}/${refs.length} fiches\r`);
+            }
           }
         })
       )
     );
     process.stdout.write('\n');
-    if (errors.length) {
-      console.log('--- FFE lists issues summary ---');
-      errors.slice(0, 20).forEach((item) => {
-        const label = item.name ? `${item.name} (${item.ref})` : item.ref;
-        console.log(`- ${label} | ${item.details.join('; ')}`);
+
+    const perDeptBase = new Map();
+    const perDeptFfe = new Map();
+    const allFfeEntries = [];
+    const includedRefs = new Map();
+
+    departments.forEach((dept) => {
+      const list = deptClubLists.get(dept.code) || [];
+      const baseEntries = [];
+      const ffeEntries = [];
+
+      list.forEach((entry) => {
+        const detail = allRefs.get(entry.ref) || { ref: entry.ref };
+        if (shouldExcludeClub(detail, entry)) {
+          console.log(`→ Club exclu (${entry.ref}) ${entry.name || detail.name || ''}`.trim());
+          return;
+        }
+        const refKey = detail.ref || entry.ref;
+        if (refKey && !includedRefs.has(refKey)) {
+          includedRefs.set(refKey, { name: detail.name || entry.name || '' });
+        }
+        const combined = buildClubEntries(detail, entry, dept);
+        baseEntries.push(combined.baseEntry);
+        ffeEntries.push(combined.ffeEntry);
+        allFfeEntries.push(combined.ffeEntry);
       });
-      if (errors.length > 20) {
-        console.log(`… ${errors.length - 20} autres erreurs`);
+
+      baseEntries.sort(
+        (a, b) =>
+          (a.nom || '').localeCompare(b.nom || '', 'fr', { sensitivity: 'base' }) ||
+          (a.adresse || '').localeCompare(b.adresse || '', 'fr', { sensitivity: 'base' })
+      );
+      ffeEntries.sort(
+        (a, b) =>
+          (a.name || '').localeCompare(b.name || '', 'fr', { sensitivity: 'base' }) ||
+          (a.commune || '').localeCompare(b.commune || '', 'fr', { sensitivity: 'base' })
+      );
+
+      perDeptBase.set(dept.code, baseEntries);
+      perDeptFfe.set(dept.code, ffeEntries);
+    });
+
+    if (licensesOnly) {
+      departments.forEach((dept) => {
+        const freshEntries = perDeptBase.get(dept.code) || [];
+        const lookup = buildLicenseLookup(freshEntries);
+        updateLicenseCountsInFile(path.join(CLUBS_DIR, dept.file), lookup);
+      });
+      if (perDeptBase.has('92')) {
+        const lookup92 = buildLicenseLookup(perDeptBase.get('92') || []);
+        updateLicenseCountsInFile(CLUBS_92_PATH, lookup92);
       }
-      console.log('--- End FFE lists issues summary ---');
+      console.log('→ Mise à jour des licences terminée.');
+      return;
+    }
+
+    ensureUniqueSlugs(allFfeEntries);
+
+    if (includedRefs.size) {
+      console.log(
+        '→ Téléchargement des listes FFE (membres, arbitrage, animation, entrainement, initiation)...'
+      );
+      fs.mkdirSync(outputPaths.ffeDetailsDir, { recursive: true });
+      const clubsToFetch = Array.from(includedRefs.entries()).map(([ref, meta]) => ({
+        ref,
+        name: meta?.name || '',
+      }));
+      const limiterLists = limitConcurrency(LIST_CONCURRENCY);
+      const errors = [];
+      let doneLists = 0;
+
+      await Promise.all(
+        clubsToFetch.map((entry) =>
+          limiterLists(async () => {
+            const payload = await fetchClubLists(entry.ref, entry.name, errors);
+            if (payload) {
+              const filePath = path.join(outputPaths.ffeDetailsDir, `${payload.ref}.json`);
+              writeJson(filePath, payload);
+            }
+            doneLists += 1;
+            if (doneLists % 25 === 0 || doneLists === clubsToFetch.length) {
+              process.stdout.write(`  ${doneLists}/${clubsToFetch.length} clubs traités\r`);
+            }
+          })
+        )
+      );
+      process.stdout.write('\n');
+      if (errors.length) {
+        console.log('--- FFE lists issues summary ---');
+        errors.slice(0, 20).forEach((item) => {
+          const label = item.name ? `${item.name} (${item.ref})` : item.ref;
+          console.log(`- ${label} | ${item.details.join('; ')}`);
+        });
+        if (errors.length > 20) {
+          console.log(`… ${errors.length - 20} autres erreurs`);
+        }
+        console.log('--- End FFE lists issues summary ---');
+      }
+    }
+
+    departments.forEach((dept) => {
+      const baseEntries = perDeptBase.get(dept.code) || [];
+      const ffeEntries = perDeptFfe.get(dept.code) || [];
+      writeJson(path.join(outputPaths.clubsDir, dept.file), baseEntries);
+      writeJson(
+        path.join(outputPaths.ffeDir, dept.file),
+        ffeEntries.map((entry) => ({
+          slug: entry.slug,
+          name: entry.name,
+          commune: entry.commune,
+          postalCode: entry.postalCode,
+          ref: entry.ref,
+        }))
+      );
+    });
+
+    const manifestPayload = {
+      version: 1,
+      updated: new Date().toISOString(),
+      basePath: '/wp-content/themes/echecs92-child/assets/data/clubs-france/',
+      departments: departments.map((dept) => ({
+        code: dept.code,
+        name: dept.name,
+        slug: dept.slug,
+        file: dept.file,
+        count: (perDeptBase.get(dept.code) || []).length,
+      })),
+    };
+    writeJson(outputPaths.manifestPath, manifestPayload);
+
+    const ffeManifestPayload = {
+      version: 1,
+      updated: new Date().toISOString(),
+      basePath: '/wp-content/themes/echecs92-child/assets/data/clubs-france-ffe/',
+      departments: departments.map((dept) => ({
+        code: dept.code,
+        name: dept.name,
+        slug: dept.slug,
+        file: dept.file,
+        count: (perDeptFfe.get(dept.code) || []).length,
+      })),
+    };
+    writeJson(outputPaths.ffeManifestPath, ffeManifestPayload);
+
+    if (stagingPaths) {
+      console.log('→ Publication atomique des données synchronisées...');
+      publishStagedData(stagingPaths, runId);
+      shouldCleanupStaging = false;
+    }
+
+    console.log('→ Synchronisation terminée.');
+  } finally {
+    if (shouldCleanupStaging && stagingPaths) {
+      removeIfExists(stagingPaths.root);
     }
   }
-
-  departments.forEach((dept) => {
-    const baseEntries = perDeptBase.get(dept.code) || [];
-    const ffeEntries = perDeptFfe.get(dept.code) || [];
-    writeJson(path.join(CLUBS_DIR, dept.file), baseEntries);
-    writeJson(
-      path.join(FFE_DIR, dept.file),
-      ffeEntries.map((entry) => ({
-        slug: entry.slug,
-        name: entry.name,
-        commune: entry.commune,
-        postalCode: entry.postalCode,
-        ref: entry.ref,
-      }))
-    );
-  });
-
-  const manifestPayload = {
-    version: 1,
-    updated: new Date().toISOString(),
-    basePath: '/wp-content/themes/echecs92-child/assets/data/clubs-france/',
-    departments: departments.map((dept) => ({
-      code: dept.code,
-      name: dept.name,
-      slug: dept.slug,
-      file: dept.file,
-      count: (perDeptBase.get(dept.code) || []).length,
-    })),
-  };
-  writeJson(MANIFEST_PATH, manifestPayload);
-
-  const ffeManifestPayload = {
-    version: 1,
-    updated: new Date().toISOString(),
-    basePath: '/wp-content/themes/echecs92-child/assets/data/clubs-france-ffe/',
-    departments: departments.map((dept) => ({
-      code: dept.code,
-      name: dept.name,
-      slug: dept.slug,
-      file: dept.file,
-      count: (perDeptFfe.get(dept.code) || []).length,
-    })),
-  };
-  writeJson(FFE_MANIFEST_PATH, ffeManifestPayload);
-
-  console.log('→ Synchronisation terminée.');
 };
 
 module.exports = {
   syncFfeClubs,
 };
-
