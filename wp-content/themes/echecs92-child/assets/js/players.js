@@ -46,6 +46,7 @@
   const indexUrl = (shell.dataset.playerIndexUrl || DEFAULT_INDEX_URL).trim() || DEFAULT_INDEX_URL;
   const topUrl = (shell.dataset.playerTopUrl || DEFAULT_TOP_URL).trim() || DEFAULT_TOP_URL;
   const detailBase = (shell.dataset.playerDetailBase || DEFAULT_DETAIL_BASE).trim() || DEFAULT_DETAIL_BASE;
+  const isScope92 = shell.classList.contains('players-page--92');
 
   const spotlightSection = shell.querySelector('.players-spotlight');
   const topHost = document.getElementById('players-top');
@@ -115,6 +116,32 @@
     } else {
       delete statusNode.dataset.tone;
     }
+  };
+
+  const setNoResultStatus = (query) => {
+    const raw = (query || '').toString().trim();
+    if (!isScope92) {
+      setStatus('Aucun joueur trouve.', 'error');
+      return;
+    }
+
+    statusNode.textContent = '';
+    statusNode.hidden = false;
+    statusNode.dataset.tone = 'info';
+
+    const textNode = document.createElement('span');
+    textNode.textContent = 'Aucun joueur trouve dans le 92. ';
+    statusNode.appendChild(textNode);
+
+    const link = document.createElement('a');
+    const params = new URLSearchParams();
+    if (raw) {
+      params.set('q', raw);
+    }
+    params.set('focus', '1');
+    link.href = `/joueurs${params.toString() ? `?${params.toString()}` : ''}`;
+    link.textContent = 'Essayer la recherche France';
+    statusNode.appendChild(link);
   };
 
   const setResultsLoading = (label) => {
@@ -493,7 +520,7 @@
         visibleCount = VISIBLE_DEFAULT;
 
         if (!sortedMatches.length) {
-          setStatus('Aucun joueur trouve.', 'error');
+          setNoResultStatus(raw);
           clearResults();
           return;
         }
