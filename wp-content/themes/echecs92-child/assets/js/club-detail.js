@@ -2406,9 +2406,9 @@
 	    const ficheFfeUrl =
 	      club.fiche_ffe ||
 	      (club.ffeRef ? `${FFE_URL_BASE}${encodeURIComponent(club.ffeRef)}` : '');
-		    appendDetail(ffeInfo.list, 'Fiche officielle FFE', ficheFfeUrl, {
+		    appendDetail(ffeInfo.list, 'Fiche FFE', ficheFfeUrl, {
 		      type: 'link',
-		      label: 'Ouvrir la fiche officielle sur le site de la FFE',
+		      label: 'Voir la fiche officielle',
 		    });
 
 	    sections.forEach((section) => sheet.appendChild(section));
