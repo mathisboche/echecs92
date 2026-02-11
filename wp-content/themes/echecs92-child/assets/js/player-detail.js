@@ -160,8 +160,8 @@
     return getBackKindForPath(path) === 'club' ? path : '';
   };
 
-  const fetchJson = (url) =>
-    fetch(url, { headers: { Accept: 'application/json' } }).then((response) => {
+  const fetchJson = (url, options = {}) =>
+    fetch(url, { headers: { Accept: 'application/json' }, ...options }).then((response) => {
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
@@ -388,6 +388,7 @@
 
   const createRatingCard = (label, value, options = {}) => {
     const { main, tag } = splitRating(value);
+    const normalizedTag = (tag || '').toString().trim().toUpperCase();
     const card = document.createElement('div');
     card.className = options.primary ? 'player-stat player-stat--primary' : 'player-stat';
 
@@ -417,16 +418,16 @@
     valueNode.textContent = main || '-';
     valueRow.appendChild(valueNode);
 
-    if (tag) {
+    if (normalizedTag) {
       const tagNode = document.createElement('span');
       tagNode.className = 'player-rating-tag';
-      tagNode.textContent = tag;
-      if (shouldShowRatingTagTooltip(tag, options)) {
-        const hint = getRatingTagHint(tag);
+      tagNode.textContent = normalizedTag;
+      if (shouldShowRatingTagTooltip(normalizedTag, options)) {
+        const hint = getRatingTagHint(normalizedTag);
         tagNode.dataset.tooltip = hint;
         tagNode.setAttribute('tabindex', '0');
         tagNode.setAttribute('role', 'note');
-        tagNode.setAttribute('aria-label', `${tag}: ${hint}`);
+        tagNode.setAttribute('aria-label', `${normalizedTag}: ${hint}`);
       }
       valueRow.appendChild(tagNode);
     }
@@ -435,7 +436,7 @@
     return card;
   };
 
-  const renderPlayer = (player) => {
+  const renderPlayer = (player, extras = null) => {
     detailContainer.classList.remove('is-loading');
     detailContainer.innerHTML = '';
 
@@ -531,101 +532,99 @@
       return item;
     };
 
-    const licenceItem = appendExtraItem('Licence', formatLicence(player.aff || ''));
-    const nrFfeItem = appendExtraItem('N° FFE', player.nrFfe || '');
-    appendExtraItem('Fiche FFE', officialUrl, { type: 'link', label: 'Ouvrir sur echecs.asso.fr' });
+	    const licenceItem = appendExtraItem('Licence', formatLicence(player.aff || ''));
+	    const nrFfeItem = appendExtraItem('N° FFE', player.nrFfe || '');
+	    appendExtraItem('Fiche FFE', officialUrl, { type: 'link', label: 'Ouvrir sur echecs.asso.fr' });
 
-    if (extraList.childElementCount) {
-      sheet.appendChild(extra);
-    }
+	    const formattedTitle = formatTitlePrefix(extras?.title || '');
+	    if (formattedTitle.short) {
+	      titlePrefix.hidden = false;
+	      titlePrefixText.textContent = formattedTitle.short;
+	      titlePrefix.dataset.tooltip = formattedTitle.long || formattedTitle.short;
+	      titlePrefix.setAttribute('tabindex', '0');
+	      titlePrefix.setAttribute('role', 'note');
+	      titlePrefix.setAttribute('aria-label', formattedTitle.long || formattedTitle.short);
+
+	      const formatted = formatNameGivenFirst(playerName);
+	      if (formatted) {
+	        nameNode.textContent = formatted;
+	      }
+	    }
+
+	    const roles = Array.isArray(extras?.roles) ? extras.roles.filter(Boolean) : [];
+	    if (roles.length) {
+	      const item = document.createElement('li');
+	      item.className = 'player-extra__item';
+
+	      const labelNode = document.createElement('span');
+	      labelNode.className = 'player-extra__label';
+	      labelNode.textContent = 'Fonctions';
+	      item.appendChild(labelNode);
+
+	      const valueNode = document.createElement('span');
+	      valueNode.className = 'player-extra__value';
+	      valueNode.textContent = roles.join(', ');
+	      item.appendChild(valueNode);
+
+	      if (nrFfeItem && nrFfeItem.parentNode === extraList) {
+	        extraList.insertBefore(item, nrFfeItem);
+	      } else if (licenceItem && licenceItem.parentNode === extraList) {
+	        if (licenceItem.nextSibling) {
+	          extraList.insertBefore(item, licenceItem.nextSibling);
+	        } else {
+	          extraList.appendChild(item);
+	        }
+	      } else {
+	        extraList.insertBefore(item, extraList.firstChild);
+	      }
+	    }
+
+	    if (extraList.childElementCount) {
+	      sheet.appendChild(extra);
+	    }
 
     detailContainer.appendChild(sheet);
 
-    if (playerName) {
-      document.title = `${playerName} - Joueur`;
-    }
+	    if (playerName) {
+	      const docPrefix = formattedTitle.short ? `${formattedTitle.short} ` : '';
+	      const visibleName = formattedTitle.short ? formatNameGivenFirst(playerName) || playerName : playerName;
+	      document.title = `${docPrefix}${visibleName} - Joueur`;
+	    }
+	  };
 
-    fetchFfeExtras(player.id || '').then((extras) => {
-      if (!extras || typeof extras !== 'object') {
-        return;
-      }
-
-	      const formattedTitle = formatTitlePrefix(extras.title || '');
-	      if (formattedTitle.short) {
-	        titlePrefix.hidden = false;
-	        titlePrefixText.textContent = formattedTitle.short;
-	        titlePrefix.dataset.tooltip = formattedTitle.long || formattedTitle.short;
-	        titlePrefix.setAttribute('tabindex', '0');
-	        titlePrefix.setAttribute('role', 'note');
-	        titlePrefix.setAttribute('aria-label', formattedTitle.long || formattedTitle.short);
-
-        const formatted = formatNameGivenFirst(playerName);
-        if (formatted) {
-          nameNode.textContent = formatted;
-        }
-      }
-
-      const roles = Array.isArray(extras.roles) ? extras.roles.filter(Boolean) : [];
-      if (roles.length) {
-        const item = document.createElement('li');
-        item.className = 'player-extra__item';
-
-        const labelNode = document.createElement('span');
-        labelNode.className = 'player-extra__label';
-        labelNode.textContent = 'Fonctions';
-        item.appendChild(labelNode);
-
-        const valueNode = document.createElement('span');
-        valueNode.className = 'player-extra__value';
-        valueNode.textContent = roles.join(', ');
-        item.appendChild(valueNode);
-
-        if (nrFfeItem && nrFfeItem.parentNode === extraList) {
-          extraList.insertBefore(item, nrFfeItem);
-        } else if (licenceItem && licenceItem.parentNode === extraList) {
-          if (licenceItem.nextSibling) {
-            extraList.insertBefore(item, licenceItem.nextSibling);
-          } else {
-            extraList.appendChild(item);
-          }
-        } else {
-          extraList.insertBefore(item, extraList.firstChild);
-        }
-      }
-
-      if (playerName) {
-        const docPrefix = formattedTitle.short ? `${formattedTitle.short} ` : '';
-        const visibleName = formattedTitle.short ? formatNameGivenFirst(playerName) || playerName : playerName;
-        document.title = `${docPrefix}${visibleName} - Joueur`;
-      }
-    });
-  };
-
-  const init = () => {
-    if (!playerId) {
-      renderMessage(detailContainer.dataset.emptyMessage || 'Joueur introuvable.');
-      return;
-    }
-    const prefix = buildShardPrefix(playerId);
-    if (!prefix) {
-      renderMessage(detailContainer.dataset.emptyMessage || 'Joueur introuvable.');
-      return;
-    }
-    const url = `${PLAYER_SHARDS_BASE_PATH}${encodeURIComponent(prefix)}.json`;
-    fetchJson(url)
-      .then((payload) => {
-        const players = payload && typeof payload === 'object' ? payload.players || null : null;
-        const player = players && typeof players === 'object' ? players[playerId] : null;
-        if (!player) {
-          renderMessage(detailContainer.dataset.emptyMessage || 'Joueur introuvable.');
-          return;
-        }
-        renderPlayer(player);
-      })
-      .catch(() => {
-        renderMessage('Impossible de charger la fiche du joueur pour le moment.');
-      });
-  };
+	  const init = () => {
+	    if (!playerId) {
+	      renderMessage(detailContainer.dataset.emptyMessage || 'Joueur introuvable.');
+	      return;
+	    }
+	    const extrasPromise = fetchFfeExtras(playerId);
+	    const prefix = buildShardPrefix(playerId);
+	    if (!prefix) {
+	      renderMessage(detailContainer.dataset.emptyMessage || 'Joueur introuvable.');
+	      return;
+	    }
+	    const url = `${PLAYER_SHARDS_BASE_PATH}${encodeURIComponent(prefix)}.json`;
+	    fetchJson(url)
+	      .then((payload) => {
+	        const players = payload && typeof payload === 'object' ? payload.players || null : null;
+	        const player = players && typeof players === 'object' ? players[playerId] : null;
+	        if (!player) {
+	          renderMessage(detailContainer.dataset.emptyMessage || 'Joueur introuvable.');
+	          return null;
+	        }
+	        return Promise.all([Promise.resolve(player), extrasPromise]);
+	      })
+	      .then((resolved) => {
+	        if (!resolved) {
+	          return;
+	        }
+	        const [player, extras] = resolved;
+	        renderPlayer(player, extras);
+	      })
+	      .catch(() => {
+	        renderMessage('Impossible de charger la fiche du joueur pour le moment.');
+	      });
+	  };
 
   init();
 })();

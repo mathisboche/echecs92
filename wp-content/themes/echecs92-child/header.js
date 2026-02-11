@@ -922,4 +922,81 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   setupNewsCards();
+
+  // Tooltips are displayed via :focus (mobile tap) and can otherwise get "stuck" until another
+  // focusable element is tapped. Blur them when tapping outside.
+  const setupTooltipDismissal = () => {
+    const TOOLTIP_HOST_SELECTOR = '[data-tooltip][tabindex]';
+
+    const getActiveTooltipHost = () => {
+      const active = document.activeElement;
+      if (!(active instanceof HTMLElement)) {
+        return null;
+      }
+      return active.hasAttribute('data-tooltip') ? active : null;
+    };
+
+    const getTooltipHostFromTarget = (target) => {
+      if (!(target instanceof Element)) {
+        return null;
+      }
+      const host = target.closest(TOOLTIP_HOST_SELECTOR);
+      return host instanceof HTMLElement ? host : null;
+    };
+
+    const blurIfOutside = (target) => {
+      const activeTooltip = getActiveTooltipHost();
+      if (!activeTooltip) {
+        return;
+      }
+      if (target instanceof Node && activeTooltip.contains(target)) {
+        return;
+      }
+      if (typeof activeTooltip.blur === 'function') {
+        activeTooltip.blur();
+      }
+    };
+
+    const focusTooltipHost = (host) => {
+      if (!host || host === document.activeElement) {
+        return;
+      }
+      try {
+        host.focus({ preventScroll: true });
+      } catch (error) {
+        try {
+          host.focus();
+        } catch (err) {
+          // Ignore focus errors for non-focusable nodes.
+        }
+      }
+    };
+
+    const handlePointerDown = (event) => {
+      blurIfOutside(event?.target);
+      if (event && event.pointerType === 'touch') {
+        focusTooltipHost(getTooltipHostFromTarget(event.target));
+      }
+    };
+
+    const handleTouchStart = (event) => {
+      blurIfOutside(event?.target);
+      focusTooltipHost(getTooltipHostFromTarget(event.target));
+    };
+
+    // Use capture so it runs even when inner components stop propagation.
+    document.addEventListener('pointerdown', handlePointerDown, { capture: true });
+    document.addEventListener('touchstart', handleTouchStart, { capture: true, passive: true });
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+      const activeTooltip = getActiveTooltipHost();
+      if (activeTooltip && typeof activeTooltip.blur === 'function') {
+        activeTooltip.blur();
+      }
+    });
+  };
+
+  setupTooltipDismissal();
 });
