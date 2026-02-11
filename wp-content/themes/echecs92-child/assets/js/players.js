@@ -72,6 +72,12 @@
     rows: [],
   };
 
+  const searchCache = {
+    mode: '',
+    query: '',
+    matches: [],
+  };
+
   let currentMatches = [];
   let visibleCount = VISIBLE_DEFAULT;
   let activeSearchToken = 0;
@@ -134,6 +140,12 @@
     if (moreButton) {
       moreButton.hidden = true;
     }
+  };
+
+  const resetSearchCache = () => {
+    searchCache.mode = '';
+    searchCache.query = '';
+    searchCache.matches = [];
   };
 
   const toggleClearButton = () => {
@@ -204,11 +216,40 @@
 
   const renderResults = () => {
     resultsHost.innerHTML = '';
+    const fragment = document.createDocumentFragment();
     currentMatches.slice(0, visibleCount).forEach((row) => {
-      resultsHost.appendChild(createResultRow(row));
+      fragment.appendChild(createResultRow(row));
     });
+    resultsHost.appendChild(fragment);
     if (moreButton) {
       moreButton.hidden = currentMatches.length <= visibleCount;
+    }
+  };
+
+  const getSpinnerApi = () => {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    const spinner = window.cdjeSpinner;
+    if (!spinner || typeof spinner.show !== 'function') {
+      return null;
+    }
+    return spinner;
+  };
+
+  const showLoadingOverlay = (label) => {
+    const spinner = getSpinnerApi();
+    if (!spinner) {
+      return () => {};
+    }
+    try {
+      return spinner.show(label || 'Recherche en cours…', {
+        host: shell,
+        lockScroll: false,
+        pinToViewport: true,
+      });
+    } catch (error) {
+      return () => {};
     }
   };
 
@@ -310,6 +351,28 @@
     return score;
   };
 
+  const resolveSourceRows = (rows, mode, queryValue) => {
+    if (!Array.isArray(rows) || !rows.length) {
+      return [];
+    }
+    if (!Array.isArray(searchCache.matches) || !searchCache.matches.length) {
+      return rows;
+    }
+    if (!searchCache.mode || !searchCache.query) {
+      return rows;
+    }
+    if (searchCache.mode !== mode) {
+      return rows;
+    }
+    if (!queryValue || queryValue.length < searchCache.query.length) {
+      return rows;
+    }
+    if (!queryValue.startsWith(searchCache.query)) {
+      return rows;
+    }
+    return searchCache.matches;
+  };
+
   const runSearch = (query) => {
     const token = (activeSearchToken += 1);
     const raw = (query || '').toString().trim();
@@ -319,6 +382,7 @@
       setStatus('');
       clearResultsLoading();
       clearResults();
+      resetSearchCache();
       if (spotlightSection) {
         spotlightSection.hidden = false;
       }
@@ -329,6 +393,7 @@
       setStatus(`Tapez au moins ${MIN_QUERY_LEN} caracteres.`, 'info');
       clearResultsLoading();
       clearResults();
+      resetSearchCache();
       if (spotlightSection) {
         spotlightSection.hidden = false;
       }
@@ -342,20 +407,36 @@
     setStatus('Recherche en cours...', 'info');
     setResultsLoading(indexState.loaded ? 'Recherche en cours...' : "Chargement de l'index...");
     clearResults();
+    const releaseOverlay = showLoadingOverlay(indexState.loaded ? 'Recherche en cours…' : "Chargement de l'index…");
+    let overlayReleased = false;
+    const releaseBusy = () => {
+      if (overlayReleased) {
+        return;
+      }
+      overlayReleased = true;
+      if (typeof releaseOverlay === 'function') {
+        releaseOverlay();
+      }
+    };
 
     const qDigits = raw.replace(/\D/g, '');
     const isPureDigits = qDigits && qDigits === raw.replace(/\s+/g, '');
     const qNorm = isPureDigits ? '' : normalise(raw);
+    const mode = isPureDigits ? 'digits' : 'text';
+    const queryValue = isPureDigits ? qDigits : qNorm;
 
     ensureIndexLoaded()
       .then((rows) => {
         if (token !== activeSearchToken) {
+          releaseBusy();
           return;
         }
 
+        const sourceRows = resolveSourceRows(rows, mode, queryValue);
         const matches = [];
-        const q = isPureDigits ? qDigits : qNorm;
-        for (const row of rows) {
+        const q = queryValue;
+        const qTerms = !isPureDigits ? q.split(' ').filter(Boolean) : [];
+        for (const row of sourceRows) {
           if (!row) {
             continue;
           }
@@ -365,44 +446,71 @@
             }
             continue;
           }
-          if (row.searchKey.includes(q)) {
+          if (!q) {
+            continue;
+          }
+          if (qTerms.length <= 1) {
+            if (row.searchKey.includes(q)) {
+              matches.push(row);
+            }
+            continue;
+          }
+          let allTermsFound = true;
+          for (const term of qTerms) {
+            if (!row.searchKey.includes(term)) {
+              allTermsFound = false;
+              break;
+            }
+          }
+          if (allTermsFound) {
             matches.push(row);
           }
         }
 
-        matches.sort((a, b) => {
-          const sa = scoreMatch(a, qNorm, isPureDigits ? qDigits : '');
-          const sb = scoreMatch(b, qNorm, isPureDigits ? qDigits : '');
-          if (sb !== sa) {
-            return sb - sa;
+        const ranked = matches.map((row) => ({
+          row,
+          score: scoreMatch(row, qNorm, isPureDigits ? qDigits : ''),
+        }));
+
+        ranked.sort((a, b) => {
+          if (b.score !== a.score) {
+            return b.score - a.score;
           }
-          if ((b.eloValue || 0) !== (a.eloValue || 0)) {
-            return (b.eloValue || 0) - (a.eloValue || 0);
+          if ((b.row.eloValue || 0) !== (a.row.eloValue || 0)) {
+            return (b.row.eloValue || 0) - (a.row.eloValue || 0);
           }
-          return (a.name || '').localeCompare(b.name || '', 'fr', { sensitivity: 'base' });
+          return (a.row.name || '').localeCompare(b.row.name || '', 'fr', { sensitivity: 'base' });
         });
 
+        const sortedMatches = ranked.map((entry) => entry.row);
+        searchCache.mode = mode;
+        searchCache.query = queryValue;
+        searchCache.matches = sortedMatches;
+
         clearResultsLoading();
-        currentMatches = matches;
+        releaseBusy();
+        currentMatches = sortedMatches;
         visibleCount = VISIBLE_DEFAULT;
 
-        if (!matches.length) {
+        if (!sortedMatches.length) {
           setStatus('Aucun joueur trouve.', 'error');
           clearResults();
           return;
         }
 
-        const total = matches.length;
+        const total = sortedMatches.length;
         setStatus(total === 1 ? '1 joueur trouve.' : `${total} joueurs trouves.`, 'success');
         renderResults();
       })
       .catch(() => {
+        releaseBusy();
         if (token !== activeSearchToken) {
           return;
         }
         clearResultsLoading();
         setStatus("Impossible de charger l'index des joueurs pour le moment.", 'error');
         clearResults();
+        resetSearchCache();
       });
   };
 
