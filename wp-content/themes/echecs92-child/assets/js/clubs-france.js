@@ -3852,6 +3852,13 @@
     mathisSequenceActive = false;
     mathisExitStarted = false;
     const overlay = document.getElementById(MATHIS_TAKEOVER_ID);
+    const syncAfterMathis = () => {
+      if (searchInput) {
+        searchInput.value = '';
+      }
+      closeLocationSuggestions({ preserveRequestId: false });
+      updateClearButtons();
+    };
     const finish = () => {
       overlay?.remove();
       if (!options.skipRestore) {
@@ -3859,6 +3866,13 @@
       }
       cleanupMathisFragments();
       unlockMathisScroll();
+      syncAfterMathis();
+      if (typeof window !== 'undefined') {
+        if (typeof window.requestAnimationFrame === 'function') {
+          window.requestAnimationFrame(syncAfterMathis);
+        }
+        window.setTimeout(syncAfterMathis, 120);
+      }
       if (!options.silent) {
         setSearchStatus('Retour à la réalité des clubs français.', 'info');
       }
@@ -4591,7 +4605,7 @@
 
     const text = document.createElement('span');
     text.className = 'clubs-monaco-banner__text';
-    text.textContent = 'Monaco : ChessMates International (association monegasque).';
+    text.textContent = 'ChessMates International';
 
     const link = document.createElement('a');
     link.className = 'clubs-monaco-banner__link';
@@ -6326,6 +6340,7 @@
     if (searchInput) {
       searchInput.value = '';
     }
+    updateClearButtons();
     if (typeof setSearchStatus === 'function') {
       if (result && typeof result === 'object') {
         if (result.suppressStatus) {

@@ -6967,18 +6967,24 @@ a.player-chip:focus:not(:focus-visible),
   align-items:center;
   gap:10px;
   white-space:pre-line;
+  position:relative;
 }
-.club-copy__feedback{
+.club-copy[data-copy-feedback]::before{
+  content:attr(data-copy-feedback);
+  position:absolute;
+  left:50%;
+  bottom:calc(100% + 6px);
+  transform:translateX(-50%);
+  padding:4px 9px;
+  border-radius:999px;
+  border:1px solid #cbd5e1;
+  background:#fff;
+  color:#334155;
   font-size:11px;
-  color:#64748b;
   line-height:1;
   white-space:nowrap;
-  opacity:0;
-  margin-left:2px;
   pointer-events:none;
-}
-.club-copy__feedback:not(:empty){
-  opacity:.9;
+  z-index:2;
 }
 .club-copy::after{
   content:'';

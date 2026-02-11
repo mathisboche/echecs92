@@ -1219,11 +1219,6 @@
       button.textContent = value;
       button.setAttribute('aria-label', options.ariaLabel || `Copier ${label.toLowerCase()}`);
       button.title = options.title || 'Copier';
-      const feedback = document.createElement('span');
-      feedback.className = 'club-copy__feedback';
-      feedback.setAttribute('aria-live', 'polite');
-      feedback.setAttribute('aria-atomic', 'true');
-      button.appendChild(feedback);
 
       let resetTimer = null;
       button.addEventListener('click', async () => {
@@ -1236,26 +1231,27 @@
           resetTimer = null;
         }
         button.dataset.copyState = 'copying';
+        delete button.dataset.copyFeedback;
         try {
           const ok = await onCopy(value);
           if (ok) {
             button.dataset.copyState = 'copied';
             button.title = 'Copié';
-            feedback.textContent = 'copié';
+            button.dataset.copyFeedback = 'Copié';
           } else {
             button.dataset.copyState = 'error';
             button.title = 'Copie impossible';
-            feedback.textContent = 'échec';
+            button.dataset.copyFeedback = 'Copie impossible';
           }
         } catch (error) {
           button.dataset.copyState = 'error';
           button.title = 'Copie impossible';
-          feedback.textContent = 'échec';
+          button.dataset.copyFeedback = 'Copie impossible';
         }
         resetTimer = window.setTimeout(() => {
           delete button.dataset.copyState;
+          delete button.dataset.copyFeedback;
           button.title = options.title || 'Copier';
-          feedback.textContent = '';
         }, 1600);
       });
       valueContainer.appendChild(button);
