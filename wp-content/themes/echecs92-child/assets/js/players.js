@@ -118,30 +118,145 @@
     }
   };
 
-  const setNoResultStatus = (query) => {
-    const raw = (query || '').toString().trim();
-    if (!isScope92) {
-      setStatus('Aucun joueur trouve.', 'error');
-      return;
-    }
-
-    statusNode.textContent = '';
-    statusNode.hidden = false;
-    statusNode.dataset.tone = 'info';
-
-    const textNode = document.createElement('span');
-    textNode.textContent = 'Aucun joueur trouve dans le 92. ';
-    statusNode.appendChild(textNode);
-
-    const link = document.createElement('a');
+  const buildFrancePlayersSearchUrl = (query) => {
     const params = new URLSearchParams();
+    const raw = (query || '').toString().trim();
     if (raw) {
       params.set('q', raw);
     }
     params.set('focus', '1');
-    link.href = `/joueurs${params.toString() ? `?${params.toString()}` : ''}`;
-    link.textContent = 'Essayer la recherche France';
-    statusNode.appendChild(link);
+    const search = params.toString();
+    return search ? `/joueurs?${search}` : '/joueurs';
+  };
+
+  let scopeModalState = null;
+  const ensureScopeModal = () => {
+    if (scopeModalState) {
+      return scopeModalState;
+    }
+    if (typeof document === 'undefined' || !document.body) {
+      return null;
+    }
+
+    const modal = document.createElement('div');
+    modal.id = 'players-scope-modal';
+    modal.className = 'clubs-scope-modal';
+    modal.setAttribute('hidden', '');
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'clubs-scope-modal__backdrop';
+    backdrop.dataset.scopeAction = 'close';
+    modal.appendChild(backdrop);
+
+    const panel = document.createElement('div');
+    panel.className = 'clubs-scope-modal__panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    panel.setAttribute('aria-labelledby', 'players-scope-modal-title');
+    modal.appendChild(panel);
+
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.className = 'clubs-scope-modal__close';
+    closeButton.setAttribute('aria-label', 'Fermer');
+    closeButton.textContent = 'x';
+    closeButton.dataset.scopeAction = 'close';
+    panel.appendChild(closeButton);
+
+    const title = document.createElement('h2');
+    title.id = 'players-scope-modal-title';
+    title.className = 'clubs-scope-modal__title';
+    panel.appendChild(title);
+
+    const text = document.createElement('p');
+    text.className = 'clubs-scope-modal__text';
+    panel.appendChild(text);
+
+    const actions = document.createElement('div');
+    actions.className = 'clubs-scope-modal__actions';
+    panel.appendChild(actions);
+
+    const stayButton = document.createElement('button');
+    stayButton.type = 'button';
+    stayButton.className = 'btn btn-secondary clubs-scope-modal__stay';
+    stayButton.dataset.scopeAction = 'stay';
+    actions.appendChild(stayButton);
+
+    const goButton = document.createElement('button');
+    goButton.type = 'button';
+    goButton.className = 'btn clubs-scope-modal__go';
+    goButton.dataset.scopeAction = 'go';
+    actions.appendChild(goButton);
+
+    document.body.appendChild(modal);
+
+    scopeModalState = {
+      modal,
+      title,
+      text,
+      stayButton,
+      goButton,
+      lastFocus: null,
+      resolve: null,
+    };
+
+    const handleAction = (action) => {
+      if (!scopeModalState || !scopeModalState.resolve) {
+        return;
+      }
+      const resolve = scopeModalState.resolve;
+      scopeModalState.resolve = null;
+      scopeModalState.modal.setAttribute('hidden', '');
+      if (scopeModalState.lastFocus && typeof scopeModalState.lastFocus.focus === 'function') {
+        scopeModalState.lastFocus.focus();
+      }
+      resolve(action === 'go');
+    };
+
+    modal.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+      const action = target.dataset.scopeAction;
+      if (!action) {
+        return;
+      }
+      event.preventDefault();
+      handleAction(action);
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (!scopeModalState || scopeModalState.modal.hasAttribute('hidden')) {
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        handleAction('close');
+      }
+    });
+
+    return scopeModalState;
+  };
+
+  const openScopeModal = (query) => {
+    const modalState = ensureScopeModal();
+    if (!modalState) {
+      return Promise.resolve(false);
+    }
+    const raw = (query || '').toString().trim();
+    modalState.title.textContent = 'Recherche hors du 92';
+    modalState.text.textContent = raw
+      ? `Aucun joueur n'a été trouvé dans le 92 pour "${raw}". Voulez-vous lancer la recherche sur toute la France ?`
+      : "Aucun joueur n'a été trouvé dans le 92. Voulez-vous lancer la recherche sur toute la France ?";
+    modalState.stayButton.textContent = 'Rester sur le 92';
+    modalState.goButton.textContent = 'Rechercher partout en France';
+    modalState.lastFocus = typeof document !== 'undefined' ? document.activeElement : null;
+    modalState.modal.removeAttribute('hidden');
+    modalState.goButton.focus();
+    return new Promise((resolve) => {
+      modalState.resolve = resolve;
+    });
   };
 
   const setResultsLoading = (label) => {
@@ -520,8 +635,22 @@
         visibleCount = VISIBLE_DEFAULT;
 
         if (!sortedMatches.length) {
-          setNoResultStatus(raw);
+          if (!isScope92) {
+            setStatus('Aucun joueur trouve.', 'error');
+            clearResults();
+            return;
+          }
+          setStatus('Aucun joueur trouve dans le 92.', 'info');
           clearResults();
+          const searchToken = token;
+          openScopeModal(raw).then((accepted) => {
+            if (!accepted || searchToken !== activeSearchToken) {
+              return;
+            }
+            if (typeof window !== 'undefined') {
+              window.location.assign(buildFrancePlayersSearchUrl(raw));
+            }
+          });
           return;
         }
 

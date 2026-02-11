@@ -12,7 +12,7 @@ header.wp-block-template-part {
   right: 0;
   z-index: 2000;
   background:#ffffff;
-  transition: transform .3s ease, box-shadow .3s ease, background-color .3s ease;
+  transition: transform .22s cubic-bezier(.2,0,0,1), box-shadow .3s ease, background-color .3s ease;
 }
 header.wp-block-template-part.is-hidden{
   transform: translateY(-100%);
@@ -965,7 +965,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   display:flex;
   align-items:flex-start;
   justify-content:center;
-  min-height:100%;
+  min-height:0;
   padding:8px 0;
   border:none;
 }
@@ -1074,6 +1074,7 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   .home-figures__grid{
     gap:clamp(10px,4vw,18px);
     justify-items:flex-start;
+    align-items:start;
   }
   .home-figure{
     width:100%;
@@ -4211,7 +4212,8 @@ body.club-ffe-view .clubs-page{
   justify-content:center;
   gap:12px;
   position:sticky;
-  top:calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-offset, var(--cm-header-height, 96px)));
+  top:calc(env(safe-area-inset-top, 0px) + var(--wp-admin--admin-bar--height, 0px) + var(--cm-header-height, 96px));
+  transform:translateY(calc(var(--cm-header-offset, var(--cm-header-height, 96px)) - var(--cm-header-height, 96px)));
   z-index:1900;
   width:100vw;
   margin:0 calc(50% - 50vw) 32px;
@@ -4223,7 +4225,8 @@ body.club-ffe-view .clubs-page{
   font-size:13px;
   text-align:center;
   box-sizing:border-box;
-  transition:top .3s ease;
+  will-change:transform;
+  transition:transform .22s cubic-bezier(.2,0,0,1);
 }
 .clubs-page--has-scope-banner .clubs-scope-banner{
   position:fixed;

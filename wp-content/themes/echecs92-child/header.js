@@ -798,6 +798,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updateHeaderHeight = () => {
       headerHeight = headerWrapper.offsetHeight;
+      root.style.setProperty('--cm-header-height', `${headerHeight}px`);
       if (!isHidden) {
         applyHeaderOffset(false);
       }
@@ -860,8 +861,16 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     };
 
+    updateHeaderHeight();
     setHidden(false);
     window.addEventListener('resize', updateHeaderHeight);
+    window.addEventListener('load', updateHeaderHeight);
+    if (typeof ResizeObserver === 'function') {
+      const headerObserver = new ResizeObserver(() => {
+        updateHeaderHeight();
+      });
+      headerObserver.observe(headerWrapper);
+    }
     window.addEventListener('scroll', onScroll, { passive: true });
     if (resultsShell) {
       resultsShell.addEventListener('scroll', onScroll, { passive: true });
