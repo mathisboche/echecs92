@@ -2268,12 +2268,17 @@
       (addressKey === siegeKey ||
         addressKey.includes(siegeKey) ||
         siegeKey.includes(addressKey));
-    if (
-      club.siege &&
-      siegeKey &&
-      !isSameLocation
+	    if (
+	      club.siege &&
+	      siegeKey &&
+	      !isSameLocation
 	    ) {
-	      appendDetail(coords.list, 'Siège social', club.siege);
+	      appendDetail(coords.list, 'Siège social', club.siege, {
+	        type: 'copy',
+	        onCopy: copyToClipboard,
+	        ariaLabel: "Copier l'adresse du siège social",
+	        title: "Copier l'adresse du siège social",
+	      });
 	    }
 	    appendDetail(coords.list, 'Fax', club.fax);
 	    if (coords.list.childElementCount) {
