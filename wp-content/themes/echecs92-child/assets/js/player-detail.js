@@ -269,13 +269,10 @@
   };
 
   const renderPlayerBreadcrumb = () => {
-    if (!actionsContainer || !backLink) {
+    if (!backLink) {
       return;
     }
-    const existing = actionsContainer.querySelector('.club-breadcrumb');
-    if (existing) {
-      existing.remove();
-    }
+    document.querySelectorAll('.club-breadcrumb--player').forEach((node) => node.remove());
 
     const backRaw = backLink.getAttribute('href') || backLink.href || '';
     const backPath = toInternalPath(backRaw);
@@ -292,7 +289,7 @@
     const clubsSearchHref = getClubSearchHrefFromPath(clubHref);
 
     const nav = document.createElement('nav');
-    nav.className = 'club-breadcrumb club-breadcrumb--player';
+    nav.className = 'club-breadcrumb club-breadcrumb--player player-detail__breadcrumb';
     nav.setAttribute('aria-label', "Fil d'Ariane");
 
     const list = document.createElement('ol');
@@ -328,7 +325,18 @@
     }
     appendItem('Fiche joueur', '', true);
 
-    actionsContainer.appendChild(nav);
+    const host = actionsContainer?.parentElement || detailContainer?.parentElement || null;
+    if (host && detailContainer && detailContainer.parentElement === host) {
+      host.insertBefore(nav, detailContainer);
+      return;
+    }
+    if (host && actionsContainer && actionsContainer.parentElement === host) {
+      host.insertBefore(nav, actionsContainer.nextSibling);
+      return;
+    }
+    if (actionsContainer) {
+      actionsContainer.appendChild(nav);
+    }
   };
 
   renderPlayerBreadcrumb();

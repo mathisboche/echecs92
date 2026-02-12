@@ -1388,6 +1388,20 @@
         node.className = classNames.join(' ');
       }
     };
+    const setActionText = (node, text) => {
+      const safeText = text == null ? '' : String(text);
+      if (!options.button) {
+        node.textContent = safeText;
+        return;
+      }
+      const labelNode = document.createElement('span');
+      labelNode.className = 'club-action__label';
+      if (options.truncateLabel) {
+        labelNode.classList.add('club-action__label--truncate');
+      }
+      labelNode.textContent = safeText;
+      node.replaceChildren(labelNode);
+    };
 
     if (options.type === 'lines') {
       const linesWrap = document.createElement('div');
@@ -1404,13 +1418,19 @@
       link.rel = 'noopener';
       link.target = '_blank';
       applyActionClasses(link);
-      link.textContent = options.label || value;
+      setActionText(link, options.label || value);
+      if (options.truncateLabel) {
+        link.title = value;
+      }
       valueContainer.appendChild(link);
     } else if (options.type === 'mail') {
       const link = document.createElement('a');
       link.href = `mailto:${value}`;
       applyActionClasses(link);
-      link.textContent = options.label || value;
+      setActionText(link, options.label || value);
+      if (options.truncateLabel) {
+        link.title = value;
+      }
       valueContainer.appendChild(link);
     } else if (options.type === 'phone') {
       const formatted = formatPhone(value) || value;
@@ -1418,7 +1438,7 @@
       const link = document.createElement('a');
       link.href = `tel:${cleaned || value}`;
       applyActionClasses(link);
-      link.textContent = formatted;
+      setActionText(link, formatted);
       valueContainer.appendChild(link);
     } else if (options.type === 'copy') {
       const button = document.createElement('button');
@@ -1510,19 +1530,32 @@
     valueContainer.className = 'club-section__value club-section__value--person';
 
     if (name) {
-      const nameNode = document.createElement('div');
-      nameNode.className = 'club-person__name';
-      nameNode.textContent = name;
-      valueContainer.appendChild(nameNode);
+      if (email) {
+        const nameLink = document.createElement('a');
+        nameLink.className = 'club-person__name club-person__name-link';
+        nameLink.href = `mailto:${email}`;
+        nameLink.textContent = name;
+        nameLink.title = email;
+        nameLink.setAttribute('aria-label', `Envoyer un email à ${name}: ${email}`);
+        valueContainer.appendChild(nameLink);
+      } else {
+        const nameNode = document.createElement('div');
+        nameNode.className = 'club-person__name';
+        nameNode.textContent = name;
+        valueContainer.appendChild(nameNode);
+      }
     }
 
     if (email) {
       const emailLink = document.createElement('a');
       emailLink.className = 'club-person__email-btn';
       emailLink.href = `mailto:${email}`;
-      emailLink.textContent = 'Email';
       emailLink.title = email;
       emailLink.setAttribute('aria-label', `Envoyer un email à ${name || label}: ${email}`);
+      const srText = document.createElement('span');
+      srText.className = 'sr-only';
+      srText.textContent = 'Envoyer un email';
+      emailLink.appendChild(srText);
       valueContainer.appendChild(emailLink);
     }
 
@@ -2497,7 +2530,14 @@
       { key: 'initiation', label: 'Initiation', type: 'staff' },
     ];
 
-    const available = listDefs.filter((def) => lists[def.key]);
+    const available = listDefs
+      .map((def) => {
+        const list = lists[def.key];
+        const rows = Array.isArray(list?.rows) ? list.rows : [];
+        const count = stripFfeHeaderRow(rows).length;
+        return { def, list, rows, count };
+      })
+      .filter((entry) => entry.list && entry.count > 0);
     if (!available.length) {
       section.appendChild(createEmptyMessage('Aucune donnée disponible pour ce club.'));
       return section;
@@ -2518,11 +2558,9 @@
     const tabPrefix = slugify(`ffe-${club.slug || club.id || club.name || 'club'}`);
     let activeTabIndex = 0;
 
-    available.forEach((def, index) => {
-      const list = lists[def.key] || {};
-      const rows = Array.isArray(list.rows) ? list.rows : [];
-      const count = stripFfeHeaderRow(rows).length;
-      const label = count ? `${def.label} (${count})` : def.label;
+    available.forEach((entry, index) => {
+      const { def, list, rows, count } = entry;
+      const label = `${def.label} (${count})`;
 
       const tabId = `${tabPrefix}-tab-${def.key}`;
       const panelId = `${tabPrefix}-panel-${def.key}`;
@@ -2690,23 +2728,25 @@
       }
 	    header.appendChild(titleRow);
 
-      const meta = document.createElement('div');
-      meta.className = 'club-sheet__meta';
-      const licensesCount = Number.parseInt(club.totalLicenses, 10);
-      const safeLicensesCount = Number.isFinite(licensesCount) ? licensesCount : 0;
-      meta.appendChild(
-        createChip(
-          `${safeLicensesCount} licencié${safeLicensesCount > 1 ? 's' : ''}`,
-          'licenses'
-        )
-      );
-      const cityLabel = (club.commune || '').trim() || 'Ville non renseignée';
-      meta.appendChild(createChip(cityLabel, 'city'));
-      if (club.labelFederal) {
-        meta.appendChild(createChip(club.labelFederal, 'label'));
-      }
-      if (meta.childElementCount) {
-        header.appendChild(meta);
+      if (!isFfeListsView) {
+        const meta = document.createElement('div');
+        meta.className = 'club-sheet__meta';
+        const licensesCount = Number.parseInt(club.totalLicenses, 10);
+        const safeLicensesCount = Number.isFinite(licensesCount) ? licensesCount : 0;
+        meta.appendChild(
+          createChip(
+            `${safeLicensesCount} licencié${safeLicensesCount > 1 ? 's' : ''}`,
+            'licenses'
+          )
+        );
+        const cityLabel = (club.commune || '').trim() || 'Ville non renseignée';
+        meta.appendChild(createChip(cityLabel, 'city'));
+        if (club.labelFederal) {
+          meta.appendChild(createChip(club.labelFederal, 'label'));
+        }
+        if (meta.childElementCount) {
+          header.appendChild(meta);
+        }
       }
 
 	    const summaryText = club.publics || club.notes;
@@ -2773,21 +2813,40 @@
         if (/^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}(?:\/\S*)?$/i.test(raw)) return `https://${raw}`;
         return raw;
       })();
+      const siteButtonLabel = (() => {
+        const raw = (siteUrl || '').toString().trim();
+        if (!raw) {
+          return '';
+        }
+        let cleaned = raw.replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+        try {
+          const parsed = new URL(raw);
+          const host = (parsed.hostname || '').replace(/^www\./i, '');
+          const path = (parsed.pathname || '').replace(/\/+$/u, '');
+          cleaned = `${host}${path && path !== '/' ? path : ''}` || cleaned;
+        } catch (error) {
+          // Keep fallback cleaned value.
+        }
+        return cleaned.replace(/\/+$/u, '');
+      })();
+      const emailButtonLabel = (club.email || '').toString().trim();
 	    appendDetail(essentials.list, 'Site internet', siteUrl, {
 	      type: 'link',
-	      label: 'Site web',
+	      label: siteButtonLabel || 'Site web',
         button: true,
         buttonClassName: 'club-action--primary',
         itemClassName: 'club-section__item--action',
         hideLabel: true,
+        truncateLabel: true,
 	    });
 	    appendDetail(essentials.list, 'Email', club.email, {
         type: 'mail',
-        label: 'Email',
+        label: emailButtonLabel || 'Email',
         button: true,
         buttonClassName: 'club-action--primary',
         itemClassName: 'club-section__item--action',
         hideLabel: true,
+        truncateLabel: true,
       });
 	    appendDetail(essentials.list, 'Téléphone', club.phone, {
         type: 'phone',
@@ -2847,17 +2906,17 @@
       sections.push(activities.section);
     }
 
+	    const ffeSection = renderFfeListsSection(club, ffeLists);
+	    if (ffeSection) {
+	      sections.push(ffeSection);
+	    }
+
     const competitions = createSection('Compétitions');
     appendDetail(competitions.list, 'Interclubs', club.interclubs);
     appendDetail(competitions.list, 'Interclubs Jeunes', club.interclubsJeunes);
     appendDetail(competitions.list, 'Interclubs Féminins', club.interclubsFeminins);
 	    if (competitions.list.childElementCount) {
 	      sections.push(competitions.section);
-	    }
-
-	    const ffeSection = renderFfeListsSection(club, ffeLists);
-	    if (ffeSection) {
-	      sections.push(ffeSection);
 	    }
 
 		    const ffeInfo = createSection('FFE');
