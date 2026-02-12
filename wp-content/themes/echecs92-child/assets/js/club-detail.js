@@ -1348,6 +1348,13 @@
     }
     const item = document.createElement('li');
     item.className = 'club-section__item';
+    if (options.itemClassName) {
+      options.itemClassName
+        .toString()
+        .split(/\s+/)
+        .filter(Boolean)
+        .forEach((className) => item.classList.add(className));
+    }
 
     const labelNode = document.createElement('span');
     labelNode.className = 'club-section__label';
@@ -1355,10 +1362,32 @@
       labelNode.dataset.icon = options.icon;
     }
     labelNode.textContent = label;
+    if (options.hideLabel) {
+      labelNode.classList.add('sr-only');
+    }
     item.appendChild(labelNode);
 
     const valueContainer = document.createElement('div');
     valueContainer.className = 'club-section__value';
+
+    const applyActionClasses = (node) => {
+      if (!node) {
+        return;
+      }
+      const classNames = [];
+      if (options.button) {
+        classNames.push('btn', 'btn-secondary', 'club-action');
+        if (options.buttonClassName) {
+          classNames.push(options.buttonClassName);
+        }
+      }
+      if (options.className) {
+        classNames.push(options.className);
+      }
+      if (classNames.length) {
+        node.className = classNames.join(' ');
+      }
+    };
 
     if (options.type === 'lines') {
       const linesWrap = document.createElement('div');
@@ -1374,17 +1403,13 @@
       link.href = value;
       link.rel = 'noopener';
       link.target = '_blank';
-      if (options.button) {
-        link.className = `btn btn-secondary club-action${options.buttonClassName ? ` ${options.buttonClassName}` : ''}`;
-      }
+      applyActionClasses(link);
       link.textContent = options.label || value;
       valueContainer.appendChild(link);
     } else if (options.type === 'mail') {
       const link = document.createElement('a');
       link.href = `mailto:${value}`;
-      if (options.button) {
-        link.className = `btn btn-secondary club-action${options.buttonClassName ? ` ${options.buttonClassName}` : ''}`;
-      }
+      applyActionClasses(link);
       link.textContent = options.label || value;
       valueContainer.appendChild(link);
     } else if (options.type === 'phone') {
@@ -1392,9 +1417,7 @@
       const cleaned = value.replace(/[^\d+]/g, '');
       const link = document.createElement('a');
       link.href = `tel:${cleaned || value}`;
-      if (options.button) {
-        link.className = `btn btn-secondary club-action${options.buttonClassName ? ` ${options.buttonClassName}` : ''}`;
-      }
+      applyActionClasses(link);
       link.textContent = formatted;
       valueContainer.appendChild(link);
     } else if (options.type === 'copy') {
@@ -1453,6 +1476,17 @@
     }
 
     item.appendChild(valueContainer);
+    list.appendChild(item);
+    return true;
+  };
+
+  const appendSectionDivider = (list) => {
+    if (!list) {
+      return false;
+    }
+    const item = document.createElement('li');
+    item.className = 'club-section__item club-section__item--divider';
+    item.setAttribute('aria-hidden', 'true');
     list.appendChild(item);
     return true;
   };
@@ -2373,11 +2407,6 @@
 	      previewTitle.textContent = 'Top joueurs du club';
 	      preview.appendChild(previewTitle);
 
-	      const previewHint = document.createElement('p');
-	      previewHint.className = 'club-ffe-preview__hint';
-	      previewHint.textContent = 'Aperçu du classement en Elo lent';
-	      preview.appendChild(previewHint);
-
 	      const membersRows = sortMembersByElo(getMembersRows(lists));
 	      const topRows = membersRows.slice(0, 3);
 	      if (topRows.length) {
@@ -2387,7 +2416,7 @@
 
 	        const thead = document.createElement('thead');
 	        const headRow = document.createElement('tr');
-	        ['Nom', 'Prénom', 'Elo lent'].forEach((label) => {
+	        ['Nom prénom', 'Elo'].forEach((label) => {
 	          const th = document.createElement('th');
 	          th.textContent = label;
 	          headRow.appendChild(th);
@@ -2398,38 +2427,39 @@
 	        const tbody = document.createElement('tbody');
 	        topRows.forEach((row) => {
 	          const tr = document.createElement('tr');
-	          const fullName = splitMemberName(row?.name);
+	          const fullName = normaliseDashes((row?.name || '').toString().trim()) || '-';
 	          const eloMeta = parseRatingMeta(row?.elo);
 	          const eloText = eloMeta.main || (row?.elo ? String(row.elo).trim() : '-');
 
-	          appendTextCell(tr, fullName.lastName);
-	          appendTextCell(tr, fullName.firstName || '-');
+	          appendTextCell(tr, fullName);
 	          const eloCell = appendTextCell(tr, eloText, 'club-ffe-preview__elo');
-	          eloCell.setAttribute('aria-label', `Elo lent ${eloText}`);
+	          eloCell.setAttribute('aria-label', `Elo ${eloText}`);
 	          tbody.appendChild(tr);
 	        });
 
-	        const blurredRows = membersRows.slice(3, 5);
-	        blurredRows.forEach((row) => {
+	        const hasMoreRows = membersRows.length > topRows.length;
+	        if (hasMoreRows) {
 	          const tr = document.createElement('tr');
 	          tr.className = 'club-ffe-preview__row club-ffe-preview__row--blurred';
-	          const fullName = splitMemberName(row?.name);
-	          const eloMeta = parseRatingMeta(row?.elo);
-	          const eloText = eloMeta.main || (row?.elo ? String(row.elo).trim() : '-');
-
-	          appendTextCell(tr, fullName.lastName);
-	          appendTextCell(tr, fullName.firstName || '-');
-	          appendTextCell(tr, eloText, 'club-ffe-preview__elo');
+	          appendTextCell(tr, 'Nom prénom');
+	          appendTextCell(tr, '0000', 'club-ffe-preview__elo');
 	          tbody.appendChild(tr);
-	        });
+	        }
+
+          const moreRow = document.createElement('tr');
+          moreRow.className = 'club-ffe-preview__row-more';
+          const moreCell = document.createElement('td');
+          moreCell.colSpan = 2;
+          const moreLink = document.createElement('a');
+          moreLink.className = 'club-ffe-preview__more-link';
+          moreLink.href = ffeUrl;
+          moreLink.textContent = 'Voir les joueurs et encadrants';
+          moreCell.appendChild(moreLink);
+          moreRow.appendChild(moreCell);
+          tbody.appendChild(moreRow);
 
 	        table.appendChild(tbody);
 	        preview.appendChild(table);
-	        if (blurredRows.length) {
-	          const fade = document.createElement('div');
-	          fade.className = 'club-ffe-preview__fade';
-	          preview.appendChild(fade);
-	        }
 	      } else {
 	        const emptyPreview = document.createElement('p');
 	        emptyPreview.className = 'club-tabs__empty club-ffe-preview__empty';
@@ -2438,17 +2468,6 @@
 	      }
 
 	      section.appendChild(preview);
-
-	      const actions = document.createElement('div');
-	      actions.className = 'club-ffe-link__actions';
-
-	      const link = document.createElement('a');
-	      link.className = 'btn btn-secondary';
-	      link.href = ffeUrl;
-	      link.textContent = 'Voir les joueurs et encadrants';
-	      actions.appendChild(link);
-
-      section.appendChild(actions);
       return section;
     }
 
@@ -2745,6 +2764,7 @@
 		    const sections = [];
 
 	    const essentials = createSection('Infos essentielles');
+      essentials.section.classList.add('club-section--contacts');
 	    const siteUrl = (() => {
         const raw = (club.site || '').toString().trim();
         if (!raw) return '';
@@ -2753,30 +2773,28 @@
         if (/^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}(?:\/\S*)?$/i.test(raw)) return `https://${raw}`;
         return raw;
       })();
-	    const siteLabel = (() => {
-        if (!siteUrl) return 'Site web';
-        try {
-          const parsed = new URL(siteUrl);
-          return parsed.hostname.replace(/^www\./i, '') || 'Site web';
-        } catch (error) {
-          return 'Site web';
-        }
-      })();
 	    appendDetail(essentials.list, 'Site internet', siteUrl, {
 	      type: 'link',
-	      label: siteLabel,
+	      label: 'Site web',
         button: true,
         buttonClassName: 'club-action--primary',
+        itemClassName: 'club-section__item--action',
+        hideLabel: true,
 	    });
 	    appendDetail(essentials.list, 'Email', club.email, {
         type: 'mail',
+        label: 'Email',
         button: true,
         buttonClassName: 'club-action--primary',
+        itemClassName: 'club-section__item--action',
+        hideLabel: true,
       });
 	    appendDetail(essentials.list, 'Téléphone', club.phone, {
         type: 'phone',
         button: true,
         buttonClassName: 'club-action--primary',
+        itemClassName: 'club-section__item--action',
+        hideLabel: true,
       });
 	    appendDetail(essentials.list, 'Adresse', club.addressDisplay || club.address || club.salle || '', {
         type: 'copy',
@@ -2790,7 +2808,12 @@
 	    }
 
 	    const highlights = createSection('Infos club');
-    appendDetail(highlights.list, 'Horaires', club.hours, { type: 'lines' });
+    const hasHours = appendDetail(highlights.list, 'Horaires', club.hours, { type: 'lines' });
+    const hasPresidentData = Boolean((club.president || '').toString().trim() || (club.presidentEmail || '').toString().trim());
+    const hasReferentData = Boolean((club.contact || '').toString().trim() || (club.contactEmail || '').toString().trim());
+    if (hasHours && (hasPresidentData || hasReferentData)) {
+      appendSectionDivider(highlights.list);
+    }
     appendPersonContactDetail(highlights.list, 'Président·e', club.president, club.presidentEmail);
     appendPersonContactDetail(highlights.list, 'Référent·e club', club.contact, club.contactEmail);
     if (highlights.list.childElementCount) {
@@ -2857,9 +2880,10 @@
 	    const ficheFfeUrl =
 	      club.fiche_ffe ||
 	      (club.ffeRef ? `${FFE_URL_BASE}${encodeURIComponent(club.ffeRef)}` : '');
-			    appendDetail(ffeInfo.list, 'Fiche FFE', ficheFfeUrl, {
+			    appendDetail(ffeInfo.list, 'Site fédéral', ficheFfeUrl, {
 			      type: 'link',
 			      label: 'Ouvrir sur echecs.asso.fr',
+            className: 'club-ffe-official-link',
 			    });
 
 	    sections.forEach((section) => sheet.appendChild(section));

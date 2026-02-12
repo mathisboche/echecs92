@@ -6978,6 +6978,29 @@ a.player-chip:focus:not(:focus-visible),
   flex-direction:column;
   gap:4px;
 }
+.club-section__item--divider{
+  display:block;
+  height:0;
+  min-height:0;
+  margin:4px 0 2px;
+  padding:0;
+  border-top:1px solid #e2e8f0;
+}
+.club-section--contacts .club-section__list{
+  flex-direction:row;
+  flex-wrap:wrap;
+  align-items:flex-start;
+  gap:10px;
+}
+.club-section--contacts .club-section__item--action{
+  display:block;
+}
+.club-section--contacts .club-section__item--action .club-section__value{
+  display:flex;
+}
+.club-section--contacts .club-section__item:not(.club-section__item--action){
+  flex:1 0 100%;
+}
 .club-section__label{
   font-weight:600;
   color:#0f172a;
@@ -7020,12 +7043,16 @@ a.player-chip:focus:not(:focus-visible),
 }
 .club-section__value--person{
   display:flex;
-  flex-direction:column;
-  gap:4px;
+  flex-direction:row;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px;
 }
 .club-person__name{
   color:#1f2937;
+  font-size:inherit;
   font-weight:400;
+  line-height:inherit;
 }
 .club-section__value--person a.club-person__email-btn{
   display:inline-flex;
@@ -7206,6 +7233,17 @@ a.player-chip:focus:not(:focus-visible),
 .club-section__value a:not(.btn):focus-visible{
   text-decoration:underline;
   outline:none;
+}
+.club-section__value a.club-ffe-official-link,
+.club-section__value a.club-ffe-official-link:visited{
+  color:#1d4ed8;
+  text-decoration:underline;
+  text-underline-offset:2px;
+}
+.club-section__value a.club-ffe-official-link:hover,
+.club-section__value a.club-ffe-official-link:focus-visible{
+  color:#1d4ed8;
+  text-decoration:underline;
 }
 .club-section__value--person a.club-person__email-btn{
   color:#475569;
@@ -7418,6 +7456,9 @@ a.player-chip:focus:not(:focus-visible),
   box-shadow:0 4px 12px rgba(29,78,216,0.14);
 }
 @media (max-width:640px){
+  .club-section--contacts .club-section__item--action{
+    width:100%;
+  }
   .clubs-page .club-detail-page .club-action--primary{
     width:100%;
     justify-content:center;
@@ -7529,6 +7570,11 @@ a.player-chip:focus:not(:focus-visible),
 .club-ffe-preview__table td{
   color:#0f172a;
 }
+.club-ffe-preview__table th:last-child,
+.club-ffe-preview__table td:last-child{
+  width:92px;
+  text-align:right;
+}
 .club-ffe-preview__table tbody tr:last-child td{
   border-bottom:0;
 }
@@ -7537,9 +7583,29 @@ a.player-chip:focus:not(:focus-visible),
   font-weight:800;
 }
 .club-ffe-preview__row--blurred td{
-  opacity:.42;
-  filter:blur(2.4px);
+  opacity:.48;
+  filter:blur(2px);
   user-select:none;
+}
+.club-ffe-preview__row-more td{
+  padding:0;
+  border-bottom:0;
+}
+.club-ffe-preview__more-link{
+  display:block;
+  padding:10px 12px;
+  border-top:1px solid #e2e8f0;
+  text-align:center;
+  font-size:13px;
+  font-weight:700;
+  color:#0b2e4c;
+  text-decoration:none;
+}
+.club-ffe-preview__more-link:hover,
+.club-ffe-preview__more-link:focus-visible{
+  color:#0b2e4c;
+  text-decoration:none;
+  outline:none;
 }
 .club-ffe-preview__fade{
   position:absolute;
