@@ -561,16 +561,89 @@
     return map;
   };
 
+  const normaliseSlugLookupKey = (value) =>
+    (value || '')
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/^-+|-+$/g, '');
+
+  const buildSlugLookupCandidates = (slug) => {
+    const candidates = [];
+    const seen = new Set();
+    const push = (value) => {
+      const key = normaliseSlugLookupKey(value);
+      if (!key || seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      candidates.push(key);
+    };
+    push(slug);
+    for (let i = 0; i < candidates.length; i += 1) {
+      const key = candidates[i];
+      if (key.includes('-hellip-')) {
+        push(key.replace(/-hellip-/g, '-'));
+      }
+      if (key.endsWith('-hellip')) {
+        push(key.replace(/-hellip$/g, ''));
+      }
+      if (key.endsWith('hellip')) {
+        push(key.replace(/hellip$/g, ''));
+      }
+      if (key.endsWith('-')) {
+        push(key.slice(0, -1));
+      }
+      if (key.includes('-')) {
+        const withoutLastSegment = key.replace(/-[^-]+$/g, '');
+        if (withoutLastSegment.length >= 8) {
+          push(withoutLastSegment);
+        }
+      }
+    }
+    return candidates.sort((a, b) => b.length - a.length);
+  };
+
+  const findClubBySlugPrefix = (candidate, lookup) => {
+    if (!candidate || !lookup || candidate.length < 8) {
+      return null;
+    }
+    const matches = new Map();
+    lookup.forEach((club, aliasKey) => {
+      if (!aliasKey || aliasKey.length < candidate.length) {
+        return;
+      }
+      if (!aliasKey.startsWith(candidate)) {
+        return;
+      }
+      const uniqueKey =
+        club && typeof club === 'object' ? club.slug || club.id || aliasKey : aliasKey;
+      if (!matches.has(uniqueKey)) {
+        matches.set(uniqueKey, club);
+      }
+    });
+    if (matches.size === 1) {
+      return matches.values().next().value || null;
+    }
+    return null;
+  };
+
   const findClubBySlug = (slug, lookup) => {
-    if (!slug) {
+    const candidates = buildSlugLookupCandidates(slug);
+    if (!candidates.length || !lookup) {
       return null;
     }
-    const key = slug.toString().trim().toLowerCase();
-    if (!key) {
-      return null;
+    for (let i = 0; i < candidates.length; i += 1) {
+      const key = candidates[i];
+      if (lookup.has(key)) {
+        return lookup.get(key);
+      }
     }
-    if (lookup && lookup.has(key)) {
-      return lookup.get(key);
+    for (let i = 0; i < candidates.length; i += 1) {
+      const resolved = findClubBySlugPrefix(candidates[i], lookup);
+      if (resolved) {
+        return resolved;
+      }
     }
     return null;
   };

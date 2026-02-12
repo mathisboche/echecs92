@@ -53,6 +53,7 @@
   const topStatus = document.getElementById('players-top-status');
 
   const input = document.getElementById('players-search');
+  const searchForm = document.getElementById('players-search-form');
   const clearButton = document.getElementById('players-search-clear');
   const submitButton = document.getElementById('players-search-submit');
   const statusNode = document.getElementById('players-search-status');
@@ -731,10 +732,7 @@
     });
 
     input.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        runSearch(input.value || '');
-      } else if (event.key === 'Escape') {
+      if (event.key === 'Escape') {
         if ((input.value || '').trim()) {
           input.value = '';
           toggleClearButton();
@@ -743,7 +741,12 @@
       }
     });
 
-    if (submitButton) {
+    if (searchForm) {
+      searchForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        runSearch(input.value || '');
+      });
+    } else if (submitButton) {
       submitButton.addEventListener('click', () => runSearch(input.value || ''));
     }
 

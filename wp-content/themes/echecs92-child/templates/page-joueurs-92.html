@@ -16,27 +16,28 @@
 
   <section class="clubs-search-block players-search-block" role="search" aria-label="Rechercher un joueur">
     <p class="clubs-search-panel__title">Rechercher un joueur</p>
-    <div class="clubs-input-wrap">
+    <form id="players-search-form" class="clubs-input-wrap">
       <input
         id="players-search"
-        class="clubs-input"
+        name="player_name_query"
+        class="clubs-input clubs-search-panel__input"
         type="search"
         placeholder="Nom, prénom, id FFE…"
         aria-label="Rechercher un joueur par nom ou identifiant"
-        autocomplete="off"
-        inputmode="search"
+        autocomplete="name"
+        autocapitalize="words"
         enterkeyhint="search"
       >
       <button id="players-search-clear" class="clubs-input__clear" type="button" aria-label="Effacer la recherche" hidden></button>
       <button
         id="players-search-submit"
         class="clubs-input__submit"
-        type="button"
+        type="submit"
         aria-label="Lancer la recherche"
       >
         <span class="clubs-input__submit-icon" aria-hidden="true"></span>
       </button>
-    </div>
+    </form>
   </section>
 
   <p id="players-search-status" class="clubs-search__status players-search-status" role="status" aria-live="polite" hidden></p>
@@ -52,7 +53,7 @@
   </section>
 </div>
 
-<script src="/wp-content/themes/echecs92-child/assets/js/players.js?v=20260211-4" defer></script>
+<script src="/wp-content/themes/echecs92-child/assets/js/players.js?v=20260212-1" defer></script>
 <!-- /wp:html -->
 
 <!-- wp:template-part {"slug":"footer","tagName":"footer","theme":"echecs92-child"} /-->

@@ -8,6 +8,49 @@
   const FFE_EXTRAS_ENDPOINT = '/wp-json/cdje92/v1/ffe-player';
   const DASH_RX = /[\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uFE63\uFF0D]/g;
   const normaliseDashes = (value) => (value == null ? '' : value.toString()).replace(DASH_RX, '-');
+  const htmlEntityDecoder = typeof document !== 'undefined' ? document.createElement('textarea') : null;
+  const decodeHtmlEntities = (value) => {
+    const raw = (value || '').toString();
+    if (!raw || raw.indexOf('&') === -1) {
+      return raw;
+    }
+    if (htmlEntityDecoder) {
+      htmlEntityDecoder.innerHTML = raw;
+      return htmlEntityDecoder.value || raw;
+    }
+    return raw
+      .replace(/&hellip;|&#8230;|&#x2026;/gi, '…')
+      .replace(/&amp;/gi, '&')
+      .replace(/&quot;/gi, '"')
+      .replace(/&apos;|&#39;/gi, "'");
+  };
+  const normaliseClubName = (value) =>
+    normaliseDashes(decodeHtmlEntities(value || ''))
+      .replace(/\s+/g, ' ')
+      .trim();
+  const buildClubNameVariants = (clubName) => {
+    const base = normaliseClubName(clubName);
+    if (!base) {
+      return [];
+    }
+    const variants = [];
+    const seen = new Set();
+    const push = (value) => {
+      const item = (value || '').toString().replace(/\s+/g, ' ').trim();
+      if (!item || seen.has(item)) {
+        return;
+      }
+      seen.add(item);
+      variants.push(item);
+    };
+    push(base);
+    const withoutEllipsis = base.replace(/\s*(?:\.{3}|…)\s*$/u, '').trim();
+    push(withoutEllipsis);
+    if (withoutEllipsis && withoutEllipsis !== base) {
+      push(withoutEllipsis.replace(/\s+[^\s]+$/u, '').trim());
+    }
+    return variants;
+  };
   const NAME_LETTER_RX = /[A-Za-zÀ-ÖØ-öø-ÿ]/;
   const formatNameGivenFirst = (value) => {
     const raw = normaliseDashes(value || '').toString().trim();
@@ -239,11 +282,14 @@
   };
 
   const buildClubDetailHrefFromName = (clubName) => {
-    const slug = slugify(clubName);
-    if (!slug) {
-      return '';
+    const variants = buildClubNameVariants(clubName);
+    for (let i = 0; i < variants.length; i += 1) {
+      const slug = slugify(variants[i]);
+      if (slug) {
+        return `/club/${encodeURIComponent(slug)}/`;
+      }
     }
-    return `/club/${encodeURIComponent(slug)}/`;
+    return '';
   };
 
   const derivePlayerIdFromPath = () => {
@@ -498,7 +544,7 @@
     if (formattedCategory.label) {
       appendMetaChip(meta, 'Catégorie', formattedCategory.label, { hint: formattedCategory.hint });
     }
-    const clubName = player.club || '';
+    const clubName = normaliseClubName(player.club || '');
     appendMetaChip(meta, 'Club', clubName, {
       href: appendFromToInternalHref(getClubHrefFromBackLink() || buildClubDetailHrefFromName(clubName)),
     });

@@ -694,15 +694,41 @@
     if (!trimmed) {
       return [];
     }
+    const suggestions = [];
+    const normalisedQuery = normaliseForSearch(trimmed);
+    const numericQuery = trimmed.replace(/\D/g, '');
+    const monacoNameMatch = Boolean(
+      normalisedQuery &&
+        normalisedQuery.length >= 3 &&
+        ('monaco'.startsWith(normalisedQuery) || normalisedQuery.includes('monaco'))
+    );
+    const monacoPostalMatch = Boolean(
+      numericQuery &&
+        numericQuery.length >= 3 &&
+        MONACO_POSTAL_CODE.startsWith(numericQuery)
+    );
+    if (monacoNameMatch || monacoPostalMatch) {
+      suggestions.push({
+        display: formatLocationLabel(MONACO_LOCATION_LABEL, MONACO_POSTAL_CODE, MONACO_LOCATION_LABEL),
+        postalCode: MONACO_POSTAL_CODE,
+        commune: MONACO_LOCATION_LABEL,
+        search: normaliseForSearch(`${MONACO_LOCATION_LABEL} ${MONACO_POSTAL_CODE}`),
+        searchAlt: normaliseForSearch(`${MONACO_POSTAL_CODE} ${MONACO_LOCATION_LABEL}`),
+        kind: 'typed',
+        source: 'manual-monaco',
+        latitude: MONACO_LOCATION_COORDS.lat,
+        longitude: MONACO_LOCATION_COORDS.lng,
+      });
+    }
     const numericOnly = /^\d+$/.test(trimmed);
     const rawPostal = numericOnly ? trimmed : parsePostalCodeFromString(trimmed);
     const postal = normalisePostalCodeValue(rawPostal);
     if (!postal) {
-      return [];
+      return suggestions;
     }
     if (numericOnly && postal.length < 3) {
       // On attend au moins 3 chiffres pour limiter le bruit.
-      return [];
+      return suggestions;
     }
     const canonicalPostal = canonicalizeParisPostalCode(postal) || postal;
     const coords =
@@ -716,9 +742,8 @@
         ? getPostalCoordinateEntries(postal)
         : getPostalCoordinateEntriesByPrefix(postal);
     if (!list.length) {
-      return [];
+      return suggestions;
     }
-    const suggestions = [];
     const seen = new Set();
     list.forEach((coord) => {
       const derivedPostal = coord?.postalCode || canonicalPostal;
@@ -746,7 +771,7 @@
       }
       suggestions.push(suggestion);
     });
-    return suggestions;
+    return dedupeLocationSuggestions(suggestions);
   };
 
   const stripPostalFromQuery = (raw, postal) => {
@@ -4591,6 +4616,8 @@
   };
 
   const MONACO_POSTAL_CODE = '98000';
+  const MONACO_LOCATION_LABEL = 'Monaco';
+  const MONACO_LOCATION_COORDS = { lat: 43.7384, lng: 7.4246 };
   const MONACO_BANNER_URL = 'https://chessmatesinternational.com';
   let monacoBanner = null;
 
