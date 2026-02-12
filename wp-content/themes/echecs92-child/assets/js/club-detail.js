@@ -1153,6 +1153,103 @@
     return { details, content, summary };
   };
 
+  let copyFeedbackBubble = null;
+  let copyFeedbackHideTimer = null;
+
+  const ensureCopyFeedbackBubble = () => {
+    if (copyFeedbackBubble) {
+      return copyFeedbackBubble;
+    }
+    if (typeof document === 'undefined' || !document.body) {
+      return null;
+    }
+    const bubble = document.createElement('div');
+    bubble.className = 'club-copy-feedback-bubble';
+    bubble.setAttribute('role', 'status');
+    bubble.setAttribute('aria-live', 'polite');
+    bubble.hidden = true;
+    document.body.appendChild(bubble);
+    copyFeedbackBubble = bubble;
+    return copyFeedbackBubble;
+  };
+
+  const hideCopyFeedbackBubble = () => {
+    if (!copyFeedbackBubble) {
+      return;
+    }
+    copyFeedbackBubble.classList.remove('is-visible');
+    copyFeedbackBubble.hidden = true;
+    delete copyFeedbackBubble.dataset.tone;
+  };
+
+  const resolveCopyFeedbackPoint = (event, element, fallbackPoint) => {
+    if (fallbackPoint && Number.isFinite(fallbackPoint.x) && Number.isFinite(fallbackPoint.y)) {
+      return { x: fallbackPoint.x, y: fallbackPoint.y };
+    }
+    const eventX = Number(event?.clientX);
+    const eventY = Number(event?.clientY);
+    if (Number.isFinite(eventX) && Number.isFinite(eventY)) {
+      return { x: eventX, y: eventY };
+    }
+    const rect = element?.getBoundingClientRect ? element.getBoundingClientRect() : null;
+    if (rect) {
+      return {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      };
+    }
+    const viewportWidth = window.innerWidth || document.documentElement?.clientWidth || 0;
+    const viewportHeight = window.innerHeight || document.documentElement?.clientHeight || 0;
+    return { x: viewportWidth / 2, y: viewportHeight / 2 };
+  };
+
+  const showCopyFeedbackBubble = (message, tone, point) => {
+    const bubble = ensureCopyFeedbackBubble();
+    if (!bubble) {
+      return;
+    }
+    if (copyFeedbackHideTimer) {
+      clearTimeout(copyFeedbackHideTimer);
+      copyFeedbackHideTimer = null;
+    }
+    bubble.textContent = message || '';
+    if (tone) {
+      bubble.dataset.tone = tone;
+    } else {
+      delete bubble.dataset.tone;
+    }
+    bubble.hidden = false;
+    bubble.classList.add('is-visible');
+    bubble.style.left = '0px';
+    bubble.style.top = '0px';
+    bubble.style.setProperty('--club-copy-arrow-offset', '0px');
+
+    const viewportWidth = window.innerWidth || document.documentElement?.clientWidth || 0;
+    const viewportHeight = window.innerHeight || document.documentElement?.clientHeight || 0;
+    const anchorX = Number.isFinite(Number(point?.x)) ? Number(point.x) : viewportWidth / 2;
+    const anchorY = Number.isFinite(Number(point?.y)) ? Number(point.y) : viewportHeight / 2;
+    const rect = bubble.getBoundingClientRect();
+    const margin = 10;
+    const halfWidth = rect.width / 2;
+    const minCenterX = margin + halfWidth;
+    const maxCenterX = Math.max(minCenterX, viewportWidth - margin - halfWidth);
+    const clampedX = Math.min(maxCenterX, Math.max(minCenterX, anchorX));
+    const minAnchorY = margin + rect.height + 18;
+    const maxAnchorY = Math.max(minAnchorY, viewportHeight - margin);
+    const clampedY = Math.min(maxAnchorY, Math.max(minAnchorY, anchorY));
+
+    bubble.style.left = `${clampedX}px`;
+    bubble.style.top = `${clampedY}px`;
+
+    const maxArrowOffset = Math.max(0, halfWidth - 12);
+    const arrowOffset = Math.min(maxArrowOffset, Math.max(-maxArrowOffset, anchorX - clampedX));
+    bubble.style.setProperty('--club-copy-arrow-offset', `${arrowOffset.toFixed(2)}px`);
+
+    copyFeedbackHideTimer = window.setTimeout(() => {
+      hideCopyFeedbackBubble();
+    }, 1300);
+  };
+
   const appendDetail = (list, label, value, options = {}) => {
     if (value == null || value === '') {
       return false;
@@ -1221,36 +1318,44 @@
       button.title = options.title || 'Copier';
 
       let resetTimer = null;
-      button.addEventListener('click', async () => {
+      let lastPointerPoint = null;
+      button.addEventListener('pointerdown', (event) => {
+        const x = Number(event.clientX);
+        const y = Number(event.clientY);
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          lastPointerPoint = { x, y };
+        }
+      });
+      button.addEventListener('click', async (event) => {
         const onCopy = options.onCopy;
         if (typeof onCopy !== 'function') {
           return;
         }
+        const feedbackPoint = resolveCopyFeedbackPoint(event, button, lastPointerPoint);
+        lastPointerPoint = null;
         if (resetTimer) {
           clearTimeout(resetTimer);
           resetTimer = null;
         }
         button.dataset.copyState = 'copying';
-        delete button.dataset.copyFeedback;
         try {
           const ok = await onCopy(value);
           if (ok) {
             button.dataset.copyState = 'copied';
             button.title = 'Copié';
-            button.dataset.copyFeedback = 'Copié';
+            showCopyFeedbackBubble('Copié', 'success', feedbackPoint);
           } else {
             button.dataset.copyState = 'error';
             button.title = 'Copie impossible';
-            button.dataset.copyFeedback = 'Copie impossible';
+            showCopyFeedbackBubble('Copie impossible', 'error', feedbackPoint);
           }
         } catch (error) {
           button.dataset.copyState = 'error';
           button.title = 'Copie impossible';
-          button.dataset.copyFeedback = 'Copie impossible';
+          showCopyFeedbackBubble('Copie impossible', 'error', feedbackPoint);
         }
         resetTimer = window.setTimeout(() => {
           delete button.dataset.copyState;
-          delete button.dataset.copyFeedback;
           button.title = options.title || 'Copier';
         }, 1600);
       });

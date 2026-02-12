@@ -120,6 +120,38 @@
     }
   };
 
+  const setTopStatus = (message) => {
+    if (!topStatus) {
+      return;
+    }
+    const text = (message || '').toString();
+    topStatus.textContent = text;
+    topStatus.hidden = !text;
+  };
+
+  const syncSearchQueryInUrl = (query) => {
+    if (typeof window === 'undefined' || !window.history || typeof window.history.replaceState !== 'function') {
+      return;
+    }
+    try {
+      const url = new URL(window.location.href);
+      const raw = (query || '').toString().trim();
+      if (raw) {
+        url.searchParams.set('q', raw);
+      } else {
+        url.searchParams.delete('q');
+      }
+      url.searchParams.delete('focus');
+      const next = `${url.pathname}${url.search}${url.hash}`;
+      const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      if (next !== current) {
+        window.history.replaceState(window.history.state, '', next);
+      }
+    } catch (error) {
+      // ignore url sync failures
+    }
+  };
+
   const buildFrancePlayersSearchUrl = (query) => {
     const params = new URLSearchParams();
     const raw = (query || '').toString().trim();
@@ -534,6 +566,7 @@
     toggleClearButton();
 
     if (!raw) {
+      syncSearchQueryInUrl('');
       setStatus('');
       clearResultsLoading();
       clearResults();
@@ -545,6 +578,7 @@
     }
 
     if (raw.length < MIN_QUERY_LEN) {
+      syncSearchQueryInUrl('');
       setStatus(`Tapez au moins ${MIN_QUERY_LEN} caracteres.`, 'info');
       clearResultsLoading();
       clearResults();
@@ -554,6 +588,8 @@
       }
       return;
     }
+
+    syncSearchQueryInUrl(raw);
 
     if (spotlightSection) {
       spotlightSection.hidden = true;
@@ -839,14 +875,14 @@
     if (!topHost || !topStatus) {
       return;
     }
-    topStatus.textContent = 'Chargement du classement...';
+    setTopStatus('Chargement du classement...');
     fetchJson(topUrl)
       .then((payload) => {
         renderTop(payload);
-        topStatus.textContent = '';
+        setTopStatus('');
       })
       .catch(() => {
-        topStatus.textContent = 'Classement indisponible pour le moment.';
+        setTopStatus('Classement indisponible pour le moment.');
       });
   };
 
