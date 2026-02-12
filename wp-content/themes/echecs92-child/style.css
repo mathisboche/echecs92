@@ -3852,6 +3852,7 @@ body.club-ffe-view .clubs-page{
   font-size:15px;
   line-height:1.4;
   background:#ffffff;
+  transition:background-color .16s ease;
   box-sizing:border-box;
 }
 .clubs-input[type="search"]::-webkit-search-cancel-button,
@@ -3865,6 +3866,19 @@ body.club-ffe-view .clubs-page{
 .clubs-page #clubs-location:focus-visible{
   outline:none;
   box-shadow:none;
+  background:#ffffff;
+}
+@media (hover:hover) and (pointer:fine){
+  .clubs-search-block .clubs-input:hover,
+  .clubs-search-block #clubs-location:hover{
+    background:#f3f5f8;
+  }
+  .clubs-search-block .clubs-input:focus,
+  .clubs-search-block .clubs-input:focus-visible,
+  .clubs-search-block #clubs-location:focus,
+  .clubs-search-block #clubs-location:focus-visible{
+    background:#ffffff;
+  }
 }
 .clubs-search__actions{
   display:flex;
