@@ -7441,7 +7441,6 @@ a.player-chip:focus:not(:focus-visible),
 .clubs-page .club-detail-page .club-action--primary{
   width:max-content;
   max-width:100%;
-  min-width:0;
   min-height:40px;
   padding:9px 13px;
   border-radius:10px;
@@ -7452,20 +7451,7 @@ a.player-chip:focus:not(:focus-visible),
   letter-spacing:0;
   gap:8px;
   justify-content:flex-start;
-  white-space:nowrap;
   box-shadow:0 2px 8px rgba(15,23,42,0.08);
-}
-.clubs-page .club-detail-page .club-action--primary .club-action__label{
-  display:block;
-  min-width:0;
-}
-.clubs-page .club-detail-page .club-action--primary .club-action__label--truncate{
-  flex:1 1 auto;
-  min-width:0;
-  max-width:min(42ch, 100%);
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
 }
 .clubs-page .club-detail-page .club-action--primary::before{
   content:'';
@@ -7506,7 +7492,7 @@ a.player-chip:focus:not(:focus-visible),
   }
   .clubs-page .club-detail-page .club-action--primary{
     width:100%;
-    justify-content:flex-start;
+    justify-content:center;
   }
 }
 .club-disclosure{

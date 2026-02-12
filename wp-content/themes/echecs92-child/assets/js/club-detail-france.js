@@ -2152,20 +2152,6 @@
 	        node.className = classNames.join(' ');
 	      }
 	    };
-	    const setActionText = (node, text) => {
-	      const safeText = text == null ? '' : String(text);
-	      if (!options.button) {
-	        node.textContent = safeText;
-	        return;
-	      }
-	      const labelNode = document.createElement('span');
-	      labelNode.className = 'club-action__label';
-	      if (options.truncateLabel) {
-	        labelNode.classList.add('club-action__label--truncate');
-	      }
-	      labelNode.textContent = safeText;
-	      node.replaceChildren(labelNode);
-	    };
 
 	    if (options.type === 'lines') {
 	      const linesWrap = document.createElement('div');
@@ -2182,19 +2168,13 @@
 	      link.rel = 'noopener';
 	      link.target = '_blank';
 	      applyActionClasses(link);
-	      setActionText(link, options.label || value);
-	      if (options.truncateLabel) {
-	        link.title = value;
-	      }
+	      link.textContent = options.label || value;
 	      valueContainer.appendChild(link);
 	    } else if (options.type === 'mail') {
 	      const link = document.createElement('a');
 	      link.href = `mailto:${value}`;
 	      applyActionClasses(link);
-	      setActionText(link, options.label || value);
-	      if (options.truncateLabel) {
-	        link.title = value;
-	      }
+	      link.textContent = options.label || value;
 	      valueContainer.appendChild(link);
 	    } else if (options.type === 'phone') {
 	      const formatted = formatPhone(value) || value;
@@ -2202,7 +2182,7 @@
 	      const link = document.createElement('a');
 	      link.href = `tel:${cleaned || value}`;
 	      applyActionClasses(link);
-	      setActionText(link, formatted);
+	      link.textContent = formatted;
 	      valueContainer.appendChild(link);
 	    } else if (options.type === 'copy') {
 	      const button = document.createElement('button');
@@ -3577,40 +3557,21 @@
         if (/^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}(?:\/\S*)?$/i.test(raw)) return `https://${raw}`;
         return raw;
       })();
-      const siteButtonLabel = (() => {
-        const raw = (siteUrl || '').toString().trim();
-        if (!raw) {
-          return '';
-        }
-        let cleaned = raw.replace(/^https?:\/\//i, '').replace(/^www\./i, '');
-        try {
-          const parsed = new URL(raw);
-          const host = (parsed.hostname || '').replace(/^www\./i, '');
-          const path = (parsed.pathname || '').replace(/\/+$/u, '');
-          cleaned = `${host}${path && path !== '/' ? path : ''}` || cleaned;
-        } catch (error) {
-          // Keep fallback cleaned value.
-        }
-        return cleaned.replace(/\/+$/u, '');
-      })();
-      const emailButtonLabel = (club.email || '').toString().trim();
 		    appendDetail(essentials.list, 'Site internet', siteUrl, {
 		      type: 'link',
-		      label: siteButtonLabel || 'Site web',
+		      label: 'Site web',
         button: true,
         buttonClassName: 'club-action--primary',
         itemClassName: 'club-section__item--action',
         hideLabel: true,
-        truncateLabel: true,
 		    });
 		    appendDetail(essentials.list, 'Email', club.email, {
         type: 'mail',
-        label: emailButtonLabel || 'Email',
+        label: 'Email',
         button: true,
         buttonClassName: 'club-action--primary',
         itemClassName: 'club-section__item--action',
         hideLabel: true,
-        truncateLabel: true,
       });
 		    appendDetail(essentials.list, 'Téléphone', club.phone, {
         type: 'phone',
