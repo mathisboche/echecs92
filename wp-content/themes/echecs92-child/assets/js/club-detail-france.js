@@ -2221,6 +2221,44 @@
     return true;
   };
 
+  const appendPersonContactDetail = (list, label, personName, personEmail) => {
+    const name = (personName || '').toString().trim();
+    const email = (personEmail || '').toString().trim();
+    if (!name && !email) {
+      return false;
+    }
+
+    const item = document.createElement('li');
+    item.className = 'club-section__item club-section__item--person';
+
+    const labelNode = document.createElement('span');
+    labelNode.className = 'club-section__label';
+    labelNode.textContent = label;
+    item.appendChild(labelNode);
+
+    const valueContainer = document.createElement('div');
+    valueContainer.className = 'club-section__value club-section__value--person';
+
+    if (name) {
+      const nameNode = document.createElement('div');
+      nameNode.className = 'club-person__name';
+      nameNode.textContent = name;
+      valueContainer.appendChild(nameNode);
+    }
+
+    if (email) {
+      const emailLink = document.createElement('a');
+      emailLink.className = 'club-person__email';
+      emailLink.href = `mailto:${email}`;
+      emailLink.textContent = email;
+      valueContainer.appendChild(emailLink);
+    }
+
+    item.appendChild(valueContainer);
+    list.appendChild(item);
+    return true;
+  };
+
   const createLicenseBreakdownItem = (licenses) => {
     const rawA = Number.parseInt(licenses?.A, 10);
     const rawB = Number.parseInt(licenses?.B, 10);
@@ -2339,7 +2377,6 @@
     const icon = document.createElement('span');
     icon.className = 'club-accessibility-pill__icon';
     icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = 'PMR';
     pill.appendChild(icon);
 
     const textNode = document.createElement('span');
@@ -3361,19 +3398,16 @@
 		    appendDetail(essentials.list, 'Site internet', siteUrl, {
 		      type: 'link',
 		      label: siteLabel,
-        icon: 'site',
         button: true,
         buttonClassName: 'club-action--primary',
 		    });
 		    appendDetail(essentials.list, 'Email', club.email, {
         type: 'mail',
-        icon: 'mail',
         button: true,
         buttonClassName: 'club-action--primary',
       });
 		    appendDetail(essentials.list, 'Téléphone', club.phone, {
         type: 'phone',
-        icon: 'phone',
         button: true,
         buttonClassName: 'club-action--primary',
       });
@@ -3388,17 +3422,10 @@
 	      sections.push(essentials.section);
 	    }
 
-    const highlights = createSection('Infos club');
-    appendDetail(highlights.list, 'Président·e', club.president);
-    appendDetail(highlights.list, 'Adresse email', club.presidentEmail, {
-      type: 'mail',
-      label: club.presidentEmail || '',
-    });
-    appendDetail(highlights.list, 'Référent·e club', club.contact);
-    appendDetail(highlights.list, 'Adresse email', club.contactEmail, {
-      type: 'mail',
-      label: club.contactEmail || '',
-    });
+	    const highlights = createSection('Infos club');
+    appendDetail(highlights.list, 'Horaires', club.hours, { type: 'lines' });
+    appendPersonContactDetail(highlights.list, 'Président·e', club.president, club.presidentEmail);
+    appendPersonContactDetail(highlights.list, 'Référent·e club', club.contact, club.contactEmail);
     if (highlights.list.childElementCount) {
       sections.push(highlights.section);
     }
@@ -3416,28 +3443,16 @@
       (addressKey === siegeKey ||
         addressKey.includes(siegeKey) ||
         siegeKey.includes(addressKey));
-	    if (
-	      club.siege &&
-	      siegeKey &&
-	      !isSameLocation
-	    ) {
-	      appendDetail(coords.list, 'Siège social', club.siege, {
-	        type: 'copy',
-	        onCopy: copyToClipboard,
-	        ariaLabel: "Copier l'adresse du siège social",
-	        title: "Copier l'adresse du siège social",
-	      });
-	    }
-	    appendDetail(coords.list, 'Fax', club.fax);
-	    if (coords.list.childElementCount) {
-	      sections.push(coords.section);
-	    }
+    const showSiegeSocial = club.siege && siegeKey && !isSameLocation;
+		    appendDetail(coords.list, 'Fax', club.fax);
+		    if (coords.list.childElementCount) {
+		      sections.push(coords.section);
+		    }
 
-    const activities = createSection('Activités');
-    appendDetail(activities.list, 'Publics accueillis', club.publics);
-    appendDetail(activities.list, 'Horaires', club.hours, { type: 'lines' });
-    appendDetail(activities.list, 'Tarifs', club.tarifs);
-    appendDetail(activities.list, 'Informations complémentaires', club.notes && club.publics ? club.notes : '');
+	    const activities = createSection('Activités');
+	    appendDetail(activities.list, 'Publics accueillis', club.publics);
+	    appendDetail(activities.list, 'Tarifs', club.tarifs);
+	    appendDetail(activities.list, 'Informations complémentaires', club.notes && club.publics ? club.notes : '');
     if (activities.list.childElementCount) {
       sections.push(activities.section);
     }
@@ -3455,11 +3470,19 @@
 	      sections.push(ffeSection);
 	    }
 
-		    const ffeInfo = createSection('FFE');
-		    const licensesItem = createLicenseBreakdownItem(club.licenses);
-		    if (licensesItem) {
-		      ffeInfo.list.appendChild(licensesItem);
-		    }
+			    const ffeInfo = createSection('FFE');
+			    const licensesItem = createLicenseBreakdownItem(club.licenses);
+			    if (licensesItem) {
+			      ffeInfo.list.appendChild(licensesItem);
+			    }
+        if (showSiegeSocial) {
+          appendDetail(ffeInfo.list, 'Siège social', club.siege, {
+            type: 'copy',
+            onCopy: copyToClipboard,
+            ariaLabel: "Copier l'adresse du siège social",
+            title: "Copier l'adresse du siège social",
+          });
+        }
         const accessibilityItem = createAccessibilityItem(club.accesPmr);
         if (accessibilityItem) {
           ffeInfo.list.appendChild(accessibilityItem);
