@@ -328,7 +328,7 @@
     }
     appendItem('Fiche joueur', '', true);
 
-    actionsContainer.prepend(nav);
+    actionsContainer.appendChild(nav);
   };
 
   renderPlayerBreadcrumb();

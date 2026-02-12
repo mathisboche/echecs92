@@ -1183,24 +1183,31 @@
   };
 
   const resolveCopyFeedbackPoint = (event, element, fallbackPoint) => {
-    if (fallbackPoint && Number.isFinite(fallbackPoint.x) && Number.isFinite(fallbackPoint.y)) {
-      return { x: fallbackPoint.x, y: fallbackPoint.y };
+    const scrollX = window.scrollX || window.pageXOffset || 0;
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+    const rect = element?.getBoundingClientRect ? element.getBoundingClientRect() : null;
+    const anchorY = rect
+      ? rect.top + scrollY + rect.height / 2
+      : scrollY + (window.innerHeight || document.documentElement?.clientHeight || 0) / 2;
+
+    if (fallbackPoint && Number.isFinite(fallbackPoint.x)) {
+      return { x: fallbackPoint.x + scrollX, y: anchorY };
     }
+
     const eventX = Number(event?.clientX);
     const eventY = Number(event?.clientY);
-    if (Number.isFinite(eventX) && Number.isFinite(eventY)) {
-      return { x: eventX, y: eventY };
+    if (Number.isFinite(eventX) && Number.isFinite(eventY) && (eventX !== 0 || eventY !== 0)) {
+      return { x: eventX + scrollX, y: anchorY };
     }
-    const rect = element?.getBoundingClientRect ? element.getBoundingClientRect() : null;
+
     if (rect) {
       return {
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2,
+        x: rect.left + scrollX + rect.width / 2,
+        y: anchorY,
       };
     }
     const viewportWidth = window.innerWidth || document.documentElement?.clientWidth || 0;
-    const viewportHeight = window.innerHeight || document.documentElement?.clientHeight || 0;
-    return { x: viewportWidth / 2, y: viewportHeight / 2 };
+    return { x: scrollX + viewportWidth / 2, y: anchorY };
   };
 
   const showCopyFeedbackBubble = (message, tone, point) => {
@@ -1226,17 +1233,18 @@
 
     const viewportWidth = window.innerWidth || document.documentElement?.clientWidth || 0;
     const viewportHeight = window.innerHeight || document.documentElement?.clientHeight || 0;
-    const anchorX = Number.isFinite(Number(point?.x)) ? Number(point.x) : viewportWidth / 2;
-    const anchorY = Number.isFinite(Number(point?.y)) ? Number(point.y) : viewportHeight / 2;
+    const scrollX = window.scrollX || window.pageXOffset || 0;
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+    const anchorX = Number.isFinite(Number(point?.x)) ? Number(point.x) : scrollX + viewportWidth / 2;
+    const anchorY = Number.isFinite(Number(point?.y)) ? Number(point.y) : scrollY + viewportHeight / 2;
     const rect = bubble.getBoundingClientRect();
     const margin = 10;
     const halfWidth = rect.width / 2;
-    const minCenterX = margin + halfWidth;
-    const maxCenterX = Math.max(minCenterX, viewportWidth - margin - halfWidth);
+    const minCenterX = scrollX + margin + halfWidth;
+    const maxCenterX = Math.max(minCenterX, scrollX + viewportWidth - margin - halfWidth);
     const clampedX = Math.min(maxCenterX, Math.max(minCenterX, anchorX));
-    const minAnchorY = margin + rect.height + 18;
-    const maxAnchorY = Math.max(minAnchorY, viewportHeight - margin);
-    const clampedY = Math.min(maxAnchorY, Math.max(minAnchorY, anchorY));
+    const minAnchorY = scrollY + margin + rect.height + 18;
+    const clampedY = Math.max(minAnchorY, anchorY);
 
     bubble.style.left = `${clampedX}px`;
     bubble.style.top = `${clampedY}px`;
@@ -1248,6 +1256,86 @@
     copyFeedbackHideTimer = window.setTimeout(() => {
       hideCopyFeedbackBubble();
     }, 1300);
+  };
+
+  let licenseHoverBubble = null;
+
+  const ensureLicenseHoverBubble = () => {
+    if (licenseHoverBubble) {
+      return licenseHoverBubble;
+    }
+    if (typeof document === 'undefined' || !document.body) {
+      return null;
+    }
+    const bubble = document.createElement('div');
+    bubble.className = 'club-license-hover-bubble';
+    bubble.hidden = true;
+    document.body.appendChild(bubble);
+    licenseHoverBubble = bubble;
+    return bubble;
+  };
+
+  const hideLicenseHoverBubble = () => {
+    if (!licenseHoverBubble) {
+      return;
+    }
+    licenseHoverBubble.classList.remove('is-visible');
+    licenseHoverBubble.hidden = true;
+  };
+
+  const positionLicenseHoverBubble = (event) => {
+    if (!licenseHoverBubble) {
+      return;
+    }
+    const pointerX = Number(event?.clientX);
+    const pointerY = Number(event?.clientY);
+    if (!Number.isFinite(pointerX) || !Number.isFinite(pointerY)) {
+      return;
+    }
+
+    const viewportWidth = window.innerWidth || document.documentElement?.clientWidth || 0;
+    const viewportHeight = window.innerHeight || document.documentElement?.clientHeight || 0;
+    const rect = licenseHoverBubble.getBoundingClientRect();
+    const margin = 10;
+    const halfWidth = rect.width / 2;
+    const minCenterX = margin + halfWidth;
+    const maxCenterX = Math.max(minCenterX, viewportWidth - margin - halfWidth);
+    const clampedX = Math.min(maxCenterX, Math.max(minCenterX, pointerX));
+    const minAnchorY = margin + rect.height + 16;
+    const maxAnchorY = Math.max(minAnchorY, viewportHeight - margin);
+    const preferredY = pointerY - 14;
+    const clampedY = Math.min(maxAnchorY, Math.max(minAnchorY, preferredY));
+
+    licenseHoverBubble.style.left = `${clampedX}px`;
+    licenseHoverBubble.style.top = `${clampedY}px`;
+  };
+
+  const showLicenseHoverBubble = (text, event) => {
+    if (!text) {
+      return;
+    }
+    const bubble = ensureLicenseHoverBubble();
+    if (!bubble) {
+      return;
+    }
+    bubble.textContent = text;
+    bubble.hidden = false;
+    bubble.classList.add('is-visible');
+    positionLicenseHoverBubble(event);
+  };
+
+  const bindLicenseTooltip = (element, text) => {
+    if (!element || !text) {
+      return;
+    }
+    element.addEventListener('pointerenter', (event) => {
+      showLicenseHoverBubble(text, event);
+    });
+    element.addEventListener('pointermove', (event) => {
+      positionLicenseHoverBubble(event);
+    });
+    element.addEventListener('pointerleave', hideLicenseHoverBubble);
+    element.addEventListener('pointercancel', hideLicenseHoverBubble);
   };
 
   const appendDetail = (list, label, value, options = {}) => {
@@ -1406,6 +1494,7 @@
       if (ratioA < 0.22) {
         partA.classList.add('club-license-breakdown__part--tight');
       }
+      bindLicenseTooltip(partA, `Licence A : ${licenseA} (${Math.round(ratioA * 100)} %)`);
       const partALabel = document.createElement('span');
       partALabel.className = 'club-license-breakdown__part-value';
       partALabel.textContent = `A ${licenseA}`;
@@ -1417,6 +1506,7 @@
       if (ratioB < 0.22) {
         partB.classList.add('club-license-breakdown__part--tight');
       }
+      bindLicenseTooltip(partB, `Licence B : ${licenseB} (${Math.round(ratioB * 100)} %)`);
       const partBLabel = document.createElement('span');
       partBLabel.className = 'club-license-breakdown__part-value';
       partBLabel.textContent = `B ${licenseB}`;
@@ -1456,15 +1546,15 @@
     }
     const normalized = normalise(raw).replace(/[^a-z0-9]+/g, ' ').trim();
     let tone = 'info';
-    let text = `Accessibilité indiquée : ${normaliseDashes(raw)}`;
+    let text = `Accessibilité PMR : ${normaliseDashes(raw)}`;
     const hasYes = /\b(oui|yes|accessible|adapte|amenage)\b/.test(normalized);
     const hasNo = /\b(non|inaccessible)\b/.test(normalized);
     if (hasYes && !hasNo) {
       tone = 'yes';
-      text = 'Accessible aux personnes à mobilité réduite';
+      text = 'Accès PMR indiqué comme adapté';
     } else if (hasNo) {
-      tone = 'no';
-      text = 'Non accessible aux personnes à mobilité réduite';
+      tone = 'limited';
+      text = 'Accès PMR non indiqué comme adapté';
     }
 
     const item = document.createElement('li');
@@ -1481,7 +1571,18 @@
     const pill = document.createElement('span');
     pill.className = 'club-accessibility-pill';
     pill.dataset.tone = tone;
-    pill.textContent = text;
+
+    const icon = document.createElement('span');
+    icon.className = 'club-accessibility-pill__icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = 'PMR';
+    pill.appendChild(icon);
+
+    const textNode = document.createElement('span');
+    textNode.className = 'club-accessibility-pill__text';
+    textNode.textContent = text;
+    pill.appendChild(textNode);
+
     valueContainer.appendChild(pill);
 
     item.appendChild(valueContainer);
@@ -2148,28 +2249,22 @@
   const renderFfeListsSection = (club, lists) => {
     const ffeUrl = buildFfeListsUrl(club);
 
-    if (!isFfeListsView) {
-      if (!ffeUrl || !club?.ffeRef) {
-        return null;
-      }
+	    if (!isFfeListsView) {
+	      if (!ffeUrl || !club?.ffeRef) {
+	        return null;
+	      }
 
-	      const section = document.createElement('section');
-	      section.className = 'club-section club-section--ffe club-ffe-link';
+		      const section = document.createElement('section');
+		      section.className = 'club-section club-section--ffe club-ffe-link';
 
-	      const intro = document.createElement('p');
-	      intro.className = 'club-ffe-link__intro';
-      intro.textContent =
-        'Les listes FFE (membres, arbitrage, animation, entraînement, initiation) sont disponibles sur une page dédiée.';
-      section.appendChild(intro);
+	      const actions = document.createElement('div');
+	      actions.className = 'club-ffe-link__actions';
 
-      const actions = document.createElement('div');
-      actions.className = 'club-ffe-link__actions';
-
-      const link = document.createElement('a');
-      link.className = 'btn btn-secondary';
-      link.href = ffeUrl;
-      link.textContent = 'Ouvrir la liste en plein écran';
-      actions.appendChild(link);
+	      const link = document.createElement('a');
+	      link.className = 'btn btn-secondary';
+	      link.href = ffeUrl;
+	      link.textContent = 'Voir les listes FFE';
+	      actions.appendChild(link);
 
       section.appendChild(actions);
       return section;
@@ -2504,9 +2599,20 @@
 	      label: siteLabel,
         icon: 'site',
         button: true,
+        buttonClassName: 'club-action--primary',
 	    });
-	    appendDetail(essentials.list, 'Email', club.email, { type: 'mail', icon: 'mail', button: true });
-	    appendDetail(essentials.list, 'Téléphone', club.phone, { type: 'phone', icon: 'phone', button: true });
+	    appendDetail(essentials.list, 'Email', club.email, {
+        type: 'mail',
+        icon: 'mail',
+        button: true,
+        buttonClassName: 'club-action--primary',
+      });
+	    appendDetail(essentials.list, 'Téléphone', club.phone, {
+        type: 'phone',
+        icon: 'phone',
+        button: true,
+        buttonClassName: 'club-action--primary',
+      });
 	    appendDetail(essentials.list, 'Adresse', club.addressDisplay || club.address || club.salle || '', {
         type: 'copy',
         icon: 'location',
@@ -2520,12 +2626,12 @@
 
     const highlights = createSection('Infos club');
     appendDetail(highlights.list, 'Président·e', club.president);
-    appendDetail(highlights.list, 'Email président·e', club.presidentEmail, {
+    appendDetail(highlights.list, 'Adresse email', club.presidentEmail, {
       type: 'mail',
       label: club.presidentEmail || '',
     });
-    appendDetail(highlights.list, 'Contact', club.contact);
-    appendDetail(highlights.list, 'Email contact', club.contactEmail, {
+    appendDetail(highlights.list, 'Référent·e club', club.contact);
+    appendDetail(highlights.list, 'Adresse email', club.contactEmail, {
       type: 'mail',
       label: club.contactEmail || '',
     });
@@ -2597,10 +2703,11 @@
 	    const ficheFfeUrl =
 	      club.fiche_ffe ||
 	      (club.ffeRef ? `${FFE_URL_BASE}${encodeURIComponent(club.ffeRef)}` : '');
-		    appendDetail(ffeInfo.list, 'Fiche FFE', ficheFfeUrl, {
-		      type: 'link',
-		      label: 'Voir la fiche officielle',
-		    });
+			    appendDetail(ffeInfo.list, 'Fiche FFE', ficheFfeUrl, {
+			      type: 'link',
+			      label: 'Voir la fiche FFE',
+			      button: true,
+			    });
 
 	    sections.forEach((section) => sheet.appendChild(section));
 

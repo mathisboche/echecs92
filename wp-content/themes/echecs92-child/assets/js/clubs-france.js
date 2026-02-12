@@ -2384,10 +2384,12 @@
     return getHeaderHeight();
   };
 
-  const getResultsStickyTopPx = () => {
+  const getResultsStickyTopPx = (options = {}) => {
     if (typeof window === 'undefined' || typeof document === 'undefined') {
       return 0;
     }
+    const assumeHeaderCollapsed = options.assumeHeaderCollapsed !== false;
+    const currentHeaderOffset = getHeaderOffsetPx();
     const header =
       (resultsShell && resultsShell.querySelector('.clubs-results-shell__header')) ||
       (resultsCloseButton ? resultsCloseButton.closest('.clubs-results-shell__header') : null);
@@ -2395,11 +2397,18 @@
       const raw = window.getComputedStyle(header).top;
       const parsed = Number.parseFloat(raw);
       if (Number.isFinite(parsed)) {
+        if (assumeHeaderCollapsed && currentHeaderOffset > 0) {
+          return Math.max(0, parsed - currentHeaderOffset);
+        }
         return parsed;
       }
     }
     // Fallback: mimic `--clubs-results-sticky-top` calc (without safe-area).
-    return getAdminBarHeight() + getHeaderOffsetPx() + getScopeBannerHeight() + RESULTS_STICKY_BASE_GAP_PX;
+    const stickyTop = getAdminBarHeight() + getHeaderOffsetPx() + getScopeBannerHeight() + RESULTS_STICKY_BASE_GAP_PX;
+    if (assumeHeaderCollapsed && currentHeaderOffset > 0) {
+      return Math.max(0, stickyTop - currentHeaderOffset);
+    }
+    return stickyTop;
   };
 
   const jumpToResults = (options = {}) => {
@@ -2413,7 +2422,8 @@
     const behavior = options.behavior === 'instant' ? 'auto' : options.behavior || 'smooth';
     const marginOverride = Number.isFinite(options.margin) ? options.margin : null;
     const scrollMargin = Number.isFinite(marginOverride) ? marginOverride : resultsScrollMargin;
-    const stickyTop = getResultsStickyTopPx();
+    // Use the collapsed-header position to avoid stopping too early when the header retracts during scroll.
+    const stickyTop = getResultsStickyTopPx({ assumeHeaderCollapsed: true });
     const extraGap = Number.isFinite(scrollMargin)
       ? Math.max(0, scrollMargin - RESULTS_STICKY_BASE_GAP_PX)
       : 0;
