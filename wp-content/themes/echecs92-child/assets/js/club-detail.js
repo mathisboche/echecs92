@@ -1384,44 +1384,105 @@
 
     const labelNode = document.createElement('span');
     labelNode.className = 'club-section__label';
-    labelNode.textContent = 'Répartition';
+    labelNode.textContent = 'Répartition des licenses';
     item.appendChild(labelNode);
 
     const valueContainer = document.createElement('div');
     valueContainer.className = 'club-section__value';
 
-    const figures = document.createElement('p');
-    figures.className = 'club-license-breakdown__figures';
-    figures.textContent = `Licence A : ${licenseA} · Licence B : ${licenseB}`;
-    valueContainer.appendChild(figures);
-
     if (licenseA > 0 && licenseB > 0) {
+      const ratioA = licenseA / total;
+      const ratioB = licenseB / total;
       const bar = document.createElement('div');
       bar.className = 'club-license-breakdown__bar';
       bar.setAttribute(
         'aria-label',
-        `Répartition des licences : ${licenseA} en A et ${licenseB} en B`
+        `Répartition des licenses : ${licenseA} en A et ${licenseB} en B`
       );
 
       const partA = document.createElement('span');
       partA.className = 'club-license-breakdown__part club-license-breakdown__part--a';
-      partA.style.width = `${(licenseA / total) * 100}%`;
+      partA.style.width = `${ratioA * 100}%`;
+      if (ratioA < 0.22) {
+        partA.classList.add('club-license-breakdown__part--tight');
+      }
+      const partALabel = document.createElement('span');
+      partALabel.className = 'club-license-breakdown__part-value';
+      partALabel.textContent = `A ${licenseA}`;
+      partA.appendChild(partALabel);
 
       const partB = document.createElement('span');
       partB.className = 'club-license-breakdown__part club-license-breakdown__part--b';
-      partB.style.width = `${(licenseB / total) * 100}%`;
+      partB.style.width = `${ratioB * 100}%`;
+      if (ratioB < 0.22) {
+        partB.classList.add('club-license-breakdown__part--tight');
+      }
+      const partBLabel = document.createElement('span');
+      partBLabel.className = 'club-license-breakdown__part-value';
+      partBLabel.textContent = `B ${licenseB}`;
+      partB.appendChild(partBLabel);
 
       bar.appendChild(partA);
       bar.appendChild(partB);
       valueContainer.appendChild(bar);
+      if (ratioA < 0.22 || ratioB < 0.22) {
+        const legend = document.createElement('div');
+        legend.className = 'club-license-breakdown__legend';
 
-      const totalNode = document.createElement('p');
-      totalNode.className = 'club-license-breakdown__total';
-      totalNode.textContent = `Total : ${total}`;
-      valueContainer.appendChild(totalNode);
+        const legendA = document.createElement('span');
+        legendA.className = 'club-license-breakdown__legend-item club-license-breakdown__legend-item--a';
+        legendA.textContent = `A ${licenseA}`;
+        legend.appendChild(legendA);
+
+        const legendB = document.createElement('span');
+        legendB.className = 'club-license-breakdown__legend-item club-license-breakdown__legend-item--b';
+        legendB.textContent = `B ${licenseB}`;
+        legend.appendChild(legendB);
+
+        valueContainer.appendChild(legend);
+      }
     } else {
-      figures.textContent = `${total} licence${total > 1 ? 's' : ''}`;
+      valueContainer.textContent = `${total} licence${total > 1 ? 's' : ''}`;
     }
+
+    item.appendChild(valueContainer);
+    return item;
+  };
+
+  const createAccessibilityItem = (value) => {
+    const raw = (value || '').toString().trim();
+    if (!raw) {
+      return null;
+    }
+    const normalized = normalise(raw).replace(/[^a-z0-9]+/g, ' ').trim();
+    let tone = 'info';
+    let text = `Accessibilité indiquée : ${normaliseDashes(raw)}`;
+    const hasYes = /\b(oui|yes|accessible|adapte|amenage)\b/.test(normalized);
+    const hasNo = /\b(non|inaccessible)\b/.test(normalized);
+    if (hasYes && !hasNo) {
+      tone = 'yes';
+      text = 'Accessible aux personnes à mobilité réduite';
+    } else if (hasNo) {
+      tone = 'no';
+      text = 'Non accessible aux personnes à mobilité réduite';
+    }
+
+    const item = document.createElement('li');
+    item.className = 'club-section__item club-section__item--accessibility';
+
+    const labelNode = document.createElement('span');
+    labelNode.className = 'club-section__label';
+    labelNode.textContent = 'Accessibilité';
+    item.appendChild(labelNode);
+
+    const valueContainer = document.createElement('div');
+    valueContainer.className = 'club-section__value';
+
+    const pill = document.createElement('span');
+    pill.className = 'club-accessibility-pill';
+    pill.dataset.tone = tone;
+    pill.textContent = text;
+    valueContainer.appendChild(pill);
 
     item.appendChild(valueContainer);
     return item;
@@ -2045,6 +2106,45 @@
     return base ? `${base}ffe/` : '';
   };
 
+  const createClubBreadcrumb = (items) => {
+    const nav = document.createElement('nav');
+    nav.className = 'club-breadcrumb';
+    nav.setAttribute('aria-label', "Fil d'Ariane");
+
+    const list = document.createElement('ol');
+    list.className = 'club-breadcrumb__list';
+    nav.appendChild(list);
+
+    (Array.isArray(items) ? items : []).forEach((item) => {
+      if (!item || !item.label) {
+        return;
+      }
+      const row = document.createElement('li');
+      row.className = 'club-breadcrumb__item';
+      if (item.current) {
+        row.classList.add('is-current');
+        row.setAttribute('aria-current', 'page');
+      }
+
+      if (item.href && !item.current) {
+        const link = document.createElement('a');
+        link.className = 'club-breadcrumb__link';
+        link.href = item.href;
+        link.textContent = item.label;
+        row.appendChild(link);
+      } else {
+        const label = document.createElement('span');
+        label.className = 'club-breadcrumb__label';
+        label.textContent = item.label;
+        row.appendChild(label);
+      }
+
+      list.appendChild(row);
+    });
+
+    return nav;
+  };
+
   const renderFfeListsSection = (club, lists) => {
     const ffeUrl = buildFfeListsUrl(club);
 
@@ -2296,6 +2396,16 @@
     });
 
 	    shareBlock.appendChild(shareButton);
+
+      if (isFfeListsView) {
+        header.appendChild(
+          createClubBreadcrumb([
+            { label: 'Recherche clubs', href: getStoredBackPath('/clubs-92') },
+            { label: 'Fiche du club', href: clubBaseUrl },
+            { label: 'Liste des joueurs du club', current: true },
+          ])
+        );
+      }
 	    header.appendChild(titleRow);
 
       const meta = document.createElement('div');
@@ -2409,19 +2519,19 @@
 	    }
 
     const highlights = createSection('Infos club');
-    if (club.president || club.presidentEmail) {
-      if (club.presidentEmail) {
-        appendDetail(highlights.list, 'Président·e', club.presidentEmail, {
-          type: 'mail',
-          label: club.president || club.presidentEmail,
-        });
-	      } else {
-	        appendDetail(highlights.list, 'Président·e', club.president);
-	      }
-	    }
-	    if (highlights.list.childElementCount) {
-	      sections.push(highlights.section);
-	    }
+    appendDetail(highlights.list, 'Président·e', club.president);
+    appendDetail(highlights.list, 'Email président·e', club.presidentEmail, {
+      type: 'mail',
+      label: club.presidentEmail || '',
+    });
+    appendDetail(highlights.list, 'Contact', club.contact);
+    appendDetail(highlights.list, 'Email contact', club.contactEmail, {
+      type: 'mail',
+      label: club.contactEmail || '',
+    });
+    if (highlights.list.childElementCount) {
+      sections.push(highlights.section);
+    }
 
     const coords = createSection('Coordonnées');
     const normalizeAddress = (value) =>
@@ -2462,30 +2572,6 @@
       sections.push(activities.section);
     }
 
-    const organisation = createSection('Organisation');
-    const normalizePersonKey = (name, email) => {
-      const emailKey = normalise(email || '').replace(/[^a-z0-9@.+-]/g, '');
-      if (emailKey) {
-        return emailKey;
-      }
-      return normalise(name || '').replace(/[^a-z0-9]+/g, '');
-    };
-    const presidentKey = normalizePersonKey(club.president, club.presidentEmail);
-    const contactKey = normalizePersonKey(club.contact, club.contactEmail);
-    if ((club.contact || club.contactEmail) && (!presidentKey || presidentKey !== contactKey)) {
-      if (club.contactEmail) {
-        appendDetail(organisation.list, 'Contact', club.contactEmail, {
-          type: 'mail',
-          label: club.contact || club.contactEmail,
-        });
-      } else {
-	        appendDetail(organisation.list, 'Contact', club.contact);
-	      }
-	    }
-	    if (organisation.list.childElementCount) {
-	      sections.push(organisation.section);
-	    }
-
     const competitions = createSection('Compétitions');
     appendDetail(competitions.list, 'Interclubs', club.interclubs);
     appendDetail(competitions.list, 'Interclubs Jeunes', club.interclubsJeunes);
@@ -2504,6 +2590,10 @@
 	    if (licensesItem) {
 	      ffeInfo.list.appendChild(licensesItem);
 	    }
+      const accessibilityItem = createAccessibilityItem(club.accesPmr);
+      if (accessibilityItem) {
+        ffeInfo.list.appendChild(accessibilityItem);
+      }
 	    const ficheFfeUrl =
 	      club.fiche_ffe ||
 	      (club.ffeRef ? `${FFE_URL_BASE}${encodeURIComponent(club.ffeRef)}` : '');
@@ -2557,12 +2647,6 @@
 	    if (ffeInfo.list.childElementCount) {
 	      detailContainer.appendChild(ffeInfo.section);
 	    }
-
-      const pmrInfo = createSection('Accessibilité');
-      appendDetail(pmrInfo.list, 'Accès PMR', club.accesPmr);
-      if (pmrInfo.list.childElementCount) {
-        detailContainer.appendChild(pmrInfo.section);
-      }
 
 	    if (club.name) {
 	      document.title = `${normaliseDashes(club.name)} - Clubs du 92`;

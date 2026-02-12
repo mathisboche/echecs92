@@ -675,8 +675,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Si on passe en desktop (>960px), on force fermé
-    window.matchMedia('(min-width: 960px)').addEventListener('change', (e) => {
+    // Si on passe en desktop (>1200px), on force fermé
+    window.matchMedia('(min-width: 1200px)').addEventListener('change', (e) => {
       if (e.matches) {
         closeMenu();
       }

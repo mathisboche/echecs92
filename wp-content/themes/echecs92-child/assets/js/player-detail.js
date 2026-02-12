@@ -85,6 +85,7 @@
   }
 
   const backLink = document.querySelector('.player-detail__back, [data-player-back]');
+  const actionsContainer = document.querySelector('.player-detail__actions');
   detailContainer.classList.add('is-loading');
 
   const getBackKindForPath = (value) => {
@@ -95,6 +96,13 @@
     const cleaned = path.split('?')[0].split('#')[0];
     if (/^\/joueurs\b/i.test(cleaned)) {
       return 'players';
+    }
+    if (
+      /^\/club-92\/[^/]+\/ffe(?:\/|$)/i.test(cleaned) ||
+      /^\/club\/[^/]+\/ffe(?:\/|$)/i.test(cleaned) ||
+      /^\/club-france\/[^/]+\/ffe(?:\/|$)/i.test(cleaned)
+    ) {
+      return 'club_players';
     }
     if (/^\/club-92\/[^/]+/i.test(cleaned) || /^\/club\/[^/]+/i.test(cleaned) || /^\/club-france\/[^/]+/i.test(cleaned)) {
       return 'club';
@@ -113,6 +121,9 @@
   };
 
   const getBackLabel = (kind) => {
+    if (kind === 'club_players') {
+      return '← Retour à la liste des joueurs du club';
+    }
     if (kind === 'club') {
       return '← Retour à la fiche du club';
     }
@@ -194,13 +205,50 @@
     }
   };
 
+  const getClubSearchHrefFromPath = (value) => {
+    const path = toInternalPath(value || '');
+    if (!path) {
+      return '/clubs';
+    }
+    const cleaned = path.split('?')[0].split('#')[0];
+    if (/^\/club-92\//i.test(cleaned)) {
+      return '/clubs-92';
+    }
+    return '/clubs';
+  };
+
+  const getClubBaseHrefFromPath = (value) => {
+    const path = toInternalPath(value || '');
+    if (!path) {
+      return '';
+    }
+    try {
+      const url = new URL(path, window.location.origin);
+      const normalizedPath = (url.pathname || '').replace(/\/+$/u, '');
+      if (!normalizedPath) {
+        return '';
+      }
+      const basePath = normalizedPath.replace(/\/ffe$/iu, '') || normalizedPath;
+      if (!/^\/club(?:-92|-france)?\/[^/]+/i.test(basePath)) {
+        return '';
+      }
+      return `${basePath}/`;
+    } catch (error) {
+      return '';
+    }
+  };
+
   const getClubHrefFromBackLink = () => {
     if (!backLink) {
       return '';
     }
     const raw = backLink.getAttribute('href') || backLink.href || '';
     const path = toInternalPath(raw);
-    return getBackKindForPath(path) === 'club' ? path : '';
+    const kind = getBackKindForPath(path);
+    if (kind !== 'club' && kind !== 'club_players') {
+      return '';
+    }
+    return getClubBaseHrefFromPath(path);
   };
 
   const appendFromToInternalHref = (value) => {
@@ -219,6 +267,71 @@
       return path;
     }
   };
+
+  const renderPlayerBreadcrumb = () => {
+    if (!actionsContainer || !backLink) {
+      return;
+    }
+    const existing = actionsContainer.querySelector('.club-breadcrumb');
+    if (existing) {
+      existing.remove();
+    }
+
+    const backRaw = backLink.getAttribute('href') || backLink.href || '';
+    const backPath = toInternalPath(backRaw);
+    const backKind = getBackKindForPath(backPath);
+    if (backKind !== 'club' && backKind !== 'club_players') {
+      return;
+    }
+
+    const clubHref = getClubBaseHrefFromPath(backPath);
+    if (!clubHref) {
+      return;
+    }
+
+    const clubsSearchHref = getClubSearchHrefFromPath(clubHref);
+
+    const nav = document.createElement('nav');
+    nav.className = 'club-breadcrumb club-breadcrumb--player';
+    nav.setAttribute('aria-label', "Fil d'Ariane");
+
+    const list = document.createElement('ol');
+    list.className = 'club-breadcrumb__list';
+    nav.appendChild(list);
+
+    const appendItem = (label, href, isCurrent = false) => {
+      const item = document.createElement('li');
+      item.className = 'club-breadcrumb__item';
+      if (isCurrent) {
+        item.classList.add('is-current');
+        item.setAttribute('aria-current', 'page');
+      }
+      if (href && !isCurrent) {
+        const link = document.createElement('a');
+        link.className = 'club-breadcrumb__link';
+        link.href = href;
+        link.textContent = label;
+        item.appendChild(link);
+      } else {
+        const text = document.createElement('span');
+        text.className = 'club-breadcrumb__label';
+        text.textContent = label;
+        item.appendChild(text);
+      }
+      list.appendChild(item);
+    };
+
+    appendItem('Recherche clubs', clubsSearchHref);
+    appendItem('Fiche du club', appendFromToInternalHref(clubHref));
+    if (backKind === 'club_players') {
+      appendItem('Liste des joueurs du club', appendFromToInternalHref(backPath));
+    }
+    appendItem('Fiche joueur', '', true);
+
+    actionsContainer.prepend(nav);
+  };
+
+  renderPlayerBreadcrumb();
 
   const fetchJson = (url, options = {}) =>
     fetch(url, { headers: { Accept: 'application/json' }, ...options }).then((response) => {
