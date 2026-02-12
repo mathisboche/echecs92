@@ -187,7 +187,7 @@ body.admin-bar header.wp-block-template-part{
 }
 .cm-nav-item[data-submenu="clubs"] .cm-mega-panel-inner{
   --cm-mega-col-1: 0.9;
-  --cm-mega-col-2: 1.1;
+  --cm-mega-col-2: 1;
 }
 .cm-mega-title{
   font-size:13px;
@@ -4273,12 +4273,12 @@ body.club-ffe-view .clubs-page{
   text-decoration:underline;
 }
 .clubs-scope-tail-banner{
-  display:none;
+  display:flex;
   flex-wrap:wrap;
   align-items:center;
   justify-content:space-between;
   gap:10px;
-  margin:16px 0 0;
+  margin:0;
   padding:12px 14px;
   border-radius:14px;
   border:1px solid #e2e8f0;
@@ -4299,9 +4299,6 @@ body.club-ffe-view .clubs-page{
 .clubs-scope-tail-banner__link:hover,
 .clubs-scope-tail-banner__link:focus-visible{
   text-decoration:underline;
-}
-body.clubs-results-open .clubs-scope-tail-banner{
-  display:flex;
 }
 @media (min-width:821px){
   .clubs-scope-tail-banner{
@@ -4576,7 +4573,7 @@ body.clubs-results-open .clubs-scope-tail-banner{
     margin:0 calc(50% - 50vw) 24px;
   }
   .clubs-scope-modal__panel{
-    width:calc(100% - 24px);
+    width:calc(100% - 32px);
     padding:18px 16px 16px;
   }
   .clubs-scope-modal__actions{
