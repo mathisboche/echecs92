@@ -186,8 +186,8 @@ body.admin-bar header.wp-block-template-part{
   --cm-mega-col-2: 1.35;
 }
 .cm-nav-item[data-submenu="clubs"] .cm-mega-panel-inner{
-  --cm-mega-col-1: 0.85;
-  --cm-mega-col-2: 1.15;
+  --cm-mega-col-1: 1.1;
+  --cm-mega-col-2: 0.9;
 }
 .cm-mega-title{
   font-size:13px;
@@ -7021,21 +7021,36 @@ a.player-chip:focus:not(:focus-visible),
 .club-section__value--person{
   display:flex;
   flex-direction:column;
-  gap:2px;
+  gap:4px;
 }
 .club-person__name{
-  color:#0f172a;
-  font-weight:700;
+  color:#1f2937;
+  font-weight:400;
 }
-.club-section__value--person a.club-person__email{
-  color:#334155;
+.club-section__value--person a.club-person__email-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:max-content;
+  min-height:22px;
+  padding:1px 8px;
+  border:1px solid #cbd5e1;
+  border-radius:999px;
+  background:#ffffff;
+  color:#475569;
+  font-size:11px;
   font-weight:500;
+  letter-spacing:.01em;
+  line-height:1;
   text-decoration:none;
+  transition:border-color .18s ease, color .18s ease, background-color .18s ease;
 }
-.club-section__value--person a.club-person__email:hover,
-.club-section__value--person a.club-person__email:focus-visible{
-  color:#1d4ed8;
-  text-decoration:underline;
+.club-section__value--person a.club-person__email-btn:hover,
+.club-section__value--person a.club-person__email-btn:focus-visible{
+  border-color:#94a3b8;
+  background:#f8fafc;
+  color:#334155;
+  text-decoration:none;
   outline:none;
 }
 .club-license-breakdown__bar{
@@ -7139,8 +7154,8 @@ a.player-chip:focus:not(:focus-visible),
   width:15px;
   height:15px;
   background:currentColor;
-  mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='15.5' cy='17.5' r='3.5'/%3E%3Ccircle cx='11.5' cy='5' r='1.5'/%3E%3Cpath d='M12 8v4h3.5'/%3E%3Cpath d='M10 11l-2 5'/%3E%3Cpath d='M12 12.5l-1 4.5'/%3E%3C/svg%3E");
-  -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='15.5' cy='17.5' r='3.5'/%3E%3Ccircle cx='11.5' cy='5' r='1.5'/%3E%3Cpath d='M12 8v4h3.5'/%3E%3Cpath d='M10 11l-2 5'/%3E%3Cpath d='M12 12.5l-1 4.5'/%3E%3C/svg%3E");
+  mask-image:url("/wp-content/themes/echecs92-child/assets/icons/wheelchair-fontawesome.svg");
+  -webkit-mask-image:url("/wp-content/themes/echecs92-child/assets/icons/wheelchair-fontawesome.svg");
   mask-repeat:no-repeat;
   -webkit-mask-repeat:no-repeat;
   mask-position:center;
@@ -7191,6 +7206,15 @@ a.player-chip:focus:not(:focus-visible),
 .club-section__value a:not(.btn):focus-visible{
   text-decoration:underline;
   outline:none;
+}
+.club-section__value--person a.club-person__email-btn{
+  color:#475569;
+  text-decoration:none;
+}
+.club-section__value--person a.club-person__email-btn:hover,
+.club-section__value--person a.club-person__email-btn:focus-visible{
+  color:#334155;
+  text-decoration:none;
 }
 .club-copy{
   padding:0;
@@ -7462,6 +7486,71 @@ a.player-chip:focus:not(:focus-visible),
   gap:10px;
 }
 .club-ffe-link__actions .btn{
+  margin:0;
+}
+.club-ffe-preview{
+  position:relative;
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+  background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  padding:12px 12px 8px;
+  overflow:hidden;
+}
+.club-ffe-preview__title{
+  margin:0;
+  font-size:15px;
+  font-weight:800;
+  color:#0f172a;
+}
+.club-ffe-preview__hint{
+  margin:2px 0 10px;
+  font-size:12px;
+  color:#475569;
+}
+.club-ffe-preview__table{
+  width:100%;
+  border-collapse:collapse;
+}
+.club-ffe-preview__table th,
+.club-ffe-preview__table td{
+  padding:8px 10px;
+  border-bottom:1px solid #e2e8f0;
+  font-size:13px;
+  text-align:left;
+  vertical-align:middle;
+}
+.club-ffe-preview__table th{
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:#64748b;
+  background:#f8fafc;
+}
+.club-ffe-preview__table td{
+  color:#0f172a;
+}
+.club-ffe-preview__table tbody tr:last-child td{
+  border-bottom:0;
+}
+.club-ffe-preview__elo{
+  font-variant-numeric:tabular-nums;
+  font-weight:800;
+}
+.club-ffe-preview__row--blurred td{
+  opacity:.42;
+  filter:blur(2.4px);
+  user-select:none;
+}
+.club-ffe-preview__fade{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  height:42px;
+  pointer-events:none;
+  background:linear-gradient(180deg, rgba(248,250,252,0) 0%, rgba(248,250,252,0.95) 62%, #f8fafc 100%);
+}
+.club-ffe-preview__empty{
   margin:0;
 }
 .club-tabs{

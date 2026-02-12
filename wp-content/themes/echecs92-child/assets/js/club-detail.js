@@ -1484,9 +1484,11 @@
 
     if (email) {
       const emailLink = document.createElement('a');
-      emailLink.className = 'club-person__email';
+      emailLink.className = 'club-person__email-btn';
       emailLink.href = `mailto:${email}`;
-      emailLink.textContent = email;
+      emailLink.textContent = 'Email';
+      emailLink.title = email;
+      emailLink.setAttribute('aria-label', `Envoyer un email à ${name || label}: ${email}`);
       valueContainer.appendChild(emailLink);
     }
 
@@ -2285,6 +2287,75 @@
 
   const renderFfeListsSection = (club, lists) => {
     const ffeUrl = buildFfeListsUrl(club);
+    const getListCount = (list) => stripFfeHeaderRow(Array.isArray(list?.rows) ? list.rows : []).length;
+    const getMembersListKey = (payload) => {
+      const byEloCount = getListCount(payload?.members_by_elo);
+      const membersCount = getListCount(payload?.members);
+      const byEloOk = payload?.members_by_elo && !payload.members_by_elo.error && byEloCount > 0;
+      const membersOk = payload?.members && !payload.members.error && membersCount > 0;
+      if (byEloOk) {
+        return 'members_by_elo';
+      }
+      if (membersOk) {
+        return 'members';
+      }
+      return payload?.members_by_elo ? 'members_by_elo' : 'members';
+    };
+    const getMembersRows = (payload) => {
+      if (!payload || typeof payload !== 'object') {
+        return [];
+      }
+      const key = getMembersListKey(payload);
+      return stripFfeHeaderRow(Array.isArray(payload?.[key]?.rows) ? payload[key].rows : []);
+    };
+    const splitMemberName = (value) => {
+      const raw = normaliseDashes(value || '').replace(/\s+/g, ' ').trim();
+      if (!raw) {
+        return { lastName: '-', firstName: '' };
+      }
+      const parts = raw.split(' ').filter(Boolean);
+      if (parts.length === 1) {
+        return { lastName: parts[0], firstName: '' };
+      }
+      const uppercaseToken = /^[A-ZÀ-ÖØ-Þ][A-ZÀ-ÖØ-Þ'`-]*$/u;
+      let boundary = 0;
+      while (boundary < parts.length && uppercaseToken.test(parts[boundary])) {
+        boundary += 1;
+      }
+      if (boundary <= 0) {
+        boundary = 1;
+      }
+      if (boundary >= parts.length) {
+        return {
+          lastName: parts.slice(0, parts.length - 1).join(' '),
+          firstName: parts[parts.length - 1],
+        };
+      }
+      return {
+        lastName: parts.slice(0, boundary).join(' '),
+        firstName: parts.slice(boundary).join(' '),
+      };
+    };
+    const sortMembersByElo = (rows) =>
+      (Array.isArray(rows) ? rows : [])
+        .slice()
+        .sort((a, b) => {
+          const aScore = parseRatingMeta(a?.elo).score;
+          const bScore = parseRatingMeta(b?.elo).score;
+          if (aScore == null && bScore == null) {
+            return compareText(a?.name || '', b?.name || '');
+          }
+          if (aScore == null) {
+            return 1;
+          }
+          if (bScore == null) {
+            return -1;
+          }
+          if (bScore !== aScore) {
+            return bScore - aScore;
+          }
+          return compareText(a?.name || '', b?.name || '');
+        });
 
 	    if (!isFfeListsView) {
 	      if (!ffeUrl || !club?.ffeRef) {
@@ -2294,13 +2365,87 @@
 		      const section = document.createElement('section');
 		      section.className = 'club-section club-section--ffe club-ffe-link';
 
+	      const preview = document.createElement('div');
+	      preview.className = 'club-ffe-preview';
+
+	      const previewTitle = document.createElement('h3');
+	      previewTitle.className = 'club-ffe-preview__title';
+	      previewTitle.textContent = 'Top joueurs du club';
+	      preview.appendChild(previewTitle);
+
+	      const previewHint = document.createElement('p');
+	      previewHint.className = 'club-ffe-preview__hint';
+	      previewHint.textContent = 'Aperçu du classement en Elo lent';
+	      preview.appendChild(previewHint);
+
+	      const membersRows = sortMembersByElo(getMembersRows(lists));
+	      const topRows = membersRows.slice(0, 3);
+	      if (topRows.length) {
+	        const table = document.createElement('table');
+	        table.className = 'club-ffe-preview__table';
+	        table.setAttribute('aria-label', 'Aperçu des meilleurs joueurs du club');
+
+	        const thead = document.createElement('thead');
+	        const headRow = document.createElement('tr');
+	        ['Nom', 'Prénom', 'Elo lent'].forEach((label) => {
+	          const th = document.createElement('th');
+	          th.textContent = label;
+	          headRow.appendChild(th);
+	        });
+	        thead.appendChild(headRow);
+	        table.appendChild(thead);
+
+	        const tbody = document.createElement('tbody');
+	        topRows.forEach((row) => {
+	          const tr = document.createElement('tr');
+	          const fullName = splitMemberName(row?.name);
+	          const eloMeta = parseRatingMeta(row?.elo);
+	          const eloText = eloMeta.main || (row?.elo ? String(row.elo).trim() : '-');
+
+	          appendTextCell(tr, fullName.lastName);
+	          appendTextCell(tr, fullName.firstName || '-');
+	          const eloCell = appendTextCell(tr, eloText, 'club-ffe-preview__elo');
+	          eloCell.setAttribute('aria-label', `Elo lent ${eloText}`);
+	          tbody.appendChild(tr);
+	        });
+
+	        const blurredRows = membersRows.slice(3, 5);
+	        blurredRows.forEach((row) => {
+	          const tr = document.createElement('tr');
+	          tr.className = 'club-ffe-preview__row club-ffe-preview__row--blurred';
+	          const fullName = splitMemberName(row?.name);
+	          const eloMeta = parseRatingMeta(row?.elo);
+	          const eloText = eloMeta.main || (row?.elo ? String(row.elo).trim() : '-');
+
+	          appendTextCell(tr, fullName.lastName);
+	          appendTextCell(tr, fullName.firstName || '-');
+	          appendTextCell(tr, eloText, 'club-ffe-preview__elo');
+	          tbody.appendChild(tr);
+	        });
+
+	        table.appendChild(tbody);
+	        preview.appendChild(table);
+	        if (blurredRows.length) {
+	          const fade = document.createElement('div');
+	          fade.className = 'club-ffe-preview__fade';
+	          preview.appendChild(fade);
+	        }
+	      } else {
+	        const emptyPreview = document.createElement('p');
+	        emptyPreview.className = 'club-tabs__empty club-ffe-preview__empty';
+	        emptyPreview.textContent = 'Aperçu des joueurs indisponible pour ce club.';
+	        preview.appendChild(emptyPreview);
+	      }
+
+	      section.appendChild(preview);
+
 	      const actions = document.createElement('div');
 	      actions.className = 'club-ffe-link__actions';
 
 	      const link = document.createElement('a');
 	      link.className = 'btn btn-secondary';
 	      link.href = ffeUrl;
-	      link.textContent = 'Voir les listes FFE';
+	      link.textContent = 'Voir les joueurs et encadrants';
 	      actions.appendChild(link);
 
       section.appendChild(actions);
@@ -2309,8 +2454,6 @@
 
     const section = document.createElement('section');
     section.className = 'club-section club-section--ffe club-ffe-lists';
-
-    const getListCount = (list) => stripFfeHeaderRow(Array.isArray(list?.rows) ? list.rows : []).length;
     // Intentionally omit the section heading in the full-screen FFE view to keep the grid compact.
 
     const createEmptyMessage = (message) => {
@@ -2325,19 +2468,7 @@
       return section;
     }
 
-    const membersKey = (() => {
-      const byEloCount = getListCount(lists?.members_by_elo);
-      const membersCount = getListCount(lists?.members);
-      const byEloOk = lists?.members_by_elo && !lists.members_by_elo.error && byEloCount > 0;
-      const membersOk = lists?.members && !lists.members.error && membersCount > 0;
-      if (byEloOk) {
-        return 'members_by_elo';
-      }
-      if (membersOk) {
-        return 'members';
-      }
-      return lists?.members_by_elo ? 'members_by_elo' : 'members';
-    })();
+    const membersKey = getMembersListKey(lists);
 
     const listDefs = [
       { key: membersKey, label: 'Joueurs', type: 'members' },
@@ -2605,7 +2736,7 @@
 		      detailContainer.appendChild(sheet);
 
 		      if (club.name) {
-		        document.title = `${normaliseDashes(club.name)} - Listes FFE`;
+		        document.title = `${normaliseDashes(club.name)} - Joueurs & encadrants`;
 		      }
 		      return;
 		    }
@@ -2728,8 +2859,7 @@
 	      (club.ffeRef ? `${FFE_URL_BASE}${encodeURIComponent(club.ffeRef)}` : '');
 			    appendDetail(ffeInfo.list, 'Fiche FFE', ficheFfeUrl, {
 			      type: 'link',
-			      label: 'Voir la fiche FFE',
-			      button: true,
+			      label: 'Ouvrir sur echecs.asso.fr',
 			    });
 
 	    sections.forEach((section) => sheet.appendChild(section));
@@ -2861,7 +2991,7 @@
           renderMessage(detailContainer.dataset.emptyMessage || 'Club introuvable.');
           return;
         }
-        const ffeLists = isFfeListsView ? await loadFfeLists(club.ffeRef) : null;
+        const ffeLists = club.ffeRef ? await loadFfeLists(club.ffeRef) : null;
         await settlePlaceholder();
         renderClub(club, ffeLists);
       })
