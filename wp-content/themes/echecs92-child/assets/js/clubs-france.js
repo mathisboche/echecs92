@@ -35,6 +35,23 @@
       window.addEventListener('resize', syncScopeBannerHeight);
     }
   }
+  let scopeBannerSuppressed = false;
+  const setScopeBannerSuppressed = (suppressed) => {
+    if (!clubsScopeBanner) {
+      return;
+    }
+    const next = Boolean(suppressed);
+    if (scopeBannerSuppressed === next) {
+      return;
+    }
+    scopeBannerSuppressed = next;
+    if (next) {
+      clubsScopeBanner.setAttribute('hidden', '');
+    } else {
+      clubsScopeBanner.removeAttribute('hidden');
+    }
+    syncScopeBannerHeight();
+  };
   const clubsDepartments = (clubsPageShell?.dataset?.clubsDepartments || '')
     .split(',')
     .map((value) => value.trim().toUpperCase())
@@ -2143,6 +2160,45 @@
   let mobileResultsOpen = false;
   let pageScrollBeforeResults = 0;
   let resultsHistoryPushed = false;
+
+  let scopeTailBanner = null;
+  const ensureScopeTailBanner = () => {
+    if (scopeTailBanner || !clubsScopeBanner) {
+      return scopeTailBanner;
+    }
+    const sourceText = clubsScopeBanner.querySelector('.clubs-scope-banner__text');
+    const sourceLink = clubsScopeBanner.querySelector('.clubs-scope-banner__link');
+    const href =
+      (sourceLink && (sourceLink.getAttribute('href') || sourceLink.href)) || FRANCE_LIST_PATH;
+
+    const banner = document.createElement('div');
+    banner.className = 'clubs-scope-tail-banner';
+    banner.setAttribute('role', 'note');
+    banner.setAttribute('aria-label', 'Changer de périmètre de recherche');
+
+    const text = document.createElement('span');
+    text.className = 'clubs-scope-tail-banner__text';
+    text.textContent = (sourceText && sourceText.textContent) || 'Clubs partout en France ?';
+    banner.appendChild(text);
+
+    const link = document.createElement('a');
+    link.className = 'clubs-scope-tail-banner__link';
+    link.href = href;
+    link.textContent = (sourceLink && sourceLink.textContent) || 'Voir';
+    banner.appendChild(link);
+
+    const host =
+      (moreButton && moreButton.parentElement) ||
+      (resultsShell && resultsShell.querySelector('.clubs-results-wrapper')) ||
+      (resultsEl && resultsEl.parentElement);
+    if (host) {
+      host.appendChild(banner);
+    } else if (resultsShell) {
+      resultsShell.appendChild(banner);
+    }
+    scopeTailBanner = banner;
+    return scopeTailBanner;
+  };
   let suppressFocusAnimation = false;
 
   const deferResultsRendering = (options = {}) => {
@@ -2272,12 +2328,15 @@
       if (typeof document !== 'undefined' && document.body) {
         document.body.classList.add('clubs-results-open');
       }
+      setScopeBannerSuppressed(isMobileViewport());
+      ensureScopeTailBanner();
     } else {
       resultsShell.classList.remove('is-active');
       resultsShell.setAttribute('aria-hidden', 'true');
       if (typeof document !== 'undefined' && document.body) {
         document.body.classList.remove('clubs-results-open');
       }
+      setScopeBannerSuppressed(false);
     }
   };
 
@@ -2291,8 +2350,11 @@
       if (canUseHistory && options.skipHistory !== true) {
         syncUrlState({ openResults: false });
       }
+      setScopeBannerSuppressed(false);
       return;
     }
+    setScopeBannerSuppressed(true);
+    ensureScopeTailBanner();
     const skipHistory = options.skipHistory === true;
     if (typeof window !== 'undefined') {
       pageScrollBeforeResults = window.scrollY || document.documentElement.scrollTop || 0;
@@ -2356,6 +2418,7 @@
     if (typeof document !== 'undefined' && document.body) {
       document.body.classList.remove('clubs-results-open');
     }
+    setScopeBannerSuppressed(false);
     if (smoothToSearch) {
       scrollToSearchBlock({ behavior: 'smooth' });
     } else if (typeof window !== 'undefined' && Number.isFinite(pageScrollBeforeResults)) {

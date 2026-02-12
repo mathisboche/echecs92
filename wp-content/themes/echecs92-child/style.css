@@ -182,12 +182,12 @@ body.admin-bar header.wp-block-template-part{
 }
 /* Easy submenu column ratios (adjust values per submenu) */
 .cm-nav-item[data-submenu="comite"] .cm-mega-panel-inner{
-  --cm-mega-col-1: 1.15;
-  --cm-mega-col-2: 1.2;
+  --cm-mega-col-1: 1;
+  --cm-mega-col-2: 1.45;
 }
 .cm-nav-item[data-submenu="clubs"] .cm-mega-panel-inner{
-  --cm-mega-col-1: 1.2;
-  --cm-mega-col-2: 0.8;
+  --cm-mega-col-1: 0.9;
+  --cm-mega-col-2: 1.1;
 }
 .cm-mega-title{
   font-size:13px;
@@ -4271,6 +4271,42 @@ body.club-ffe-view .clubs-page{
 .clubs-scope-banner__link:hover,
 .clubs-scope-banner__link:focus-visible{
   text-decoration:underline;
+}
+.clubs-scope-tail-banner{
+  display:none;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin:16px 0 0;
+  padding:12px 14px;
+  border-radius:14px;
+  border:1px solid #e2e8f0;
+  background:#ffffff;
+  color:#0f172a;
+  font-size:13px;
+}
+.clubs-scope-tail-banner__text{
+  flex:1 1 220px;
+  color:#475569;
+  font-weight:500;
+}
+.clubs-scope-tail-banner__link{
+  font-weight:700;
+  color:#0b2e4c;
+  text-decoration:none;
+}
+.clubs-scope-tail-banner__link:hover,
+.clubs-scope-tail-banner__link:focus-visible{
+  text-decoration:underline;
+}
+body.clubs-results-open .clubs-scope-tail-banner{
+  display:flex;
+}
+@media (min-width:821px){
+  .clubs-scope-tail-banner{
+    display:none !important;
+  }
 }
 .clubs-monaco-banner{
   display:flex;
