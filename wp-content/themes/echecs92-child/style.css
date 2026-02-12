@@ -3851,10 +3851,12 @@ body.club-ffe-view .clubs-page{
   appearance:none;
   -webkit-appearance:none;
 }
-.clubs-input:focus,
-#clubs-location:focus{
-  outline:2px solid #1d4ed8;
-  outline-offset:1px;
+.clubs-page .clubs-input:focus,
+.clubs-page .clubs-input:focus-visible,
+.clubs-page #clubs-location:focus,
+.clubs-page #clubs-location:focus-visible{
+  outline:none;
+  box-shadow:none;
 }
 .clubs-search__actions{
   display:flex;
@@ -5123,6 +5125,13 @@ body.clubs-loading-lock{
   gap:16px;
   position:relative;
 }
+#clubs-results:focus,
+#clubs-results:focus-visible,
+#players-results:focus,
+#players-results:focus-visible{
+  outline:none;
+  box-shadow:none;
+}
 body.mathis-mode{
   overflow:hidden;
   background:#ffffff;
@@ -5439,12 +5448,10 @@ body.mathis-mode .mathis-fragment{
   text-decoration:none;
 }
 .club-row__card:focus-visible{
-  border-color:#1d4ed8;
-  background:#eef3ff;
-}
-.club-row__card:focus-visible{
-  outline:3px solid rgba(37,99,235,0.35);
-  outline-offset:2px;
+  border-color:#ccd8f0;
+  background:#ffffff;
+  outline:none;
+  outline-offset:0;
 }
 .club-row__top{
   display:flex;
