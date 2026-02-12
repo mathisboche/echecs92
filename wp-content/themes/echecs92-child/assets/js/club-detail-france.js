@@ -3593,13 +3593,39 @@
 
 	    const highlights = createSection('Infos club');
     const hasHours = appendDetail(highlights.list, 'Horaires', club.hours, { type: 'lines' });
-    const hasPresidentData = Boolean((club.president || '').toString().trim() || (club.presidentEmail || '').toString().trim());
-    const hasReferentData = Boolean((club.contact || '').toString().trim() || (club.contactEmail || '').toString().trim());
+    const presidentName = (club.president || '').toString().trim();
+    const presidentEmail = (club.presidentEmail || '').toString().trim();
+    const referentName = (club.contact || '').toString().trim();
+    const referentEmail = (club.contactEmail || '').toString().trim();
+    const normalizePersonIdentity = (name, email) => ({
+      name: normalise(name || '')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim(),
+      email: normalise(email || '')
+        .replace(/\s+/g, '')
+        .trim(),
+    });
+    const presidentIdentity = normalizePersonIdentity(presidentName, presidentEmail);
+    const referentIdentity = normalizePersonIdentity(referentName, referentEmail);
+    const isSamePerson =
+      (presidentIdentity.name && referentIdentity.name && presidentIdentity.name === referentIdentity.name) ||
+      (presidentIdentity.email &&
+        referentIdentity.email &&
+        presidentIdentity.email === referentIdentity.email);
+    const hasPresidentData = Boolean(presidentName || presidentEmail);
+    const hasReferentData = Boolean(referentName || referentEmail);
     if (hasHours && (hasPresidentData || hasReferentData)) {
       appendSectionDivider(highlights.list);
     }
-    appendPersonContactDetail(highlights.list, 'Président·e', club.president, club.presidentEmail);
-    appendPersonContactDetail(highlights.list, 'Référent·e club', club.contact, club.contactEmail);
+    appendPersonContactDetail(
+      highlights.list,
+      'Président·e',
+      presidentName || (isSamePerson ? referentName : ''),
+      presidentEmail || (isSamePerson ? referentEmail : '')
+    );
+    if (!isSamePerson) {
+      appendPersonContactDetail(highlights.list, 'Référent·e club', referentName, referentEmail);
+    }
     if (highlights.list.childElementCount) {
       sections.push(highlights.section);
     }
