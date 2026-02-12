@@ -555,10 +555,11 @@ body.admin-bar header.wp-block-template-part{
   .cm-header-inner{
     align-items:flex-end;
     align-self:flex-end;
+    justify-content:flex-start;
   }
   .cm-header-left{
-    flex:0 0 auto;
-    min-width:max-content;
+    flex:1 1 0;
+    min-width:0;
     padding-bottom:16px;
   }
   .cm-header-inner::after{
