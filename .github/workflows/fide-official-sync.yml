@@ -1,18 +1,28 @@
-name: Sync FFE address hints
+name: Sync FIDE official data
 
 on:
   schedule:
-    - cron: '50 2 * * *'
+    - cron: '25 */6 * * *'
+    - cron: '20 1 * * 0'
   workflow_dispatch:
+    inputs:
+      archive_periods:
+        description: Nombre de periodes d'archives a telecharger (0, 1, 2... ou all)
+        required: false
+        default: '1'
+      include_xml:
+        description: Telecharger aussi les archives XML (0 ou 1)
+        required: false
+        default: '0'
 
 concurrency:
-  group: sync-ffe-hints
+  group: sync-fide-official
   cancel-in-progress: false
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 240
     permissions:
       contents: read
     steps:
@@ -22,7 +32,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y lftp
-      - name: Fetch clubs data from server
+      - name: Fetch data snapshot from server
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
@@ -60,17 +70,21 @@ jobs:
               echo "WARN: staging FTP mirror returned errors."
             fi
           fi
-          if [[ ! -f wp-content/themes/echecs92-child/assets/data/clubs-france-ffe.json || ! -f wp-content/themes/echecs92-child/assets/data/ffe-players/manifest.json ]]; then
-            echo "WARN: FTP snapshot still incomplete after fallback. Continuing with repository baseline."
-          fi
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Regenerate address hints
+      - name: Sync official FIDE files
+        env:
+          FIDE_ARCHIVE_PERIODS: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.archive_periods || '1') || (github.event_name == 'schedule' && github.event.schedule == '20 1 * * 0' && '1' || '0') }}
+          FIDE_ARCHIVE_INCLUDE_XML: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.include_xml || '0') || '0' }}
         run: |
-          node scripts/update-postal-coordinates-fr.js
-          node scripts/generate-clubs-france-hints.js --resume
+          node scripts/sync-fide-official-data.js
+      - name: Report generated FIDE payload
+        run: |
+          echo "fide shards: $(find wp-content/themes/echecs92-child/assets/data/fide-players/by-id -type f -name '*.json' | wc -l)"
+          echo "manifest bytes: $(wc -c < wp-content/themes/echecs92-child/assets/data/fide-players/manifest.json)"
+          echo "archives index bytes: $(wc -c < wp-content/themes/echecs92-child/assets/data/fide-players/archives.json)"
       - name: Deploy generated data atomically
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}

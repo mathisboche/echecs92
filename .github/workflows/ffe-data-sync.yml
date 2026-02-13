@@ -1,13 +1,18 @@
-name: Sync FFE clubs data
+name: Sync FFE core clubs data
 
 on:
   schedule:
-    - cron: '15 4 * * *'
+    - cron: '35 */6 * * *'
   workflow_dispatch:
+
+concurrency:
+  group: sync-ffe-core
+  cancel-in-progress: false
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 360
     permissions:
       contents: read
     steps:
@@ -17,7 +22,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y lftp
-      - name: Fetch existing hint caches
+      - name: Fetch data snapshot from server
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
@@ -31,17 +36,15 @@ jobs:
           set net:timeout 20
           set cmd:fail-exit false
           mirror --verbose --only-newer \
-            --include-glob clubs-france-hints.json \
-            --include-glob postal-coordinates-fr.json \
             /www/wp-content/themes/echecs92-child/assets/data/ \
             wp-content/themes/echecs92-child/assets/data/
           bye
           EOF
           then
-            echo "WARN: live FTP mirror for hint cache returned errors."
+            echo "WARN: live FTP mirror returned errors."
           fi
-          if [[ ! -f wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json || ! -f wp-content/themes/echecs92-child/assets/data/postal-coordinates-fr.json ]]; then
-            echo "→ Hint cache incomplete, attempting fallback recovery from data.__staging..."
+          if [[ ! -f wp-content/themes/echecs92-child/assets/data/clubs-france-ffe.json || ! -f wp-content/themes/echecs92-child/assets/data/ffe-players/manifest.json ]]; then
+            echo "→ Live data incomplete, attempting fallback recovery from data.__staging..."
             if ! lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_SERVER:21" <<'EOF'
             set ftp:passive-mode true
             set net:max-retries 2
@@ -49,29 +52,29 @@ jobs:
             set net:timeout 20
             set cmd:fail-exit false
             mirror --verbose --only-newer \
-              --include-glob clubs-france-hints.json \
-              --include-glob postal-coordinates-fr.json \
               /www/wp-content/themes/echecs92-child/assets/data.__staging/ \
               wp-content/themes/echecs92-child/assets/data/
             bye
             EOF
             then
-              echo "WARN: staging FTP mirror for hint cache returned errors."
+              echo "WARN: staging FTP mirror returned errors."
             fi
           fi
-          if [[ ! -f wp-content/themes/echecs92-child/assets/data/postal-coordinates-fr.json ]]; then
-            echo "WARN: postal-coordinates-fr.json unavailable on FTP snapshot fallback, generator will continue without cache."
+          if [[ ! -f wp-content/themes/echecs92-child/assets/data/clubs-france-ffe.json || ! -f wp-content/themes/echecs92-child/assets/data/ffe-players/manifest.json ]]; then
+            echo "WARN: FTP snapshot still incomplete after fallback. Continuing with repository baseline."
           fi
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Refresh FFE data
+      - name: Refresh FFE core data
         run: |
           node scripts/sync-ffe-clubs.js
-          node scripts/generate-clubs-france-hints.js --resume
-          node scripts/generate-ffe-players-index.js
-          FIDE_ARCHIVE_PERIODS=1 node scripts/sync-fide-official-data.js
+      - name: Report generated dataset
+        run: |
+          echo "clubs-france files: $(find wp-content/themes/echecs92-child/assets/data/clubs-france -type f -name '*.json' | wc -l)"
+          echo "clubs-france-ffe files: $(find wp-content/themes/echecs92-child/assets/data/clubs-france-ffe -type f -name '*.json' | wc -l)"
+          echo "clubs-france-ffe-details files: $(find wp-content/themes/echecs92-child/assets/data/clubs-france-ffe-details -type f -name '*.json' | wc -l)"
       - name: Deploy generated data atomically
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}

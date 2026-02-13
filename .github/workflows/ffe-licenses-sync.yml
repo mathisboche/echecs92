@@ -2,12 +2,17 @@ name: Sync FFE license counts
 
 on:
   schedule:
-    - cron: '15 3 * * *'
+    - cron: '10 */3 * * *'
   workflow_dispatch:
+
+concurrency:
+  group: sync-ffe-licenses
+  cancel-in-progress: false
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 180
     permissions:
       contents: read
     steps:

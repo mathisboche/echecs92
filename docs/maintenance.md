@@ -74,7 +74,23 @@ Les workflows de synchro FFE déploient désormais les données via un dossier d
 
 Ce mécanisme évite les états intermédiaires visibles sur le site pendant la synchronisation.
 
-Pour les workflows de synchro qui lisent d'abord les données via FTP (`ffe-data-sync.yml`, `ffe-licenses-sync.yml`, `ffe-hints-sync.yml`) :
+### Pipelines découpés (runs indépendants)
+
+La synchro est découpée en plusieurs workflows indépendants pour isoler les erreurs et les temps d'exécution :
+
+- `.github/workflows/ffe-licenses-sync.yml` : met à jour uniquement les compteurs de licences (toutes les 3 heures, `10 */3 * * *`).
+- `.github/workflows/ffe-data-sync.yml` : synchro FFE "coeur" (clubs + détails + listes FFE) (toutes les 6 heures, `35 */6 * * *`).
+- `.github/workflows/ffe-players-index-sync.yml` : reconstruit l'index joueurs (`ffe-players/*`) (toutes les 4 heures, `50 */4 * * *`, + déclenchement automatique après un run core réussi).
+- `.github/workflows/fide-official-sync.yml` : synchro officielle FIDE (`fide-players/*`) (toutes les 6 heures, `25 */6 * * *`, + passage hebdo archives `20 1 * * 0`).
+- `.github/workflows/ffe-hints-sync.yml` : régénère les hints d'adresses (quotidien, `50 2 * * *`).
+
+Ce découpage permet :
+
+- d'identifier précisément quel bloc échoue ;
+- de relancer uniquement le bloc nécessaire ;
+- de comparer facilement les durées par workflow.
+
+Pour les workflows de synchro qui lisent d'abord les données via FTP (`ffe-data-sync.yml`, `ffe-players-index-sync.yml`, `fide-official-sync.yml`, `ffe-licenses-sync.yml`, `ffe-hints-sync.yml`) :
 
 - les erreurs FTP transitoires de type `550` sont tolérées pendant la récupération ;
 - un fallback automatique tente ensuite de compléter depuis `assets/data.__staging`.
@@ -89,7 +105,7 @@ Objectif : garder la recherche joueur et les fiches utilisables même pendant la
 
 ### Données FIDE (source officielle + enrichissement)
 
-Le workflow `.github/workflows/ffe-data-sync.yml` lance aussi :
+Le workflow dédié `.github/workflows/fide-official-sync.yml` lance :
 
 - `node scripts/sync-fide-official-data.js`
 
@@ -106,6 +122,11 @@ Variables utiles :
 - `FIDE_ARCHIVE_PERIODS` : nombre de périodes d'archives à télécharger (`1` par défaut, `0` pour désactiver, `all` pour tout).
 - `FIDE_ARCHIVE_INCLUDE_XML` : `1` pour télécharger aussi les archives XML (défaut `0`).
 - `FIDE_MAX_ROWS` : debug local uniquement (limite de lignes parsées).
+
+Mode planifié :
+
+- run 6h (`25 */6 * * *`) : `FIDE_ARCHIVE_PERIODS=0` (rafraîchissement rapide de la liste officielle).
+- run hebdo (`20 1 * * 0`) : `FIDE_ARCHIVE_PERIODS=1` (rafraîchissement des archives récentes).
 
 La fiche joueur combine ensuite :
 
