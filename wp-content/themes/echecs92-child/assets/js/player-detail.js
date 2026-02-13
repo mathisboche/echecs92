@@ -817,8 +817,8 @@
 	      return;
 	    }
 	    const url = `${PLAYER_SHARDS_BASE_PATH}${encodeURIComponent(prefix)}.json`;
-    fetchJsonWithRetry(url, { attempts: 4, baseDelayMs: 350 })
-      .then((payload) => {
+	    fetchJsonWithRetry(url, { attempts: 4, baseDelayMs: 350 })
+	      .then((payload) => {
 	        const players = payload && typeof payload === 'object' ? payload.players || null : null;
 	        const player = players && typeof players === 'object' ? players[playerId] : null;
 	        if (!player) {
