@@ -35,9 +35,14 @@ set net:reconnect-interval-max 20
 set net:timeout 30
 set xfer:use-temp-file true
 set cmd:fail-exit true
-mkdir -p "${REMOTE_ASSETS_DIR}"
+set cmd:fail-exit false
+mkdir "${REMOTE_ASSETS_DIR}"
+set cmd:fail-exit true
 cd "${REMOTE_ASSETS_DIR}"
-mkdir -p "${STAGING_DIR_NAME}"
+set cmd:fail-exit false
+rm -rf "${STAGING_DIR_NAME}"
+mkdir "${STAGING_DIR_NAME}"
+set cmd:fail-exit true
 mirror --reverse --verbose --only-newer --parallel=4 "${LOCAL_DIR}/" "${STAGING_DIR_NAME}/"
 cls "${STAGING_DIR_NAME}/clubs-france.json"
 cls "${LIVE_DIR_NAME}"
