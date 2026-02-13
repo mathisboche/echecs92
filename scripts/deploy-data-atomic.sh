@@ -54,7 +54,7 @@ set net:max-retries 3
 set net:reconnect-interval-base 5
 set net:reconnect-interval-max 20
 set net:timeout 30
-set xfer:use-temp-file true
+set xfer:use-temp-file false
 set cmd:fail-exit true
 set cmd:fail-exit false
 mkdir "${REMOTE_ASSETS_DIR}"
@@ -64,7 +64,8 @@ set cmd:fail-exit false
 rm -rf "${STAGING_DIR_NAME}"
 mkdir "${STAGING_DIR_NAME}"
 set cmd:fail-exit true
-mirror --reverse --verbose --only-newer --parallel=4 "${LOCAL_DIR}/" "${STAGING_DIR_NAME}/"
+# FTP target does not support chmod/site-perm operations reliably in parallel mode.
+mirror --reverse --verbose --only-newer --parallel=2 --no-perms "${LOCAL_DIR}/" "${STAGING_DIR_NAME}/"
 cls "${STAGING_DIR_NAME}/clubs-france.json"
 cls "${LIVE_DIR_NAME}"
 mv "${LIVE_DIR_NAME}" "${BACKUP_DIR_NAME}"
