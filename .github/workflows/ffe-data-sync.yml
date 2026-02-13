@@ -26,9 +26,11 @@ jobs:
           mkdir -p wp-content/themes/echecs92-child/assets/data
           lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_SERVER:21" <<'EOF'
           set ftp:passive-mode true
-          set cmd:fail-exit false
-          get /www/wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json -o wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json
-          get /www/wp-content/themes/echecs92-child/assets/data/postal-coordinates-fr.json -o wp-content/themes/echecs92-child/assets/data/postal-coordinates-fr.json
+          mirror --verbose --only-newer \
+            --include-glob clubs-france-hints.json \
+            --include-glob postal-coordinates-fr.json \
+            /www/wp-content/themes/echecs92-child/assets/data/ \
+            wp-content/themes/echecs92-child/assets/data/
           EOF
       - name: Set up Node
         uses: actions/setup-node@v4

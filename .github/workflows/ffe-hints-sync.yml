@@ -27,8 +27,11 @@ jobs:
           lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_SERVER:21" <<'EOF'
           set ftp:passive-mode true
           mirror --verbose --only-newer /www/wp-content/themes/echecs92-child/assets/data/clubs-france/ wp-content/themes/echecs92-child/assets/data/clubs-france/
-          get /www/wp-content/themes/echecs92-child/assets/data/clubs-france.json -o wp-content/themes/echecs92-child/assets/data/clubs-france.json
-          get /www/wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json -o wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json
+          mirror --verbose --only-newer \
+            --include-glob clubs-france.json \
+            --include-glob clubs-france-hints.json \
+            /www/wp-content/themes/echecs92-child/assets/data/ \
+            wp-content/themes/echecs92-child/assets/data/
           EOF
       - name: Set up Node
         uses: actions/setup-node@v4
