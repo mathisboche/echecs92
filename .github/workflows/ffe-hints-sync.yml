@@ -30,12 +30,17 @@ jobs:
           mirror --verbose --only-newer \
             /www/wp-content/themes/echecs92-child/assets/data/ \
             wp-content/themes/echecs92-child/assets/data/
-          set cmd:fail-exit false
-          mirror --verbose --only-newer \
-            /www/wp-content/themes/echecs92-child/assets/data.__staging/ \
-            wp-content/themes/echecs92-child/assets/data/
-          set cmd:fail-exit true
           EOF
+          if [[ ! -f wp-content/themes/echecs92-child/assets/data/clubs-france-ffe.json || ! -f wp-content/themes/echecs92-child/assets/data/ffe-players/manifest.json ]]; then
+            echo "→ Live data incomplete, attempting fallback recovery from data.__staging..."
+            lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_SERVER:21" <<'EOF'
+            set ftp:passive-mode true
+            set cmd:fail-exit false
+            mirror --verbose --only-newer \
+              /www/wp-content/themes/echecs92-child/assets/data.__staging/ \
+              wp-content/themes/echecs92-child/assets/data/
+            EOF
+          fi
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
