@@ -67,6 +67,31 @@
     throw lastError || new Error('Unable to fetch JSON');
   };
 
+  const buildStagingDataUrl = (url) => {
+    const raw = (url || '').toString().trim();
+    if (!raw) {
+      return '';
+    }
+    const stagingUrl = raw.replace('/assets/data/', '/assets/data.__staging/');
+    return stagingUrl !== raw ? stagingUrl : '';
+  };
+
+  const fetchJsonWithStagingFallback = async (url, options = {}) => {
+    try {
+      return await fetchJsonWithRetry(url, options);
+    } catch (liveError) {
+      const stagingUrl = buildStagingDataUrl(url);
+      if (!stagingUrl) {
+        throw liveError;
+      }
+      try {
+        return await fetchJsonWithRetry(stagingUrl, options);
+      } catch (_stagingError) {
+        throw liveError;
+      }
+    }
+  };
+
   const shell = typeof document !== 'undefined' ? document.querySelector('.players-page') : null;
   if (!shell) {
     return;
@@ -476,7 +501,7 @@
       return indexState.loading;
     }
 
-    const loading = fetchJsonWithRetry(indexUrl, { attempts: 4, baseDelayMs: 300 })
+    const loading = fetchJsonWithStagingFallback(indexUrl, { attempts: 4, baseDelayMs: 300 })
       .then((payload) => {
         const columns = Array.isArray(payload?.columns) ? payload.columns : null;
         const rows = Array.isArray(payload?.rows) ? payload.rows : [];
@@ -905,7 +930,7 @@
       return;
     }
     setTopStatus('Chargement du classement...');
-    fetchJsonWithRetry(topUrl, { attempts: 3, baseDelayMs: 300 })
+    fetchJsonWithStagingFallback(topUrl, { attempts: 3, baseDelayMs: 300 })
       .then((payload) => {
         renderTop(payload);
         setTopStatus('');

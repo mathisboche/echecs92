@@ -707,6 +707,750 @@ function cdje92_ffe_player_extract_extras_from_html( $html ) {
     ];
 }
 
+function cdje92_rest_param_to_bool( $value, $default = false ) {
+    if ( $value === null || $value === '' ) {
+        return (bool) $default;
+    }
+    if ( is_bool( $value ) ) {
+        return $value;
+    }
+    if ( is_numeric( $value ) ) {
+        return (int) $value === 1;
+    }
+    $normalized = strtolower( trim( (string) $value ) );
+    if ( in_array( $normalized, [ '1', 'true', 'yes', 'on' ], true ) ) {
+        return true;
+    }
+    if ( in_array( $normalized, [ '0', 'false', 'no', 'off' ], true ) ) {
+        return false;
+    }
+    return (bool) $default;
+}
+
+function cdje92_fide_is_data_uri( $value ) {
+    return is_string( $value ) && preg_match( '/^data:image\//i', $value );
+}
+
+function cdje92_fide_normalize_url( $value ) {
+    $raw = cdje92_ffe_player_clean_text( $value );
+    if ( $raw === '' ) {
+        return '';
+    }
+    if ( cdje92_fide_is_data_uri( $raw ) ) {
+        return $raw;
+    }
+    if ( strpos( $raw, '//' ) === 0 ) {
+        return 'https:' . $raw;
+    }
+    if ( preg_match( '#^https?://#i', $raw ) ) {
+        return $raw;
+    }
+    if ( strpos( $raw, '/' ) === 0 ) {
+        return 'https://ratings.fide.com' . $raw;
+    }
+    return '';
+}
+
+function cdje92_fide_extract_id_from_url( $url ) {
+    $raw = is_string( $url ) ? trim( $url ) : '';
+    if ( $raw === '' ) {
+        return '';
+    }
+    if ( preg_match( '#/profile/(\d+)#', $raw, $matches ) ) {
+        return (string) $matches[1];
+    }
+    if ( preg_match( '#\bid_number=(\d+)#', $raw, $matches ) ) {
+        return (string) $matches[1];
+    }
+    return '';
+}
+
+function cdje92_fide_official_shard_prefix( $fide_id ) {
+    $digits = preg_replace( '/\D+/', '', (string) $fide_id );
+    if ( $digits === '' ) {
+        return '00';
+    }
+    return str_pad( $digits, 2, '0', STR_PAD_LEFT );
+}
+
+function cdje92_fide_official_load_json_file( $path ) {
+    if ( ! is_string( $path ) || $path === '' || ! file_exists( $path ) ) {
+        return null;
+    }
+    $raw = file_get_contents( $path );
+    if ( ! is_string( $raw ) || $raw === '' ) {
+        return null;
+    }
+    $decoded = json_decode( $raw, true );
+    if ( json_last_error() !== JSON_ERROR_NONE ) {
+        return null;
+    }
+    return is_array( $decoded ) ? $decoded : null;
+}
+
+function cdje92_fide_official_get_manifest() {
+    static $cache = null;
+    static $loaded = false;
+    if ( $loaded ) {
+        return $cache;
+    }
+    $loaded = true;
+    $manifest_path = trailingslashit( get_stylesheet_directory() ) . 'assets/data/fide-players/manifest.json';
+    $cache = cdje92_fide_official_load_json_file( $manifest_path );
+    return $cache;
+}
+
+function cdje92_fide_official_get_player_record( $fide_id ) {
+    $digits = preg_replace( '/\D+/', '', (string) $fide_id );
+    if ( $digits === '' ) {
+        return null;
+    }
+
+    $manifest = cdje92_fide_official_get_manifest();
+    if ( ! is_array( $manifest ) ) {
+        return null;
+    }
+
+    static $shard_cache = [];
+    $prefix = substr( cdje92_fide_official_shard_prefix( $digits ), 0, 2 );
+    $shard_file = $prefix . '.json';
+    $shard_path = trailingslashit( get_stylesheet_directory() ) . 'assets/data/fide-players/by-id/' . $shard_file;
+
+    if ( ! array_key_exists( $shard_path, $shard_cache ) ) {
+        $shard_cache[ $shard_path ] = cdje92_fide_official_load_json_file( $shard_path );
+    }
+
+    $payload = $shard_cache[ $shard_path ];
+    if ( ! is_array( $payload ) || ! isset( $payload['players'] ) || ! is_array( $payload['players'] ) ) {
+        return null;
+    }
+
+    $record = $payload['players'][ $digits ] ?? null;
+    return is_array( $record ) ? $record : null;
+}
+
+function cdje92_fide_official_record_to_public_payload( $record ) {
+    if ( ! is_array( $record ) ) {
+        return null;
+    }
+    return [
+        'id' => cdje92_ffe_player_clean_text( $record['id'] ?? '' ),
+        'name' => cdje92_ffe_player_clean_text( $record['n'] ?? '' ),
+        'federation' => cdje92_ffe_player_clean_text( $record['f'] ?? '' ),
+        'sex' => cdje92_ffe_player_clean_text( $record['sx'] ?? '' ),
+        'title' => cdje92_ffe_player_clean_text( $record['t'] ?? '' ),
+        'womenTitle' => cdje92_ffe_player_clean_text( $record['wt'] ?? '' ),
+        'otherTitle' => cdje92_ffe_player_clean_text( $record['ot'] ?? '' ),
+        'foaTitle' => cdje92_ffe_player_clean_text( $record['ft'] ?? '' ),
+        'birthYear' => (int) ( $record['by'] ?? 0 ),
+        'flag' => cdje92_ffe_player_clean_text( $record['fl'] ?? '' ),
+        'ratings' => [
+            'standard' => [
+                'value' => (int) ( $record['sr'] ?? 0 ),
+                'games' => (int) ( $record['sg'] ?? 0 ),
+                'k' => (int) ( $record['sk'] ?? 0 ),
+            ],
+            'rapid' => [
+                'value' => (int) ( $record['rr'] ?? 0 ),
+                'games' => (int) ( $record['rg'] ?? 0 ),
+                'k' => (int) ( $record['rk'] ?? 0 ),
+            ],
+            'blitz' => [
+                'value' => (int) ( $record['br'] ?? 0 ),
+                'games' => (int) ( $record['bg'] ?? 0 ),
+                'k' => (int) ( $record['bk'] ?? 0 ),
+            ],
+        ],
+    ];
+}
+
+function cdje92_fide_compare_int( $value ) {
+    if ( is_int( $value ) ) {
+        return $value;
+    }
+    if ( is_float( $value ) ) {
+        return (int) round( $value );
+    }
+    $str = cdje92_ffe_player_clean_text( $value );
+    if ( $str === '' ) {
+        return 0;
+    }
+    if ( preg_match( '/(\d{1,4})/', $str, $matches ) ) {
+        return (int) $matches[1];
+    }
+    return 0;
+}
+
+function cdje92_fide_compare_name( $value ) {
+    $name = remove_accents( cdje92_ffe_player_clean_text( $value ) );
+    $name = strtoupper( $name );
+    $name = preg_replace( '/[^A-Z0-9 ]+/', ' ', $name );
+    $name = preg_replace( '/\s+/', ' ', $name );
+    return trim( $name );
+}
+
+function cdje92_fide_build_comparison_payload( $official, $live_payload ) {
+    if ( ! is_array( $official ) ) {
+        return null;
+    }
+
+    $live_profile = null;
+    if ( is_array( $live_payload ) && isset( $live_payload['profile'] ) && is_array( $live_payload['profile'] ) ) {
+        $live_profile = $live_payload['profile'];
+    }
+
+    $official_name = cdje92_fide_compare_name( $official['name'] ?? '' );
+    $live_name = cdje92_fide_compare_name( $live_profile['name'] ?? '' );
+    $official_fed = strtoupper( cdje92_ffe_player_clean_text( $official['federation'] ?? '' ) );
+    $live_fed = strtoupper( cdje92_ffe_player_clean_text( $live_profile['federation'] ?? '' ) );
+
+    $official_std = cdje92_fide_compare_int( $official['ratings']['standard']['value'] ?? 0 );
+    $official_rapid = cdje92_fide_compare_int( $official['ratings']['rapid']['value'] ?? 0 );
+    $official_blitz = cdje92_fide_compare_int( $official['ratings']['blitz']['value'] ?? 0 );
+
+    $live_std = cdje92_fide_compare_int( $live_profile['ratings']['standard'] ?? '' );
+    $live_rapid = cdje92_fide_compare_int( $live_profile['ratings']['rapid'] ?? '' );
+    $live_blitz = cdje92_fide_compare_int( $live_profile['ratings']['blitz'] ?? '' );
+
+    $checks = [
+        'name' => ( $official_name !== '' && $live_name !== '' ) ? $official_name === $live_name : null,
+        'federation' => ( $official_fed !== '' && $live_fed !== '' ) ? $official_fed === $live_fed : null,
+        'standardRating' => ( $official_std > 0 && $live_std > 0 ) ? $official_std === $live_std : null,
+        'rapidRating' => ( $official_rapid > 0 && $live_rapid > 0 ) ? $official_rapid === $live_rapid : null,
+        'blitzRating' => ( $official_blitz > 0 && $live_blitz > 0 ) ? $official_blitz === $live_blitz : null,
+    ];
+
+    $has_differences = false;
+    foreach ( $checks as $result ) {
+        if ( $result === false ) {
+            $has_differences = true;
+            break;
+        }
+    }
+
+    return [
+        'checkedAt' => gmdate( 'c' ),
+        'checks' => $checks,
+        'hasDifferences' => $has_differences,
+    ];
+}
+
+function cdje92_fide_fetch_text( $url, $options = [] ) {
+    $target_url = is_string( $url ) ? trim( $url ) : '';
+    if ( $target_url === '' ) {
+        return '';
+    }
+
+    $method = strtoupper( trim( (string) ( $options['method'] ?? 'GET' ) ) );
+    if ( $method !== 'POST' ) {
+        $method = 'GET';
+    }
+
+    $timeout = isset( $options['timeout'] ) && is_numeric( $options['timeout'] )
+        ? max( 2, min( 12, (int) $options['timeout'] ) )
+        : 6;
+
+    $headers = [
+        'Accept' => 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
+        'Accept-Language' => 'en-US,en;q=0.9',
+    ];
+    if ( ! empty( $options['ajax'] ) ) {
+        $headers['X-Requested-With'] = 'XMLHttpRequest';
+    }
+    $referer = isset( $options['referer'] ) ? trim( (string) $options['referer'] ) : '';
+    if ( $referer !== '' ) {
+        $headers['Referer'] = $referer;
+    }
+
+    $request_args = [
+        'method' => $method,
+        'timeout' => $timeout,
+        'redirection' => 2,
+        'headers' => $headers,
+        'user-agent' => 'Mozilla/5.0 (compatible; echecs92/1.0; +https://echecs92.com)',
+    ];
+    if ( $method === 'POST' ) {
+        $request_args['body'] = isset( $options['body'] ) ? $options['body'] : [];
+    }
+
+    $response = wp_remote_request( $target_url, $request_args );
+    if ( is_wp_error( $response ) ) {
+        return '';
+    }
+    $status = (int) wp_remote_retrieve_response_code( $response );
+    if ( $status !== 200 ) {
+        return '';
+    }
+    $body = wp_remote_retrieve_body( $response );
+    return is_string( $body ) ? $body : '';
+}
+
+function cdje92_fide_fetch_json( $url, $options = [] ) {
+    $attempts = isset( $options['attempts'] ) && is_numeric( $options['attempts'] )
+        ? max( 1, min( 4, (int) $options['attempts'] ) )
+        : 2;
+
+    for ( $i = 0; $i < $attempts; $i += 1 ) {
+        $raw = cdje92_fide_fetch_text( $url, $options );
+        if ( ! is_string( $raw ) || trim( $raw ) === '' ) {
+            continue;
+        }
+
+        $clean = ltrim( $raw, "\xEF\xBB\xBF \t\n\r" );
+        $decoded = json_decode( $clean, true );
+        if ( json_last_error() === JSON_ERROR_NONE && is_array( $decoded ) ) {
+            return $decoded;
+        }
+    }
+
+    return null;
+}
+
+function cdje92_fide_parse_xpath( $html ) {
+    $body = is_string( $html ) ? $html : '';
+    if ( $body === '' ) {
+        return null;
+    }
+
+    $doc = new DOMDocument();
+    $previous = libxml_use_internal_errors( true );
+    $doc->loadHTML(
+        '<?xml encoding="utf-8" ?>' . $body,
+        LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING
+    );
+    libxml_clear_errors();
+    libxml_use_internal_errors( $previous );
+
+    return new DOMXPath( $doc );
+}
+
+function cdje92_fide_xpath_first_text( DOMXPath $xpath, $query, $context = null ) {
+    $nodes = $context
+        ? $xpath->query( $query, $context )
+        : $xpath->query( $query );
+    if ( ! $nodes || $nodes->length < 1 ) {
+        return '';
+    }
+    $node = $nodes->item( 0 );
+    if ( ! $node ) {
+        return '';
+    }
+    return cdje92_ffe_player_clean_text( (string) $node->textContent );
+}
+
+function cdje92_fide_xpath_first_attr( DOMXPath $xpath, $query, $attr, $context = null ) {
+    $nodes = $context
+        ? $xpath->query( $query, $context )
+        : $xpath->query( $query );
+    if ( ! $nodes || $nodes->length < 1 ) {
+        return '';
+    }
+    $node = $nodes->item( 0 );
+    if ( ! $node || ! $node->hasAttributes() ) {
+        return '';
+    }
+    $value = $node->attributes->getNamedItem( $attr );
+    if ( ! $value ) {
+        return '';
+    }
+    return cdje92_ffe_player_clean_text( (string) $value->nodeValue );
+}
+
+function cdje92_fide_extract_table_payload( $html, $max_rows = 250 ) {
+    $xpath = cdje92_fide_parse_xpath( $html );
+    if ( ! ( $xpath instanceof DOMXPath ) ) {
+        return null;
+    }
+
+    $tables = $xpath->query( '//table' );
+    if ( ! $tables || $tables->length < 1 ) {
+        return null;
+    }
+    $table = $tables->item( 0 );
+    if ( ! $table ) {
+        return null;
+    }
+
+    $headers = [];
+    $header_nodes = $xpath->query( './/thead//th', $table );
+    if ( $header_nodes && $header_nodes->length > 0 ) {
+        foreach ( $header_nodes as $header_node ) {
+            $headers[] = cdje92_ffe_player_clean_text( $header_node->textContent );
+        }
+    }
+
+    $rows = [];
+    $row_links = [];
+    $rows_nodes = $xpath->query( './/tbody/tr', $table );
+    if ( ! $rows_nodes || $rows_nodes->length < 1 ) {
+        $rows_nodes = $xpath->query( './/tr', $table );
+    }
+
+    if ( $rows_nodes && $rows_nodes->length > 0 ) {
+        foreach ( $rows_nodes as $row_node ) {
+            $cell_nodes = $xpath->query( './th|./td', $row_node );
+            if ( ! $cell_nodes || $cell_nodes->length < 1 ) {
+                continue;
+            }
+
+            $cells = [];
+            $links = [];
+            foreach ( $cell_nodes as $cell_node ) {
+                $cells[] = cdje92_ffe_player_clean_text( $cell_node->textContent );
+                $href = cdje92_fide_xpath_first_attr( $xpath, './/a[@href]', 'href', $cell_node );
+                $href = cdje92_fide_normalize_url( $href );
+                if ( $href !== '' ) {
+                    $links[] = $href;
+                }
+            }
+
+            $joined = trim( implode( ' ', $cells ) );
+            if ( $joined === '' ) {
+                continue;
+            }
+
+            $rows[] = $cells;
+            $row_links[] = $links;
+
+            if ( is_numeric( $max_rows ) && $max_rows > 0 && count( $rows ) >= (int) $max_rows ) {
+                break;
+            }
+        }
+    }
+
+    return [
+        'headers' => $headers,
+        'rows' => $rows,
+        'rowLinks' => $row_links,
+        'rowCount' => count( $rows ),
+    ];
+}
+
+function cdje92_fide_extract_profile_payload( $profile_html, $profile_url, $fide_id ) {
+    $xpath = cdje92_fide_parse_xpath( $profile_html );
+    if ( ! ( $xpath instanceof DOMXPath ) ) {
+        return null;
+    }
+
+    $name = cdje92_fide_xpath_first_text(
+        $xpath,
+        "//*[contains(concat(' ', normalize-space(@class), ' '), ' player-title ')]"
+    );
+
+    $photo = cdje92_fide_xpath_first_attr(
+        $xpath,
+        "//*[contains(concat(' ', normalize-space(@class), ' '), ' profile-top__photo ')]",
+        'src'
+    );
+    if ( $photo === '' ) {
+        $photo = cdje92_fide_xpath_first_attr(
+            $xpath,
+            "//*[contains(concat(' ', normalize-space(@class), ' '), ' profile-photo ')]//img",
+            'src'
+        );
+    }
+    $photo = cdje92_fide_normalize_url( $photo );
+    $photo_omitted = false;
+    if ( cdje92_fide_is_data_uri( $photo ) && strlen( $photo ) > 700000 ) {
+        $photo = '';
+        $photo_omitted = true;
+    }
+
+    $federation = cdje92_fide_xpath_first_text(
+        $xpath,
+        "//*[contains(concat(' ', normalize-space(@class), ' '), ' profile-info-country ')]"
+    );
+    $federation_flag = cdje92_fide_xpath_first_attr(
+        $xpath,
+        "//*[contains(concat(' ', normalize-space(@class), ' '), ' profile-info-country ')]//img",
+        'src'
+    );
+    $federation_code = '';
+    if ( preg_match( '#/images/flags/([a-z]{2})\.svg#i', (string) $federation_flag, $matches ) ) {
+        $federation_code = strtolower( (string) $matches[1] );
+    }
+
+    $ratings = [
+        'standard' => cdje92_fide_xpath_first_text(
+            $xpath,
+            "//*[contains(concat(' ', normalize-space(@class), ' '), ' profile-standart ')]/p[1]"
+        ),
+        'rapid' => cdje92_fide_xpath_first_text(
+            $xpath,
+            "//*[contains(concat(' ', normalize-space(@class), ' '), ' profile-rapid ')]/p[1]"
+        ),
+        'blitz' => cdje92_fide_xpath_first_text(
+            $xpath,
+            "//*[contains(concat(' ', normalize-space(@class), ' '), ' profile-blitz ')]/p[1]"
+        ),
+    ];
+
+    $ranks = [];
+    $rank_blocks = $xpath->query(
+        "//*[contains(concat(' ', normalize-space(@class), ' '), ' profile-rank-block ')]"
+    );
+    if ( $rank_blocks && $rank_blocks->length > 0 ) {
+        foreach ( $rank_blocks as $block ) {
+            $title = cdje92_fide_xpath_first_text( $xpath, './h5', $block );
+            $entries = [];
+            $rows = $xpath->query(
+                ".//*[contains(concat(' ', normalize-space(@class), ' '), ' profile-rank-row ')]",
+                $block
+            );
+            if ( $rows && $rows->length > 0 ) {
+                foreach ( $rows as $row ) {
+                    $entries[] = [
+                        'label' => cdje92_fide_xpath_first_text( $xpath, './/h6', $row ),
+                        'value' => cdje92_fide_xpath_first_text( $xpath, './/p', $row ),
+                    ];
+                }
+            }
+            if ( $title !== '' || ! empty( $entries ) ) {
+                $ranks[] = [
+                    'title' => $title,
+                    'entries' => $entries,
+                ];
+            }
+        }
+    }
+
+    $history = null;
+    $history_nodes = $xpath->query(
+        "//*[@id='tabs-3']//table[contains(concat(' ', normalize-space(@class), ' '), ' profile-table_calc ')]"
+    );
+    if ( $history_nodes && $history_nodes->length > 0 ) {
+        $history_html = $history_nodes->item( 0 )->ownerDocument->saveHTML( $history_nodes->item( 0 ) );
+        $history = cdje92_fide_extract_table_payload( $history_html, 360 );
+    }
+
+    $info_tables = [];
+    $info_table_nodes = $xpath->query( "//*[@id='tabs-1']//table" );
+    if ( $info_table_nodes && $info_table_nodes->length > 0 ) {
+        foreach ( $info_table_nodes as $table_node ) {
+            if ( count( $info_tables ) >= 6 ) {
+                break;
+            }
+            $table_html = $table_node->ownerDocument->saveHTML( $table_node );
+            $table_payload = cdje92_fide_extract_table_payload( $table_html, 120 );
+            if ( is_array( $table_payload ) && ! empty( $table_payload['rows'] ) ) {
+                $info_tables[] = $table_payload;
+            }
+        }
+    }
+
+    return [
+        'id' => $fide_id,
+        'url' => $profile_url,
+        'name' => $name,
+        'photo' => $photo,
+        'photoOmitted' => $photo_omitted,
+        'federation' => $federation,
+        'federationCode' => $federation_code,
+        'birthYear' => cdje92_fide_xpath_first_text(
+            $xpath,
+            "//*[contains(concat(' ', normalize-space(@class), ' '), ' profile-info-byear ')]"
+        ),
+        'gender' => cdje92_fide_xpath_first_text(
+            $xpath,
+            "//*[contains(concat(' ', normalize-space(@class), ' '), ' profile-info-sex ')]"
+        ),
+        'title' => cdje92_fide_xpath_first_text(
+            $xpath,
+            "//*[contains(concat(' ', normalize-space(@class), ' '), ' profile-info-title ')]//p[1]"
+        ),
+        'ratings' => $ratings,
+        'ranks' => $ranks,
+        'historyTable' => $history,
+        'infoTables' => $info_tables,
+    ];
+}
+
+function cdje92_fide_fetch_full_profile( $fide_url, $options = [] ) {
+    $normalized_fide_url = cdje92_fide_normalize_url( $fide_url );
+    if ( $normalized_fide_url === '' ) {
+        return null;
+    }
+
+    $fide_id = cdje92_fide_extract_id_from_url( $normalized_fide_url );
+    if ( $fide_id === '' ) {
+        return null;
+    }
+
+    $profile_url = 'https://ratings.fide.com/profile/' . rawurlencode( $fide_id );
+    $profile_html = cdje92_fide_fetch_text( $profile_url, [
+        'timeout' => 7,
+    ] );
+    if ( $profile_html === '' ) {
+        return null;
+    }
+
+    $profile_payload = cdje92_fide_extract_profile_payload( $profile_html, $profile_url, $fide_id );
+    if ( ! is_array( $profile_payload ) ) {
+        return null;
+    }
+
+    $full = ! empty( $options['full'] );
+    $include_opponents = ! empty( $options['includeOpponents'] );
+
+    $payload = [
+        'id' => $fide_id,
+        'url' => $profile_url,
+        'profile' => $profile_payload,
+        'sources' => [
+            'profile' => $profile_url,
+            'calculations' => 'https://ratings.fide.com/profile/' . rawurlencode( $fide_id ) . '/calculations',
+            'chart' => 'https://ratings.fide.com/profile/' . rawurlencode( $fide_id ) . '/chart',
+            'top' => 'https://ratings.fide.com/profile/' . rawurlencode( $fide_id ) . '/top',
+            'statistics' => 'https://ratings.fide.com/profile/' . rawurlencode( $fide_id ) . '/statistics',
+        ],
+        'fetchedAt' => gmdate( 'c' ),
+    ];
+
+    if ( ! $full ) {
+        return $payload;
+    }
+
+    $ajax_referer = $profile_url . '/statistics';
+
+    $calculations_html = cdje92_fide_fetch_text(
+        'https://ratings.fide.com/a_calculations.phtml?event=' . rawurlencode( $fide_id ),
+        [
+            'ajax' => true,
+            'referer' => $profile_url . '/calculations',
+            'timeout' => 5,
+        ]
+    );
+    if ( $calculations_html !== '' ) {
+        $payload['calculations'] = cdje92_fide_extract_table_payload( $calculations_html, 260 );
+    }
+
+    $top_html = cdje92_fide_fetch_text(
+        'https://ratings.fide.com/a_top_records.phtml?event=' . rawurlencode( $fide_id ),
+        [
+            'ajax' => true,
+            'referer' => $profile_url . '/top',
+            'timeout' => 5,
+        ]
+    );
+    if ( $top_html !== '' ) {
+        $payload['topRecords'] = cdje92_fide_extract_table_payload( $top_html, 260 );
+    }
+
+    $chart_raw = null;
+    $periods = [ 0, 5, 3, 2, 1 ];
+    foreach ( $periods as $period ) {
+        $candidate = cdje92_fide_fetch_json(
+            'https://ratings.fide.com/a_chart_data.phtml?event=' . rawurlencode( $fide_id ) . '&period=' . rawurlencode( (string) $period ),
+            [
+                'method' => 'POST',
+                'ajax' => true,
+                'referer' => $profile_url . '/chart',
+                'timeout' => 5,
+                'attempts' => 2,
+            ]
+        );
+        if ( is_array( $candidate ) && ! empty( $candidate ) ) {
+            $chart_raw = $candidate;
+            $payload['chartPeriod'] = $period;
+            break;
+        }
+    }
+    if ( is_array( $chart_raw ) ) {
+        $points = [];
+        foreach ( $chart_raw as $point ) {
+            if ( ! is_array( $point ) ) {
+                continue;
+            }
+            $points[] = [
+                'period' => cdje92_ffe_player_clean_text( $point['date_2'] ?? '' ),
+                'standard' => cdje92_ffe_player_clean_text( $point['rating'] ?? '' ),
+                'standardGames' => cdje92_ffe_player_clean_text( $point['period_games'] ?? '' ),
+                'rapid' => cdje92_ffe_player_clean_text( $point['rapid_rtng'] ?? '' ),
+                'rapidGames' => cdje92_ffe_player_clean_text( $point['rapid_games'] ?? '' ),
+                'blitz' => cdje92_ffe_player_clean_text( $point['blitz_rtng'] ?? '' ),
+                'blitzGames' => cdje92_ffe_player_clean_text( $point['blitz_games'] ?? '' ),
+            ];
+            if ( count( $points ) >= 600 ) {
+                break;
+            }
+        }
+        $payload['chart'] = [
+            'pointCount' => count( $points ),
+            'points' => $points,
+        ];
+    }
+
+    $stats_raw = cdje92_fide_fetch_json(
+        'https://ratings.fide.com/a_data_stats.php?id1=' . rawurlencode( $fide_id ) . '&id2=0',
+        [
+            'method' => 'POST',
+            'ajax' => true,
+            'referer' => $ajax_referer,
+            'timeout' => 5,
+            'attempts' => 2,
+        ]
+    );
+    if ( is_array( $stats_raw ) && ! empty( $stats_raw ) ) {
+        $payload['statistics'] = $stats_raw[0];
+    }
+
+    $arbiter_data = cdje92_fide_fetch_json(
+        'https://ratings.fide.com/a_profile_data.php?records=1&event=' . rawurlencode( $fide_id ),
+        [
+            'ajax' => true,
+            'referer' => $profile_url,
+            'timeout' => 5,
+            'attempts' => 1,
+        ]
+    );
+    $fairplay_data = cdje92_fide_fetch_json(
+        'https://ratings.fide.com/a_profile_data.php?records=2&event=' . rawurlencode( $fide_id ),
+        [
+            'ajax' => true,
+            'referer' => $profile_url,
+            'timeout' => 5,
+            'attempts' => 1,
+        ]
+    );
+    $organizer_data = cdje92_fide_fetch_json(
+        'https://ratings.fide.com/a_profile_data.php?records=3&event=' . rawurlencode( $fide_id ),
+        [
+            'ajax' => true,
+            'referer' => $profile_url,
+            'timeout' => 5,
+            'attempts' => 1,
+        ]
+    );
+    if ( is_array( $arbiter_data ) || is_array( $fairplay_data ) || is_array( $organizer_data ) ) {
+        $payload['officialRecords'] = [
+            'arbiter' => $arbiter_data,
+            'fairPlayOfficer' => $fairplay_data,
+            'organizer' => $organizer_data,
+        ];
+    }
+
+    if ( $include_opponents ) {
+        $opponents_raw = cdje92_fide_fetch_json(
+            'https://ratings.fide.com/a_data_opponents.php?pl=' . rawurlencode( $fide_id ),
+            [
+                'ajax' => true,
+                'referer' => $profile_url . '/statistics',
+                'timeout' => 5,
+                'attempts' => 1,
+            ]
+        );
+        if ( is_array( $opponents_raw ) ) {
+            $sample = array_slice( $opponents_raw, 0, 80 );
+            $payload['opponents'] = [
+                'total' => count( $opponents_raw ),
+                'sample' => $sample,
+            ];
+        }
+    }
+
+    return $payload;
+}
+
 function cdje92_rest_get_ffe_player( WP_REST_Request $request ) {
     $id = preg_replace( '/\D+/', '', (string) $request->get_param( 'id' ) );
     if ( $id === '' ) {
@@ -717,9 +1461,21 @@ function cdje92_rest_get_ffe_player( WP_REST_Request $request ) {
         return new WP_Error( 'cdje92_dom_missing', 'Fonctionnalite indisponible sur ce serveur.', [ 'status' => 500 ] );
     }
 
-    $cache_key = 'cdje92_ffe_player_' . $id;
+    $full = cdje92_rest_param_to_bool( $request->get_param( 'full' ), false );
+    $include_opponents = cdje92_rest_param_to_bool(
+        $request->get_param( 'include_opponents' ),
+        $full
+    );
+    $refresh = cdje92_rest_param_to_bool( $request->get_param( 'refresh' ), false );
+
+    $cache_key = sprintf(
+        'cdje92_ffe_player_%s_%d_%d',
+        $id,
+        $full ? 1 : 0,
+        $include_opponents ? 1 : 0
+    );
     $cached = get_transient( $cache_key );
-    if ( is_array( $cached ) ) {
+    if ( ! $refresh && is_array( $cached ) ) {
         return rest_ensure_response( $cached );
     }
 
@@ -748,14 +1504,48 @@ function cdje92_rest_get_ffe_player( WP_REST_Request $request ) {
     }
 
     $extras = cdje92_ffe_player_extract_extras_from_html( $body );
+    $fide = cdje92_fide_fetch_full_profile(
+        $extras['fide_url'] ?? '',
+        [
+            'full' => $full,
+            'includeOpponents' => $include_opponents,
+        ]
+    );
+
+    $fide_id = '';
+    if ( is_array( $fide ) ) {
+        $fide_id = preg_replace( '/\D+/', '', (string) ( $fide['id'] ?? '' ) );
+    }
+    if ( $fide_id === '' ) {
+        $fide_id = cdje92_fide_extract_id_from_url( $extras['fide_url'] ?? '' );
+    }
+
+    $fide_official_raw = $fide_id !== '' ? cdje92_fide_official_get_player_record( $fide_id ) : null;
+    $fide_official = cdje92_fide_official_record_to_public_payload( $fide_official_raw );
+    $fide_compare = cdje92_fide_build_comparison_payload( $fide_official, $fide );
+    $fide_manifest = cdje92_fide_official_get_manifest();
+
     $payload = [
         'id' => $id,
         'title' => $extras['title'] ?? '',
         'roles' => $extras['roles'] ?? [],
         'fide_url' => $extras['fide_url'] ?? '',
+        'fide' => $fide,
+        'fide_official' => [
+            'id' => $fide_id,
+            'player' => $fide_official,
+            'comparison' => $fide_compare,
+            'sources' => [
+                'downloadPage' => is_array( $fide_manifest ) ? ( $fide_manifest['sources']['downloadPage'] ?? '' ) : '',
+                'playersListTxt' => is_array( $fide_manifest ) ? ( $fide_manifest['sources']['playersListTxt'] ?? '' ) : '',
+                'archivesIndex' => '/wp-content/themes/echecs92-child/assets/data/fide-players/archives.json',
+                'manifest' => '/wp-content/themes/echecs92-child/assets/data/fide-players/manifest.json',
+            ],
+        ],
     ];
 
-    set_transient( $cache_key, $payload, DAY_IN_SECONDS );
+    $cache_ttl = $full ? 6 * HOUR_IN_SECONDS : DAY_IN_SECONDS;
+    set_transient( $cache_key, $payload, $cache_ttl );
 
     return rest_ensure_response( $payload );
 }
@@ -901,6 +1691,24 @@ add_action( 'rest_api_init', function () {
                 },
                 'validate_callback' => function ( $value ) {
                     return is_string( $value ) && $value !== '' && strlen( $value ) <= 12;
+                },
+            ],
+            'full' => [
+                'required' => false,
+                'sanitize_callback' => function ( $value ) {
+                    return cdje92_rest_param_to_bool( $value, false ) ? '1' : '0';
+                },
+            ],
+            'include_opponents' => [
+                'required' => false,
+                'sanitize_callback' => function ( $value ) {
+                    return cdje92_rest_param_to_bool( $value, false ) ? '1' : '0';
+                },
+            ],
+            'refresh' => [
+                'required' => false,
+                'sanitize_callback' => function ( $value ) {
+                    return cdje92_rest_param_to_bool( $value, false ) ? '1' : '0';
                 },
             ],
         ],

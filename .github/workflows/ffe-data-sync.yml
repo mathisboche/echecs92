@@ -24,14 +24,44 @@ jobs:
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
           mkdir -p wp-content/themes/echecs92-child/assets/data
-          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_SERVER:21" <<'EOF'
+          if ! lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_SERVER:21" <<'EOF'
           set ftp:passive-mode true
+          set net:max-retries 2
+          set net:reconnect-interval-base 2
+          set net:timeout 20
+          set cmd:fail-exit false
           mirror --verbose --only-newer \
             --include-glob clubs-france-hints.json \
             --include-glob postal-coordinates-fr.json \
             /www/wp-content/themes/echecs92-child/assets/data/ \
             wp-content/themes/echecs92-child/assets/data/
+          bye
           EOF
+          then
+            echo "WARN: live FTP mirror for hint cache returned errors."
+          fi
+          if [[ ! -f wp-content/themes/echecs92-child/assets/data/clubs-france-hints.json || ! -f wp-content/themes/echecs92-child/assets/data/postal-coordinates-fr.json ]]; then
+            echo "→ Hint cache incomplete, attempting fallback recovery from data.__staging..."
+            if ! lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_SERVER:21" <<'EOF'
+            set ftp:passive-mode true
+            set net:max-retries 2
+            set net:reconnect-interval-base 2
+            set net:timeout 20
+            set cmd:fail-exit false
+            mirror --verbose --only-newer \
+              --include-glob clubs-france-hints.json \
+              --include-glob postal-coordinates-fr.json \
+              /www/wp-content/themes/echecs92-child/assets/data.__staging/ \
+              wp-content/themes/echecs92-child/assets/data/
+            bye
+            EOF
+            then
+              echo "WARN: staging FTP mirror for hint cache returned errors."
+            fi
+          fi
+          if [[ ! -f wp-content/themes/echecs92-child/assets/data/postal-coordinates-fr.json ]]; then
+            echo "WARN: postal-coordinates-fr.json unavailable on FTP snapshot fallback, generator will continue without cache."
+          fi
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
@@ -41,6 +71,7 @@ jobs:
           node scripts/sync-ffe-clubs.js
           node scripts/generate-clubs-france-hints.js --resume
           node scripts/generate-ffe-players-index.js
+          FIDE_ARCHIVE_PERIODS=1 node scripts/sync-fide-official-data.js
       - name: Deploy generated data atomically
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}

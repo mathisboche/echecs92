@@ -24,16 +24,39 @@ jobs:
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
           mkdir -p wp-content/themes/echecs92-child/assets/data
-          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_SERVER:21" <<'EOF'
+          if ! lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_SERVER:21" <<'EOF'
           set ftp:passive-mode true
-          set cmd:fail-exit true
+          set net:max-retries 2
+          set net:reconnect-interval-base 2
+          set net:timeout 20
+          set cmd:fail-exit false
           mirror --verbose --only-newer \
             /www/wp-content/themes/echecs92-child/assets/data/ \
             wp-content/themes/echecs92-child/assets/data/
+          bye
           EOF
+          then
+            echo "WARN: live FTP mirror returned errors. Continuing with fallback checks."
+          fi
           if [[ ! -f wp-content/themes/echecs92-child/assets/data/clubs-france-ffe.json || ! -f wp-content/themes/echecs92-child/assets/data/ffe-players/manifest.json ]]; then
             echo "→ Live data incomplete, attempting fallback recovery from data.__staging..."
-            lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_SERVER:21" -e "set ftp:passive-mode true; set cmd:fail-exit false; mirror --verbose --only-newer /www/wp-content/themes/echecs92-child/assets/data.__staging/ wp-content/themes/echecs92-child/assets/data/; bye"
+            if ! lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_SERVER:21" <<'EOF'
+            set ftp:passive-mode true
+            set net:max-retries 2
+            set net:reconnect-interval-base 2
+            set net:timeout 20
+            set cmd:fail-exit false
+            mirror --verbose --only-newer \
+              /www/wp-content/themes/echecs92-child/assets/data.__staging/ \
+              wp-content/themes/echecs92-child/assets/data/
+            bye
+            EOF
+            then
+              echo "WARN: staging FTP mirror returned errors."
+            fi
+          fi
+          if [[ ! -f wp-content/themes/echecs92-child/assets/data/clubs-france-ffe.json || ! -f wp-content/themes/echecs92-child/assets/data/ffe-players/manifest.json ]]; then
+            echo "WARN: FTP snapshot still incomplete after fallback. Continuing with repository baseline."
           fi
       - name: Set up Node
         uses: actions/setup-node@v4

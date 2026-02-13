@@ -6544,6 +6544,20 @@ body.mathis-mode .mathis-fragment{
   flex-direction:column;
   gap:10px;
 }
+.player-hero__identity-row{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+.player-hero__avatar{
+  width:72px;
+  height:72px;
+  border-radius:14px;
+  border:1px solid #e2e8f0;
+  background:#f8fafc;
+  object-fit:cover;
+  flex:0 0 auto;
+}
 .player-hero__name{
   margin:0;
   display:flex;
@@ -6930,6 +6944,11 @@ a.player-chip:focus:not(:focus-visible),
   outline:none;
 }
 @media (max-width:520px){
+  .player-hero__avatar{
+    width:58px;
+    height:58px;
+    border-radius:12px;
+  }
   .player-extra__item{
     grid-template-columns:1fr;
     gap:4px;

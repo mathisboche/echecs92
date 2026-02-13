@@ -73,3 +73,43 @@ Les workflows de synchro FFE déploient désormais les données via un dossier d
 - bascule atomique vers `assets/data` en fin de run
 
 Ce mécanisme évite les états intermédiaires visibles sur le site pendant la synchronisation.
+
+Pour les workflows de synchro qui lisent d'abord les données via FTP (`ffe-data-sync.yml`, `ffe-licenses-sync.yml`, `ffe-hints-sync.yml`) :
+
+- les erreurs FTP transitoires de type `550` sont tolérées pendant la récupération ;
+- un fallback automatique tente ensuite de compléter depuis `assets/data.__staging`.
+
+Objectif : éviter qu'un run échoue uniquement parce qu'un fichier est momentanément indisponible pendant le swap.
+
+### Tolérance côté frontend (joueurs)
+
+Les pages joueurs (`assets/js/players.js` et `assets/js/player-detail.js`) tentent d'abord de charger les JSON dans `assets/data/`, puis basculent automatiquement vers `assets/data.__staging/` si nécessaire.
+
+Objectif : garder la recherche joueur et les fiches utilisables même pendant la bascule finale des données.
+
+### Données FIDE (source officielle + enrichissement)
+
+Le workflow `.github/workflows/ffe-data-sync.yml` lance aussi :
+
+- `node scripts/sync-fide-official-data.js`
+
+Ce script :
+
+- télécharge la **liste officielle FIDE** (`players_list.zip`) depuis `ratings.fide.com`;
+- génère des shards locaux dans `wp-content/themes/echecs92-child/assets/data/fide-players/by-id/`;
+- produit un manifeste `.../fide-players/manifest.json`;
+- indexe toutes les périodes d'archives via `a_download.php?period=...` dans `.../fide-players/archives.json`;
+- télécharge en option des archives ZIP locales (`.../fide-players/archives/<periode>/`).
+
+Variables utiles :
+
+- `FIDE_ARCHIVE_PERIODS` : nombre de périodes d'archives à télécharger (`1` par défaut, `0` pour désactiver, `all` pour tout).
+- `FIDE_ARCHIVE_INCLUDE_XML` : `1` pour télécharger aussi les archives XML (défaut `0`).
+- `FIDE_MAX_ROWS` : debug local uniquement (limite de lignes parsées).
+
+La fiche joueur combine ensuite :
+
+- la source officielle FIDE (fichiers mensuels);
+- et l'enrichissement "live" (scraping des pages profil FIDE),
+
+avec comparaison automatique entre les deux sources et liens de citation.

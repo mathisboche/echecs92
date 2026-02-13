@@ -378,6 +378,31 @@
     throw lastError || new Error('Unable to fetch JSON');
   };
 
+  const buildStagingDataUrl = (url) => {
+    const raw = (url || '').toString().trim();
+    if (!raw) {
+      return '';
+    }
+    const stagingUrl = raw.replace('/assets/data/', '/assets/data.__staging/');
+    return stagingUrl !== raw ? stagingUrl : '';
+  };
+
+  const fetchJsonWithStagingFallback = async (url, options = {}) => {
+    try {
+      return await fetchJsonWithRetry(url, options);
+    } catch (liveError) {
+      const stagingUrl = buildStagingDataUrl(url);
+      if (!stagingUrl) {
+        throw liveError;
+      }
+      try {
+        return await fetchJsonWithRetry(stagingUrl, options);
+      } catch (_stagingError) {
+        throw liveError;
+      }
+    }
+  };
+
   const renderMessage = (message, tone = 'error') => {
     detailContainer.classList.remove('is-loading');
     detailContainer.innerHTML = `<p class="clubs-empty" data-tone="${tone}">${message}</p>`;
@@ -478,8 +503,8 @@
     if (!raw) {
       return Promise.resolve(null);
     }
-    const url = `${FFE_EXTRAS_ENDPOINT}?id=${encodeURIComponent(raw)}`;
-    return fetchJsonWithRetry(url, { attempts: 2, baseDelayMs: 250 }).catch(() => null);
+    const url = `${FFE_EXTRAS_ENDPOINT}?id=${encodeURIComponent(raw)}&full=1&include_opponents=1`;
+    return fetchJsonWithRetry(url, { attempts: 3, baseDelayMs: 280 }).catch(() => null);
   };
 
   const formatTitlePrefix = (value) => {
@@ -659,16 +684,47 @@
     const hero = document.createElement('header');
     hero.className = 'player-hero';
 
+    const fideProfile =
+      extras && extras.fide && typeof extras.fide === 'object' && extras.fide.profile && typeof extras.fide.profile === 'object'
+        ? extras.fide.profile
+        : null;
+    const fideOfficial =
+      extras &&
+      extras.fide_official &&
+      typeof extras.fide_official === 'object' &&
+      extras.fide_official.player &&
+      typeof extras.fide_official.player === 'object'
+        ? extras.fide_official.player
+        : null;
+    const fideComparison =
+      extras &&
+      extras.fide_official &&
+      typeof extras.fide_official === 'object' &&
+      extras.fide_official.comparison &&
+      typeof extras.fide_official.comparison === 'object'
+        ? extras.fide_official.comparison
+        : null;
+    const fideSources =
+      extras &&
+      extras.fide_official &&
+      typeof extras.fide_official === 'object' &&
+      extras.fide_official.sources &&
+      typeof extras.fide_official.sources === 'object'
+        ? extras.fide_official.sources
+        : null;
+    const fidePhoto = (fideProfile?.photo || '').toString().trim();
+    const fideUrl = (fideProfile?.url || extras?.fide_url || '').toString().trim();
+
     const title = document.createElement('h1');
     title.className = 'player-hero__name';
 
-	    const titlePrefix = document.createElement('span');
-	    titlePrefix.className = 'player-hero__title-prefix';
-	    titlePrefix.hidden = true;
-	    const titlePrefixText = document.createElement('span');
-	    titlePrefixText.className = 'player-hero__title-prefix-text';
-	    titlePrefix.appendChild(titlePrefixText);
-	    title.appendChild(titlePrefix);
+    const titlePrefix = document.createElement('span');
+    titlePrefix.className = 'player-hero__title-prefix';
+    titlePrefix.hidden = true;
+    const titlePrefixText = document.createElement('span');
+    titlePrefixText.className = 'player-hero__title-prefix-text';
+    titlePrefix.appendChild(titlePrefixText);
+    title.appendChild(titlePrefix);
 
     const nameNode = document.createElement('span');
     nameNode.className = 'player-hero__name-text';
@@ -676,7 +732,24 @@
     nameNode.textContent = playerName || 'Fiche joueur';
     title.appendChild(nameNode);
 
-    hero.appendChild(title);
+    const identity = document.createElement('div');
+    identity.className = 'player-hero__identity';
+    const identityRow = document.createElement('div');
+    identityRow.className = 'player-hero__identity-row';
+
+    if (fidePhoto) {
+      const avatar = document.createElement('img');
+      avatar.className = 'player-hero__avatar';
+      avatar.src = fidePhoto;
+      avatar.alt = playerName ? `Photo de ${playerName}` : 'Photo joueur';
+      avatar.loading = 'lazy';
+      avatar.decoding = 'async';
+      identityRow.appendChild(avatar);
+    }
+
+    identityRow.appendChild(title);
+    identity.appendChild(identityRow);
+    hero.appendChild(identity);
 
     const standardTag = (splitRating(player.elo || '').tag || '').toString().trim().toUpperCase();
 
@@ -694,6 +767,11 @@
     if (formattedCategory.label) {
       appendMetaChip(meta, 'Catégorie', formattedCategory.label, { hint: formattedCategory.hint });
     }
+
+    if (fideProfile?.federation || fideOfficial?.federation) {
+      appendMetaChip(meta, 'Fédération', fideProfile?.federation || fideOfficial?.federation || '');
+    }
+
     const clubName = normaliseClubName(player.club || '');
     appendMetaChip(meta, 'Club', clubName, {
       href: appendFromToInternalHref(getClubHrefFromBackLink() || buildClubDetailHrefFromName(clubName)),
@@ -745,99 +823,157 @@
       return item;
     };
 
-	    const licenceItem = appendExtraItem('Licence', formatLicence(player.aff || ''));
-	    const nrFfeItem = appendExtraItem('N° FFE', player.nrFfe || '');
-	    appendExtraItem('Fiche FFE', officialUrl, { type: 'link', label: 'Ouvrir sur echecs.asso.fr' });
+    const licenceItem = appendExtraItem('Licence', formatLicence(player.aff || ''));
+    const nrFfeItem = appendExtraItem('N° FFE', player.nrFfe || '');
+    appendExtraItem('Fiche FFE', officialUrl, { type: 'link', label: 'Ouvrir sur echecs.asso.fr' });
+    appendExtraItem('Fiche FIDE', fideUrl, { type: 'link', label: 'Ouvrir sur ratings.fide.com' });
+    appendExtraItem('FIDE ID', fideProfile?.id || fideOfficial?.id || extras?.fide_official?.id || '');
+    appendExtraItem('Naissance', fideOfficial?.birthYear || fideProfile?.birthYear || '');
+    appendExtraItem('Genre', fideOfficial?.sex || fideProfile?.gender || '');
 
-	    const formattedTitle = formatTitlePrefix(extras?.title || '');
-	    if (formattedTitle.short) {
-	      titlePrefix.hidden = false;
-	      titlePrefixText.textContent = formattedTitle.short;
-	      titlePrefix.dataset.tooltip = formattedTitle.long || formattedTitle.short;
-	      titlePrefix.setAttribute('tabindex', '0');
-	      titlePrefix.setAttribute('role', 'note');
-	      titlePrefix.setAttribute('aria-label', formattedTitle.long || formattedTitle.short);
+    const officialRatings = fideOfficial?.ratings || null;
+    if (officialRatings) {
+      const officialStd = Number(officialRatings?.standard?.value || 0);
+      const officialRapid = Number(officialRatings?.rapid?.value || 0);
+      const officialBlitz = Number(officialRatings?.blitz?.value || 0);
+      const officialLabel = [officialStd > 0 ? officialStd : '-', officialRapid > 0 ? officialRapid : '-', officialBlitz > 0 ? officialBlitz : '-'].join(' / ');
+      appendExtraItem('Classements officiels', officialLabel);
+    }
 
-	      const formatted = formatNameGivenFirst(playerName);
-	      if (formatted) {
-	        nameNode.textContent = formatted;
-	      }
-	    }
+    const chartPoints = Number(extras?.fide?.chart?.pointCount || fideProfile?.historyTable?.rowCount || 0);
+    const calcRows = Number(extras?.fide?.calculations?.rowCount || 0);
+    const topRows = Number(extras?.fide?.topRecords?.rowCount || 0);
+    const opponentsTotal = Number(extras?.fide?.opponents?.total || 0);
 
-	    const roles = Array.isArray(extras?.roles) ? extras.roles.filter(Boolean) : [];
-	    if (roles.length) {
-	      const item = document.createElement('li');
-	      item.className = 'player-extra__item';
+    if (chartPoints > 0) {
+      appendExtraItem('Historique FIDE', `${chartPoints} périodes`);
+    }
+    if (calcRows > 0) {
+      appendExtraItem('Calculs mensuels', `${calcRows} périodes`);
+    }
+    if (topRows > 0) {
+      appendExtraItem('Top records', `${topRows} entrées`);
+    }
+    if (opponentsTotal > 0) {
+      appendExtraItem('Opposants connus', `${opponentsTotal}`);
+    }
 
-	      const labelNode = document.createElement('span');
-	      labelNode.className = 'player-extra__label';
-	      labelNode.textContent = 'Fonctions';
-	      item.appendChild(labelNode);
+    const comparisonChecks = fideComparison?.checks || null;
+    if (comparisonChecks && typeof comparisonChecks === 'object') {
+      const keys = ['name', 'federation', 'standardRating', 'rapidRating', 'blitzRating'];
+      const checked = keys.filter((key) => comparisonChecks[key] !== null && comparisonChecks[key] !== undefined);
+      const mismatches = checked.filter((key) => comparisonChecks[key] === false);
+      if (checked.length) {
+        appendExtraItem(
+          'Contrôle officiel',
+          mismatches.length ? `Écarts détectés (${mismatches.length})` : 'OK (sources concordantes)'
+        );
+      }
+    }
 
-	      const valueNode = document.createElement('span');
-	      valueNode.className = 'player-extra__value';
-	      valueNode.textContent = roles.join(', ');
-	      item.appendChild(valueNode);
+    appendExtraItem('Source officielle FIDE', fideSources?.playersListTxt || '', {
+      type: 'link',
+      label: 'Liste mensuelle FIDE',
+    });
+    appendExtraItem('Archives FIDE', fideSources?.downloadPage || '', {
+      type: 'link',
+      label: 'Page de téléchargement',
+    });
 
-	      if (nrFfeItem && nrFfeItem.parentNode === extraList) {
-	        extraList.insertBefore(item, nrFfeItem);
-	      } else if (licenceItem && licenceItem.parentNode === extraList) {
-	        if (licenceItem.nextSibling) {
-	          extraList.insertBefore(item, licenceItem.nextSibling);
-	        } else {
-	          extraList.appendChild(item);
-	        }
-	      } else {
-	        extraList.insertBefore(item, extraList.firstChild);
-	      }
-	    }
+    const preferredTitle = (fideProfile?.title || fideOfficial?.title || extras?.title || '').toString().trim();
+    const formattedTitle = formatTitlePrefix(preferredTitle);
+    if (formattedTitle.short) {
+      titlePrefix.hidden = false;
+      titlePrefixText.textContent = formattedTitle.short;
+      titlePrefix.dataset.tooltip = formattedTitle.long || formattedTitle.short;
+      titlePrefix.setAttribute('tabindex', '0');
+      titlePrefix.setAttribute('role', 'note');
+      titlePrefix.setAttribute('aria-label', formattedTitle.long || formattedTitle.short);
 
-	    if (extraList.childElementCount) {
-	      sheet.appendChild(extra);
-	    }
+      const formatted = formatNameGivenFirst(playerName);
+      if (formatted) {
+        nameNode.textContent = formatted;
+      }
+    }
+
+    const roles = Array.isArray(extras?.roles) ? extras.roles.filter(Boolean) : [];
+    if (roles.length) {
+      const item = document.createElement('li');
+      item.className = 'player-extra__item';
+
+      const labelNode = document.createElement('span');
+      labelNode.className = 'player-extra__label';
+      labelNode.textContent = 'Fonctions';
+      item.appendChild(labelNode);
+
+      const valueNode = document.createElement('span');
+      valueNode.className = 'player-extra__value';
+      valueNode.textContent = roles.join(', ');
+      item.appendChild(valueNode);
+
+      if (nrFfeItem && nrFfeItem.parentNode === extraList) {
+        extraList.insertBefore(item, nrFfeItem);
+      } else if (licenceItem && licenceItem.parentNode === extraList) {
+        if (licenceItem.nextSibling) {
+          extraList.insertBefore(item, licenceItem.nextSibling);
+        } else {
+          extraList.appendChild(item);
+        }
+      } else {
+        extraList.insertBefore(item, extraList.firstChild);
+      }
+    }
+
+    if (extraList.childElementCount) {
+      sheet.appendChild(extra);
+    }
 
     detailContainer.appendChild(sheet);
 
-	    if (playerName) {
-	      const docPrefix = formattedTitle.short ? `${formattedTitle.short} ` : '';
-	      const visibleName = formattedTitle.short ? formatNameGivenFirst(playerName) || playerName : playerName;
-	      document.title = `${docPrefix}${visibleName} - Joueur`;
-	    }
-	  };
+    if (playerName) {
+      const docPrefix = formattedTitle.short ? `${formattedTitle.short} ` : '';
+      const visibleName = formattedTitle.short ? formatNameGivenFirst(playerName) || playerName : playerName;
+      document.title = `${docPrefix}${visibleName} - Joueur`;
+    }
+  };
 
-	  const init = () => {
-	    if (!playerId) {
-	      renderMessage(detailContainer.dataset.emptyMessage || 'Joueur introuvable.');
-	      return;
-	    }
-	    const extrasPromise = fetchFfeExtras(playerId);
-	    const prefix = buildShardPrefix(playerId);
-	    if (!prefix) {
-	      renderMessage(detailContainer.dataset.emptyMessage || 'Joueur introuvable.');
-	      return;
-	    }
-	    const url = `${PLAYER_SHARDS_BASE_PATH}${encodeURIComponent(prefix)}.json`;
-	    fetchJsonWithRetry(url, { attempts: 4, baseDelayMs: 350 })
-	      .then((payload) => {
-	        const players = payload && typeof payload === 'object' ? payload.players || null : null;
-	        const player = players && typeof players === 'object' ? players[playerId] : null;
-	        if (!player) {
-	          renderMessage(detailContainer.dataset.emptyMessage || 'Joueur introuvable.');
-	          return null;
-	        }
-	        return Promise.all([Promise.resolve(player), extrasPromise]);
-	      })
-	      .then((resolved) => {
-	        if (!resolved) {
-	          return;
-	        }
-	        const [player, extras] = resolved;
-	        renderPlayer(player, extras);
-	      })
-	      .catch(() => {
-	        renderMessage('Impossible de charger la fiche du joueur pour le moment.');
-	      });
-	  };
+  const init = () => {
+    if (!playerId) {
+      renderMessage(detailContainer.dataset.emptyMessage || 'Joueur introuvable.');
+      return;
+    }
+    const extrasPromise = fetchFfeExtras(playerId);
+    const prefix = buildShardPrefix(playerId);
+    if (!prefix) {
+      renderMessage(detailContainer.dataset.emptyMessage || 'Joueur introuvable.');
+      return;
+    }
+    const url = `${PLAYER_SHARDS_BASE_PATH}${encodeURIComponent(prefix)}.json`;
+
+    let resolvedPlayer = null;
+    fetchJsonWithStagingFallback(url, { attempts: 4, baseDelayMs: 350 })
+      .then((payload) => {
+        const players = payload && typeof payload === 'object' ? payload.players || null : null;
+        const player = players && typeof players === 'object' ? players[playerId] : null;
+        if (!player) {
+          renderMessage(detailContainer.dataset.emptyMessage || 'Joueur introuvable.');
+          return null;
+        }
+
+        resolvedPlayer = player;
+        renderPlayer(player, null);
+        return extrasPromise;
+      })
+      .then((extras) => {
+        if (!resolvedPlayer || !extras) {
+          return;
+        }
+        renderPlayer(resolvedPlayer, extras);
+      })
+      .catch(() => {
+        renderMessage('Impossible de charger la fiche du joueur pour le moment.');
+      });
+  };
 
   init();
 })();
