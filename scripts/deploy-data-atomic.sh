@@ -26,6 +26,27 @@ if [[ ! -f "${LOCAL_DIR}/clubs-france.json" ]]; then
   exit 1
 fi
 
+REQUIRED_FILES=(
+  "clubs-france-ffe.json"
+  "ffe-players/manifest.json"
+  "ffe-players/search-index.json"
+  "ffe-players/search-index-92.json"
+  "ffe-players/top-elo.json"
+  "ffe-players/top-elo-92.json"
+)
+
+for rel_path in "${REQUIRED_FILES[@]}"; do
+  if [[ ! -f "${LOCAL_DIR}/${rel_path}" ]]; then
+    echo "Missing expected file: ${LOCAL_DIR}/${rel_path}" >&2
+    exit 1
+  fi
+done
+
+if [[ -z "$(find "${LOCAL_DIR}/ffe-players/by-id" -maxdepth 1 -type f -name '*.json' -print -quit 2>/dev/null)" ]]; then
+  echo "Missing expected player shards in: ${LOCAL_DIR}/ffe-players/by-id" >&2
+  exit 1
+fi
+
 echo "→ Uploading generated data to remote staging (${STAGING_DIR_NAME})..."
 lftp -u "${FTP_USERNAME}","${FTP_PASSWORD}" "ftp://${FTP_SERVER}:21" <<EOF
 set ftp:passive-mode true

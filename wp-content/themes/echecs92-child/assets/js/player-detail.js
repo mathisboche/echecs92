@@ -349,6 +349,35 @@
       return response.json();
     });
 
+  const wait = (ms) =>
+    new Promise((resolve) => {
+      setTimeout(resolve, Math.max(0, ms || 0));
+    });
+
+  const fetchJsonWithRetry = async (url, options = {}) => {
+    const attempts = Number.isFinite(options.attempts) ? Math.max(1, Math.floor(options.attempts)) : 1;
+    const baseDelayMs = Number.isFinite(options.baseDelayMs)
+      ? Math.max(0, Math.floor(options.baseDelayMs))
+      : 0;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        return await fetchJson(url);
+      } catch (error) {
+        lastError = error;
+        if (attempt >= attempts) {
+          break;
+        }
+        if (baseDelayMs > 0) {
+          await wait(baseDelayMs * attempt);
+        }
+      }
+    }
+
+    throw lastError || new Error('Unable to fetch JSON');
+  };
+
   const renderMessage = (message, tone = 'error') => {
     detailContainer.classList.remove('is-loading');
     detailContainer.innerHTML = `<p class="clubs-empty" data-tone="${tone}">${message}</p>`;
@@ -450,7 +479,7 @@
       return Promise.resolve(null);
     }
     const url = `${FFE_EXTRAS_ENDPOINT}?id=${encodeURIComponent(raw)}`;
-    return fetchJson(url).catch(() => null);
+    return fetchJsonWithRetry(url, { attempts: 2, baseDelayMs: 250 }).catch(() => null);
   };
 
   const formatTitlePrefix = (value) => {
@@ -788,8 +817,8 @@
 	      return;
 	    }
 	    const url = `${PLAYER_SHARDS_BASE_PATH}${encodeURIComponent(prefix)}.json`;
-	    fetchJson(url)
-	      .then((payload) => {
+    fetchJsonWithRetry(url, { attempts: 4, baseDelayMs: 350 })
+      .then((payload) => {
 	        const players = payload && typeof payload === 'object' ? payload.players || null : null;
 	        const player = players && typeof players === 'object' ? players[playerId] : null;
 	        if (!player) {

@@ -38,6 +38,35 @@
       return response.json();
     });
 
+  const wait = (ms) =>
+    new Promise((resolve) => {
+      setTimeout(resolve, Math.max(0, ms || 0));
+    });
+
+  const fetchJsonWithRetry = async (url, options = {}) => {
+    const attempts = Number.isFinite(options.attempts) ? Math.max(1, Math.floor(options.attempts)) : 1;
+    const baseDelayMs = Number.isFinite(options.baseDelayMs)
+      ? Math.max(0, Math.floor(options.baseDelayMs))
+      : 0;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        return await fetchJson(url);
+      } catch (error) {
+        lastError = error;
+        if (attempt >= attempts) {
+          break;
+        }
+        if (baseDelayMs > 0) {
+          await wait(baseDelayMs * attempt);
+        }
+      }
+    }
+
+    throw lastError || new Error('Unable to fetch JSON');
+  };
+
   const shell = typeof document !== 'undefined' ? document.querySelector('.players-page') : null;
   if (!shell) {
     return;
@@ -447,7 +476,7 @@
       return indexState.loading;
     }
 
-    const loading = fetchJson(indexUrl)
+    const loading = fetchJsonWithRetry(indexUrl, { attempts: 4, baseDelayMs: 300 })
       .then((payload) => {
         const columns = Array.isArray(payload?.columns) ? payload.columns : null;
         const rows = Array.isArray(payload?.rows) ? payload.rows : [];
@@ -876,7 +905,7 @@
       return;
     }
     setTopStatus('Chargement du classement...');
-    fetchJson(topUrl)
+    fetchJsonWithRetry(topUrl, { attempts: 3, baseDelayMs: 300 })
       .then((payload) => {
         renderTop(payload);
         setTopStatus('');
