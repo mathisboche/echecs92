@@ -736,14 +736,39 @@
     if (!rankStats || typeof rankStats !== 'object') {
       return [];
     }
+    const itemKey = (item) => {
+      const scope = (item?.scope || '').toString().trim().toLowerCase();
+      const region = (item?.region || '').toString().trim().toLowerCase();
+      const title = (item?.title || '').toString().trim().toLowerCase();
+      return `${scope}|${region}|${title}`;
+    };
     const preferred = ['world', 'national', 'continent']
       .map((key) => rankStats[key])
       .filter((item) => item && typeof item === 'object');
-    if (preferred.length) {
-      return preferred;
-    }
     const items = Array.isArray(rankStats.items) ? rankStats.items : [];
-    return items.filter((item) => item && typeof item === 'object');
+    const filteredItems = items.filter((item) => item && typeof item === 'object');
+    if (!preferred.length) {
+      return filteredItems;
+    }
+    const seen = new Set();
+    const merged = [];
+    for (const item of preferred) {
+      const key = itemKey(item);
+      if (!key || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      merged.push(item);
+    }
+    for (const item of filteredItems) {
+      const key = itemKey(item);
+      if (!key || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      merged.push(item);
+    }
+    return merged;
   };
 
   const shouldShowRatingTagTooltip = (tag, options = {}) => {
