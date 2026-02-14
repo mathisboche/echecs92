@@ -3485,10 +3485,13 @@
   const MATHIS_TAKEOVER_ID = 'mathis-takeover';
   const MATHIS_LINK_TEXT = LEGACY_EASTER_EGG.text;
   const MATHIS_REVEAL_DELAY = 650;
+  const MATHIS_EGG_MIN_VALIDITY_MS = 15 * 1000;
+  const MATHIS_EGG_REFRESH_RETRY_MS = 5 * 1000;
   let mathisSequenceActive = false;
   let mathisEggPending = false;
   let mathisEggCache = null;
   let mathisEggPrefetchPromise = null;
+  let mathisEggRefreshTimer = null;
   let mathisCollapsedTargets = [];
   let mathisExitStarted = false;
   let mathisFragmentsPrepared = false;
@@ -3503,6 +3506,15 @@
 
   const resetMathisRectCache = () => {
     mathisRectCache = typeof WeakMap === 'function' ? new WeakMap() : null;
+  };
+
+  const clearMathisEggRefreshTimer = () => {
+    if (!mathisEggRefreshTimer || typeof window === 'undefined') {
+      mathisEggRefreshTimer = null;
+      return;
+    }
+    window.clearTimeout(mathisEggRefreshTimer);
+    mathisEggRefreshTimer = null;
   };
 
   const requestMathisEggUrl = async () => {
@@ -3529,15 +3541,46 @@
       return '';
     }
     // Avoid opening a token close to expiry (navigation + redirects can take time).
-    if (Date.now() > mathisEggCache.expiresAt - 2000) {
+    if (Date.now() > mathisEggCache.expiresAt - MATHIS_EGG_MIN_VALIDITY_MS) {
       mathisEggCache = null;
+      clearMathisEggRefreshTimer();
       return '';
     }
     return mathisEggCache.url;
   };
 
-  const prefetchMathisEggUrl = () => {
-    const cached = getCachedMathisEggUrl();
+  const scheduleMathisEggRefresh = () => {
+    clearMathisEggRefreshTimer();
+    if (!mathisSequenceActive || !mathisEggCache || typeof window === 'undefined') {
+      return;
+    }
+    const delay = Math.max(1000, mathisEggCache.expiresAt - Date.now() - MATHIS_EGG_MIN_VALIDITY_MS);
+    mathisEggRefreshTimer = window.setTimeout(() => {
+      mathisEggRefreshTimer = null;
+      if (!mathisSequenceActive) {
+        return;
+      }
+      prefetchMathisEggUrl({ force: true }).catch(() => {
+        if (!mathisSequenceActive || typeof window === 'undefined') {
+          return;
+        }
+        clearMathisEggRefreshTimer();
+        mathisEggRefreshTimer = window.setTimeout(() => {
+          mathisEggRefreshTimer = null;
+          if (!mathisSequenceActive) {
+            return;
+          }
+          prefetchMathisEggUrl({ force: true }).catch(() => {
+            // keep the old token if still available; next click can still force a fresh one.
+          });
+        }, MATHIS_EGG_REFRESH_RETRY_MS);
+      });
+    }, delay);
+  };
+
+  const prefetchMathisEggUrl = (options = {}) => {
+    const force = Boolean(options.force);
+    const cached = force ? '' : getCachedMathisEggUrl();
     if (cached) {
       return Promise.resolve(cached);
     }
@@ -3547,6 +3590,7 @@
     mathisEggPrefetchPromise = requestMathisEggUrl()
       .then((payload) => {
         mathisEggCache = payload;
+        scheduleMathisEggRefresh();
         return payload.url;
       })
       .finally(() => {
@@ -3580,6 +3624,12 @@
       if (cachedUrl) {
         // Consume the cached token locally (it is one-time on the server anyway).
         mathisEggCache = null;
+        clearMathisEggRefreshTimer();
+        if (mathisSequenceActive) {
+          prefetchMathisEggUrl().catch(() => {
+            // On failure, click fallback still forces a fresh token.
+          });
+        }
         const popup = window.open(cachedUrl, '_blank', 'noopener');
         if (popup) {
           try {
@@ -3604,8 +3654,16 @@
         }
       }
 
-      prefetchMathisEggUrl()
+      prefetchMathisEggUrl({ force: true })
         .then((url) => {
+          // Token is consumed right away by this navigation.
+          mathisEggCache = null;
+          clearMathisEggRefreshTimer();
+          if (mathisSequenceActive) {
+            prefetchMathisEggUrl().catch(() => {
+              // keep best effort behavior
+            });
+          }
           if (popup) {
             popup.location.href = url;
           } else {
@@ -3972,6 +4030,9 @@
   const endMathisTakeover = (options = {}) => {
     mathisSequenceActive = false;
     mathisExitStarted = false;
+    mathisEggPending = false;
+    mathisEggCache = null;
+    clearMathisEggRefreshTimer();
     const overlay = document.getElementById(MATHIS_TAKEOVER_ID);
     const syncAfterMathis = () => {
       if (searchInput) {
@@ -4323,8 +4384,9 @@
   const startMathisSequence = (overlay) => {
     mathisSequenceActive = true;
     mathisExitStarted = false;
+    clearMathisEggRefreshTimer();
     mathisEggCache = null;
-    prefetchMathisEggUrl().catch(() => {
+    prefetchMathisEggUrl({ force: true }).catch(() => {
       // If the prefetch fails we'll fallback to the popup flow on click.
     });
     resetMathisRectCache();
