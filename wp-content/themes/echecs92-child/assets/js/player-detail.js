@@ -503,7 +503,7 @@
     if (!raw) {
       return Promise.resolve(null);
     }
-    const url = `${FFE_EXTRAS_ENDPOINT}?id=${encodeURIComponent(raw)}&full=1&include_opponents=1`;
+    const url = `${FFE_EXTRAS_ENDPOINT}?id=${encodeURIComponent(raw)}&verify_live=0`;
     return fetchJsonWithRetry(url, { attempts: 3, baseDelayMs: 280 }).catch(() => null);
   };
 
@@ -883,12 +883,21 @@
       typeof extras.fide_official.sources === 'object'
         ? extras.fide_official.sources
         : null;
+    const fideOfficialRankStats =
+      extras &&
+      extras.fide_official &&
+      typeof extras.fide_official === 'object' &&
+      extras.fide_official.rankStats &&
+      typeof extras.fide_official.rankStats === 'object'
+        ? extras.fide_official.rankStats
+        : null;
     const fidePhoto = (fideProfile?.photo || '').toString().trim();
     const fideUrl = (fideProfile?.url || extras?.fide_url || '').toString().trim();
     const fideRankStats =
-      fideProfile && fideProfile.rankStats && typeof fideProfile.rankStats === 'object'
+      fideOfficialRankStats ||
+      (fideProfile && fideProfile.rankStats && typeof fideProfile.rankStats === 'object'
         ? fideProfile.rankStats
-        : buildRankStatsFromLegacy(Array.isArray(fideProfile?.ranks) ? fideProfile.ranks : []);
+        : buildRankStatsFromLegacy(Array.isArray(fideProfile?.ranks) ? fideProfile.ranks : []));
 
     const title = document.createElement('h1');
     title.className = 'player-hero__name';
@@ -1005,6 +1014,10 @@
     appendExtraItem('FIDE ID', fideProfile?.id || fideOfficial?.id || extras?.fide_official?.id || '');
     appendExtraItem('Naissance', fideOfficial?.birthYear || fideProfile?.birthYear || '');
     appendExtraItem('Genre', fideOfficial?.sex || fideProfile?.gender || '');
+    if (fideOfficial?.activity && typeof fideOfficial.activity === 'object') {
+      const statusLabel = fideOfficial.activity.isInactive ? 'Inactif' : 'Actif';
+      appendExtraItem('Statut FIDE', statusLabel);
+    }
 
     const officialRatings = fideOfficial?.ratings || null;
     if (officialRatings) {

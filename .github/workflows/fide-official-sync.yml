@@ -81,6 +81,7 @@ jobs:
           echo "fide shards: $(find wp-content/themes/echecs92-child/assets/data/fide-players/by-id -type f -name '*.json' | wc -l)"
           echo "manifest bytes: $(wc -c < wp-content/themes/echecs92-child/assets/data/fide-players/manifest.json)"
           echo "archives index bytes: $(wc -c < wp-content/themes/echecs92-child/assets/data/fide-players/archives.json)"
+          echo "rank-stats bytes: $(wc -c < wp-content/themes/echecs92-child/assets/data/fide-players/rank-stats.json)"
       - name: Deploy generated data atomically
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}

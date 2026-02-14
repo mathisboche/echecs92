@@ -800,6 +800,142 @@ function cdje92_fide_official_get_manifest() {
     return $cache;
 }
 
+function cdje92_fide_official_get_rank_stats() {
+    static $cache = null;
+    static $loaded = false;
+    if ( $loaded ) {
+        return $cache;
+    }
+    $loaded = true;
+    $stats_path = trailingslashit( get_stylesheet_directory() ) . 'assets/data/fide-players/rank-stats.json';
+    $cache = cdje92_fide_official_load_json_file( $stats_path );
+    return $cache;
+}
+
+function cdje92_fide_official_positive_int( $value ) {
+    if ( is_int( $value ) ) {
+        return $value > 0 ? $value : null;
+    }
+    if ( is_float( $value ) ) {
+        $rounded = (int) round( $value );
+        return $rounded > 0 ? $rounded : null;
+    }
+    $raw = cdje92_ffe_player_clean_text( $value );
+    if ( $raw === '' ) {
+        return null;
+    }
+    if ( ! preg_match( '/\d+/', $raw ) ) {
+        return null;
+    }
+    $parsed = (int) preg_replace( '/[^\d]+/', '', $raw );
+    return $parsed > 0 ? $parsed : null;
+}
+
+function cdje92_fide_official_normalize_federation( $value ) {
+    $clean = strtoupper( cdje92_ffe_player_clean_text( $value ) );
+    if ( $clean === '' ) {
+        return '';
+    }
+    return preg_replace( '/[^A-Z0-9]+/', '', $clean );
+}
+
+function cdje92_fide_official_flag_payload( $flag ) {
+    $raw = strtolower( cdje92_ffe_player_clean_text( $flag ) );
+    $raw = preg_replace( '/[^a-z]+/', '', $raw );
+    $inactive = strpos( $raw, 'i' ) !== false;
+    $woman = strpos( $raw, 'w' ) !== false;
+
+    return [
+        'raw' => $raw,
+        'isActive' => ! $inactive,
+        'isInactive' => $inactive,
+        'isWoman' => $woman,
+        'isWomanInactive' => $inactive && $woman,
+    ];
+}
+
+function cdje92_fide_official_build_rank_entry( $title, $scope, $region, $bucket ) {
+    if ( ! is_array( $bucket ) ) {
+        return null;
+    }
+    $active = cdje92_fide_official_positive_int( $bucket['activePlayers'] ?? null );
+    $all = cdje92_fide_official_positive_int( $bucket['allPlayers'] ?? null );
+    if ( $active === null && $all === null ) {
+        return null;
+    }
+
+    return [
+        'title' => cdje92_ffe_player_clean_text( $title ),
+        'scope' => cdje92_ffe_player_clean_text( $scope ),
+        'region' => cdje92_ffe_player_clean_text( $region ),
+        'activePlayers' => $active,
+        'allPlayers' => $all,
+    ];
+}
+
+function cdje92_fide_official_build_rank_stats_payload( $record, $rank_stats ) {
+    if ( ! is_array( $record ) || ! is_array( $rank_stats ) ) {
+        return null;
+    }
+
+    $world = cdje92_fide_official_build_rank_entry(
+        'World Rank',
+        'world',
+        '',
+        is_array( $rank_stats['world'] ?? null ) ? $rank_stats['world'] : []
+    );
+
+    $federation = cdje92_fide_official_normalize_federation( $record['f'] ?? '' );
+    $federation_bucket = null;
+    if ( $federation !== '' ) {
+        $federation_bucket = is_array( $rank_stats['federations'][ $federation ] ?? null )
+            ? $rank_stats['federations'][ $federation ]
+            : null;
+    }
+    $national = cdje92_fide_official_build_rank_entry(
+        $federation !== '' ? 'National Rank ' . $federation : 'National Rank',
+        'national',
+        $federation,
+        is_array( $federation_bucket ) ? $federation_bucket : []
+    );
+
+    $continent = cdje92_ffe_player_clean_text( $record['ct'] ?? '' );
+    if ( $continent === '' && is_array( $federation_bucket ) ) {
+        $continent = cdje92_ffe_player_clean_text( $federation_bucket['continent'] ?? '' );
+    }
+    $continent_bucket = null;
+    if ( $continent !== '' ) {
+        $continent_bucket = is_array( $rank_stats['continents'][ $continent ] ?? null )
+            ? $rank_stats['continents'][ $continent ]
+            : null;
+    }
+    $continent_entry = cdje92_fide_official_build_rank_entry(
+        $continent !== '' ? 'Continent Rank ' . $continent : 'Continent Rank',
+        'continent',
+        $continent,
+        is_array( $continent_bucket ) ? $continent_bucket : []
+    );
+
+    $items = [];
+    foreach ( [ $world, $national, $continent_entry ] as $entry ) {
+        if ( is_array( $entry ) ) {
+            $items[] = $entry;
+        }
+    }
+    if ( empty( $items ) ) {
+        return null;
+    }
+
+    return [
+        'source' => 'official-files',
+        'updated' => cdje92_ffe_player_clean_text( $rank_stats['updated'] ?? '' ),
+        'items' => $items,
+        'world' => $world,
+        'national' => $national,
+        'continent' => $continent_entry,
+    ];
+}
+
 function cdje92_fide_official_get_player_record( $fide_id ) {
     $digits = preg_replace( '/\D+/', '', (string) $fide_id );
     if ( $digits === '' ) {
@@ -833,10 +969,15 @@ function cdje92_fide_official_record_to_public_payload( $record ) {
     if ( ! is_array( $record ) ) {
         return null;
     }
+    $federation = cdje92_fide_official_normalize_federation( $record['f'] ?? '' );
+    $continent = cdje92_ffe_player_clean_text( $record['ct'] ?? '' );
+    $activity = cdje92_fide_official_flag_payload( $record['fl'] ?? '' );
+
     return [
         'id' => cdje92_ffe_player_clean_text( $record['id'] ?? '' ),
         'name' => cdje92_ffe_player_clean_text( $record['n'] ?? '' ),
-        'federation' => cdje92_ffe_player_clean_text( $record['f'] ?? '' ),
+        'federation' => $federation,
+        'continent' => $continent,
         'sex' => cdje92_ffe_player_clean_text( $record['sx'] ?? '' ),
         'title' => cdje92_ffe_player_clean_text( $record['t'] ?? '' ),
         'womenTitle' => cdje92_ffe_player_clean_text( $record['wt'] ?? '' ),
@@ -844,6 +985,7 @@ function cdje92_fide_official_record_to_public_payload( $record ) {
         'foaTitle' => cdje92_ffe_player_clean_text( $record['ft'] ?? '' ),
         'birthYear' => (int) ( $record['by'] ?? 0 ),
         'flag' => cdje92_ffe_player_clean_text( $record['fl'] ?? '' ),
+        'activity' => $activity,
         'ratings' => [
             'standard' => [
                 'value' => (int) ( $record['sr'] ?? 0 ),
@@ -1601,13 +1743,15 @@ function cdje92_rest_get_ffe_player( WP_REST_Request $request ) {
         $request->get_param( 'include_opponents' ),
         $full
     );
+    $verify_live = cdje92_rest_param_to_bool( $request->get_param( 'verify_live' ), false );
     $refresh = cdje92_rest_param_to_bool( $request->get_param( 'refresh' ), false );
 
     $cache_key = sprintf(
-        'cdje92_ffe_player_%s_%d_%d',
+        'cdje92_ffe_player_%s_%d_%d_%d',
         $id,
         $full ? 1 : 0,
-        $include_opponents ? 1 : 0
+        $include_opponents ? 1 : 0,
+        $verify_live ? 1 : 0
     );
     $cached = get_transient( $cache_key );
     if ( ! $refresh && is_array( $cached ) ) {
@@ -1639,13 +1783,16 @@ function cdje92_rest_get_ffe_player( WP_REST_Request $request ) {
     }
 
     $extras = cdje92_ffe_player_extract_extras_from_html( $body );
-    $fide = cdje92_fide_fetch_full_profile(
-        $extras['fide_url'] ?? '',
-        [
-            'full' => $full,
-            'includeOpponents' => $include_opponents,
-        ]
-    );
+    $fide = null;
+    if ( $verify_live ) {
+        $fide = cdje92_fide_fetch_full_profile(
+            $extras['fide_url'] ?? '',
+            [
+                'full' => $full,
+                'includeOpponents' => $include_opponents,
+            ]
+        );
+    }
 
     $fide_id = '';
     if ( is_array( $fide ) ) {
@@ -1657,6 +1804,8 @@ function cdje92_rest_get_ffe_player( WP_REST_Request $request ) {
 
     $fide_official_raw = $fide_id !== '' ? cdje92_fide_official_get_player_record( $fide_id ) : null;
     $fide_official = cdje92_fide_official_record_to_public_payload( $fide_official_raw );
+    $fide_rank_stats_source = cdje92_fide_official_get_rank_stats();
+    $fide_official_rank_stats = cdje92_fide_official_build_rank_stats_payload( $fide_official_raw, $fide_rank_stats_source );
     $fide_compare = cdje92_fide_build_comparison_payload( $fide_official, $fide );
     $fide_manifest = cdje92_fide_official_get_manifest();
 
@@ -1669,17 +1818,23 @@ function cdje92_rest_get_ffe_player( WP_REST_Request $request ) {
         'fide_official' => [
             'id' => $fide_id,
             'player' => $fide_official,
+            'rankStats' => $fide_official_rank_stats,
             'comparison' => $fide_compare,
+            'mode' => [
+                'officialPrimary' => true,
+                'liveVerification' => $verify_live,
+            ],
             'sources' => [
                 'downloadPage' => is_array( $fide_manifest ) ? ( $fide_manifest['sources']['downloadPage'] ?? '' ) : '',
                 'playersListTxt' => is_array( $fide_manifest ) ? ( $fide_manifest['sources']['playersListTxt'] ?? '' ) : '',
                 'archivesIndex' => '/wp-content/themes/echecs92-child/assets/data/fide-players/archives.json',
                 'manifest' => '/wp-content/themes/echecs92-child/assets/data/fide-players/manifest.json',
+                'rankStats' => '/wp-content/themes/echecs92-child/assets/data/fide-players/rank-stats.json',
             ],
         ],
     ];
 
-    $cache_ttl = $full ? 6 * HOUR_IN_SECONDS : DAY_IN_SECONDS;
+    $cache_ttl = $verify_live ? ( $full ? 6 * HOUR_IN_SECONDS : 12 * HOUR_IN_SECONDS ) : DAY_IN_SECONDS;
     set_transient( $cache_key, $payload, $cache_ttl );
 
     return rest_ensure_response( $payload );

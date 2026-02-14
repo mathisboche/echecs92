@@ -6,6 +6,7 @@
  * - wp-content/themes/echecs92-child/assets/data/fide-players/by-id/<00-99>.json
  * - wp-content/themes/echecs92-child/assets/data/fide-players/manifest.json
  * - wp-content/themes/echecs92-child/assets/data/fide-players/archives.json
+ * - wp-content/themes/echecs92-child/assets/data/fide-players/rank-stats.json
  * - wp-content/themes/echecs92-child/assets/data/fide-players/archives/<period>/*.zip (optionnel)
  *
  * Variables d'environnement:
@@ -26,6 +27,8 @@ const OUTPUT_SHARDS_DIR = path.join(OUTPUT_ROOT, 'by-id');
 const OUTPUT_ARCHIVES_DIR = path.join(OUTPUT_ROOT, 'archives');
 const MANIFEST_PATH = path.join(OUTPUT_ROOT, 'manifest.json');
 const ARCHIVES_INDEX_PATH = path.join(OUTPUT_ROOT, 'archives.json');
+const RANK_STATS_PATH = path.join(OUTPUT_ROOT, 'rank-stats.json');
+const CONTINENT_MAP_PATH = path.join(ROOT, 'scripts', 'data', 'iso-alpha3-continent.json');
 
 const DOWNLOAD_PAGE_URL = 'https://ratings.fide.com/download_lists.phtml';
 const DOWNLOAD_ARCHIVE_ENDPOINT = 'https://ratings.fide.com/a_download.php?period=';
@@ -41,8 +44,126 @@ const maxRows = Number.isFinite(Number(process.env.FIDE_MAX_ROWS))
   ? Math.max(0, Number.parseInt(process.env.FIDE_MAX_ROWS, 10))
   : 0;
 
+const FIDE_FEDERATION_CONTINENT_OVERRIDES = {
+  AHO: 'Americas',
+  ALG: 'Africa',
+  ANG: 'Africa',
+  ANT: 'Americas',
+  ARU: 'Americas',
+  BAH: 'Americas',
+  BAN: 'Asia',
+  BAR: 'Americas',
+  BER: 'Americas',
+  BHU: 'Asia',
+  BIZ: 'Americas',
+  BOT: 'Africa',
+  BRU: 'Asia',
+  BUL: 'Europe',
+  BUR: 'Africa',
+  CAM: 'Asia',
+  CAY: 'Americas',
+  CGO: 'Africa',
+  CHA: 'Africa',
+  CHI: 'Americas',
+  CRC: 'Americas',
+  CRO: 'Europe',
+  DEN: 'Europe',
+  ENG: 'Europe',
+  ESA: 'Americas',
+  FAI: 'Europe',
+  FIJ: 'Oceania',
+  FID: 'Europe',
+  GAM: 'Africa',
+  GCI: 'Europe',
+  GEQ: 'Africa',
+  GER: 'Europe',
+  GRE: 'Europe',
+  GRN: 'Americas',
+  GUA: 'Americas',
+  GUI: 'Africa',
+  HAI: 'Americas',
+  HON: 'Americas',
+  INA: 'Asia',
+  IOM: 'Europe',
+  IRI: 'Asia',
+  ISV: 'Americas',
+  IVB: 'Americas',
+  JCI: 'Europe',
+  KOS: 'Europe',
+  KSA: 'Asia',
+  KUW: 'Asia',
+  LAT: 'Europe',
+  LBA: 'Africa',
+  LES: 'Africa',
+  MAD: 'Africa',
+  MAS: 'Asia',
+  MAW: 'Africa',
+  MGL: 'Asia',
+  MNC: 'Europe',
+  MRI: 'Africa',
+  MTN: 'Africa',
+  MYA: 'Asia',
+  NCA: 'Americas',
+  NED: 'Europe',
+  NEP: 'Asia',
+  NIG: 'Africa',
+  NIR: 'Europe',
+  NON: 'Unknown',
+  OMA: 'Asia',
+  PAR: 'Americas',
+  PHI: 'Asia',
+  PLE: 'Asia',
+  POR: 'Europe',
+  PUR: 'Americas',
+  RSA: 'Africa',
+  SCO: 'Europe',
+  SEY: 'Africa',
+  SKN: 'Americas',
+  SLO: 'Europe',
+  SOL: 'Oceania',
+  SRI: 'Asia',
+  SUD: 'Africa',
+  SUI: 'Europe',
+  TAN: 'Africa',
+  TGA: 'Oceania',
+  TOG: 'Africa',
+  TPE: 'Asia',
+  UAE: 'Asia',
+  UNK: 'Unknown',
+  URU: 'Americas',
+  VAN: 'Oceania',
+  VIE: 'Asia',
+  VIN: 'Americas',
+  WLS: 'Europe',
+  ZAM: 'Africa',
+  ZIM: 'Africa',
+};
+
 const ensureDir = (dirPath) => {
   fs.mkdirSync(dirPath, { recursive: true });
+};
+
+const loadContinentMap = () => {
+  try {
+    const raw = fs.readFileSync(CONTINENT_MAP_PATH, 'utf8');
+    const decoded = JSON.parse(raw);
+    const byAlpha3 = decoded && typeof decoded === 'object' && decoded.byAlpha3 && typeof decoded.byAlpha3 === 'object' ? decoded.byAlpha3 : {};
+    const out = {};
+    Object.keys(byAlpha3).forEach((key) => {
+      const code = (key || '').toString().trim().toUpperCase();
+      const continent = (byAlpha3[key] || '').toString().trim();
+      if (code && continent) {
+        out[code] = continent;
+      }
+    });
+    Object.entries(FIDE_FEDERATION_CONTINENT_OVERRIDES).forEach(([code, continent]) => {
+      out[code] = continent;
+    });
+    return out;
+  } catch (error) {
+    console.warn(`Continent map unavailable at ${CONTINENT_MAP_PATH}: ${error.message}`);
+    return { ...FIDE_FEDERATION_CONTINENT_OVERRIDES };
+  }
 };
 
 const decodeHtmlEntities = (value) => {
@@ -253,6 +374,162 @@ const toInt = (value) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+const normalizeFederationCode = (value) => (value || '').toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+const normalizeSex = (value) => (value || '').toString().trim().toUpperCase().replace(/[^A-Z]/g, '');
+
+const normalizeFlag = (value) => (value || '').toString().trim().toLowerCase().replace(/[^a-z]/g, '');
+
+const isInactiveFlag = (flag) => normalizeFlag(flag).includes('i');
+
+const isWomanFlag = (flag) => normalizeFlag(flag).includes('w');
+
+const continentForFederation = (fedCode, continentMap) => {
+  const code = normalizeFederationCode(fedCode);
+  if (!code) {
+    return 'Unknown';
+  }
+  return continentMap[code] || 'Unknown';
+};
+
+const createAggregateCounter = (meta = {}) => ({
+  ...meta,
+  allPlayers: 0,
+  activePlayers: 0,
+  inactivePlayers: 0,
+  womenPlayers: 0,
+  womenInactivePlayers: 0,
+  standardRatedPlayers: 0,
+  rapidRatedPlayers: 0,
+  blitzRatedPlayers: 0,
+});
+
+const accumulateCounter = (target, record, context = {}) => {
+  if (!target || !record) {
+    return;
+  }
+  const inactive = isInactiveFlag(record.fl);
+  const womanByFlag = isWomanFlag(record.fl);
+  const womanBySex = normalizeSex(record.sx) === 'F';
+  const woman = womanByFlag || womanBySex;
+
+  target.allPlayers += 1;
+  if (inactive) {
+    target.inactivePlayers += 1;
+  } else {
+    target.activePlayers += 1;
+  }
+  if (woman) {
+    target.womenPlayers += 1;
+    if (inactive) {
+      target.womenInactivePlayers += 1;
+    }
+  }
+  if (toInt(record.sr) > 0) {
+    target.standardRatedPlayers += 1;
+  }
+  if (toInt(record.rr) > 0) {
+    target.rapidRatedPlayers += 1;
+  }
+  if (toInt(record.br) > 0) {
+    target.blitzRatedPlayers += 1;
+  }
+  if (context.recordIdsSet && context.fedCode) {
+    context.recordIdsSet.add(context.fedCode);
+  }
+};
+
+const createRankStatsAccumulator = () => ({
+  world: createAggregateCounter(),
+  federations: new Map(),
+  continents: new Map(),
+  knownFederations: new Set(),
+  unknownFederations: new Set(),
+});
+
+const accumulateRankStats = (acc, record, continentMap) => {
+  if (!acc || !record || typeof record !== 'object') {
+    return;
+  }
+
+  const fedCode = normalizeFederationCode(record.f);
+  const continent = continentForFederation(fedCode, continentMap);
+  record.f = fedCode;
+  record.ct = continent;
+
+  accumulateCounter(acc.world, record);
+
+  const federationKey = fedCode || 'UNK';
+  if (!acc.federations.has(federationKey)) {
+    acc.federations.set(
+      federationKey,
+      createAggregateCounter({
+        federation: federationKey,
+        continent,
+      })
+    );
+  }
+  const federationStats = acc.federations.get(federationKey);
+  if (federationStats && continent && federationStats.continent === 'Unknown' && continent !== 'Unknown') {
+    federationStats.continent = continent;
+  }
+  accumulateCounter(federationStats, record);
+
+  if (!acc.continents.has(continent)) {
+    acc.continents.set(
+      continent,
+      createAggregateCounter({
+        continent,
+      })
+    );
+  }
+  accumulateCounter(acc.continents.get(continent), record);
+
+  if (fedCode) {
+    if (continent === 'Unknown') {
+      acc.unknownFederations.add(fedCode);
+    } else {
+      acc.knownFederations.add(fedCode);
+    }
+  }
+};
+
+const mapToSortedObject = (map, sortNumericField = 'allPlayers') => {
+  const entries = Array.from(map.entries());
+  entries.sort((a, b) => {
+    const av = Number(a[1]?.[sortNumericField] || 0);
+    const bv = Number(b[1]?.[sortNumericField] || 0);
+    if (bv !== av) {
+      return bv - av;
+    }
+    return a[0].localeCompare(b[0], 'en', { numeric: true, sensitivity: 'base' });
+  });
+  const out = {};
+  entries.forEach(([key, value]) => {
+    out[key] = value;
+  });
+  return out;
+};
+
+const buildRankStatsPayload = (acc, updatedIso, playersTxtUrl) => ({
+  version: 1,
+  updated: updatedIso,
+  provider: 'FIDE',
+  mode: 'official-files',
+  source: {
+    playersListTxt: playersTxtUrl,
+    continentMap: 'CLDR codeMappings + territoryContainment (+ FIDE federation overrides)',
+  },
+  world: acc.world,
+  continents: mapToSortedObject(acc.continents, 'allPlayers'),
+  federations: mapToSortedObject(acc.federations, 'allPlayers'),
+  coverage: {
+    knownFederations: acc.knownFederations.size,
+    unknownFederations: acc.unknownFederations.size,
+    unknownFederationList: Array.from(acc.unknownFederations).sort(),
+  },
+});
+
 const sliceField = (line, start, end) => {
   const from = Math.max(0, start || 0);
   const to = Number.isFinite(end) ? Math.max(from, end) : line.length;
@@ -350,7 +627,7 @@ const finalizeShardWriters = (writers) => {
   return { shardFiles, totalPlayers };
 };
 
-const parsePlayersZipToShards = (zipPath, updatedIso) =>
+const parsePlayersZipToShards = (zipPath, updatedIso, continentMap) =>
   new Promise((resolve, reject) => {
     const unzip = spawnSync('unzip', ['-l', zipPath], { encoding: 'utf8' });
     if (unzip.status !== 0) {
@@ -359,6 +636,7 @@ const parsePlayersZipToShards = (zipPath, updatedIso) =>
     }
 
     const writers = createShardWriters(updatedIso);
+    const rankStatsAcc = createRankStatsAccumulator();
     const child = spawn('unzip', ['-p', zipPath], {
       stdio: ['ignore', 'pipe', 'inherit'],
     });
@@ -400,6 +678,7 @@ const parsePlayersZipToShards = (zipPath, updatedIso) =>
         lineCount,
         parsedRows,
         skippedRows,
+        rankStats: buildRankStatsPayload(rankStatsAcc, updatedIso, ''),
       });
     };
 
@@ -427,6 +706,7 @@ const parsePlayersZipToShards = (zipPath, updatedIso) =>
         skippedRows += 1;
         return;
       }
+      accumulateRankStats(rankStatsAcc, record, continentMap);
       parsedRows += 1;
       appendShardRecord(writers, record);
     });
@@ -468,6 +748,7 @@ const writeJson = (targetPath, payload, pretty = true) => {
 
 const main = async () => {
   ensureDir(OUTPUT_ROOT);
+  const continentMap = loadContinentMap();
 
   const updatedIso = new Date().toISOString();
   console.log('Fetching FIDE download page...');
@@ -486,7 +767,7 @@ const main = async () => {
   downloadFile(playersTxtUrl, playersZipPath);
 
   console.log('Parsing official players list...');
-  const parsedPlayers = await parsePlayersZipToShards(playersZipPath, updatedIso);
+  const parsedPlayers = await parsePlayersZipToShards(playersZipPath, updatedIso, continentMap);
   if (maxRows === 0 && parsedPlayers.totalPlayers < 100000) {
     throw new Error(
       `Le volume de joueurs parses semble anormal (${parsedPlayers.totalPlayers}). Synchronisation interrompue.`
@@ -535,6 +816,14 @@ const main = async () => {
       }
     }
   }
+
+  const rankStatsPayload = {
+    ...(parsedPlayers.rankStats || {}),
+    source: {
+      playersListTxt: playersTxtUrl,
+      continentMap: 'CLDR codeMappings + territoryContainment (+ FIDE federation overrides)',
+    },
+  };
 
   const manifest = {
     version: 1,
@@ -585,6 +874,9 @@ const main = async () => {
       index: '/wp-content/themes/echecs92-child/assets/data/fide-players/archives.json',
       downloadedPeriods: downloadedArchives,
     },
+    rankings: {
+      statsIndex: '/wp-content/themes/echecs92-child/assets/data/fide-players/rank-stats.json',
+    },
   };
 
   const archivesIndex = {
@@ -597,6 +889,7 @@ const main = async () => {
 
   writeJson(MANIFEST_PATH, manifest);
   writeJson(ARCHIVES_INDEX_PATH, archivesIndex);
+  writeJson(RANK_STATS_PATH, rankStatsPayload);
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 
