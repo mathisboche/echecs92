@@ -935,6 +935,138 @@ function cdje92_fide_build_comparison_payload( $official, $live_payload ) {
     ];
 }
 
+function cdje92_fide_parse_rank_int( $value ) {
+    if ( is_int( $value ) ) {
+        return $value > 0 ? $value : null;
+    }
+    if ( is_float( $value ) ) {
+        $rounded = (int) round( $value );
+        return $rounded > 0 ? $rounded : null;
+    }
+    $raw = cdje92_ffe_player_clean_text( $value );
+    if ( $raw === '' ) {
+        return null;
+    }
+    $digits = preg_replace( '/[^\d]+/', '', $raw );
+    if ( $digits === '' ) {
+        return null;
+    }
+    $parsed = (int) $digits;
+    return $parsed > 0 ? $parsed : null;
+}
+
+function cdje92_fide_rank_scope_meta( $title ) {
+    $clean = cdje92_ffe_player_clean_text( $title );
+    if ( $clean === '' ) {
+        return [
+            'scope' => 'other',
+            'region' => '',
+        ];
+    }
+
+    if ( preg_match( '/^World Rank\b/i', $clean ) ) {
+        return [
+            'scope' => 'world',
+            'region' => '',
+        ];
+    }
+    if ( preg_match( '/^National Rank(?:\s+(.+))?$/i', $clean, $matches ) ) {
+        return [
+            'scope' => 'national',
+            'region' => cdje92_ffe_player_clean_text( $matches[1] ?? '' ),
+        ];
+    }
+    if ( preg_match( '/^Continent Rank(?:\s+(.+))?$/i', $clean, $matches ) ) {
+        return [
+            'scope' => 'continent',
+            'region' => cdje92_ffe_player_clean_text( $matches[1] ?? '' ),
+        ];
+    }
+
+    return [
+        'scope' => 'other',
+        'region' => '',
+    ];
+}
+
+function cdje92_fide_rank_entry_key( $label ) {
+    $clean = strtolower( cdje92_ffe_player_clean_text( $label ) );
+    if ( $clean === 'active players' ) {
+        return 'activePlayers';
+    }
+    if ( $clean === 'all players' ) {
+        return 'allPlayers';
+    }
+    return '';
+}
+
+function cdje92_fide_build_rank_stats_payload( $ranks ) {
+    if ( ! is_array( $ranks ) ) {
+        return null;
+    }
+
+    $items = [];
+
+    foreach ( $ranks as $block ) {
+        if ( ! is_array( $block ) ) {
+            continue;
+        }
+
+        $title = cdje92_ffe_player_clean_text( $block['title'] ?? '' );
+        $meta = cdje92_fide_rank_scope_meta( $title );
+        $entry = [
+            'title' => $title,
+            'scope' => $meta['scope'],
+            'region' => $meta['region'],
+            'activePlayers' => null,
+            'allPlayers' => null,
+        ];
+
+        $rows = is_array( $block['entries'] ?? null ) ? $block['entries'] : [];
+        foreach ( $rows as $row ) {
+            if ( ! is_array( $row ) ) {
+                continue;
+            }
+            $key = cdje92_fide_rank_entry_key( $row['label'] ?? '' );
+            if ( $key === '' ) {
+                continue;
+            }
+            $entry[ $key ] = cdje92_fide_parse_rank_int( $row['value'] ?? null );
+        }
+
+        if ( $entry['title'] === '' && $entry['activePlayers'] === null && $entry['allPlayers'] === null ) {
+            continue;
+        }
+        $items[] = $entry;
+    }
+
+    if ( empty( $items ) ) {
+        return null;
+    }
+
+    $world = null;
+    $national = null;
+    $continent = null;
+
+    foreach ( $items as $item ) {
+        $scope = $item['scope'] ?? '';
+        if ( $scope === 'world' && $world === null ) {
+            $world = $item;
+        } elseif ( $scope === 'national' && $national === null ) {
+            $national = $item;
+        } elseif ( $scope === 'continent' && $continent === null ) {
+            $continent = $item;
+        }
+    }
+
+    return [
+        'items' => $items,
+        'world' => $world,
+        'national' => $national,
+        'continent' => $continent,
+    ];
+}
+
 function cdje92_fide_fetch_text( $url, $options = [] ) {
     $target_url = is_string( $url ) ? trim( $url ) : '';
     if ( $target_url === '' ) {
@@ -1238,6 +1370,8 @@ function cdje92_fide_extract_profile_payload( $profile_html, $profile_url, $fide
         }
     }
 
+    $rank_stats = cdje92_fide_build_rank_stats_payload( $ranks );
+
     return [
         'id' => $fide_id,
         'url' => $profile_url,
@@ -1260,6 +1394,7 @@ function cdje92_fide_extract_profile_payload( $profile_html, $profile_url, $fide
         ),
         'ratings' => $ratings,
         'ranks' => $ranks,
+        'rankStats' => $rank_stats,
         'historyTable' => $history,
         'infoTables' => $info_tables,
     ];

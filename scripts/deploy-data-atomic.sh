@@ -9,7 +9,12 @@ LOCAL_DIR="${1:-wp-content/themes/echecs92-child/assets/data}"
 REMOTE_ASSETS_DIR="${2:-/www/wp-content/themes/echecs92-child/assets}"
 LIVE_DIR_NAME="${3:-data}"
 STAGING_DIR_NAME="${LIVE_DIR_NAME}.__staging"
-BACKUP_DIR_NAME="${LIVE_DIR_NAME}.__backup_${GITHUB_RUN_ID:-manual}_${GITHUB_RUN_ATTEMPT:-1}_$(date +%s)"
+RUN_TAG="${GITHUB_RUN_ID:-manual}_${GITHUB_RUN_ATTEMPT:-1}_$(date +%s)"
+UPLOAD_DIR_NAME="${LIVE_DIR_NAME}.__upload_${RUN_TAG}"
+BACKUP_DIR_NAME="${LIVE_DIR_NAME}.__backup_${RUN_TAG}"
+LOCK_DIR_NAME="${LIVE_DIR_NAME}.__deploy_lock"
+LOCK_WAIT_SECONDS="${DEPLOY_LOCK_WAIT_SECONDS:-900}"
+LOCK_RETRY_SECONDS="${DEPLOY_LOCK_RETRY_SECONDS:-10}"
 
 if [[ ! -d "${LOCAL_DIR}" ]]; then
   echo "Local directory not found: ${LOCAL_DIR}" >&2
@@ -47,7 +52,68 @@ if [[ -z "$(find "${LOCAL_DIR}/ffe-players/by-id" -maxdepth 1 -type f -name '*.j
   exit 1
 fi
 
-echo "→ Uploading generated data to remote staging (${STAGING_DIR_NAME})..."
+if ! [[ "${LOCK_WAIT_SECONDS}" =~ ^[0-9]+$ ]] || (( LOCK_WAIT_SECONDS < 1 )); then
+  echo "Invalid DEPLOY_LOCK_WAIT_SECONDS: ${LOCK_WAIT_SECONDS}" >&2
+  exit 1
+fi
+
+if ! [[ "${LOCK_RETRY_SECONDS}" =~ ^[0-9]+$ ]] || (( LOCK_RETRY_SECONDS < 1 )); then
+  echo "Invalid DEPLOY_LOCK_RETRY_SECONDS: ${LOCK_RETRY_SECONDS}" >&2
+  exit 1
+fi
+
+acquire_remote_lock() {
+  local waited=0
+  while true; do
+    if lftp -u "${FTP_USERNAME}","${FTP_PASSWORD}" "ftp://${FTP_SERVER}:21" <<EOF
+set ftp:passive-mode true
+set net:max-retries 2
+set net:reconnect-interval-base 2
+set net:timeout 20
+set xfer:use-temp-file false
+set cmd:fail-exit false
+mkdir "${REMOTE_ASSETS_DIR}"
+set cmd:fail-exit true
+mkdir "${REMOTE_ASSETS_DIR}/${LOCK_DIR_NAME}"
+bye
+EOF
+    then
+      echo "→ Remote deploy lock acquired (${LOCK_DIR_NAME})."
+      return 0
+    fi
+
+    if (( waited >= LOCK_WAIT_SECONDS )); then
+      echo "ERROR: Could not acquire remote deploy lock (${LOCK_DIR_NAME}) after ${LOCK_WAIT_SECONDS}s." >&2
+      return 1
+    fi
+
+    echo "→ Deploy lock busy; retrying in ${LOCK_RETRY_SECONDS}s..."
+    sleep "${LOCK_RETRY_SECONDS}"
+    waited=$((waited + LOCK_RETRY_SECONDS))
+  done
+}
+
+release_remote_lock() {
+  lftp -u "${FTP_USERNAME}","${FTP_PASSWORD}" "ftp://${FTP_SERVER}:21" <<EOF || true
+set ftp:passive-mode true
+set net:max-retries 1
+set net:reconnect-interval-base 1
+set net:timeout 15
+set cmd:fail-exit false
+rm -rf "${REMOTE_ASSETS_DIR}/${LOCK_DIR_NAME}"
+bye
+EOF
+}
+
+LOCK_ACQUIRED=0
+if acquire_remote_lock; then
+  LOCK_ACQUIRED=1
+else
+  exit 1
+fi
+trap 'if [[ "${LOCK_ACQUIRED}" -eq 1 ]]; then release_remote_lock; fi' EXIT
+
+echo "→ Uploading generated data to remote staging (${UPLOAD_DIR_NAME})..."
 lftp -u "${FTP_USERNAME}","${FTP_PASSWORD}" "ftp://${FTP_SERVER}:21" <<EOF
 set ftp:passive-mode true
 set net:max-retries 3
@@ -55,22 +121,27 @@ set net:reconnect-interval-base 5
 set net:reconnect-interval-max 20
 set net:timeout 30
 set xfer:use-temp-file false
-set cmd:fail-exit true
 set cmd:fail-exit false
 mkdir "${REMOTE_ASSETS_DIR}"
 set cmd:fail-exit true
 cd "${REMOTE_ASSETS_DIR}"
 set cmd:fail-exit false
-rm -rf "${STAGING_DIR_NAME}"
-mkdir "${STAGING_DIR_NAME}"
+rm -rf "${UPLOAD_DIR_NAME}"
+rm -rf "${BACKUP_DIR_NAME}"
 set cmd:fail-exit true
+mkdir "${UPLOAD_DIR_NAME}"
 # FTP target does not support chmod/site-perm operations reliably in parallel mode.
-mirror --reverse --verbose --only-newer --parallel=2 --no-perms "${LOCAL_DIR}/" "${STAGING_DIR_NAME}/"
-cls "${STAGING_DIR_NAME}/clubs-france.json"
-cls "${LIVE_DIR_NAME}"
+mirror --reverse --verbose --only-newer --parallel=2 --no-perms "${LOCAL_DIR}/" "${UPLOAD_DIR_NAME}/"
+cls "${UPLOAD_DIR_NAME}"
+set cmd:fail-exit false
 mv "${LIVE_DIR_NAME}" "${BACKUP_DIR_NAME}"
-mv "${STAGING_DIR_NAME}" "${LIVE_DIR_NAME}"
+set cmd:fail-exit true
+mv "${UPLOAD_DIR_NAME}" "${LIVE_DIR_NAME}"
+set cmd:fail-exit false
+rm -rf "${STAGING_DIR_NAME}"
 mv "${BACKUP_DIR_NAME}" "${STAGING_DIR_NAME}"
+rm -rf "${UPLOAD_DIR_NAME}"
+set cmd:fail-exit true
 bye
 EOF
 echo "→ Atomic swap completed."

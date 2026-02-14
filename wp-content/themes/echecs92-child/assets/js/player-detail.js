@@ -600,6 +600,152 @@
     return { main: str, tag: '' };
   };
 
+  const parsePositiveInt = (value) => {
+    if (Number.isInteger(value)) {
+      return value > 0 ? value : 0;
+    }
+    const raw = (value || '').toString().trim();
+    if (!raw) {
+      return 0;
+    }
+    const digits = raw.replace(/[^\d]+/g, '');
+    if (!digits) {
+      return 0;
+    }
+    const parsed = Number.parseInt(digits, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  };
+
+  const formatIntFr = (value) => {
+    const n = parsePositiveInt(value);
+    if (n <= 0) {
+      return '';
+    }
+    return new Intl.NumberFormat('fr-FR').format(n);
+  };
+
+  const rankScopeMeta = (title) => {
+    const clean = (title || '').toString().trim();
+    if (!clean) {
+      return { scope: 'other', region: '' };
+    }
+    if (/^World Rank\b/i.test(clean)) {
+      return { scope: 'world', region: '' };
+    }
+    const national = clean.match(/^National Rank(?:\s+(.+))?$/i);
+    if (national) {
+      return { scope: 'national', region: (national[1] || '').trim() };
+    }
+    const continent = clean.match(/^Continent Rank(?:\s+(.+))?$/i);
+    if (continent) {
+      return { scope: 'continent', region: (continent[1] || '').trim() };
+    }
+    return { scope: 'other', region: '' };
+  };
+
+  const rankEntryKey = (label) => {
+    const clean = (label || '').toString().trim().toLowerCase();
+    if (clean === 'active players') {
+      return 'activePlayers';
+    }
+    if (clean === 'all players') {
+      return 'allPlayers';
+    }
+    return '';
+  };
+
+  const buildRankStatsFromLegacy = (ranks) => {
+    if (!Array.isArray(ranks) || !ranks.length) {
+      return null;
+    }
+    const items = [];
+    for (const block of ranks) {
+      if (!block || typeof block !== 'object') {
+        continue;
+      }
+      const title = (block.title || '').toString().trim();
+      const scopeMeta = rankScopeMeta(title);
+      const item = {
+        title,
+        scope: scopeMeta.scope,
+        region: scopeMeta.region,
+        activePlayers: 0,
+        allPlayers: 0,
+      };
+      const entries = Array.isArray(block.entries) ? block.entries : [];
+      for (const entry of entries) {
+        if (!entry || typeof entry !== 'object') {
+          continue;
+        }
+        const key = rankEntryKey(entry.label || '');
+        if (!key) {
+          continue;
+        }
+        item[key] = parsePositiveInt(entry.value || '');
+      }
+      if (item.title || item.activePlayers > 0 || item.allPlayers > 0) {
+        items.push(item);
+      }
+    }
+    if (!items.length) {
+      return null;
+    }
+    return {
+      items,
+      world: items.find((item) => item.scope === 'world') || null,
+      national: items.find((item) => item.scope === 'national') || null,
+      continent: items.find((item) => item.scope === 'continent') || null,
+    };
+  };
+
+  const rankStatLabel = (item) => {
+    if (!item || typeof item !== 'object') {
+      return '';
+    }
+    const scope = (item.scope || '').toString().trim().toLowerCase();
+    const region = (item.region || '').toString().trim();
+    if (scope === 'world') {
+      return 'Rang mondial FIDE';
+    }
+    if (scope === 'national') {
+      return region ? `Rang national FIDE (${region})` : 'Rang national FIDE';
+    }
+    if (scope === 'continent') {
+      return region ? `Rang continent FIDE (${region})` : 'Rang continent FIDE';
+    }
+    return (item.title || 'Rang FIDE').toString().trim();
+  };
+
+  const rankStatValue = (item) => {
+    if (!item || typeof item !== 'object') {
+      return '';
+    }
+    const active = formatIntFr(item.activePlayers);
+    const all = formatIntFr(item.allPlayers);
+    const parts = [];
+    if (active) {
+      parts.push(`Active players: ${active}`);
+    }
+    if (all) {
+      parts.push(`All players: ${all}`);
+    }
+    return parts.join(' | ');
+  };
+
+  const collectRankItems = (rankStats) => {
+    if (!rankStats || typeof rankStats !== 'object') {
+      return [];
+    }
+    const preferred = ['world', 'national', 'continent']
+      .map((key) => rankStats[key])
+      .filter((item) => item && typeof item === 'object');
+    if (preferred.length) {
+      return preferred;
+    }
+    const items = Array.isArray(rankStats.items) ? rankStats.items : [];
+    return items.filter((item) => item && typeof item === 'object');
+  };
+
   const shouldShowRatingTagTooltip = (tag, options = {}) => {
     const normalizedTag = (tag || '').toString().trim().toUpperCase();
     if (!normalizedTag) {
@@ -714,6 +860,10 @@
         : null;
     const fidePhoto = (fideProfile?.photo || '').toString().trim();
     const fideUrl = (fideProfile?.url || extras?.fide_url || '').toString().trim();
+    const fideRankStats =
+      fideProfile && fideProfile.rankStats && typeof fideProfile.rankStats === 'object'
+        ? fideProfile.rankStats
+        : buildRankStatsFromLegacy(Array.isArray(fideProfile?.ranks) ? fideProfile.ranks : []);
 
     const title = document.createElement('h1');
     title.className = 'player-hero__name';
@@ -838,6 +988,16 @@
       const officialBlitz = Number(officialRatings?.blitz?.value || 0);
       const officialLabel = [officialStd > 0 ? officialStd : '-', officialRapid > 0 ? officialRapid : '-', officialBlitz > 0 ? officialBlitz : '-'].join(' / ');
       appendExtraItem('Classements officiels', officialLabel);
+    }
+
+    const rankItems = collectRankItems(fideRankStats);
+    for (const rankItem of rankItems) {
+      const label = rankStatLabel(rankItem);
+      const value = rankStatValue(rankItem);
+      if (!label || !value) {
+        continue;
+      }
+      appendExtraItem(label, value);
     }
 
     const chartPoints = Number(extras?.fide?.chart?.pointCount || fideProfile?.historyTable?.rowCount || 0);
