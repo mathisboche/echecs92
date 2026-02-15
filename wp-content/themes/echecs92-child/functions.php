@@ -576,7 +576,12 @@ add_action('init', function () {
     add_rewrite_rule('^joueurs/?$', 'index.php?pagename=joueurs', 'top');
     add_rewrite_rule('^joueur/([^/]+)/?$', 'index.php?pagename=joueur&ffe_player=$matches[1]', 'top');
 
-    $rewrite_version = '2026-02-10';
+    add_rewrite_rule('^tournois-92/?$', 'index.php?pagename=tournois-92', 'top');
+    add_rewrite_rule('^tournois/?$', 'index.php?pagename=tournois', 'top');
+    add_rewrite_rule('^tournois-france/?$', 'index.php?pagename=tournois', 'top');
+    add_rewrite_rule('^tournoi/([0-9]+)/?$', 'index.php?pagename=tournoi&tournoi_ref=$matches[1]', 'top');
+
+    $rewrite_version = '2026-02-16';
     if (is_admin() && current_user_can('manage_options') && get_option('cdje92_rewrite_rules_version') !== $rewrite_version) {
         flush_rewrite_rules(false);
         update_option('cdje92_rewrite_rules_version', $rewrite_version);
@@ -600,6 +605,18 @@ add_action('init', function () {
         [
             'slug' => 'joueurs-92',
             'title' => 'Joueurs du 92',
+        ],
+        [
+            'slug' => 'tournois',
+            'title' => 'Tournois en France',
+        ],
+        [
+            'slug' => 'tournois-92',
+            'title' => 'Tournois du 92',
+        ],
+        [
+            'slug' => 'tournoi',
+            'title' => 'Fiche tournoi',
         ],
     ];
 
@@ -2116,6 +2133,11 @@ add_action('template_redirect', function () {
         exit;
     }
 
+    if (preg_match('#^/tournois-france/?$#i', $normalized)) {
+        wp_redirect(home_url('/tournois/') . $query_string, 301);
+        exit;
+    }
+
     if (preg_match('#^/gouvernance/?$#i', $normalized)) {
         wp_redirect(home_url('/comite/gouvernance/') . $query_string, 301);
         exit;
@@ -2135,6 +2157,9 @@ add_filter('redirect_canonical', function ($redirect_url, $requested_url) {
         '/carte-des-clubs/' => true,
         '/carte-des-clubs-france/' => true,
         '/carte-des-clubs-92/' => true,
+        '/tournois/' => true,
+        '/tournois-france/' => true,
+        '/tournois-92/' => true,
     ];
 
     if (isset($alias_bases[$normalized_slash])) {
@@ -2158,6 +2183,10 @@ add_filter('redirect_canonical', function ($redirect_url, $requested_url) {
     }
 
     if (preg_match('#^/joueur/[^/]+/?$#i', $normalized)) {
+        return false;
+    }
+
+    if (preg_match('#^/tournoi/[0-9]+/?$#i', $normalized)) {
         return false;
     }
 
@@ -2669,6 +2698,7 @@ add_action('after_switch_theme', function () {
 add_filter('query_vars', function ($vars) {
     $vars[] = 'club_commune';
     $vars[] = 'ffe_player';
+    $vars[] = 'tournoi_ref';
     return $vars;
 });
 

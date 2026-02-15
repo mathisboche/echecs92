@@ -1,0 +1,37 @@
+<!-- wp:template-part {"slug":"header","tagName":"header","theme":"echecs92-child"} /-->
+
+<!-- wp:html -->
+<div
+  class="clubs-page legal tournaments-page tournaments-page--france"
+  data-tournaments-mode="list-fr"
+>
+  <h1>Tournois en France</h1>
+  <p class="tournaments-page__intro">Replique de la page officielle FFE de recherche de tournois sur toute la France.</p>
+
+  <section class="tournaments-shell" aria-label="Recherche des tournois en France">
+    <div class="tournaments-shell__header">
+      <a
+        class="btn btn-secondary tournaments-shell__direct-link"
+        data-tournaments-direct
+        href="https://www.echecs.asso.fr/Tournois.aspx"
+        target="_blank"
+        rel="noopener"
+      >Ouvrir sur echecs.asso.fr</a>
+      <p class="tournaments-shell__status" data-tournaments-status role="status" aria-live="polite">Chargement de la recherche...</p>
+    </div>
+
+    <iframe
+      class="tournaments-frame"
+      data-tournaments-embed
+      title="Recherche des tournois en France"
+      loading="lazy"
+      referrerpolicy="strict-origin-when-cross-origin"
+      allowfullscreen
+    ></iframe>
+  </section>
+</div>
+
+<script src="/wp-content/themes/echecs92-child/assets/js/tournaments.js?v=20260216-1" defer></script>
+<!-- /wp:html -->
+
+<!-- wp:template-part {"slug":"footer","tagName":"footer","theme":"echecs92-child"} /-->

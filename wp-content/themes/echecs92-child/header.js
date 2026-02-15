@@ -501,6 +501,16 @@ document.addEventListener('DOMContentLoaded', () => {
     return path.startsWith('/joueur/');
   };
 
+  const isTournoisSectionPath = (path) => {
+    if (!path) {
+      return false;
+    }
+    if (path === '/tournois' || path === '/tournois-92' || path === '/tournois-france') {
+      return true;
+    }
+    return path.startsWith('/tournoi/');
+  };
+
   const markCurrentLinks = (links) => {
     if (!links.length) {
       return;
@@ -517,6 +527,8 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (!isCurrent && matchGroup === 'actualites' && isActualitesSectionPath(currentPath)) {
         isCurrent = true;
       } else if (!isCurrent && matchGroup === 'joueurs' && isPlayersSectionPath(currentPath)) {
+        isCurrent = true;
+      } else if (!isCurrent && matchGroup === 'tournois' && isTournoisSectionPath(currentPath)) {
         isCurrent = true;
       }
       link.classList.toggle('is-current', isCurrent);
