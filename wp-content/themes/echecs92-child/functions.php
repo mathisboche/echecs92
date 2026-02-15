@@ -1924,16 +1924,80 @@ function cdje92_home_stats_compute_staff_count_for_department( $clubs ) {
     return count( $people );
 }
 
+function cdje92_home_stats_get_source_version( $manifest_path ) {
+    $fallback = file_exists( $manifest_path ) ? (string) filemtime( $manifest_path ) : '0';
+    $manifest = cdje92_home_stats_load_json_file( $manifest_path );
+    if ( ! is_array( $manifest ) ) {
+        return $fallback;
+    }
+
+    $updated = trim( (string) ( $manifest['updated'] ?? '' ) );
+    if ( $updated !== '' ) {
+        return $updated;
+    }
+
+    $manifest_version = trim( (string) ( $manifest['version'] ?? '' ) );
+    if ( $manifest_version !== '' ) {
+        return $manifest_version;
+    }
+
+    return $fallback;
+}
+
+function cdje92_home_stats_if_none_match_matches( $if_none_match, $etag ) {
+    $raw = trim( (string) $if_none_match );
+    if ( $raw === '' ) {
+        return false;
+    }
+    if ( $raw === '*' ) {
+        return true;
+    }
+
+    foreach ( explode( ',', $raw ) as $candidate ) {
+        $candidate = trim( (string) $candidate );
+        if ( $candidate === '' ) {
+            continue;
+        }
+        if ( strpos( $candidate, 'W/' ) === 0 ) {
+            $candidate = trim( substr( $candidate, 2 ) );
+        }
+        if ( $candidate === $etag ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function cdje92_home_stats_build_rest_response( $payload, $etag ) {
+    $response = rest_ensure_response( $payload );
+    $response->header( 'ETag', $etag );
+    $response->header( 'Cache-Control', 'public, max-age=300, stale-while-revalidate=3600' );
+    return $response;
+}
+
 function cdje92_rest_get_home_stats_92( WP_REST_Request $request ) {
     $data_dir = trailingslashit( trailingslashit( get_stylesheet_directory() ) . 'assets/data' );
     $manifest_path = $data_dir . 'clubs-france.json';
-    $version = file_exists( $manifest_path ) ? (int) filemtime( $manifest_path ) : 0;
+    $source_version = cdje92_home_stats_get_source_version( $manifest_path );
+    $etag = '"' . md5( 'cdje92-home-stats-92:' . $source_version ) . '"';
+
+    if ( cdje92_home_stats_if_none_match_matches( $request->get_header( 'if-none-match' ), $etag ) ) {
+        $response_304 = new WP_REST_Response( null, 304 );
+        $response_304->header( 'ETag', $etag );
+        $response_304->header( 'Cache-Control', 'public, max-age=300, stale-while-revalidate=3600' );
+        return $response_304;
+    }
 
     // Bump this when computation logic changes (keeps transients coherent across deploys).
-    $cache_key = 'cdje92_home_stats_92_v3';
+    $cache_key = 'cdje92_home_stats_92_v4';
     $cached = get_transient( $cache_key );
-    if ( is_array( $cached ) && (int) ( $cached['version'] ?? 0 ) === $version && isset( $cached['data'] ) ) {
-        return rest_ensure_response( $cached['data'] );
+    if (
+        is_array( $cached ) &&
+        (string) ( $cached['source_version'] ?? '' ) === $source_version &&
+        is_array( $cached['data'] ?? null )
+    ) {
+        return cdje92_home_stats_build_rest_response( $cached['data'], $etag );
     }
 
     $clubs = cdje92_home_stats_load_json_file( $data_dir . 'clubs-france/92.json' );
@@ -1961,11 +2025,16 @@ function cdje92_rest_get_home_stats_92( WP_REST_Request $request ) {
         'clubs_affilies' => $club_count,
         'licencies' => $licenses_total,
         'arbitres_formateurs' => $staff_count,
+        'source_version' => $source_version,
     ];
 
-    set_transient( $cache_key, [ 'version' => $version, 'data' => $payload ], DAY_IN_SECONDS );
+    set_transient(
+        $cache_key,
+        [ 'source_version' => $source_version, 'data' => $payload ],
+        YEAR_IN_SECONDS
+    );
 
-    return rest_ensure_response( $payload );
+    return cdje92_home_stats_build_rest_response( $payload, $etag );
 }
 
 add_action( 'rest_api_init', function () {
