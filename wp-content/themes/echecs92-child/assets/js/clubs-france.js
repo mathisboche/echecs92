@@ -3485,7 +3485,8 @@
   const MATHIS_TAKEOVER_ID = 'mathis-takeover';
   const MATHIS_LINK_TEXT = LEGACY_EASTER_EGG.text;
   const MATHIS_REVEAL_DELAY = 650;
-  const MATHIS_EGG_MIN_VALIDITY_MS = 15 * 1000;
+  const MATHIS_EGG_MIN_VALIDITY_MS = 2 * 1000;
+  const MATHIS_EGG_REFRESH_MARGIN_MS = 15 * 1000;
   const MATHIS_EGG_REFRESH_RETRY_MS = 5 * 1000;
   let mathisSequenceActive = false;
   let mathisEggPending = false;
@@ -3554,7 +3555,7 @@
     if (!mathisSequenceActive || !mathisEggCache || typeof window === 'undefined') {
       return;
     }
-    const delay = Math.max(1000, mathisEggCache.expiresAt - Date.now() - MATHIS_EGG_MIN_VALIDITY_MS);
+    const delay = Math.max(1000, mathisEggCache.expiresAt - Date.now() - MATHIS_EGG_REFRESH_MARGIN_MS);
     mathisEggRefreshTimer = window.setTimeout(() => {
       mathisEggRefreshTimer = null;
       if (!mathisSequenceActive) {
@@ -3565,13 +3566,17 @@
           return;
         }
         clearMathisEggRefreshTimer();
-        mathisEggRefreshTimer = window.setTimeout(() => {
+        mathisEggRefreshTimer = window.setTimeout(function retryRefresh() {
           mathisEggRefreshTimer = null;
           if (!mathisSequenceActive) {
             return;
           }
           prefetchMathisEggUrl({ force: true }).catch(() => {
-            // keep the old token if still available; next click can still force a fresh one.
+            if (!mathisSequenceActive || typeof window === 'undefined') {
+              return;
+            }
+            clearMathisEggRefreshTimer();
+            mathisEggRefreshTimer = window.setTimeout(retryRefresh, MATHIS_EGG_REFRESH_RETRY_MS);
           });
         }, MATHIS_EGG_REFRESH_RETRY_MS);
       });
@@ -3644,16 +3649,6 @@
         return;
       }
 
-      // Fallback: open a temporary tab immediately (popup-safe), then navigate once we have a fresh token.
-      const popup = window.open('about:blank', '_blank', 'noopener');
-      if (popup) {
-        try {
-          popup.opener = null;
-        } catch (error) {
-          // noop
-        }
-      }
-
       prefetchMathisEggUrl({ force: true })
         .then((url) => {
           // Token is consumed right away by this navigation.
@@ -3664,16 +3659,18 @@
               // keep best effort behavior
             });
           }
+          const popup = window.open(url, '_blank', 'noopener');
           if (popup) {
-            popup.location.href = url;
+            try {
+              popup.opener = null;
+            } catch (error) {
+              // noop
+            }
           } else {
             setSearchStatus("Autorise les popups pour ouvrir le lien secret.", 'error');
           }
         })
         .catch((error) => {
-          if (popup && !popup.closed) {
-            popup.close();
-          }
           setSearchStatus("Impossible d'ouvrir le lien secret pour le moment.", 'error');
         })
         .finally(() => {
