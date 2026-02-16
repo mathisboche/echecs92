@@ -5,6 +5,236 @@ if ( ! defined( 'CDJE92_REDIRECT_PERSONAL_PAGES' ) ) {
     define( 'CDJE92_REDIRECT_PERSONAL_PAGES', true );
 }
 
+if ( ! defined( 'CDJE92_RIEN_PATH' ) ) {
+    define( 'CDJE92_RIEN_PATH', '/rien' );
+}
+
+if ( ! defined( 'CDJE92_RIEN_GATE_COOKIE' ) ) {
+    define( 'CDJE92_RIEN_GATE_COOKIE', 'cdje92_rien_gate' );
+}
+
+if ( ! defined( 'CDJE92_RIEN_CODE_COOKIE' ) ) {
+    define( 'CDJE92_RIEN_CODE_COOKIE', 'cdje92_rien_code' );
+}
+
+if ( ! defined( 'CDJE92_RIEN_GATE_TTL_SECONDS' ) ) {
+    define( 'CDJE92_RIEN_GATE_TTL_SECONDS', 10 * MINUTE_IN_SECONDS );
+}
+
+if ( ! defined( 'CDJE92_RIEN_CODE_TTL_SECONDS' ) ) {
+    define( 'CDJE92_RIEN_CODE_TTL_SECONDS', 30 * MINUTE_IN_SECONDS );
+}
+
+function cdje92_rien_sign_payload( $payload ) {
+    return hash_hmac( 'sha256', (string) $payload, wp_salt( 'auth' ) );
+}
+
+function cdje92_rien_set_cookie( $name, $value, $expires ) {
+    $cookie_options = [
+        'expires'  => (int) $expires,
+        'path'     => '/',
+        'secure'   => is_ssl(),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ];
+    setcookie( $name, $value, $cookie_options );
+    $_COOKIE[ $name ] = $value;
+}
+
+function cdje92_rien_clear_cookie( $name ) {
+    $cookie_options = [
+        'expires'  => time() - HOUR_IN_SECONDS,
+        'path'     => '/',
+        'secure'   => is_ssl(),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ];
+    setcookie( $name, '', $cookie_options );
+    unset( $_COOKIE[ $name ] );
+}
+
+function cdje92_rien_is_allowed_referer( $raw_referer ) {
+    if ( ! is_string( $raw_referer ) || $raw_referer === '' ) {
+        return false;
+    }
+
+    $parsed = wp_parse_url( $raw_referer );
+    $host   = strtolower( (string) ( $parsed['host'] ?? '' ) );
+    $path   = rtrim( (string) ( $parsed['path'] ?? '' ), '/' );
+    if ( $path === '' ) {
+        $path = '/';
+    }
+
+    if ( ! in_array( $host, [ 'ig.boche.co', 'www.ig.boche.co' ], true ) ) {
+        return false;
+    }
+
+    // Cross-origin default referrer policy often keeps only the origin path ("/").
+    return $path === '/404' || $path === '/';
+}
+
+function cdje92_rien_issue_gate_cookie() {
+    $expires = time() + CDJE92_RIEN_GATE_TTL_SECONDS;
+    $token   = wp_generate_password( 20, false, false );
+    $payload = $expires . '.' . $token;
+    $value   = $payload . '.' . cdje92_rien_sign_payload( $payload );
+    cdje92_rien_set_cookie( CDJE92_RIEN_GATE_COOKIE, $value, $expires );
+}
+
+function cdje92_rien_has_valid_gate_cookie() {
+    $raw = isset( $_COOKIE[ CDJE92_RIEN_GATE_COOKIE ] ) ? (string) $_COOKIE[ CDJE92_RIEN_GATE_COOKIE ] : '';
+    if ( $raw === '' ) {
+        return false;
+    }
+
+    $parts = explode( '.', $raw );
+    if ( count( $parts ) !== 3 ) {
+        return false;
+    }
+
+    [ $expires, $token, $signature ] = $parts;
+    if ( ! ctype_digit( $expires ) || $token === '' || $signature === '' ) {
+        return false;
+    }
+
+    if ( (int) $expires < time() ) {
+        return false;
+    }
+
+    $payload           = $expires . '.' . $token;
+    $expected_signature = cdje92_rien_sign_payload( $payload );
+    return hash_equals( $expected_signature, $signature );
+}
+
+function cdje92_rien_generate_code() {
+    $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    $max      = strlen( $alphabet ) - 1;
+    $suffix   = '';
+    for ( $index = 0; $index < 6; $index += 1 ) {
+        $suffix .= $alphabet[ random_int( 0, $max ) ];
+    }
+    return 'R92-' . $suffix;
+}
+
+function cdje92_rien_code_transient_key( $code ) {
+    $normalized = strtoupper( preg_replace( '/[^A-Z0-9-]/', '', (string) $code ) );
+    return 'cdje92_rien_code_' . substr( hash( 'sha256', $normalized ), 0, 32 );
+}
+
+function cdje92_rien_read_code_from_cookie() {
+    $raw = isset( $_COOKIE[ CDJE92_RIEN_CODE_COOKIE ] ) ? (string) $_COOKIE[ CDJE92_RIEN_CODE_COOKIE ] : '';
+    if ( $raw === '' ) {
+        return '';
+    }
+
+    $parts = explode( '.', $raw );
+    if ( count( $parts ) !== 3 ) {
+        return '';
+    }
+
+    [ $expires, $code, $signature ] = $parts;
+    if ( ! ctype_digit( $expires ) || $code === '' || $signature === '' ) {
+        return '';
+    }
+
+    if ( (int) $expires < time() ) {
+        return '';
+    }
+
+    $payload            = $expires . '.' . $code;
+    $expected_signature = cdje92_rien_sign_payload( $payload );
+    if ( ! hash_equals( $expected_signature, $signature ) ) {
+        return '';
+    }
+
+    $normalized_code = strtoupper( preg_replace( '/[^A-Z0-9-]/', '', $code ) );
+    if ( $normalized_code === '' || ! preg_match( '/^[A-Z0-9-]{5,16}$/', $normalized_code ) ) {
+        return '';
+    }
+
+    $is_known = get_transient( cdje92_rien_code_transient_key( $normalized_code ) );
+    if ( ! $is_known ) {
+        return '';
+    }
+
+    return $normalized_code;
+}
+
+function cdje92_rien_get_active_code() {
+    return cdje92_rien_read_code_from_cookie();
+}
+
+function cdje92_rien_issue_fresh_code() {
+    $previous_code = cdje92_rien_get_active_code();
+    if ( $previous_code !== '' ) {
+        delete_transient( cdje92_rien_code_transient_key( $previous_code ) );
+    }
+
+    $code    = cdje92_rien_generate_code();
+    $expires = time() + CDJE92_RIEN_CODE_TTL_SECONDS;
+    set_transient( cdje92_rien_code_transient_key( $code ), '1', CDJE92_RIEN_CODE_TTL_SECONDS );
+    $payload = $expires . '.' . $code;
+    $value   = $payload . '.' . cdje92_rien_sign_payload( $payload );
+    cdje92_rien_set_cookie( CDJE92_RIEN_CODE_COOKIE, $value, $expires );
+
+    return $code;
+}
+
+function cdje92_should_bootstrap_runtime_easter_egg() {
+    if ( is_admin() ) {
+        return false;
+    }
+
+    return is_page( [ 'clubs-92', 'clubs', 'joueurs-92', 'joueurs' ] );
+}
+
+function cdje92_output_runtime_easter_egg_config() {
+    if ( ! cdje92_should_bootstrap_runtime_easter_egg() ) {
+        return;
+    }
+
+    $active_code = cdje92_rien_get_active_code();
+    if ( $active_code === '' ) {
+        return;
+    }
+
+    $payload = [
+        'trigger' => strtolower( $active_code ),
+        'href'    => 'https://www.mathisboche.com',
+        'text'    => 'mathisboche.com',
+    ];
+
+    echo '<script id="cdje92-runtime-egg-config">window.CDJE92_EASTER_EGG=' . wp_json_encode( $payload ) . ';</script>';
+}
+add_action( 'wp_head', 'cdje92_output_runtime_easter_egg_config', 1 );
+
+function cdje92_render_rien_page( $code ) {
+    status_header( 200 );
+    nocache_headers();
+    header( 'X-Robots-Tag: noindex, nofollow, noarchive', true );
+    ?>
+<!doctype html>
+<html <?php language_attributes(); ?>>
+<head>
+    <meta charset="<?php bloginfo( 'charset' ); ?>">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex,nofollow,noarchive">
+    <?php wp_head(); ?>
+</head>
+<body <?php body_class( 'cdje92-rien-page' ); ?>>
+<?php wp_body_open(); ?>
+<?php
+echo do_blocks( '<!-- wp:template-part {"slug":"header","tagName":"header","theme":"echecs92-child"} /-->' );
+echo '<main class="cdje-rien-main"><code class="cdje-rien-code">' . esc_html( $code ) . '</code></main>';
+echo do_blocks( '<!-- wp:template-part {"slug":"footer","tagName":"footer","theme":"echecs92-child"} /-->' );
+wp_footer();
+?>
+</body>
+</html>
+    <?php
+    exit;
+}
+
 function cdje92_normalise_dashes_text($value) {
     if (!is_string($value) || $value === '') {
         return $value;
@@ -2960,6 +3190,27 @@ add_action('template_redirect', function () {
     $request_path = isset($_SERVER['REQUEST_URI']) ? wp_parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : '';
     $query_string = isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] ? '?' . $_SERVER['QUERY_STRING'] : '';
     $normalized = '/' . ltrim((string) $request_path, '/');
+    $normalized_slash = trailingslashit( $normalized );
+
+    if ( $normalized_slash === trailingslashit( CDJE92_RIEN_PATH ) ) {
+        $referer = isset( $_SERVER['HTTP_REFERER'] ) ? (string) $_SERVER['HTTP_REFERER'] : '';
+        $from_ig = cdje92_rien_is_allowed_referer( $referer );
+        $has_gate = cdje92_rien_has_valid_gate_cookie();
+
+        if ( ! $from_ig && ! $has_gate ) {
+            cdje92_rien_clear_cookie( CDJE92_RIEN_GATE_COOKIE );
+            cdje92_rien_clear_cookie( CDJE92_RIEN_CODE_COOKIE );
+            wp_redirect( 'https://www.google.com', 302 );
+            exit;
+        }
+
+        if ( $from_ig ) {
+            cdje92_rien_issue_gate_cookie();
+        }
+
+        $code = cdje92_rien_issue_fresh_code();
+        cdje92_render_rien_page( $code );
+    }
 
     if (CDJE92_REDIRECT_PERSONAL_PAGES && preg_match('#^/mathis-boche/?$#i', $normalized)) {
         header('X-Robots-Tag: noindex, nofollow', true);
@@ -3016,6 +3267,7 @@ add_filter('redirect_canonical', function ($redirect_url, $requested_url) {
         '/carte-des-clubs/' => true,
         '/carte-des-clubs-france/' => true,
         '/carte-des-clubs-92/' => true,
+        trailingslashit( CDJE92_RIEN_PATH ) => true,
         '/tournois/' => true,
         '/tournois-france/' => true,
         '/tournois-92/' => true,

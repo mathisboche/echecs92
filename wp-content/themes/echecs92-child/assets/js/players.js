@@ -187,10 +187,19 @@
     if (typeof document === 'undefined') {
       return { trigger: '', href: '', text: '' };
     }
+    const runtime =
+      typeof window !== 'undefined' &&
+      window.CDJE92_EASTER_EGG &&
+      typeof window.CDJE92_EASTER_EGG === 'object'
+        ? window.CDJE92_EASTER_EGG
+        : {};
     const dataset = document.currentScript && document.currentScript.dataset ? document.currentScript.dataset : {};
-    const trigger = typeof dataset.easterEggTrigger === 'string' ? dataset.easterEggTrigger.trim().toLowerCase() : '';
-    const href = typeof dataset.easterEggHref === 'string' ? dataset.easterEggHref.trim() : '';
-    const text = typeof dataset.easterEggText === 'string' ? dataset.easterEggText.trim() : '';
+    const runtimeTrigger = typeof runtime.trigger === 'string' ? runtime.trigger.trim().toLowerCase() : '';
+    const runtimeHref = typeof runtime.href === 'string' ? runtime.href.trim() : '';
+    const runtimeText = typeof runtime.text === 'string' ? runtime.text.trim() : '';
+    const trigger = runtimeTrigger || (typeof dataset.easterEggTrigger === 'string' ? dataset.easterEggTrigger.trim().toLowerCase() : '');
+    const href = runtimeHref || (typeof dataset.easterEggHref === 'string' ? dataset.easterEggHref.trim() : '');
+    const text = runtimeText || (typeof dataset.easterEggText === 'string' ? dataset.easterEggText.trim() : '');
     return { trigger, href, text };
   })();
 
@@ -211,7 +220,24 @@
   const MATHIS_TAKEOVER_ID = 'mathis-takeover';
   const MATHIS_LINK_TEXT = LEGACY_EASTER_EGG.text;
   const MATHIS_REVEAL_DELAY = 650;
+  const MATHIS_EGG_API = (() => {
+    if (!LEGACY_EASTER_EGG.href) {
+      return '';
+    }
+    try {
+      return new URL('/api/egg/new', LEGACY_EASTER_EGG.href).toString();
+    } catch (error) {
+      return '';
+    }
+  })();
+  const MATHIS_EGG_MIN_VALIDITY_MS = 2 * 1000;
+  const MATHIS_EGG_REFRESH_MARGIN_MS = 15 * 1000;
+  const MATHIS_EGG_REFRESH_RETRY_MS = 5 * 1000;
   let mathisSequenceActive = false;
+  let mathisEggPending = false;
+  let mathisEggCache = null;
+  let mathisEggPrefetchPromise = null;
+  let mathisEggRefreshTimer = null;
   let mathisCollapsedTargets = [];
   let mathisExitStarted = false;
   let mathisScrollPosition = 0;
@@ -226,6 +252,173 @@
 
   const resetMathisRectCache = () => {
     mathisRectCache = typeof WeakMap === 'function' ? new WeakMap() : null;
+  };
+
+  const clearMathisEggRefreshTimer = () => {
+    if (!mathisEggRefreshTimer || typeof window === 'undefined') {
+      mathisEggRefreshTimer = null;
+      return;
+    }
+    window.clearTimeout(mathisEggRefreshTimer);
+    mathisEggRefreshTimer = null;
+  };
+
+  const requestMathisEggUrl = async () => {
+    if (!MATHIS_EGG_API) {
+      throw new Error('Missing Mathis egg API URL');
+    }
+    const response = await fetch(MATHIS_EGG_API, { method: 'POST', mode: 'cors' });
+    if (!response.ok) {
+      throw new Error(`Mathis egg API error (${response.status})`);
+    }
+    const payload = await response.json().catch(() => null);
+    if (!payload || typeof payload.url !== 'string') {
+      throw new Error('Invalid Mathis egg API payload');
+    }
+    const expiresIn = Number.isFinite(payload.expiresIn) ? payload.expiresIn : 60;
+    return {
+      url: payload.url,
+      expiresAt: Date.now() + Math.max(1, expiresIn) * 1000,
+    };
+  };
+
+  const getCachedMathisEggUrl = () => {
+    if (!mathisEggCache) {
+      return '';
+    }
+    if (Date.now() > mathisEggCache.expiresAt - MATHIS_EGG_MIN_VALIDITY_MS) {
+      mathisEggCache = null;
+      clearMathisEggRefreshTimer();
+      return '';
+    }
+    return mathisEggCache.url;
+  };
+
+  const scheduleMathisEggRefresh = () => {
+    clearMathisEggRefreshTimer();
+    if (!mathisSequenceActive || !mathisEggCache || typeof window === 'undefined') {
+      return;
+    }
+    const delay = Math.max(1000, mathisEggCache.expiresAt - Date.now() - MATHIS_EGG_REFRESH_MARGIN_MS);
+    mathisEggRefreshTimer = window.setTimeout(() => {
+      mathisEggRefreshTimer = null;
+      if (!mathisSequenceActive) {
+        return;
+      }
+      prefetchMathisEggUrl({ force: true }).catch(() => {
+        if (!mathisSequenceActive || typeof window === 'undefined') {
+          return;
+        }
+        clearMathisEggRefreshTimer();
+        mathisEggRefreshTimer = window.setTimeout(function retryRefresh() {
+          mathisEggRefreshTimer = null;
+          if (!mathisSequenceActive) {
+            return;
+          }
+          prefetchMathisEggUrl({ force: true }).catch(() => {
+            if (!mathisSequenceActive || typeof window === 'undefined') {
+              return;
+            }
+            clearMathisEggRefreshTimer();
+            mathisEggRefreshTimer = window.setTimeout(retryRefresh, MATHIS_EGG_REFRESH_RETRY_MS);
+          });
+        }, MATHIS_EGG_REFRESH_RETRY_MS);
+      });
+    }, delay);
+  };
+
+  const prefetchMathisEggUrl = (options = {}) => {
+    const force = Boolean(options.force);
+    const cached = force ? '' : getCachedMathisEggUrl();
+    if (cached) {
+      return Promise.resolve(cached);
+    }
+    if (mathisEggPrefetchPromise) {
+      return mathisEggPrefetchPromise;
+    }
+    mathisEggPrefetchPromise = requestMathisEggUrl()
+      .then((payload) => {
+        mathisEggCache = payload;
+        scheduleMathisEggRefresh();
+        return payload.url;
+      })
+      .finally(() => {
+        mathisEggPrefetchPromise = null;
+      });
+    return mathisEggPrefetchPromise;
+  };
+
+  const ensureMathisEggHandler = (anchor) => {
+    if (!anchor) {
+      return;
+    }
+    if (anchor.dataset && anchor.dataset.mathisEggBound === '1') {
+      return;
+    }
+    if (anchor.dataset) {
+      anchor.dataset.mathisEggBound = '1';
+    }
+    anchor.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === 'function') {
+        event.stopImmediatePropagation();
+      }
+      if (mathisEggPending) {
+        return;
+      }
+      mathisEggPending = true;
+
+      const cachedUrl = getCachedMathisEggUrl();
+      if (cachedUrl) {
+        mathisEggCache = null;
+        clearMathisEggRefreshTimer();
+        if (mathisSequenceActive) {
+          prefetchMathisEggUrl().catch(() => {
+            // keep best effort behavior
+          });
+        }
+        const popup = window.open(cachedUrl, '_blank', 'noopener');
+        if (popup) {
+          try {
+            popup.opener = null;
+          } catch (error) {
+            // noop
+          }
+        } else {
+          setStatus('Autorise les popups pour ouvrir le lien secret.', 'error');
+        }
+        mathisEggPending = false;
+        return;
+      }
+
+      prefetchMathisEggUrl({ force: true })
+        .then((url) => {
+          mathisEggCache = null;
+          clearMathisEggRefreshTimer();
+          if (mathisSequenceActive) {
+            prefetchMathisEggUrl().catch(() => {
+              // keep best effort behavior
+            });
+          }
+          const popup = window.open(url, '_blank', 'noopener');
+          if (popup) {
+            try {
+              popup.opener = null;
+            } catch (error) {
+              // noop
+            }
+          } else {
+            setStatus('Autorise les popups pour ouvrir le lien secret.', 'error');
+          }
+        })
+        .catch(() => {
+          setStatus("Impossible d'ouvrir le lien secret pour le moment.", 'error');
+        })
+        .finally(() => {
+          mathisEggPending = false;
+        });
+    });
   };
 
   const isMathisMobileSafari = () => {
@@ -581,7 +774,16 @@
   const endMathisTakeover = (options = {}) => {
     mathisSequenceActive = false;
     mathisExitStarted = false;
+    mathisEggPending = false;
+    mathisEggCache = null;
+    clearMathisEggRefreshTimer();
     const overlay = document.getElementById(MATHIS_TAKEOVER_ID);
+    const syncAfterMathis = () => {
+      if (input) {
+        input.value = '';
+      }
+      toggleClearButton();
+    };
     const finish = () => {
       overlay?.remove();
       if (!options.skipRestore) {
@@ -589,6 +791,13 @@
       }
       cleanupMathisFragments();
       unlockMathisScroll();
+      syncAfterMathis();
+      if (typeof window !== 'undefined') {
+        if (typeof window.requestAnimationFrame === 'function') {
+          window.requestAnimationFrame(syncAfterMathis);
+        }
+        window.setTimeout(syncAfterMathis, 120);
+      }
       if (!options.silent) {
         setStatus('Retour a la recherche de joueurs.', 'info');
       }
@@ -616,7 +825,7 @@
         <span></span>
       </button>
       <div class="mathis-clean__link">
-        <a class="mathis-clean__anchor" rel="noopener noreferrer" target="_blank">
+        <a class="mathis-clean__anchor" href="#">
           <span class="mathis-clean__letters" aria-hidden="true"></span>
           <span class="mathis-clean__sr">${MATHIS_LINK_TEXT}</span>
         </a>
@@ -882,7 +1091,8 @@
     if (!lettersHost || !anchor) {
       return;
     }
-    anchor.setAttribute('href', LEGACY_EASTER_EGG.href || '#');
+    anchor.setAttribute('href', '#');
+    ensureMathisEggHandler(anchor);
     lettersHost.innerHTML = '';
     const letters = MATHIS_LINK_TEXT.split('');
     const spans = letters.map((char) => {
@@ -916,6 +1126,11 @@
   const startMathisSequence = (overlay) => {
     mathisSequenceActive = true;
     mathisExitStarted = false;
+    clearMathisEggRefreshTimer();
+    mathisEggCache = null;
+    prefetchMathisEggUrl({ force: true }).catch(() => {
+      // fallback keeps click-based forced fetch
+    });
     resetMathisRectCache();
     const mathisPerf = getMathisPerfProfile();
     prepareMathisFragments(overlay, mathisPerf);

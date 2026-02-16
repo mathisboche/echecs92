@@ -638,10 +638,19 @@
     if (typeof document === 'undefined') {
       return { trigger: '', href: '', text: '' };
     }
+    const runtime =
+      typeof window !== 'undefined' &&
+      window.CDJE92_EASTER_EGG &&
+      typeof window.CDJE92_EASTER_EGG === 'object'
+        ? window.CDJE92_EASTER_EGG
+        : {};
     const dataset = document.currentScript && document.currentScript.dataset ? document.currentScript.dataset : {};
-    const trigger = typeof dataset.easterEggTrigger === 'string' ? dataset.easterEggTrigger.trim().toLowerCase() : '';
-    const href = typeof dataset.easterEggHref === 'string' ? dataset.easterEggHref.trim() : '';
-    const text = typeof dataset.easterEggText === 'string' ? dataset.easterEggText.trim() : '';
+    const runtimeTrigger = typeof runtime.trigger === 'string' ? runtime.trigger.trim().toLowerCase() : '';
+    const runtimeHref = typeof runtime.href === 'string' ? runtime.href.trim() : '';
+    const runtimeText = typeof runtime.text === 'string' ? runtime.text.trim() : '';
+    const trigger = runtimeTrigger || (typeof dataset.easterEggTrigger === 'string' ? dataset.easterEggTrigger.trim().toLowerCase() : '');
+    const href = runtimeHref || (typeof dataset.easterEggHref === 'string' ? dataset.easterEggHref.trim() : '');
+    const text = runtimeText || (typeof dataset.easterEggText === 'string' ? dataset.easterEggText.trim() : '');
     return { trigger, href, text };
   })();
 

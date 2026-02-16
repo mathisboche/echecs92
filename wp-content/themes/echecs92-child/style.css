@@ -8772,3 +8772,22 @@ body.post-type-actualite .wp-site-blocks > .post-navigation-link-next{
     grid-template-columns:1fr;
   }
 }
+
+.cdje-rien-main{
+  min-height:clamp(260px, 58vh, 560px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px 16px 52px;
+}
+
+.cdje-rien-code{
+  display:inline-block;
+  font-family:"IBM Plex Mono","SF Mono",Menlo,Consolas,monospace;
+  font-size:clamp(1.4rem, 7vw, 4rem);
+  line-height:1;
+  letter-spacing:0.08em;
+  font-weight:700;
+  color:#0f172a;
+  user-select:all;
+}
