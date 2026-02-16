@@ -421,7 +421,7 @@ function cdje92_render_rien_page( $code ) {
 <?php
 echo do_blocks( '<!-- wp:template-part {"slug":"header","tagName":"header","theme":"echecs92-child"} /-->' );
 echo '<main class="cdje-rien-main"><code class="cdje-rien-code">' . esc_html( $code ) . '</code></main>';
-echo '<script>(function(){try{var u=new URL(window.location.href);var changed=false;if(u.searchParams.has("' . esc_js( CDJE92_RIEN_TOKEN_QUERY_PARAM ) . '")){u.searchParams.delete("' . esc_js( CDJE92_RIEN_TOKEN_QUERY_PARAM ) . '");changed=true;}if(u.searchParams.has("' . esc_js( CDJE92_RIEN_QUERY_PARAM ) . '")){u.searchParams.delete("' . esc_js( CDJE92_RIEN_QUERY_PARAM ) . '");changed=true;}var targetPath="' . esc_js( trailingslashit( CDJE92_RIEN_PATH ) ) . '";if(u.pathname!==targetPath){u.pathname=targetPath;changed=true;}if(!changed)return;var clean=u.pathname+(u.search?u.search:"")+u.hash;window.history.replaceState(null,"",clean||targetPath);}catch(e){}})();</script>';
+echo '<script>(function(){try{var u=new URL(window.location.href);var changed=false;if(u.searchParams.has("' . esc_js( CDJE92_RIEN_TOKEN_QUERY_PARAM ) . '")){u.searchParams.delete("' . esc_js( CDJE92_RIEN_TOKEN_QUERY_PARAM ) . '");changed=true;}if(u.searchParams.has("' . esc_js( CDJE92_RIEN_QUERY_PARAM ) . '")){u.searchParams.delete("' . esc_js( CDJE92_RIEN_QUERY_PARAM ) . '");changed=true;}var targetPath="' . esc_js( CDJE92_RIEN_PATH ) . '";if(u.pathname!==targetPath){u.pathname=targetPath;changed=true;}if(!changed)return;var clean=u.pathname+(u.search?u.search:"")+u.hash;window.history.replaceState(null,"",clean||targetPath);}catch(e){}})();</script>';
 echo do_blocks( '<!-- wp:template-part {"slug":"footer","tagName":"footer","theme":"echecs92-child"} /-->' );
 wp_footer();
 ?>
