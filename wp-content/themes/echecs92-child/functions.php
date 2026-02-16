@@ -582,17 +582,13 @@ add_action('init', function () {
     add_rewrite_rule('^tournoi/([0-9]+)/?$', 'index.php?pagename=tournoi&tournoi_ref=$matches[1]', 'top');
 
     $rewrite_version = '2026-02-16';
-    if (is_admin() && current_user_can('manage_options') && get_option('cdje92_rewrite_rules_version') !== $rewrite_version) {
+    if (get_option('cdje92_rewrite_rules_version') !== $rewrite_version) {
         flush_rewrite_rules(false);
         update_option('cdje92_rewrite_rules_version', $rewrite_version);
     }
 });
 
 add_action('init', function () {
-    if (! current_user_can('manage_options')) {
-        return;
-    }
-
     $pages = [
         [
             'slug' => 'joueur',
@@ -625,13 +621,25 @@ add_action('init', function () {
             continue;
         }
 
+        $author_id = (int) get_current_user_id();
+        if ($author_id <= 0) {
+            $admin_users = get_users([
+                'role' => 'administrator',
+                'number' => 1,
+                'fields' => 'ID',
+            ]);
+            if (is_array($admin_users) && ! empty($admin_users[0])) {
+                $author_id = (int) $admin_users[0];
+            }
+        }
+
         wp_insert_post([
             'post_type' => 'page',
             'post_status' => 'publish',
             'post_title' => $page['title'],
             'post_name' => $page['slug'],
             'post_content' => '',
-            'post_author' => get_current_user_id(),
+            'post_author' => $author_id > 0 ? $author_id : 1,
             'comment_status' => 'closed',
             'ping_status' => 'closed',
         ], true);
