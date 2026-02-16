@@ -183,6 +183,854 @@
     topStatus.hidden = !text;
   };
 
+  const LEGACY_EASTER_EGG = (() => {
+    if (typeof document === 'undefined') {
+      return { trigger: '', href: '', text: '' };
+    }
+    const dataset = document.currentScript && document.currentScript.dataset ? document.currentScript.dataset : {};
+    const trigger = typeof dataset.easterEggTrigger === 'string' ? dataset.easterEggTrigger.trim().toLowerCase() : '';
+    const href = typeof dataset.easterEggHref === 'string' ? dataset.easterEggHref.trim() : '';
+    const text = typeof dataset.easterEggText === 'string' ? dataset.easterEggText.trim() : '';
+    return { trigger, href, text };
+  })();
+
+  const mobileViewportQuery =
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(max-width: 820px)')
+      : null;
+  const isMobileViewport = () => {
+    if (mobileViewportQuery) {
+      return mobileViewportQuery.matches;
+    }
+    if (typeof window !== 'undefined' && Number.isFinite(window.innerWidth)) {
+      return window.innerWidth <= 820;
+    }
+    return false;
+  };
+
+  const MATHIS_TAKEOVER_ID = 'mathis-takeover';
+  const MATHIS_LINK_TEXT = LEGACY_EASTER_EGG.text;
+  const MATHIS_REVEAL_DELAY = 650;
+  let mathisSequenceActive = false;
+  let mathisCollapsedTargets = [];
+  let mathisExitStarted = false;
+  let mathisScrollPosition = 0;
+  let mathisFragmentsPrepared = false;
+  const MATHIS_VIEWPORT_MARGIN_DESKTOP = 520;
+  const MATHIS_VIEWPORT_MARGIN_MOBILE = 320;
+  const MATHIS_MAX_TARGETS_DESKTOP = 1200;
+  const MATHIS_MAX_TARGETS_MOBILE = 520;
+  const MATHIS_MAX_FRAGMENTS_DESKTOP = 2000;
+  const MATHIS_MAX_FRAGMENTS_MOBILE = 1100;
+  let mathisRectCache = null;
+
+  const resetMathisRectCache = () => {
+    mathisRectCache = typeof WeakMap === 'function' ? new WeakMap() : null;
+  };
+
+  const isMathisMobileSafari = () => {
+    if (typeof navigator === 'undefined') {
+      return false;
+    }
+    const ua = navigator.userAgent || '';
+    const isIOS = /iP(ad|hone|od)/.test(ua);
+    const isSafari = /Safari/i.test(ua) && !/(Chrome|CriOS|FxiOS|EdgiOS|OPiOS)/i.test(ua);
+    return isIOS && isSafari;
+  };
+
+  const getMathisPerfProfile = () => {
+    const constrained = isMobileViewport() || isMathisMobileSafari();
+    return {
+      viewportMargin: constrained ? MATHIS_VIEWPORT_MARGIN_MOBILE : MATHIS_VIEWPORT_MARGIN_DESKTOP,
+      targetLimit: constrained ? MATHIS_MAX_TARGETS_MOBILE : MATHIS_MAX_TARGETS_DESKTOP,
+      fragmentLimit: constrained ? MATHIS_MAX_FRAGMENTS_MOBILE : MATHIS_MAX_FRAGMENTS_DESKTOP,
+    };
+  };
+
+  const isMathisElementNearViewport = (element, viewportMargin) => {
+    if (!element || typeof element.getBoundingClientRect !== 'function' || typeof window === 'undefined') {
+      return false;
+    }
+    const cache = mathisRectCache;
+    if (cache && cache.has(element)) {
+      return cache.get(element);
+    }
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+    const rect = element.getBoundingClientRect();
+    const isNear = rect.bottom >= -viewportMargin && rect.top <= viewportHeight + viewportMargin;
+    if (cache) {
+      cache.set(element, isNear);
+    }
+    return isNear;
+  };
+
+  const lockMathisScroll = () => {
+    if (typeof window === 'undefined' || typeof document === 'undefined' || !document.body) {
+      return;
+    }
+    mathisScrollPosition = window.scrollY || document.documentElement.scrollTop || 0;
+    document.documentElement.classList.add('mathis-scroll-lock');
+    document.body.classList.add('mathis-mode');
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    document.body.style.top = `-${mathisScrollPosition}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+  };
+
+  const unlockMathisScroll = () => {
+    if (typeof document === 'undefined' || !document.body) {
+      return;
+    }
+    document.documentElement.classList.remove('mathis-scroll-lock');
+    document.body.classList.remove('mathis-mode');
+    document.body.style.removeProperty('position');
+    document.body.style.removeProperty('width');
+    document.body.style.removeProperty('top');
+    document.body.style.removeProperty('left');
+    document.body.style.removeProperty('right');
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, mathisScrollPosition || 0);
+    }
+  };
+
+  const shuffleArray = (input) => {
+    const array = input.slice();
+    for (let i = array.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  };
+
+  const getMathisElementDepth = (element) => {
+    let depth = 0;
+    let current = element ? element.parentElement : null;
+    while (current && current !== document.body) {
+      depth += 1;
+      current = current.parentElement;
+    }
+    return depth;
+  };
+
+  const prepareMathisFragments = (overlayElement, options = {}) => {
+    if (mathisFragmentsPrepared || typeof document === 'undefined' || !document.body) {
+      return;
+    }
+    const overlayHost = overlayElement || document.getElementById(MATHIS_TAKEOVER_ID);
+    const viewportMargin = Number.isFinite(options.viewportMargin) ? options.viewportMargin : MATHIS_VIEWPORT_MARGIN_DESKTOP;
+    const fragmentLimit = Number.isFinite(options.fragmentLimit) ? options.fragmentLimit : MATHIS_MAX_FRAGMENTS_DESKTOP;
+    let fragmentCount = 0;
+
+    const isFlexibleContext = (element) => {
+      if (!element || typeof window === 'undefined' || typeof window.getComputedStyle !== 'function') {
+        return false;
+      }
+      try {
+        const display = window.getComputedStyle(element).display || '';
+        return display.includes('flex') || display.includes('grid');
+      } catch (error) {
+        return false;
+      }
+    };
+
+    const TEXT_NODE = 3;
+    const ELEMENT_NODE = 1;
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const nodesToProcess = [];
+
+    const visitNode = (node) => {
+      if (!node || !node.childNodes || (fragmentLimit && fragmentCount >= fragmentLimit)) {
+        return;
+      }
+      Array.from(node.childNodes).forEach((child) => {
+        if (!child) {
+          return;
+        }
+        if (child.nodeType === TEXT_NODE) {
+          const parentElement = child.parentElement;
+          const textValue = child.textContent || '';
+          if (
+            !parentElement ||
+            !textValue.replace(/\u00a0/g, ' ').trim() ||
+            parentElement.closest('script, style, noscript, textarea, option, select, optgroup') ||
+            parentElement.namespaceURI === SVG_NS
+          ) {
+            return;
+          }
+          if (overlayHost && (parentElement === overlayHost || parentElement.closest(`#${MATHIS_TAKEOVER_ID}`))) {
+            return;
+          }
+          if (!isMathisElementNearViewport(parentElement, viewportMargin)) {
+            return;
+          }
+          if (isFlexibleContext(parentElement)) {
+            return;
+          }
+          nodesToProcess.push(child);
+        } else if (child.nodeType === ELEMENT_NODE) {
+          const tagName = child.tagName ? child.tagName.toUpperCase() : '';
+          if (!tagName) {
+            return;
+          }
+          if (
+            tagName === 'SCRIPT' ||
+            tagName === 'STYLE' ||
+            tagName === 'NOSCRIPT' ||
+            tagName === 'TEXTAREA' ||
+            tagName === 'OPTION' ||
+            tagName === 'OPTGROUP' ||
+            tagName === 'SELECT'
+          ) {
+            return;
+          }
+          if (child.namespaceURI === SVG_NS) {
+            return;
+          }
+          if (overlayHost && (child === overlayHost || child.closest(`#${MATHIS_TAKEOVER_ID}`))) {
+            return;
+          }
+          if (!isMathisElementNearViewport(child, viewportMargin)) {
+            return;
+          }
+          visitNode(child);
+        }
+      });
+    };
+
+    visitNode(document.body);
+
+    nodesToProcess.forEach((textNode) => {
+      if (fragmentLimit && fragmentCount >= fragmentLimit) {
+        return;
+      }
+      const parent = textNode.parentElement;
+      if (!parent) {
+        return;
+      }
+      const fragment = document.createDocumentFragment();
+      const parts = (textNode.textContent || '').split(/(\s+)/);
+      parts.forEach((part) => {
+        if (!part) {
+          return;
+        }
+        if (/^\s+$/.test(part) || (fragmentLimit && fragmentCount >= fragmentLimit)) {
+          fragment.appendChild(document.createTextNode(part));
+        } else {
+          const span = document.createElement('span');
+          span.className = 'mathis-fragment';
+          span.textContent = part;
+          fragment.appendChild(span);
+          fragmentCount += 1;
+        }
+      });
+      parent.replaceChild(fragment, textNode);
+    });
+    mathisFragmentsPrepared = true;
+  };
+
+  const cleanupMathisFragments = () => {
+    if (!mathisFragmentsPrepared || typeof document === 'undefined') {
+      return;
+    }
+    const fragments = document.querySelectorAll('.mathis-fragment');
+    fragments.forEach((fragment) => {
+      if (!fragment || fragment.closest(`#${MATHIS_TAKEOVER_ID}`)) {
+        return;
+      }
+      const parent = fragment.parentNode;
+      if (!parent) {
+        return;
+      }
+      const textContent = fragment.textContent || '';
+      const textNode = document.createTextNode(textContent);
+      parent.replaceChild(textNode, fragment);
+      if (typeof parent.normalize === 'function') {
+        parent.normalize();
+      }
+    });
+    mathisFragmentsPrepared = false;
+  };
+
+  const gatherMathisFallbackContainers = () => {
+    if (typeof document === 'undefined') {
+      return [];
+    }
+    const selectors = [
+      'body > *:not(script):not(style):not(noscript)',
+      '.cm-header',
+      '.cm-nav-desktop',
+      '.cm-nav-mobile',
+      '.clubs-page > *',
+      '.clubs-results-wrapper > *',
+      '.clubs-list > *',
+      '.clubs-options',
+      '.clubs-search-block',
+      '.club-row',
+    ];
+    const collection = new Set();
+    selectors.forEach((selector) => {
+      document.querySelectorAll(selector).forEach((node) => {
+        if (!node || node.id === MATHIS_TAKEOVER_ID) {
+          return;
+        }
+        if (node.closest(`#${MATHIS_TAKEOVER_ID}`)) {
+          return;
+        }
+        collection.add(node);
+      });
+    });
+    const rawTargets = Array.from(collection).filter((element) => element && element !== document.body && element !== document.documentElement);
+    const filteredTargets = rawTargets.filter(
+      (element, index, array) => !array.some((other, otherIndex) => otherIndex !== index && other.contains(element))
+    );
+    return filteredTargets.sort((a, b) => getMathisElementDepth(b) - getMathisElementDepth(a));
+  };
+
+  const getMathisRestoreOrder = () => {
+    if (!mathisCollapsedTargets.length) {
+      return [];
+    }
+    const buckets = new Map();
+    mathisCollapsedTargets.forEach((element) => {
+      if (!element) {
+        return;
+      }
+      const depth = getMathisElementDepth(element);
+      if (!buckets.has(depth)) {
+        buckets.set(depth, []);
+      }
+      buckets.get(depth).push(element);
+    });
+    const ordered = [];
+    Array.from(buckets.keys())
+      .sort((a, b) => a - b)
+      .forEach((depth) => {
+        const batch = buckets.get(depth);
+        if (batch && batch.length) {
+          shuffleArray(batch).forEach((element) => ordered.push(element));
+        }
+      });
+    return ordered;
+  };
+
+  const restoreMathisTargets = () => {
+    if (!mathisCollapsedTargets.length) {
+      return;
+    }
+    mathisCollapsedTargets.forEach((element) => {
+      element.classList.remove('mathis-collapse-target', 'is-mathis-collapsing');
+      const previousVisibility = element.dataset.mathisPrevVisibility;
+      if (typeof previousVisibility !== 'undefined') {
+        element.style.visibility = previousVisibility;
+        delete element.dataset.mathisPrevVisibility;
+      } else if (element.style.visibility === 'hidden') {
+        element.style.visibility = '';
+      }
+      element.removeAttribute('data-mathis-hidden');
+      element.style.removeProperty('--mathis-dx');
+      element.style.removeProperty('--mathis-dy');
+    });
+    mathisCollapsedTargets = [];
+  };
+
+  const restoreMathisTargetsSequential = () => {
+    if (!mathisCollapsedTargets.length) {
+      return Promise.resolve();
+    }
+    const order = getMathisRestoreOrder();
+    if (!order.length) {
+      mathisCollapsedTargets = [];
+      return Promise.resolve();
+    }
+    const timelineWindow = Math.min(3600, 1200 + order.length * 1.9);
+    return new Promise((resolve) => {
+      let restoredCount = 0;
+      order.forEach((element, index) => {
+        const progress = order.length > 1 ? index / (order.length - 1) : 0;
+        const delay = progress * timelineWindow + Math.random() * 70;
+        window.setTimeout(() => {
+          const previousVisibility = element.dataset.mathisPrevVisibility;
+          if (typeof previousVisibility !== 'undefined') {
+            element.style.visibility = previousVisibility;
+            delete element.dataset.mathisPrevVisibility;
+          } else if (element.style.visibility === 'hidden') {
+            element.style.visibility = '';
+          }
+          element.removeAttribute('data-mathis-hidden');
+          element.classList.remove('is-mathis-collapsing');
+          element.classList.add('is-mathis-restoring');
+          requestAnimationFrame(() => {
+            element.classList.remove('is-mathis-restoring');
+          });
+          window.setTimeout(() => {
+            element.classList.remove('mathis-collapse-target');
+            element.style.removeProperty('--mathis-dx');
+            element.style.removeProperty('--mathis-dy');
+            restoredCount += 1;
+            if (restoredCount === order.length) {
+              mathisCollapsedTargets = [];
+              resolve();
+            }
+          }, 420);
+        }, delay);
+      });
+    });
+  };
+
+  const endMathisTakeover = (options = {}) => {
+    mathisSequenceActive = false;
+    mathisExitStarted = false;
+    const overlay = document.getElementById(MATHIS_TAKEOVER_ID);
+    const finish = () => {
+      overlay?.remove();
+      if (!options.skipRestore) {
+        restoreMathisTargets();
+      }
+      cleanupMathisFragments();
+      unlockMathisScroll();
+      if (!options.silent) {
+        setStatus('Retour a la recherche de joueurs.', 'info');
+      }
+    };
+    if (overlay) {
+      overlay.classList.add('is-ending');
+      window.setTimeout(finish, 600);
+    } else {
+      finish();
+    }
+  };
+
+  const buildMathisTakeoverOverlay = () => {
+    if (typeof document === 'undefined') {
+      return null;
+    }
+    const overlay = document.createElement('div');
+    overlay.id = MATHIS_TAKEOVER_ID;
+    overlay.className = 'mathis-clean';
+    overlay.setAttribute('role', 'presentation');
+    overlay.setAttribute('tabindex', '-1');
+    overlay.innerHTML = `
+      <button class="mathis-clean__close" type="button" aria-label="Fermer l'effet visuel">
+        <span></span>
+        <span></span>
+      </button>
+      <div class="mathis-clean__link">
+        <a class="mathis-clean__anchor" rel="noopener noreferrer" target="_blank">
+          <span class="mathis-clean__letters" aria-hidden="true"></span>
+          <span class="mathis-clean__sr">${MATHIS_LINK_TEXT}</span>
+        </a>
+      </div>
+    `;
+    return overlay;
+  };
+
+  const gatherMathisTargets = (options = {}) => {
+    if (typeof document === 'undefined' || !document.body) {
+      return [];
+    }
+    const overlay = document.getElementById(MATHIS_TAKEOVER_ID);
+    const viewportMargin = Number.isFinite(options.viewportMargin) ? options.viewportMargin : MATHIS_VIEWPORT_MARGIN_DESKTOP;
+    const targetLimit = Number.isFinite(options.targetLimit) ? options.targetLimit : MATHIS_MAX_TARGETS_DESKTOP;
+    const targetBudget = targetLimit > 0 ? targetLimit : Number.POSITIVE_INFINITY;
+    const blockedTags = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'LINK', 'META', 'HEAD', 'TITLE', 'HTML', 'BODY', 'TEMPLATE']);
+    const preferredSelectors = [
+      'p',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'li',
+      'blockquote',
+      'pre',
+      'code',
+      'figure',
+      'figcaption',
+      'dt',
+      'dd',
+      'table',
+      'thead',
+      'tbody',
+      'tfoot',
+      'tr',
+      'th',
+      'td',
+      '.club-row',
+      '.club-card',
+      '.clubs-options *',
+      '.clubs-search-block *',
+      '.cm-header *',
+      '.cm-footer *',
+      'a',
+      'button',
+      'label',
+      'input',
+      'textarea',
+      'select',
+      'option',
+      'summary',
+      'details',
+      'img',
+      'picture',
+      'video',
+      'audio',
+      'svg',
+      'canvas',
+      'iframe',
+    ]
+      .map((selector) => selector.trim())
+      .filter(Boolean)
+      .join(', ');
+    const buckets = new Map();
+    const registerElement = (element) => {
+      if (!element) {
+        return;
+      }
+      const depth = getMathisElementDepth(element);
+      if (!buckets.has(depth)) {
+        buckets.set(depth, []);
+      }
+      buckets.get(depth).push(element);
+    };
+    const allElements = Array.from(document.body.querySelectorAll('*'));
+    allElements.forEach((element) => {
+      if (!element) {
+        return;
+      }
+      if (element === overlay || element.closest(`#${MATHIS_TAKEOVER_ID}`)) {
+        return;
+      }
+      const tagName = element.tagName ? element.tagName.toUpperCase() : '';
+      if (!tagName || blockedTags.has(tagName)) {
+        return;
+      }
+      const svgAncestor = element.closest('svg');
+      if (svgAncestor && svgAncestor !== element) {
+        return;
+      }
+      if (!isMathisElementNearViewport(element, viewportMargin)) {
+        return;
+      }
+      const isLeaf = element.childElementCount === 0;
+      const isPreferred = preferredSelectors ? element.matches(preferredSelectors) : false;
+      if (isLeaf || isPreferred) {
+        registerElement(element);
+      }
+    });
+    const seen = new Set();
+    const orderedTargets = [];
+    const sortedDepths = Array.from(buckets.keys()).sort((a, b) => b - a);
+    sortedDepths.some((depth) => {
+      const bucket = shuffleArray(buckets.get(depth));
+      for (let index = 0; index < bucket.length; index += 1) {
+        const element = bucket[index];
+        if (!seen.has(element)) {
+          seen.add(element);
+          orderedTargets.push(element);
+          if (orderedTargets.length >= targetBudget) {
+            return true;
+          }
+        }
+      }
+      return false;
+    });
+    if (orderedTargets.length < targetBudget) {
+      gatherMathisFallbackContainers().forEach((element) => {
+        if (orderedTargets.length >= targetBudget) {
+          return;
+        }
+        if (!seen.has(element) && isMathisElementNearViewport(element, viewportMargin)) {
+          seen.add(element);
+          orderedTargets.push(element);
+        }
+      });
+    }
+    if (orderedTargets.length >= targetBudget) {
+      return orderedTargets.slice(0, targetBudget);
+    }
+    const leftovers = [];
+    allElements.forEach((element) => {
+      if (!element || seen.has(element)) {
+        return;
+      }
+      if (element === overlay || element.closest(`#${MATHIS_TAKEOVER_ID}`)) {
+        return;
+      }
+      const tagName = element.tagName ? element.tagName.toUpperCase() : '';
+      if (!tagName || blockedTags.has(tagName)) {
+        return;
+      }
+      if (!isMathisElementNearViewport(element, viewportMargin)) {
+        return;
+      }
+      leftovers.push({ element, depth: getMathisElementDepth(element) });
+    });
+    leftovers
+      .sort((a, b) => b.depth - a.depth)
+      .forEach(({ element }) => {
+        if (!seen.has(element)) {
+          seen.add(element);
+          orderedTargets.push(element);
+        }
+      });
+    if (orderedTargets.length) {
+      return orderedTargets.slice(0, targetBudget);
+    }
+    return Array.from(document.body.children)
+      .filter((element) => element.tagName !== 'SCRIPT' && element.tagName !== 'STYLE' && element.id !== MATHIS_TAKEOVER_ID)
+      .slice(0, targetBudget);
+  };
+
+  const collapseMathisTargets = (targets) => {
+    const valid = targets.filter(Boolean);
+    if (!valid.length) {
+      return Promise.resolve();
+    }
+    const order = valid.slice();
+    mathisCollapsedTargets = order.slice();
+    const timelineWindow = Math.min(4200, 1400 + order.length * 2.2);
+    return new Promise((resolve) => {
+      let completed = 0;
+      order.forEach((element, index) => {
+        const progress = order.length > 1 ? index / (order.length - 1) : 0;
+        const startDelay = progress * timelineWindow + Math.random() * 90;
+        window.setTimeout(() => {
+          if (!mathisSequenceActive) {
+            completed += 1;
+            if (completed === order.length) {
+              resolve();
+            }
+            return;
+          }
+          element.classList.add('mathis-collapse-target');
+          const dx = (Math.random() * 40 - 20).toFixed(2);
+          const dy = (Math.random() * 50 + 20).toFixed(2);
+          element.style.setProperty('--mathis-dx', `${dx}px`);
+          element.style.setProperty('--mathis-dy', `${dy}px`);
+          requestAnimationFrame(() => {
+            element.classList.add('is-mathis-collapsing');
+          });
+          const hideDelay = 280 + Math.random() * 140;
+          window.setTimeout(() => {
+            if (!mathisSequenceActive) {
+              completed += 1;
+              if (completed === order.length) {
+                resolve();
+              }
+              return;
+            }
+            if (typeof element.dataset.mathisPrevVisibility === 'undefined') {
+              element.dataset.mathisPrevVisibility = element.style.visibility || '';
+            }
+            element.style.visibility = 'hidden';
+            element.setAttribute('data-mathis-hidden', 'true');
+            completed += 1;
+            if (completed === order.length) {
+              resolve();
+            }
+          }, hideDelay);
+        }, startDelay);
+      });
+    });
+  };
+
+  const collapseMathisLink = (overlay) => {
+    const letters = Array.from(overlay.querySelectorAll('.mathis-clean__letter'));
+    if (!letters.length) {
+      return Promise.resolve();
+    }
+    const order = shuffleArray(letters);
+    overlay.classList.remove('is-link-ready');
+    overlay.classList.add('is-link-exiting');
+    return new Promise((resolve) => {
+      order.forEach((letter, index) => {
+        const delay = index * 110 + Math.random() * 70;
+        window.setTimeout(() => {
+          letter.classList.remove('is-visible');
+          letter.classList.add('is-exiting');
+          if (index === order.length - 1) {
+            window.setTimeout(resolve, 500);
+          }
+        }, delay);
+      });
+    });
+  };
+
+  const startMathisReturn = (overlay) => {
+    if (!mathisSequenceActive || mathisExitStarted) {
+      return;
+    }
+    mathisExitStarted = true;
+    overlay.classList.remove('is-link-phase');
+    collapseMathisLink(overlay)
+      .then(() => {
+        overlay.classList.remove('is-blank');
+        overlay.classList.add('is-returning');
+        return restoreMathisTargetsSequential();
+      })
+      .then(() => endMathisTakeover({ silent: true, skipRestore: true }));
+  };
+
+  const revealMathisLink = (overlay) => {
+    if (!mathisSequenceActive) {
+      return;
+    }
+    const lettersHost = overlay.querySelector('.mathis-clean__letters');
+    const anchor = overlay.querySelector('.mathis-clean__anchor');
+    if (!lettersHost || !anchor) {
+      return;
+    }
+    anchor.setAttribute('href', LEGACY_EASTER_EGG.href || '#');
+    lettersHost.innerHTML = '';
+    const letters = MATHIS_LINK_TEXT.split('');
+    const spans = letters.map((char) => {
+      const span = document.createElement('span');
+      span.className = 'mathis-clean__letter';
+      span.textContent = char;
+      lettersHost.appendChild(span);
+      return span;
+    });
+    overlay.classList.add('is-link-phase');
+    const indexes = shuffleArray(spans.map((_, idx) => idx));
+    indexes.forEach((letterIndex, orderIndex) => {
+      const delay = MATHIS_REVEAL_DELAY + orderIndex * 140;
+      window.setTimeout(() => {
+        if (!mathisSequenceActive) {
+          return;
+        }
+        spans[letterIndex].classList.add('is-visible');
+        if (orderIndex === indexes.length - 1) {
+          window.setTimeout(() => {
+            if (!mathisSequenceActive) {
+              return;
+            }
+            overlay.classList.add('is-link-ready');
+          }, 400);
+        }
+      }, delay);
+    });
+  };
+
+  const startMathisSequence = (overlay) => {
+    mathisSequenceActive = true;
+    mathisExitStarted = false;
+    resetMathisRectCache();
+    const mathisPerf = getMathisPerfProfile();
+    prepareMathisFragments(overlay, mathisPerf);
+    const targets = gatherMathisTargets(mathisPerf);
+    collapseMathisTargets(targets).then(() => {
+      if (!mathisSequenceActive) {
+        return;
+      }
+      overlay.classList.add('is-blank');
+      revealMathisLink(overlay);
+    });
+  };
+
+  const showLegacySpectacle = () => {
+    if (typeof document === 'undefined') {
+      return {
+        message: "Impossible d'afficher l'effet special sans navigateur.",
+        tone: 'error',
+      };
+    }
+    if (document.getElementById(MATHIS_TAKEOVER_ID)) {
+      return {
+        suppressStatus: true,
+      };
+    }
+    const overlay = buildMathisTakeoverOverlay();
+    if (!overlay) {
+      return null;
+    }
+    document.body?.appendChild(overlay);
+    lockMathisScroll();
+    const closeButton = overlay.querySelector('.mathis-clean__close');
+    closeButton?.addEventListener('click', (event) => {
+      event.preventDefault();
+      startMathisReturn(overlay);
+    });
+    overlay.focus();
+    startMathisSequence(overlay);
+    return {
+      suppressStatus: true,
+    };
+  };
+
+  const SECRET_COMMANDS = new Map();
+  if (LEGACY_EASTER_EGG.trigger) {
+    SECRET_COMMANDS.set(LEGACY_EASTER_EGG.trigger, () => showLegacySpectacle());
+  }
+
+  const findSecretCommandHandler = (value) => {
+    if (!value) {
+      return null;
+    }
+    const addCandidate = (candidate, list) => {
+      if (!candidate) {
+        return;
+      }
+      const normalizedCandidate = candidate.replace(/\/+$/, '');
+      const key = normalizedCandidate || candidate;
+      if (key && !list.includes(key)) {
+        list.push(key);
+      }
+    };
+    const normalized = value.toLowerCase();
+    const candidates = [];
+    addCandidate(normalized, candidates);
+    const noProtocol = normalized.replace(/^https?:\/\//, '');
+    addCandidate(noProtocol, candidates);
+    const noWww = noProtocol.replace(/^www\./, '');
+    addCandidate(noWww, candidates);
+    const noHash = noWww.split('#')[0];
+    addCandidate(noHash, candidates);
+    const noQuery = noHash.split('?')[0];
+    addCandidate(noQuery, candidates);
+    const hostOnly = noQuery.split('/')[0];
+    addCandidate(hostOnly, candidates);
+    for (const candidate of candidates) {
+      const handler = SECRET_COMMANDS.get(candidate);
+      if (handler) {
+        return handler;
+      }
+    }
+    return null;
+  };
+
+  const tryHandleSecretCommand = (rawValue) => {
+    const raw = rawValue != null ? String(rawValue) : '';
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      return false;
+    }
+    const normalized = trimmed.toLowerCase();
+    const handler = findSecretCommandHandler(trimmed);
+    if (!handler) {
+      return false;
+    }
+    if (handler === showLegacySpectacle && LEGACY_EASTER_EGG.trigger && normalized !== LEGACY_EASTER_EGG.trigger) {
+      return false;
+    }
+    const result = handler({ query: trimmed, normalized }) || null;
+    if (input) {
+      input.value = '';
+    }
+    toggleClearButton();
+    if (result && typeof result === 'object') {
+      if (result.suppressStatus) {
+        setStatus('', 'info');
+      } else if (result.message) {
+        setStatus(result.message, result.tone || 'info');
+      }
+    } else if (typeof result === 'string') {
+      setStatus(result, 'info');
+    }
+    return true;
+  };
+
   const syncSearchQueryInUrl = (query) => {
     if (typeof window === 'undefined' || !window.history || typeof window.history.replaceState !== 'function') {
       return;
@@ -618,6 +1466,17 @@
     const token = (activeSearchToken += 1);
     const raw = (query || '').toString().trim();
     toggleClearButton();
+
+    if (tryHandleSecretCommand(raw)) {
+      syncSearchQueryInUrl('');
+      clearResultsLoading();
+      clearResults();
+      resetSearchCache();
+      if (spotlightSection) {
+        spotlightSection.hidden = false;
+      }
+      return;
+    }
 
     if (!raw) {
       syncSearchQueryInUrl('');
