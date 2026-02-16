@@ -21,6 +21,26 @@ if ( ! defined( 'CDJE92_RIEN_QUERY_PARAM' ) ) {
     define( 'CDJE92_RIEN_QUERY_PARAM', 'cdje92_rien' );
 }
 
+if ( ! defined( 'CDJE92_IG_CINEMA_TARGET_PATH' ) ) {
+    define( 'CDJE92_IG_CINEMA_TARGET_PATH', '/clubs-92' );
+}
+
+if ( ! defined( 'CDJE92_IG_CINEMA_INIT_QUERY_PARAM' ) ) {
+    define( 'CDJE92_IG_CINEMA_INIT_QUERY_PARAM', 'cdje92_ig_cinema_init' );
+}
+
+if ( ! defined( 'CDJE92_IG_CINEMA_QUERY_PARAM' ) ) {
+    define( 'CDJE92_IG_CINEMA_QUERY_PARAM', 'cdje92_ig_cinema' );
+}
+
+if ( ! defined( 'CDJE92_IG_CINEMA_TRIGGER' ) ) {
+    define( 'CDJE92_IG_CINEMA_TRIGGER', 'mathisboche' );
+}
+
+if ( ! defined( 'CDJE92_IG_CINEMA_ALIAS' ) ) {
+    define( 'CDJE92_IG_CINEMA_ALIAS', 'mtb' );
+}
+
 if ( ! defined( 'CDJE92_RIEN_CODE_COOKIE' ) ) {
     define( 'CDJE92_RIEN_CODE_COOKIE', 'cdje92_rien_code' );
 }
@@ -379,7 +399,7 @@ function cdje92_should_bootstrap_runtime_easter_egg() {
         return false;
     }
 
-    return is_page( [ 'clubs-92', 'clubs', 'joueurs-92', 'joueurs' ] );
+    return is_page( 'clubs-92' ) || is_page_template( 'page-clubs-92.html' );
 }
 
 function cdje92_output_runtime_easter_egg_config() {
@@ -387,21 +407,48 @@ function cdje92_output_runtime_easter_egg_config() {
         return;
     }
 
-    $active_code = cdje92_rien_get_active_code();
-    if ( $active_code === '' ) {
-        return;
-    }
-
     $payload = [
-        'trigger' => strtolower( $active_code ),
+        'trigger' => CDJE92_IG_CINEMA_TRIGGER,
+        'alias'   => CDJE92_IG_CINEMA_ALIAS,
         'href'    => 'https://www.mathisboche.com',
         'text'    => 'mathisboche.com',
-        'consumeUrl' => rest_url( 'cdje92/v1/rien-code/consume' ),
+        'consumeUrl' => '',
     ];
 
     echo '<script id="cdje92-runtime-egg-config">window.CDJE92_EASTER_EGG=' . wp_json_encode( $payload ) . ';</script>';
 }
 add_action( 'wp_head', 'cdje92_output_runtime_easter_egg_config', 1 );
+
+function cdje92_output_ig_cinema_entry_config() {
+    if ( is_admin() ) {
+        return;
+    }
+
+    $runtime = isset( $GLOBALS['cdje92_ig_cinema_entry_runtime'] ) && is_array( $GLOBALS['cdje92_ig_cinema_entry_runtime'] )
+        ? $GLOBALS['cdje92_ig_cinema_entry_runtime']
+        : null;
+    if ( ! $runtime ) {
+        return;
+    }
+
+    $payload = [
+        'enabled' => true,
+        'query'   => CDJE92_IG_CINEMA_TRIGGER,
+        'alias'   => CDJE92_IG_CINEMA_ALIAS,
+        'cleanPath' => CDJE92_IG_CINEMA_TARGET_PATH,
+        'removeParams' => [
+            CDJE92_IG_CINEMA_INIT_QUERY_PARAM,
+            CDJE92_IG_CINEMA_QUERY_PARAM,
+            CDJE92_RIEN_TOKEN_QUERY_PARAM,
+            'exp',
+            'nonce',
+            'sig',
+        ],
+    ];
+
+    echo '<script id="cdje92-ig-cinema-config">(function(){try{var payload=' . wp_json_encode( $payload ) . ';window.CDJE92_IG_CINEMA_ENTRY=payload;var root=document.documentElement;if(root){root.classList.add("cdje92-cinema-prep");}var cleanPath=(payload&&typeof payload.cleanPath==="string"?payload.cleanPath:"")||"/clubs-92";if(!cleanPath.startsWith("/")){cleanPath="/"+cleanPath;}var url=new URL(window.location.href);var changed=false;var params=Array.isArray(payload&&payload.removeParams)?payload.removeParams:[];for(var i=0;i<params.length;i+=1){var key=params[i];if(key&&url.searchParams.has(key)){url.searchParams.delete(key);changed=true;}}if(url.pathname!==cleanPath){url.pathname=cleanPath;changed=true;}if(changed&&window.history&&typeof window.history.replaceState==="function"){window.history.replaceState(null,"",url.pathname+(url.search?url.search:"")+url.hash);}}catch(e){}})();</script>';
+}
+add_action( 'wp_head', 'cdje92_output_ig_cinema_entry_config', 0 );
 
 function cdje92_render_rien_page( $code ) {
     status_header( 200 );
@@ -3401,8 +3448,51 @@ add_action('template_redirect', function () {
     $query_string = isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] ? '?' . $_SERVER['QUERY_STRING'] : '';
     $normalized = '/' . ltrim((string) $request_path, '/');
     $normalized_slash = trailingslashit( $normalized );
+    $is_clubs_92_request = ( $normalized_slash === trailingslashit( CDJE92_IG_CINEMA_TARGET_PATH ) );
+    $is_ig_cinema_init_request = $is_clubs_92_request && cdje92_rien_has_query_flag( CDJE92_IG_CINEMA_INIT_QUERY_PARAM );
+    $is_ig_cinema_request = $is_clubs_92_request && cdje92_rien_has_query_flag( CDJE92_IG_CINEMA_QUERY_PARAM );
     $is_rien_init_request = ( $normalized_slash === trailingslashit( CDJE92_RIEN_INIT_PATH ) ) || cdje92_rien_has_query_flag( CDJE92_RIEN_INIT_QUERY_PARAM );
     $is_rien_request = ( $normalized_slash === trailingslashit( CDJE92_RIEN_PATH ) ) || cdje92_rien_has_query_flag( CDJE92_RIEN_QUERY_PARAM );
+
+    if ( $is_ig_cinema_init_request ) {
+        $request_host = cdje92_rien_get_request_host();
+
+        if ( $request_host !== '' && ! in_array( $request_host, cdje92_rien_allowed_self_hosts(), true ) ) {
+            header( 'X-Robots-Tag: noindex, nofollow, noarchive', true );
+            wp_redirect( 'https://www.google.com', 302 );
+            exit;
+        }
+
+        if ( ! cdje92_rien_has_valid_bridge_signature() ) {
+            header( 'X-Robots-Tag: noindex, nofollow, noarchive', true );
+            wp_redirect( 'https://www.google.com', 302 );
+            exit;
+        }
+
+        $token = cdje92_rien_issue_one_time_token( cdje92_rien_current_user_agent() );
+        $target_url = add_query_arg(
+            [
+                CDJE92_IG_CINEMA_QUERY_PARAM => '1',
+                CDJE92_RIEN_TOKEN_QUERY_PARAM => $token,
+            ],
+            home_url( CDJE92_IG_CINEMA_TARGET_PATH )
+        );
+        header( 'X-Robots-Tag: noindex, nofollow, noarchive', true );
+        wp_redirect( $target_url, 302 );
+        exit;
+    }
+
+    if ( $is_ig_cinema_request ) {
+        if ( ! cdje92_rien_is_allowed_request() ) {
+            header( 'X-Robots-Tag: noindex, nofollow, noarchive', true );
+            wp_redirect( 'https://www.google.com', 302 );
+            exit;
+        }
+
+        $GLOBALS['cdje92_ig_cinema_entry_runtime'] = [
+            'source' => 'ig-404',
+        ];
+    }
 
     if ( $is_rien_init_request ) {
         $request_host = cdje92_rien_get_request_host();

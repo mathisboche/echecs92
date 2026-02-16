@@ -3882,6 +3882,92 @@ body.club-ffe-view .clubs-page{
   line-height:1.6;
   margin-bottom:0px;
 }
+html.cdje92-cinema-prep body .wp-site-blocks{
+  opacity:0;
+  visibility:hidden;
+  transition:opacity .72s cubic-bezier(.2,.78,.24,1);
+}
+html.cdje92-cinema-prep,
+html.cdje92-cinema-prep body{
+  background:
+    radial-gradient(90vw 52vh at 50% -18%, rgba(255, 255, 255, 0.08), transparent 64%),
+    radial-gradient(62vw 42vh at 50% 122%, rgba(255, 255, 255, 0.05), transparent 66%),
+    #0c0c10 !important;
+}
+html.cdje92-cinema-prep.cdje92-cinema-revealing body .wp-site-blocks{
+  opacity:1;
+  visibility:visible;
+}
+[data-cdje92-cinema-item]{
+  transition:
+    opacity .86s cubic-bezier(.2,.8,.24,1),
+    transform .98s cubic-bezier(.18,.8,.2,1),
+    filter .92s cubic-bezier(.2,.8,.24,1);
+  will-change:opacity,transform,filter;
+}
+html.cdje92-cinema-prep [data-cdje92-cinema-item]:not(.is-cdje92-cinema-visible){
+  opacity:0;
+  transform:translate3d(0,20px,0) scale(.984);
+  filter:blur(6px) brightness(.9);
+}
+.cdje92-cinema-overlay{
+  position:fixed;
+  inset:0;
+  z-index:99999;
+  pointer-events:none;
+  overflow:hidden;
+  opacity:0;
+  background:
+    radial-gradient(90vw 52vh at 50% -18%, rgba(255, 255, 255, 0.08), transparent 64%),
+    radial-gradient(62vw 42vh at 50% 122%, rgba(255, 255, 255, 0.05), transparent 66%),
+    #0c0c10;
+  transition:opacity .98s cubic-bezier(.16,.82,.2,1);
+}
+.cdje92-cinema-overlay.is-active{
+  opacity:1;
+}
+.cdje92-cinema-overlay.is-exit{
+  opacity:0;
+}
+.cdje92-cinema-overlay__halo,
+.cdje92-cinema-overlay__grain{
+  position:absolute;
+  inset:-12%;
+  display:block;
+}
+.cdje92-cinema-overlay__halo{
+  background:radial-gradient(circle at center, rgba(255, 255, 255, 0.07), transparent 58%);
+  opacity:.44;
+  animation:cdje92CinemaHalo 8.6s ease-in-out infinite;
+}
+.cdje92-cinema-overlay__grain{
+  opacity:.08;
+  background-image:
+    radial-gradient(rgba(255,255,255,.34) 0.45px, transparent 0.45px),
+    radial-gradient(rgba(255,255,255,.24) 0.45px, transparent 0.45px);
+  background-size:3px 3px, 5px 5px;
+  background-position:0 0, 1px 1px;
+  mix-blend-mode:soft-light;
+  animation:cdje92CinemaGrain 2.6s steps(2, end) infinite;
+}
+@keyframes cdje92CinemaHalo{
+  0%,100%{
+    transform:scale(.97);
+    opacity:.36;
+  }
+  50%{
+    transform:scale(1.03);
+    opacity:.56;
+  }
+}
+@keyframes cdje92CinemaGrain{
+  0%,100%{
+    transform:translate3d(0,0,0);
+  }
+  50%{
+    transform:translate3d(1px,-1px,0);
+  }
+}
 .clubs-search-block{
   display:flex;
   flex-direction:column;

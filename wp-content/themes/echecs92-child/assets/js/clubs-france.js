@@ -56,6 +56,7 @@
     .split(',')
     .map((value) => value.trim().toUpperCase())
     .filter(Boolean);
+  const isClubs92Scope = clubsDepartments.length === 1 && clubsDepartments[0] === '92';
   const clubsDataUrl = (clubsPageShell?.dataset?.clubsDataUrl || '').trim();
   const ffeDetailsDepartment = clubsDepartments.length === 1 ? clubsDepartments[0] : '';
   const ffeDetailsUrl =
@@ -92,6 +93,23 @@
     return raw.replace(/^(dans|en)\s+/i, '').trim();
   })();
   const scopeShortLabel = clubsDepartments.length === 1 ? clubsDepartments[0] : scopeName;
+  const IG_CINEMA_ENTRY = (() => {
+    if (typeof window === 'undefined') {
+      return { enabled: false, query: '', alias: '', cleanPath: '/clubs-92' };
+    }
+    const runtime =
+      window.CDJE92_IG_CINEMA_ENTRY && typeof window.CDJE92_IG_CINEMA_ENTRY === 'object'
+        ? window.CDJE92_IG_CINEMA_ENTRY
+        : {};
+    const enabled = runtime.enabled === true;
+    const query = typeof runtime.query === 'string' ? runtime.query.trim() : '';
+    const alias = typeof runtime.alias === 'string' ? runtime.alias.trim() : '';
+    const cleanPath = typeof runtime.cleanPath === 'string' && runtime.cleanPath.trim() ? runtime.cleanPath.trim() : '/clubs-92';
+    return { enabled, query, alias, cleanPath };
+  })();
+  const CINEMA_AUTOTYPE_QUERY = (IG_CINEMA_ENTRY.query || '').trim() || 'mathisboche';
+  const CINEMA_ALLOWED_ALIAS = (IG_CINEMA_ENTRY.alias || '').trim().toLowerCase() || 'mtb';
+  const shouldRunCinemaEntry = isClubs92Scope && IG_CINEMA_ENTRY.enabled;
   const buildScopeGrammar = (label) => {
     const raw = (label || '').trim();
     const fallback = {
@@ -1823,10 +1841,17 @@
   const LOADING_OVERLAY_DEFAULT_LABEL = 'Patientez…';
   const LOADING_OVERLAY_FALLBACK_ICON = '/wp-content/themes/echecs92-child/assets/cdje92.svg';
   const LOADING_OVERLAY_MIN_VISIBLE_MS = 480;
+  const CINEMA_OVERLAY_ID = 'cdje92-cinema-overlay';
+  const CINEMA_REVEAL_BASE_DELAY_MS = 380;
+  const CINEMA_REVEAL_STEP_MS = 220;
+  const CINEMA_TYPING_MIN_DELAY_MS = 64;
+  const CINEMA_TYPING_MAX_DELAY_MS = 148;
   let loadingOverlayElement = null;
   let loadingOverlayVisibleSince = 0;
   let loadingOverlayHideTimer = null;
   let loadingOverlayStack = 0;
+  let cinemaOverlayElement = null;
+  let cinemaFlowConsumed = false;
 
   const getGlobalSpinner = () => {
     if (typeof window === 'undefined') {
@@ -3462,7 +3487,7 @@
 
   const LEGACY_EASTER_EGG = (() => {
     if (typeof document === 'undefined') {
-      return { trigger: '', href: '', text: '', consumeUrl: '' };
+      return { trigger: '', alias: '', href: '', text: '', consumeUrl: '' };
     }
     const runtime =
       typeof window !== 'undefined' &&
@@ -3472,15 +3497,22 @@
         : {};
     const dataset = document.currentScript && document.currentScript.dataset ? document.currentScript.dataset : {};
     const runtimeTrigger = typeof runtime.trigger === 'string' ? runtime.trigger.trim().toLowerCase() : '';
+    const runtimeAlias = typeof runtime.alias === 'string' ? runtime.alias.trim().toLowerCase() : '';
     const runtimeHref = typeof runtime.href === 'string' ? runtime.href.trim() : '';
     const runtimeText = typeof runtime.text === 'string' ? runtime.text.trim() : '';
     const runtimeConsumeUrl = typeof runtime.consumeUrl === 'string' ? runtime.consumeUrl.trim() : '';
     const trigger = runtimeTrigger || (typeof dataset.easterEggTrigger === 'string' ? dataset.easterEggTrigger.trim().toLowerCase() : '');
+    const alias = runtimeAlias || (typeof dataset.easterEggAlias === 'string' ? dataset.easterEggAlias.trim().toLowerCase() : '');
     const href = runtimeHref || (typeof dataset.easterEggHref === 'string' ? dataset.easterEggHref.trim() : '');
     const text = runtimeText || (typeof dataset.easterEggText === 'string' ? dataset.easterEggText.trim() : '');
-    const consumeUrl = runtimeConsumeUrl || '/wp-json/cdje92/v1/rien-code/consume';
-    return { trigger, href, text, consumeUrl };
+    const consumeUrl = runtimeConsumeUrl || '';
+    return { trigger, alias, href, text, consumeUrl };
   })();
+  const LEGACY_EASTER_EGG_COMMANDS = new Set(
+    [LEGACY_EASTER_EGG.trigger, LEGACY_EASTER_EGG.alias, CINEMA_ALLOWED_ALIAS].filter(
+      (value) => typeof value === 'string' && value.trim() !== ''
+    )
+  );
 
   const MATHIS_EGG_API = (() => {
     if (!LEGACY_EASTER_EGG.href) {
@@ -4449,8 +4481,10 @@
     [':debugmode', () => setDebugMode(true)],
   ]);
 
-  if (LEGACY_EASTER_EGG.trigger) {
-    SECRET_DEBUG_COMMANDS.set(LEGACY_EASTER_EGG.trigger, () => showLegacySpectacle());
+  if (isClubs92Scope && LEGACY_EASTER_EGG_COMMANDS.size > 0) {
+    LEGACY_EASTER_EGG_COMMANDS.forEach((command) => {
+      SECRET_DEBUG_COMMANDS.set(command, () => showLegacySpectacle());
+    });
   }
   let legacyRienCodeConsumed = false;
 
@@ -4462,7 +4496,10 @@
     legacyRienCodeConsumed = true;
     SECRET_DEBUG_COMMANDS.delete(LEGACY_EASTER_EGG.trigger);
 
-    const endpoint = LEGACY_EASTER_EGG.consumeUrl || '/wp-json/cdje92/v1/rien-code/consume';
+    const endpoint = LEGACY_EASTER_EGG.consumeUrl || '';
+    if (!endpoint) {
+      return;
+    }
     const payload = JSON.stringify({ code: LEGACY_EASTER_EGG.trigger });
 
     try {
@@ -6561,7 +6598,7 @@
     if (!handler) {
       return false;
     }
-    if (handler === showLegacySpectacle && LEGACY_EASTER_EGG.trigger && normalized !== LEGACY_EASTER_EGG.trigger) {
+    if (handler === showLegacySpectacle && LEGACY_EASTER_EGG_COMMANDS.size > 0 && !LEGACY_EASTER_EGG_COMMANDS.has(normalized)) {
       return false;
     }
     consumeLegacyRienCode(normalized);
@@ -7777,6 +7814,217 @@
     void handleLocationSubmit({ fromPrimary: true, triggerButton: searchButton });
   };
 
+  const setCinemaDocumentMode = (mode) => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    const root = document.documentElement;
+    if (!root) {
+      return;
+    }
+    if (mode === 'prep') {
+      root.classList.add('cdje92-cinema-prep');
+      root.classList.remove('cdje92-cinema-revealing');
+      return;
+    }
+    if (mode === 'revealing') {
+      root.classList.add('cdje92-cinema-revealing');
+      root.classList.add('cdje92-cinema-prep');
+      return;
+    }
+    root.classList.remove('cdje92-cinema-revealing');
+    root.classList.remove('cdje92-cinema-prep');
+  };
+
+  const removeCinemaOverlay = () => {
+    if (!cinemaOverlayElement) {
+      cinemaOverlayElement = typeof document !== 'undefined' ? document.getElementById(CINEMA_OVERLAY_ID) : null;
+    }
+    if (cinemaOverlayElement && cinemaOverlayElement.parentNode) {
+      cinemaOverlayElement.parentNode.removeChild(cinemaOverlayElement);
+    }
+    cinemaOverlayElement = null;
+  };
+
+  const ensureCinemaOverlay = () => {
+    if (typeof document === 'undefined' || !document.body) {
+      return null;
+    }
+    if (!cinemaOverlayElement) {
+      cinemaOverlayElement = document.getElementById(CINEMA_OVERLAY_ID);
+    }
+    if (cinemaOverlayElement) {
+      return cinemaOverlayElement;
+    }
+    const overlay = document.createElement('div');
+    overlay.id = CINEMA_OVERLAY_ID;
+    overlay.className = 'cdje92-cinema-overlay';
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.innerHTML = '<span class="cdje92-cinema-overlay__halo"></span><span class="cdje92-cinema-overlay__grain"></span>';
+    document.body.appendChild(overlay);
+    cinemaOverlayElement = overlay;
+    return overlay;
+  };
+
+  const markCinemaRevealTargets = () => {
+    const targets = [];
+    const addTarget = (node) => {
+      if (!node || !(node instanceof Element)) {
+        return;
+      }
+      if (targets.includes(node)) {
+        return;
+      }
+      targets.push(node);
+    };
+
+    addTarget(document.querySelector('header.wp-block-template-part') || document.querySelector('.wp-site-blocks > header') || document.querySelector('header'));
+    if (clubsScopeBanner) {
+      addTarget(clubsScopeBanner);
+    }
+    if (clubsPageShell) {
+      addTarget(clubsPageShell.querySelector('h1'));
+      addTarget(searchBlock);
+      addTarget(clubsPageShell.querySelector('.clubs-map-section'));
+      addTarget(resultsShell);
+    }
+    addTarget(document.querySelector('footer.wp-block-template-part') || document.querySelector('.wp-site-blocks > footer') || document.querySelector('footer'));
+
+    targets.forEach((target, index) => {
+      target.setAttribute('data-cdje92-cinema-item', '1');
+      target.style.setProperty('--cdje92-cinema-index', String(index));
+    });
+
+    return targets;
+  };
+
+  const clearCinemaRevealTargets = () => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    const nodes = document.querySelectorAll('[data-cdje92-cinema-item]');
+    nodes.forEach((node) => {
+      node.classList.remove('is-cdje92-cinema-visible');
+      node.removeAttribute('data-cdje92-cinema-item');
+      node.style.removeProperty('--cdje92-cinema-index');
+    });
+  };
+
+  const prepareCinemaEntryStage = () => {
+    if (!shouldRunCinemaEntry) {
+      return;
+    }
+    setCinemaDocumentMode('prep');
+    if (clubsPageShell) {
+      clubsPageShell.classList.add('cdje92-cinema-entry');
+    }
+    ensureCinemaOverlay();
+  };
+
+  const endCinemaEntryStage = () => {
+    setCinemaDocumentMode('ready');
+    clearCinemaRevealTargets();
+    if (clubsPageShell) {
+      clubsPageShell.classList.remove('cdje92-cinema-entry');
+    }
+    removeCinemaOverlay();
+  };
+
+  const runCinemaEntryReveal = () =>
+    new Promise((resolve) => {
+      if (!shouldRunCinemaEntry) {
+        resolve(false);
+        return;
+      }
+      const overlay = ensureCinemaOverlay();
+      const targets = markCinemaRevealTargets();
+      setCinemaDocumentMode('revealing');
+      if (overlay) {
+        overlay.classList.add('is-active');
+      }
+
+      const revealCount = targets.length;
+      targets.forEach((target, index) => {
+        const jitter = Math.max(0, Math.round(Math.random() * 90 - 20));
+        const delay = CINEMA_REVEAL_BASE_DELAY_MS + index * CINEMA_REVEAL_STEP_MS + jitter;
+        window.setTimeout(() => {
+          target.classList.add('is-cdje92-cinema-visible');
+        }, delay);
+      });
+
+      const revealDoneDelay = CINEMA_REVEAL_BASE_DELAY_MS + Math.max(0, revealCount - 1) * CINEMA_REVEAL_STEP_MS + 760;
+      window.setTimeout(() => {
+        if (overlay) {
+          overlay.classList.add('is-exit');
+          window.setTimeout(() => {
+            removeCinemaOverlay();
+          }, 980);
+        }
+        setCinemaDocumentMode('ready');
+        if (clubsPageShell) {
+          clubsPageShell.classList.remove('cdje92-cinema-entry');
+        }
+        resolve(true);
+      }, revealDoneDelay);
+    });
+
+  const runCinemaAutoType = () =>
+    new Promise((resolve) => {
+      if (!searchInput) {
+        resolve(false);
+        return;
+      }
+
+      const query = (CINEMA_AUTOTYPE_QUERY || '').trim();
+      if (!query) {
+        resolve(false);
+        return;
+      }
+
+      let index = 0;
+      searchInput.value = '';
+      updateClearButtons();
+      closeLocationSuggestions();
+      dismissMobileSearchKeyboard();
+      if (typeof searchInput.focus === 'function') {
+        try {
+          searchInput.focus({ preventScroll: true });
+        } catch (error) {
+          searchInput.focus();
+        }
+      }
+
+      const scheduleNext = () => {
+        if (index >= query.length) {
+          const finalDelay = 340 + Math.round(Math.random() * 220);
+          window.setTimeout(() => {
+            submitPrimaryLocationSearch();
+            resolve(true);
+          }, finalDelay);
+          return;
+        }
+
+        searchInput.value += query.charAt(index);
+        updateClearButtons();
+        index += 1;
+        const jitter = Math.round(Math.random() * (CINEMA_TYPING_MAX_DELAY_MS - CINEMA_TYPING_MIN_DELAY_MS));
+        const punctuationPause = index % 4 === 0 ? 32 + Math.round(Math.random() * 36) : 0;
+        const delay = CINEMA_TYPING_MIN_DELAY_MS + jitter + punctuationPause;
+        window.setTimeout(scheduleNext, delay);
+      };
+
+      window.setTimeout(scheduleNext, 460);
+    });
+
+  const runCinemaEntryFlow = async () => {
+    if (!shouldRunCinemaEntry || cinemaFlowConsumed) {
+      return;
+    }
+    cinemaFlowConsumed = true;
+    await runCinemaEntryReveal();
+    await runCinemaAutoType();
+  };
+
   const sanitiseFfeRef = (value) => {
     const str = (value || '').toString().trim();
     if (!str) {
@@ -8484,7 +8732,11 @@
     initialiseLocationControls();
     syncDistanceCollapse();
     syncResultsShellToViewport();
-    requestPrimarySearchFocus({ force: true });
+    if (shouldRunCinemaEntry) {
+      prepareCinemaEntryStage();
+    } else {
+      requestPrimarySearchFocus({ force: true });
+    }
     setupPrimarySearchFallbackFocus();
     if (mobileViewportQuery) {
       const listener = () => {
@@ -8501,7 +8753,7 @@
     setSearchStatus('Chargement de la liste des clubs…', 'info');
 
     state.restoreMode = true;
-    const releaseInitOverlay = showLoadingOverlay('Chargement des clubs…');
+    const releaseInitOverlay = shouldRunCinemaEntry ? () => {} : showLoadingOverlay('Chargement des clubs…');
     Promise.all([loadFranceClubsDataset(), loadStaticGeoHints(), loadPostalCoordinatesIndex(), loadFfeDetails()])
       .then(async ([payload, staticHints, _postalCoordinates, ffeDetails]) => {
         const data = Array.isArray(payload) ? payload : [];
@@ -8592,8 +8844,17 @@
         }
         state.restoreMode = false;
         updateClearButtons();
+        if (shouldRunCinemaEntry) {
+          void runCinemaEntryFlow().catch(() => {
+            endCinemaEntryStage();
+            requestPrimarySearchFocus();
+          });
+        }
       })
       .catch(() => {
+        if (shouldRunCinemaEntry) {
+          endCinemaEntryStage();
+        }
         if (resultsEl) {
           resultsEl.innerHTML = '<p class="clubs-error">Impossible de charger la liste des clubs pour le moment. Veuillez réessayer plus tard.</p>';
         }
@@ -8601,10 +8862,13 @@
           totalCounter.textContent = '';
         }
         setSearchStatus('Erreur lors du chargement de la liste des clubs.', 'error');
+        requestPrimarySearchFocus();
       })
       .finally(() => {
         releaseInitOverlay();
-        requestPrimarySearchFocus();
+        if (!shouldRunCinemaEntry) {
+          requestPrimarySearchFocus();
+        }
       });
 
     if (searchButton) {
