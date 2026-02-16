@@ -385,8 +385,6 @@
           } catch (error) {
             // noop
           }
-        } else {
-          setStatus('Autorise les popups pour ouvrir le lien secret.', 'error');
         }
         mathisEggPending = false;
         return;
@@ -408,8 +406,6 @@
             } catch (error) {
               // noop
             }
-          } else {
-            setStatus('Autorise les popups pour ouvrir le lien secret.', 'error');
           }
         })
         .catch(() => {
