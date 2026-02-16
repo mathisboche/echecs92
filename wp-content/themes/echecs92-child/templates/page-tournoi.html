@@ -6,35 +6,16 @@
   data-tournaments-mode="detail"
 >
   <div class="club-detail__actions tournaments-detail__actions">
-    <a class="link-button club-detail__back" href="/tournois-92" data-tournament-back>Retour aux tournois</a>
+    <a class="link-button club-detail__back" href="/tournois-92" data-tournament-back>Retour aux tournois du 92</a>
   </div>
 
   <h1>Fiche tournoi</h1>
+  <p id="tournament-detail-status" class="tournaments-status" role="status" aria-live="polite">Chargement de la fiche tournoi...</p>
 
-  <section class="tournaments-shell tournaments-shell--detail" aria-label="Fiche tournoi">
-    <div class="tournaments-shell__header">
-      <a
-        class="btn btn-secondary tournaments-shell__direct-link"
-        data-tournaments-direct
-        href="https://www.echecs.asso.fr/FicheTournoi.aspx"
-        target="_blank"
-        rel="noopener"
-      >Ouvrir sur echecs.asso.fr</a>
-      <p class="tournaments-shell__status" data-tournaments-status role="status" aria-live="polite">Chargement de la fiche...</p>
-    </div>
-
-    <iframe
-      class="tournaments-frame tournaments-frame--detail"
-      data-tournaments-embed
-      title="Fiche tournoi FFE"
-      loading="lazy"
-      referrerpolicy="strict-origin-when-cross-origin"
-      allowfullscreen
-    ></iframe>
-  </section>
+  <article id="tournament-detail" class="tournament-detail-card" aria-live="polite"></article>
 </div>
 
-<script src="/wp-content/themes/echecs92-child/assets/js/tournaments.js?v=20260216-1" defer></script>
+<script src="/wp-content/themes/echecs92-child/assets/js/tournaments.js?v=20260216-2" defer></script>
 <!-- /wp:html -->
 
 <!-- wp:template-part {"slug":"footer","tagName":"footer","theme":"echecs92-child"} /-->

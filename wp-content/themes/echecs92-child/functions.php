@@ -1865,6 +1865,757 @@ function cdje92_rest_get_ffe_player( WP_REST_Request $request ) {
     return rest_ensure_response( $payload );
 }
 
+/* ---------- FFE Tournaments (server-side proxy) ---------- */
+
+function cdje92_ffe_tournaments_to_absolute_url( $value ) {
+    $raw = trim( (string) $value );
+    if ( $raw === '' ) {
+        return '';
+    }
+    if ( strpos( $raw, '//' ) === 0 ) {
+        return 'https:' . $raw;
+    }
+    if ( preg_match( '#^https?://#i', $raw ) ) {
+        return $raw;
+    }
+    if ( strpos( $raw, '/' ) === 0 ) {
+        return 'https://www.echecs.asso.fr' . $raw;
+    }
+    return 'https://www.echecs.asso.fr/' . ltrim( $raw, '/' );
+}
+
+function cdje92_ffe_tournaments_extract_hidden_fields( $html ) {
+    $body = is_string( $html ) ? $html : '';
+    $fields = [];
+    if ( $body === '' ) {
+        return $fields;
+    }
+
+    foreach ( [ '__VIEWSTATE', '__VIEWSTATEGENERATOR', '__EVENTVALIDATION', '__VIEWSTATEENCRYPTED' ] as $name ) {
+        $pattern = sprintf( '/id="%s"\s+value="([^"]*)"/i', preg_quote( $name, '/' ) );
+        if ( preg_match( $pattern, $body, $matches ) ) {
+            $fields[ $name ] = html_entity_decode( (string) $matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+        }
+    }
+
+    return $fields;
+}
+
+function cdje92_ffe_tournaments_detect_pager_target( $html ) {
+    $body = is_string( $html ) ? $html : '';
+    if ( $body === '' ) {
+        return '';
+    }
+
+    if ( preg_match( "/__doPostBack\\('([^']*PagerHeader)'\\s*,\\s*'\\d+'\\)/i", $body, $matches ) ) {
+        return (string) $matches[1];
+    }
+    if ( preg_match( "/__doPostBack\\('([^']*PagerFooter)'\\s*,\\s*'\\d+'\\)/i", $body, $matches ) ) {
+        return (string) $matches[1];
+    }
+
+    return '';
+}
+
+function cdje92_ffe_tournaments_fetch_list_html( $url, $page = 1 ) {
+    $target_url = cdje92_ffe_tournaments_to_absolute_url( $url );
+    if ( $target_url === '' ) {
+        return '';
+    }
+
+    $html_page_1 = cdje92_fide_fetch_text( $target_url, [
+        'timeout' => 8,
+        'referer' => 'https://www.echecs.asso.fr/Tournois.aspx',
+    ] );
+    if ( $html_page_1 === '' ) {
+        return '';
+    }
+
+    $requested_page = is_numeric( $page ) ? max( 1, (int) $page ) : 1;
+    if ( $requested_page <= 1 ) {
+        return $html_page_1;
+    }
+
+    $hidden = cdje92_ffe_tournaments_extract_hidden_fields( $html_page_1 );
+    if ( empty( $hidden['__VIEWSTATE'] ) ) {
+        return $html_page_1;
+    }
+
+    $pager_target = cdje92_ffe_tournaments_detect_pager_target( $html_page_1 );
+    if ( $pager_target === '' ) {
+        $pager_target = 'ctl00$ContentPlaceHolderMain$PagerHeader';
+    }
+
+    $post_body = [
+        '__EVENTTARGET' => $pager_target,
+        '__EVENTARGUMENT' => (string) $requested_page,
+        '__VIEWSTATE' => $hidden['__VIEWSTATE'],
+        '__VIEWSTATEGENERATOR' => $hidden['__VIEWSTATEGENERATOR'] ?? '',
+        '__EVENTVALIDATION' => $hidden['__EVENTVALIDATION'] ?? '',
+    ];
+    if ( isset( $hidden['__VIEWSTATEENCRYPTED'] ) ) {
+        $post_body['__VIEWSTATEENCRYPTED'] = $hidden['__VIEWSTATEENCRYPTED'];
+    }
+
+    $paged_html = cdje92_fide_fetch_text( $target_url, [
+        'method' => 'POST',
+        'body' => $post_body,
+        'referer' => $target_url,
+        'timeout' => 8,
+    ] );
+
+    return $paged_html !== '' ? $paged_html : $html_page_1;
+}
+
+function cdje92_ffe_tournaments_parse_postback_href( $href ) {
+    $raw = trim( (string) $href );
+    if ( $raw === '' ) {
+        return null;
+    }
+    if ( ! preg_match( "/__doPostBack\\('([^']+)'\\s*,\\s*'([^']+)'\\)/i", $raw, $matches ) ) {
+        return null;
+    }
+    return [
+        'target' => (string) $matches[1],
+        'argument' => trim( (string) $matches[2] ),
+    ];
+}
+
+function cdje92_ffe_tournaments_parse_list_payload( $html ) {
+    $xpath = cdje92_fide_parse_xpath( $html );
+    if ( ! ( $xpath instanceof DOMXPath ) ) {
+        return [
+            'title' => '',
+            'items' => [],
+            'pager' => [
+                'current' => 1,
+                'total' => 1,
+                'pages' => [ 1 ],
+                'hasNext' => false,
+                'hasPrev' => false,
+            ],
+        ];
+    }
+
+    $title = cdje92_fide_xpath_first_text( $xpath, "//*[@id='ctl00_ContentPlaceHolderMain_LabelTitre']" );
+
+    $row_nodes = $xpath->query(
+        "//tr[
+            td[contains(concat(' ', normalize-space(@class), ' '), ' liste_titre ')]
+            or contains(concat(' ', normalize-space(@class), ' '), ' liste_fonce ')
+            or contains(concat(' ', normalize-space(@class), ' '), ' liste_clair ')
+        ]"
+    );
+
+    $items = [];
+    $current_month = '';
+    if ( $row_nodes && $row_nodes->length > 0 ) {
+        foreach ( $row_nodes as $row_node ) {
+            if ( ! ( $row_node instanceof DOMElement ) ) {
+                continue;
+            }
+
+            $month_node = $xpath->query(
+                "./td[contains(concat(' ', normalize-space(@class), ' '), ' liste_titre ')]",
+                $row_node
+            );
+            if ( $month_node && $month_node->length > 0 ) {
+                $current_month = cdje92_ffe_player_clean_text( $month_node->item( 0 )->textContent );
+                continue;
+            }
+
+            $cell_nodes = $xpath->query( './td', $row_node );
+            if ( ! $cell_nodes || $cell_nodes->length < 4 ) {
+                continue;
+            }
+
+            $cells = [];
+            foreach ( $cell_nodes as $cell_node ) {
+                $cells[] = cdje92_ffe_player_clean_text( $cell_node->textContent );
+            }
+
+            $parties_links = $xpath->query( ".//a[contains(@href,'.pgn') or contains(@href,'Visualiser.aspx')]", $row_node );
+            $is_parties_row = $cell_nodes->length === 4 && $parties_links && $parties_links->length > 0;
+            if ( $is_parties_row ) {
+                $name = $cells[0] ?? '';
+                $city = $cells[1] ?? '';
+                $date_label = $cells[2] ?? '';
+                $pgn_url = '';
+                $viewer_url = '';
+                $ref = '';
+
+                foreach ( $parties_links as $link_node ) {
+                    if ( ! ( $link_node instanceof DOMElement ) ) {
+                        continue;
+                    }
+                    $href = cdje92_ffe_tournaments_to_absolute_url( $link_node->getAttribute( 'href' ) );
+                    if ( $href === '' ) {
+                        continue;
+                    }
+                    if ( $pgn_url === '' && preg_match( '/\.pgn(?:$|[?#])/i', $href ) ) {
+                        $pgn_url = $href;
+                    }
+                    if ( $viewer_url === '' && stripos( $href, 'Visualiser.aspx' ) !== false ) {
+                        $viewer_url = $href;
+                    }
+                }
+
+                if ( $ref === '' && $pgn_url !== '' && preg_match( '#/Tournois/Id/(\d+)/#i', $pgn_url, $matches ) ) {
+                    $ref = (string) $matches[1];
+                }
+                if ( $ref === '' && $viewer_url !== '' ) {
+                    $decoded_viewer = urldecode( $viewer_url );
+                    if ( preg_match( '#Tournois/Id/(\d+)/#i', $decoded_viewer, $matches ) ) {
+                        $ref = (string) $matches[1];
+                    }
+                }
+
+                if ( $name === '' && $ref === '' ) {
+                    continue;
+                }
+
+                $items[] = [
+                    'ref' => $ref,
+                    'name' => $name,
+                    'city' => $city,
+                    'department' => '',
+                    'monthLabel' => '',
+                    'dateLabel' => $date_label,
+                    'homologation' => '',
+                    'detailUrl' => $viewer_url,
+                    'pgnUrl' => $pgn_url,
+                    'viewerUrl' => $viewer_url,
+                    'isCancelled' => false,
+                    'itemType' => 'parties',
+                    'rowStyle' => trim( (string) $row_node->getAttribute( 'class' ) ),
+                ];
+                continue;
+            }
+
+            if ( $cell_nodes->length < 6 ) {
+                continue;
+            }
+
+            $ref = preg_replace( '/\D+/', '', $cells[0] ?? '' );
+            $city = $cells[1] ?? '';
+            $department = $cells[2] ?? '';
+            $date_label = $cells[4] ?? '';
+            $homologation = $cells[5] ?? '';
+            $status_flag_1 = strtoupper( trim( $cells[6] ?? '' ) );
+            $status_flag_2 = strtoupper( trim( $cells[7] ?? '' ) );
+
+            $link_node = $xpath->query( ".//a[contains(@href,'FicheTournoi.aspx?Ref=')]", $row_node );
+            $name = '';
+            $detail_url = '';
+            if ( $link_node && $link_node->length > 0 ) {
+                $anchor = $link_node->item( 0 );
+                $name = cdje92_ffe_player_clean_text( $anchor->textContent );
+                $detail_url = cdje92_ffe_tournaments_to_absolute_url( $anchor->getAttribute( 'href' ) );
+            }
+
+            if ( $ref === '' && $detail_url !== '' && preg_match( '/[?&]Ref=(\d+)/i', $detail_url, $matches ) ) {
+                $ref = (string) $matches[1];
+            }
+            if ( $name === '' ) {
+                $name = $cells[3] ?? '';
+            }
+
+            if ( $ref === '' && $name === '' ) {
+                continue;
+            }
+
+            $is_cancelled = $status_flag_1 === 'X' || $status_flag_2 === 'X' || stripos( $name, 'ANNULE' ) !== false;
+
+            $items[] = [
+                'ref' => $ref,
+                'name' => $name,
+                'city' => $city,
+                'department' => $department,
+                'monthLabel' => $current_month,
+                'dateLabel' => $date_label,
+                'homologation' => $homologation,
+                'detailUrl' => $detail_url,
+                'pgnUrl' => '',
+                'viewerUrl' => '',
+                'isCancelled' => $is_cancelled,
+                'itemType' => 'tournoi',
+                'rowStyle' => trim( (string) $row_node->getAttribute( 'class' ) ),
+            ];
+        }
+    }
+
+    $pages = [];
+    $next_link_found = false;
+    $prev_link_found = false;
+    $pager_nodes = $xpath->query( "//a[contains(@href,'__doPostBack')]" );
+    if ( $pager_nodes && $pager_nodes->length > 0 ) {
+        foreach ( $pager_nodes as $pager_node ) {
+            if ( ! ( $pager_node instanceof DOMElement ) ) {
+                continue;
+            }
+            $href = $pager_node->getAttribute( 'href' );
+            $postback = cdje92_ffe_tournaments_parse_postback_href( $href );
+            if ( ! is_array( $postback ) ) {
+                continue;
+            }
+
+            $argument = $postback['argument'];
+            if ( ctype_digit( $argument ) ) {
+                $pages[] = (int) $argument;
+                continue;
+            }
+
+            $arg_lc = strtolower( $argument );
+            if ( $arg_lc === 'd' ) {
+                $next_link_found = true;
+            } elseif ( $arg_lc === 'g' ) {
+                $prev_link_found = true;
+            }
+        }
+    }
+
+    $pages = array_values( array_unique( array_filter( $pages ) ) );
+    sort( $pages, SORT_NUMERIC );
+
+    $current_page = 1;
+    $current_nodes = $xpath->query(
+        "//table[contains(concat(' ', normalize-space(@class), ' '), ' Pager ')]//td[contains(translate(@bgcolor,'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ'),'F3E8FF')]//a"
+    );
+    if ( $current_nodes && $current_nodes->length > 0 ) {
+        $label = cdje92_ffe_player_clean_text( $current_nodes->item( 0 )->textContent );
+        if ( ctype_digit( trim( $label ) ) ) {
+            $current_page = (int) trim( $label );
+        }
+    }
+    if ( empty( $pages ) ) {
+        $pages = [ $current_page ];
+    }
+
+    $total_pages = max( $pages );
+    if ( $current_page > $total_pages ) {
+        $current_page = $total_pages;
+    }
+
+    return [
+        'title' => $title,
+        'items' => $items,
+        'pager' => [
+            'current' => $current_page,
+            'total' => $total_pages,
+            'pages' => $pages,
+            'hasNext' => $current_page < $total_pages || $next_link_found,
+            'hasPrev' => $current_page > 1 || $prev_link_found,
+        ],
+    ];
+}
+
+function cdje92_ffe_tournaments_inner_html( DOMNode $node ) {
+    if ( ! isset( $node->ownerDocument ) || ! ( $node->ownerDocument instanceof DOMDocument ) ) {
+        return '';
+    }
+    $html = '';
+    foreach ( $node->childNodes as $child ) {
+        $html .= $node->ownerDocument->saveHTML( $child );
+    }
+    return $html;
+}
+
+function cdje92_ffe_tournaments_make_links_absolute_in_html( $html ) {
+    $raw = is_string( $html ) ? $html : '';
+    if ( $raw === '' ) {
+        return '';
+    }
+
+    return preg_replace_callback(
+        '/\b(href|src)=("|\')(?!https?:\/\/|mailto:|tel:|#|\/\/)([^"\']+)\\2/i',
+        function ( $matches ) {
+            $attr = $matches[1] ?? '';
+            $quote = $matches[2] ?? '"';
+            $value = $matches[3] ?? '';
+            $absolute = cdje92_ffe_tournaments_to_absolute_url( $value );
+            return sprintf( '%s=%s%s%s', $attr, $quote, esc_url_raw( $absolute ), $quote );
+        },
+        $raw
+    );
+}
+
+function cdje92_ffe_tournaments_parse_detail_payload( $html, $ref ) {
+    $xpath = cdje92_fide_parse_xpath( $html );
+    if ( ! ( $xpath instanceof DOMXPath ) ) {
+        return null;
+    }
+
+    $field_map = [
+        'dates' => 'ctl00_ContentPlaceHolderMain_LabelDates',
+        'eloRapide' => 'ctl00_ContentPlaceHolderMain_LabelEloRapide',
+        'eloFide' => 'ctl00_ContentPlaceHolderMain_LabelEloFide',
+        'homologuePar' => 'ctl00_ContentPlaceHolderMain_LabelHomologuePar',
+        'nombreRondes' => 'ctl00_ContentPlaceHolderMain_LabelNbrRondes',
+        'cadence' => 'ctl00_ContentPlaceHolderMain_LabelCadence',
+        'appariements' => 'ctl00_ContentPlaceHolderMain_LabelAppariements',
+        'organisateur' => 'ctl00_ContentPlaceHolderMain_LabelOrganisateur',
+        'arbitre' => 'ctl00_ContentPlaceHolderMain_LabelArbitre',
+        'adresse' => 'ctl00_ContentPlaceHolderMain_LabelAdresse',
+        'contact' => 'ctl00_ContentPlaceHolderMain_LabelContact',
+        'inscriptionSenior' => 'ctl00_ContentPlaceHolderMain_LabelInscriptionSenior',
+        'inscriptionJeune' => 'ctl00_ContentPlaceHolderMain_LabelInscriptionJeune',
+    ];
+
+    $name = cdje92_fide_xpath_first_text( $xpath, "//*[@id='ctl00_ContentPlaceHolderMain_LabelNom']" );
+    $location = cdje92_fide_xpath_first_text( $xpath, "//*[@id='ctl00_ContentPlaceHolderMain_LabelLieu']" );
+    if ( $name === '' && $location === '' ) {
+        return null;
+    }
+
+    $details = [];
+    foreach ( $field_map as $key => $id ) {
+        $value = cdje92_fide_xpath_first_text( $xpath, "//*[@id='{$id}']" );
+        if ( $value !== '' ) {
+            $details[ $key ] = $value;
+        }
+    }
+
+    $announcement_node_list = $xpath->query( "//*[@id='ctl00_ContentPlaceHolderMain_LabelAnnonce']" );
+    $announcement_html = '';
+    if ( $announcement_node_list && $announcement_node_list->length > 0 ) {
+        $announcement_node = $announcement_node_list->item( 0 );
+        if ( $announcement_node instanceof DOMNode ) {
+            $announcement_html = cdje92_ffe_tournaments_inner_html( $announcement_node );
+        }
+    }
+    $announcement_html = cdje92_ffe_tournaments_make_links_absolute_in_html( $announcement_html );
+    $announcement_html = wp_kses_post( $announcement_html );
+    $announcement_text = cdje92_ffe_player_clean_text(
+        wp_strip_all_tags( str_replace( [ '<br>', '<br/>', '<br />' ], "\n", $announcement_html ) )
+    );
+
+    $result_links = [];
+    $result_nodes = $xpath->query( "//*[@id='ctl00_ContentPlaceHolderMain_RowResultats']//a[@href]" );
+    if ( $result_nodes && $result_nodes->length > 0 ) {
+        foreach ( $result_nodes as $result_node ) {
+            if ( ! ( $result_node instanceof DOMElement ) ) {
+                continue;
+            }
+            $label = cdje92_ffe_player_clean_text( $result_node->textContent );
+            $href = cdje92_ffe_tournaments_to_absolute_url( $result_node->getAttribute( 'href' ) );
+            if ( $label === '' || $href === '' ) {
+                continue;
+            }
+            $result_links[] = [
+                'label' => $label,
+                'url' => $href,
+            ];
+        }
+    }
+
+    return [
+        'ref' => (string) $ref,
+        'name' => $name,
+        'location' => $location,
+        'details' => $details,
+        'announcementHtml' => $announcement_html,
+        'announcementText' => $announcement_text,
+        'resultLinks' => $result_links,
+        'sourceUrl' => cdje92_ffe_tournaments_to_absolute_url( '/FicheTournoi.aspx?Ref=' . rawurlencode( (string) $ref ) ),
+    ];
+}
+
+function cdje92_ffe_tournaments_parse_select_options( DOMXPath $xpath, $id ) {
+    $select_id = trim( (string) $id );
+    if ( $select_id === '' ) {
+        return [];
+    }
+    $option_nodes = $xpath->query( "//*[@id='{$select_id}']/option" );
+    if ( ! $option_nodes || $option_nodes->length < 1 ) {
+        return [];
+    }
+
+    $items = [];
+    foreach ( $option_nodes as $option_node ) {
+        if ( ! ( $option_node instanceof DOMElement ) ) {
+            continue;
+        }
+        $value = trim( (string) $option_node->getAttribute( 'value' ) );
+        $label = cdje92_ffe_player_clean_text( $option_node->textContent );
+        if ( $value === '' && $label === '' ) {
+            continue;
+        }
+        $items[] = [
+            'value' => $value,
+            'label' => $label,
+            'selected' => $option_node->hasAttribute( 'selected' ),
+        ];
+    }
+
+    return $items;
+}
+
+function cdje92_ffe_tournaments_get_search_options( $refresh = false ) {
+    $cache_key = 'cdje92_ffe_tour_options_v1';
+    if ( ! $refresh ) {
+        $cached = get_transient( $cache_key );
+        if ( is_array( $cached ) ) {
+            return $cached;
+        }
+    }
+
+    $html = cdje92_fide_fetch_text( 'https://www.echecs.asso.fr/Tournois.aspx', [ 'timeout' => 8 ] );
+    if ( $html === '' ) {
+        return null;
+    }
+
+    $xpath = cdje92_fide_parse_xpath( $html );
+    if ( ! ( $xpath instanceof DOMXPath ) ) {
+        return null;
+    }
+
+    $payload = [
+        'cadences' => cdje92_ffe_tournaments_parse_select_options( $xpath, 'ctl00_ContentPlaceHolderMain_DropAnnonces' ),
+        'resultMonths' => cdje92_ffe_tournaments_parse_select_options( $xpath, 'ctl00_ContentPlaceHolderMain_DropResultatsMois' ),
+        'resultYears' => cdje92_ffe_tournaments_parse_select_options( $xpath, 'ctl00_ContentPlaceHolderMain_DropResultatsAnnees' ),
+        'partiesYears' => cdje92_ffe_tournaments_parse_select_options( $xpath, 'ctl00_ContentPlaceHolderMain_DropPartiesAnnee' ),
+        'fideLevels' => cdje92_ffe_tournaments_parse_select_options( $xpath, 'ctl00_ContentPlaceHolderMain_DropHomologuesFide' ),
+        'rapideLevels' => cdje92_ffe_tournaments_parse_select_options( $xpath, 'ctl00_ContentPlaceHolderMain_DropHomologuesRapide' ),
+    ];
+
+    set_transient( $cache_key, $payload, 12 * HOUR_IN_SECONDS );
+    return $payload;
+}
+
+function cdje92_ffe_tournaments_build_list_url( $scope, $mode, $params = [] ) {
+    $safe_scope = $scope === '92' ? '92' : 'fr';
+    if ( $safe_scope === '92' ) {
+        return 'https://www.echecs.asso.fr/ListeTournois.aspx?Action=TOURNOICOMITE&ComiteRef=92';
+    }
+
+    $safe_mode = strtolower( trim( (string) $mode ) );
+    if ( $safe_mode === '' ) {
+        $safe_mode = 'fide';
+    }
+
+    if ( $safe_mode === 'norme' ) {
+        return 'https://www.echecs.asso.fr/ListeTournois.aspx?Action=NORME';
+    }
+
+    if ( $safe_mode === 'fide' ) {
+        $level = preg_replace( '/\D+/', '', (string) ( $params['level'] ?? '' ) );
+        if ( $level === '' ) {
+            $level = '377';
+        }
+        return 'https://www.echecs.asso.fr/ListeTournois.aspx?Action=FIDE&Level=' . rawurlencode( $level );
+    }
+
+    if ( $safe_mode === 'rapide' ) {
+        $level = preg_replace( '/\D+/', '', (string) ( $params['level'] ?? '' ) );
+        if ( $level === '' ) {
+            $level = '390';
+        }
+        return 'https://www.echecs.asso.fr/ListeTournois.aspx?Action=RAPIDE&Level=' . rawurlencode( $level );
+    }
+
+    if ( $safe_mode === 'annonce' ) {
+        $cadence = preg_replace( '/\D+/', '', (string) ( $params['cadence'] ?? '' ) );
+        if ( $cadence === '' ) {
+            $cadence = '1';
+        }
+        return 'https://www.echecs.asso.fr/ListeTournois.aspx?Action=ANNONCE&Level=' . rawurlencode( $cadence );
+    }
+
+    if ( $safe_mode === 'res' ) {
+        $month = max( 1, min( 12, (int) ( $params['month'] ?? 1 ) ) );
+        $year = max( 2000, min( 2100, (int) ( $params['year'] ?? (int) gmdate( 'Y' ) ) ) );
+        return 'https://www.echecs.asso.fr/ListeTournois.aspx?Action=RES&Mois=' . $month . '&Annee=' . $year;
+    }
+
+    if ( $safe_mode === 'parties' ) {
+        $year = max( 2000, min( 2100, (int) ( $params['year'] ?? (int) gmdate( 'Y' ) ) ) );
+        return 'https://www.echecs.asso.fr/ListeParties.aspx?Annee=' . $year;
+    }
+
+    return '';
+}
+
+function cdje92_rest_get_ffe_tournaments_options( WP_REST_Request $request ) {
+    $refresh = cdje92_rest_param_to_bool( $request->get_param( 'refresh' ), false );
+    $payload = cdje92_ffe_tournaments_get_search_options( $refresh );
+    if ( ! is_array( $payload ) ) {
+        return new WP_Error( 'cdje92_tournaments_options_unavailable', 'Options de recherche indisponibles.', [ 'status' => 502 ] );
+    }
+
+    return rest_ensure_response( $payload );
+}
+
+function cdje92_rest_get_ffe_tournaments_list( WP_REST_Request $request ) {
+    $scope = (string) $request->get_param( 'scope' );
+    $scope = $scope === '92' ? '92' : 'fr';
+    $mode = strtolower( trim( (string) $request->get_param( 'mode' ) ) );
+    $page = max( 1, (int) $request->get_param( 'page' ) );
+    $load_all = cdje92_rest_param_to_bool( $request->get_param( 'all' ), false );
+    $refresh = cdje92_rest_param_to_bool( $request->get_param( 'refresh' ), false );
+
+    if ( $mode === '' ) {
+        $mode = $scope === '92' ? 'comite' : 'fide';
+    }
+
+    $url = cdje92_ffe_tournaments_build_list_url( $scope, $mode, [
+        'level' => $request->get_param( 'level' ),
+        'cadence' => $request->get_param( 'cadence' ),
+        'month' => $request->get_param( 'month' ),
+        'year' => $request->get_param( 'year' ),
+    ] );
+    if ( $url === '' ) {
+        return new WP_Error( 'cdje92_tournaments_invalid_mode', 'Mode de recherche invalide.', [ 'status' => 400 ] );
+    }
+
+    $all_mode = $scope === '92' && $load_all;
+    $cache_key = sprintf(
+        'cdje92_tour_list_v2_%s',
+        md5( implode( '|', [ $url, $all_mode ? 'all' : 'page', (string) $page ] ) )
+    );
+
+    if ( ! $refresh ) {
+        $cached = get_transient( $cache_key );
+        if ( is_array( $cached ) ) {
+            return rest_ensure_response( $cached );
+        }
+    }
+
+    $page_1_html = cdje92_ffe_tournaments_fetch_list_html( $url, 1 );
+    if ( $page_1_html === '' ) {
+        return new WP_Error( 'cdje92_tournaments_unavailable', 'Liste des tournois indisponible.', [ 'status' => 502 ] );
+    }
+    $page_1_payload = cdje92_ffe_tournaments_parse_list_payload( $page_1_html );
+
+    $items = $page_1_payload['items'] ?? [];
+    $pager = $page_1_payload['pager'] ?? [ 'current' => 1, 'total' => 1, 'pages' => [ 1 ], 'hasNext' => false, 'hasPrev' => false ];
+    $title = $page_1_payload['title'] ?? '';
+    $page_loaded = 1;
+    $all_pages_loaded = false;
+
+    if ( $all_mode ) {
+        $max_pages = max( 1, (int) ( $pager['total'] ?? 1 ) );
+        $max_pages = min( 80, $max_pages );
+        $has_next = ! empty( $pager['hasNext'] );
+
+        for ( $i = 2; $i <= 80; $i += 1 ) {
+            if ( $i > $max_pages && ! $has_next ) {
+                break;
+            }
+
+            $html = cdje92_ffe_tournaments_fetch_list_html( $url, $i );
+            if ( $html === '' ) {
+                if ( $i > $max_pages ) {
+                    break;
+                }
+                continue;
+            }
+            $payload = cdje92_ffe_tournaments_parse_list_payload( $html );
+            $rows = is_array( $payload['items'] ?? null ) ? $payload['items'] : [];
+            if ( ! empty( $rows ) ) {
+                $items = array_merge( $items, $rows );
+            }
+
+            $page_pager = is_array( $payload['pager'] ?? null ) ? $payload['pager'] : [];
+            $page_total = max( 1, (int) ( $page_pager['total'] ?? $max_pages ) );
+            if ( $page_total > $max_pages ) {
+                $max_pages = min( 80, $page_total );
+            }
+            $has_next = ! empty( $page_pager['hasNext'] );
+        }
+
+        $dedupe = [];
+        $merged = [];
+        foreach ( $items as $item ) {
+            if ( ! is_array( $item ) ) {
+                continue;
+            }
+            $key = (string) ( $item['ref'] ?? '' );
+            if ( $key === '' ) {
+                $key = md5( wp_json_encode( $item ) );
+            }
+            if ( isset( $dedupe[ $key ] ) ) {
+                continue;
+            }
+            $dedupe[ $key ] = true;
+            $merged[] = $item;
+        }
+        $items = $merged;
+        $pager = [
+            'current' => 1,
+            'total' => $max_pages,
+            'pages' => range( 1, $max_pages ),
+            'hasNext' => false,
+            'hasPrev' => false,
+        ];
+        $all_pages_loaded = true;
+        $page_loaded = 1;
+    } else {
+        if ( $page > 1 ) {
+            $page_html = cdje92_ffe_tournaments_fetch_list_html( $url, $page );
+            if ( $page_html !== '' ) {
+                $page_payload = cdje92_ffe_tournaments_parse_list_payload( $page_html );
+                $items = $page_payload['items'] ?? [];
+                $pager = $page_payload['pager'] ?? $pager;
+                if ( $title === '' ) {
+                    $title = $page_payload['title'] ?? '';
+                }
+                $page_loaded = $page;
+            }
+        }
+    }
+
+    $response_payload = [
+        'scope' => $scope,
+        'mode' => $mode,
+        'sourceUrl' => $url,
+        'title' => $title,
+        'page' => $page_loaded,
+        'allPagesLoaded' => $all_pages_loaded,
+        'pager' => $pager,
+        'items' => $items,
+        'count' => count( $items ),
+        'fetchedAt' => gmdate( 'c' ),
+    ];
+
+    set_transient( $cache_key, $response_payload, $all_mode ? ( 4 * HOUR_IN_SECONDS ) : HOUR_IN_SECONDS );
+    return rest_ensure_response( $response_payload );
+}
+
+function cdje92_rest_get_ffe_tournament_detail( WP_REST_Request $request ) {
+    $ref = preg_replace( '/\D+/', '', (string) $request->get_param( 'ref' ) );
+    if ( $ref === '' ) {
+        return new WP_Error( 'cdje92_tournament_ref_invalid', 'Reference tournoi invalide.', [ 'status' => 400 ] );
+    }
+
+    $refresh = cdje92_rest_param_to_bool( $request->get_param( 'refresh' ), false );
+    $cache_key = sprintf( 'cdje92_tour_detail_v1_%s', $ref );
+
+    if ( ! $refresh ) {
+        $cached = get_transient( $cache_key );
+        if ( is_array( $cached ) ) {
+            return rest_ensure_response( $cached );
+        }
+    }
+
+    $url = 'https://www.echecs.asso.fr/FicheTournoi.aspx?Ref=' . rawurlencode( $ref );
+    $html = cdje92_fide_fetch_text( $url, [
+        'timeout' => 10,
+        'referer' => 'https://www.echecs.asso.fr/ListeTournois.aspx?Action=TOURNOICOMITE&ComiteRef=92',
+    ] );
+    if ( $html === '' ) {
+        return new WP_Error( 'cdje92_tournament_unavailable', 'Fiche tournoi indisponible.', [ 'status' => 502 ] );
+    }
+
+    $payload = cdje92_ffe_tournaments_parse_detail_payload( $html, $ref );
+    if ( ! is_array( $payload ) ) {
+        return new WP_Error( 'cdje92_tournament_not_found', 'Fiche tournoi introuvable.', [ 'status' => 404 ] );
+    }
+    $payload['fetchedAt'] = gmdate( 'c' );
+
+    set_transient( $cache_key, $payload, 12 * HOUR_IN_SECONDS );
+    return rest_ensure_response( $payload );
+}
+
 /* ---------- Home Stats (92) ---------- */
 
 function cdje92_home_stats_load_json_file( $path ) {
@@ -2087,6 +2838,106 @@ add_action( 'rest_api_init', function () {
                 'required' => false,
                 'sanitize_callback' => function ( $value ) {
                     return cdje92_rest_param_to_bool( $value, false ) ? '1' : '0';
+                },
+            ],
+            'refresh' => [
+                'required' => false,
+                'sanitize_callback' => function ( $value ) {
+                    return cdje92_rest_param_to_bool( $value, false ) ? '1' : '0';
+                },
+            ],
+        ],
+    ] );
+
+    register_rest_route( 'cdje92/v1', '/ffe-tournaments-options', [
+        'methods' => WP_REST_Server::READABLE,
+        'callback' => 'cdje92_rest_get_ffe_tournaments_options',
+        'permission_callback' => '__return_true',
+        'args' => [
+            'refresh' => [
+                'required' => false,
+                'sanitize_callback' => function ( $value ) {
+                    return cdje92_rest_param_to_bool( $value, false ) ? '1' : '0';
+                },
+            ],
+        ],
+    ] );
+
+    register_rest_route( 'cdje92/v1', '/ffe-tournaments-list', [
+        'methods' => WP_REST_Server::READABLE,
+        'callback' => 'cdje92_rest_get_ffe_tournaments_list',
+        'permission_callback' => '__return_true',
+        'args' => [
+            'scope' => [
+                'required' => false,
+                'sanitize_callback' => function ( $value ) {
+                    $scope = strtolower( trim( (string) $value ) );
+                    return $scope === '92' ? '92' : 'fr';
+                },
+            ],
+            'mode' => [
+                'required' => false,
+                'sanitize_callback' => function ( $value ) {
+                    return strtolower( trim( (string) $value ) );
+                },
+            ],
+            'level' => [
+                'required' => false,
+                'sanitize_callback' => function ( $value ) {
+                    return preg_replace( '/\D+/', '', (string) $value );
+                },
+            ],
+            'cadence' => [
+                'required' => false,
+                'sanitize_callback' => function ( $value ) {
+                    return preg_replace( '/\D+/', '', (string) $value );
+                },
+            ],
+            'month' => [
+                'required' => false,
+                'sanitize_callback' => function ( $value ) {
+                    return max( 1, min( 12, (int) $value ) );
+                },
+            ],
+            'year' => [
+                'required' => false,
+                'sanitize_callback' => function ( $value ) {
+                    return max( 2000, min( 2100, (int) $value ) );
+                },
+            ],
+            'page' => [
+                'required' => false,
+                'sanitize_callback' => function ( $value ) {
+                    return max( 1, min( 200, (int) $value ) );
+                },
+            ],
+            'all' => [
+                'required' => false,
+                'sanitize_callback' => function ( $value ) {
+                    return cdje92_rest_param_to_bool( $value, false ) ? '1' : '0';
+                },
+            ],
+            'refresh' => [
+                'required' => false,
+                'sanitize_callback' => function ( $value ) {
+                    return cdje92_rest_param_to_bool( $value, false ) ? '1' : '0';
+                },
+            ],
+        ],
+    ] );
+
+    register_rest_route( 'cdje92/v1', '/ffe-tournament-detail', [
+        'methods' => WP_REST_Server::READABLE,
+        'callback' => 'cdje92_rest_get_ffe_tournament_detail',
+        'permission_callback' => '__return_true',
+        'args' => [
+            'ref' => [
+                'required' => true,
+                'sanitize_callback' => function ( $value ) {
+                    return preg_replace( '/\D+/', '', (string) $value );
+                },
+                'validate_callback' => function ( $value ) {
+                    return is_string( $value ) && $value !== '' && strlen( $value ) <= 12;
                 },
             ],
             'refresh' => [

@@ -11,32 +11,34 @@
   </div>
 
   <h1>Tournois du 92</h1>
-  <p class="tournaments-page__intro">Replique de la liste officielle FFE des tournois du comite des Hauts-de-Seine.</p>
+  <p class="tournaments-page__intro">Liste complete des tournois du comite des Hauts-de-Seine, recodee en natif.</p>
 
-  <section class="tournaments-shell" aria-label="Liste des tournois du 92">
-    <div class="tournaments-shell__header">
-      <a
-        class="btn btn-secondary tournaments-shell__direct-link"
-        data-tournaments-direct
-        href="https://www.echecs.asso.fr/ListeTournois.aspx?Action=TOURNOICOMITE&ComiteRef=92"
-        target="_blank"
-        rel="noopener"
-      >Ouvrir sur echecs.asso.fr</a>
-      <p class="tournaments-shell__status" data-tournaments-status role="status" aria-live="polite">Chargement de la liste...</p>
-    </div>
+  <section class="tournaments-controls" aria-label="Recherche locale des tournois du 92">
+    <form id="tournaments-92-search-form" class="tournaments-search-form" novalidate>
+      <label class="tournaments-search-form__field" for="tournaments-92-search">Filtrer par nom, ville, date ou reference</label>
+      <div class="tournaments-search-form__row">
+        <input
+          id="tournaments-92-search"
+          class="clubs-input tournaments-search-form__input"
+          type="search"
+          placeholder="Ex: Vanves, 69201, rapide..."
+          autocomplete="off"
+          enterkeyhint="search"
+        >
+        <button class="btn" type="submit">Filtrer</button>
+        <button class="btn btn-secondary" id="tournaments-92-reset" type="button">Effacer</button>
+      </div>
+    </form>
+    <p id="tournaments-92-status" class="tournaments-status" role="status" aria-live="polite">Chargement...</p>
+  </section>
 
-    <iframe
-      class="tournaments-frame"
-      data-tournaments-embed
-      title="Liste des tournois du 92"
-      loading="lazy"
-      referrerpolicy="strict-origin-when-cross-origin"
-      allowfullscreen
-    ></iframe>
+  <section class="tournaments-results" aria-label="Resultats tournois 92">
+    <p id="tournaments-92-summary" class="tournaments-summary" aria-live="polite"></p>
+    <div id="tournaments-92-results" class="tournaments-list" role="list"></div>
   </section>
 </div>
 
-<script src="/wp-content/themes/echecs92-child/assets/js/tournaments.js?v=20260216-1" defer></script>
+<script src="/wp-content/themes/echecs92-child/assets/js/tournaments.js?v=20260216-2" defer></script>
 <!-- /wp:html -->
 
 <!-- wp:template-part {"slug":"footer","tagName":"footer","theme":"echecs92-child"} /-->

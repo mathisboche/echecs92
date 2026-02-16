@@ -6,32 +6,71 @@
   data-tournaments-mode="list-fr"
 >
   <h1>Tournois en France</h1>
-  <p class="tournaments-page__intro">Replique de la page officielle FFE de recherche de tournois sur toute la France.</p>
+  <p class="tournaments-page__intro">Recherche nationale des tournois FFE, recodee en natif (sans iframe).</p>
 
-  <section class="tournaments-shell" aria-label="Recherche des tournois en France">
-    <div class="tournaments-shell__header">
-      <a
-        class="btn btn-secondary tournaments-shell__direct-link"
-        data-tournaments-direct
-        href="https://www.echecs.asso.fr/Tournois.aspx"
-        target="_blank"
-        rel="noopener"
-      >Ouvrir sur echecs.asso.fr</a>
-      <p class="tournaments-shell__status" data-tournaments-status role="status" aria-live="polite">Chargement de la recherche...</p>
-    </div>
+  <section class="tournaments-controls tournaments-controls--fr" aria-label="Recherche FFE des tournois en France">
+    <form id="tournaments-fr-form" class="tournaments-form" novalidate>
+      <div class="tournaments-form__grid">
+        <label class="tournaments-form__field" for="tournaments-fr-mode">
+          Type de recherche
+          <select id="tournaments-fr-mode" class="tournaments-form__select">
+            <option value="norme">Tournois a normes</option>
+            <option value="fide" selected>Homologues elo FIDE</option>
+            <option value="rapide">Homologues elo rapide</option>
+            <option value="annonce">Annonces</option>
+            <option value="res">Resultats</option>
+            <option value="parties">Bases de parties</option>
+          </select>
+        </label>
 
-    <iframe
-      class="tournaments-frame"
-      data-tournaments-embed
-      title="Recherche des tournois en France"
-      loading="lazy"
-      referrerpolicy="strict-origin-when-cross-origin"
-      allowfullscreen
-    ></iframe>
+        <label class="tournaments-form__field" data-mode-field="fide" for="tournaments-fr-fide-level">
+          Periode FIDE
+          <select id="tournaments-fr-fide-level" class="tournaments-form__select"></select>
+        </label>
+
+        <label class="tournaments-form__field" data-mode-field="rapide" for="tournaments-fr-rapide-level" hidden>
+          Periode rapide
+          <select id="tournaments-fr-rapide-level" class="tournaments-form__select"></select>
+        </label>
+
+        <label class="tournaments-form__field" data-mode-field="annonce" for="tournaments-fr-cadence" hidden>
+          Cadence
+          <select id="tournaments-fr-cadence" class="tournaments-form__select"></select>
+        </label>
+
+        <label class="tournaments-form__field" data-mode-field="res" for="tournaments-fr-month" hidden>
+          Mois
+          <select id="tournaments-fr-month" class="tournaments-form__select"></select>
+        </label>
+
+        <label class="tournaments-form__field" data-mode-field="res" for="tournaments-fr-year" hidden>
+          Annee
+          <select id="tournaments-fr-year" class="tournaments-form__select"></select>
+        </label>
+
+        <label class="tournaments-form__field" data-mode-field="parties" for="tournaments-fr-parties-year" hidden>
+          Annee parties
+          <select id="tournaments-fr-parties-year" class="tournaments-form__select"></select>
+        </label>
+      </div>
+
+      <div class="tournaments-form__actions">
+        <button class="btn" type="submit">Rechercher</button>
+        <button class="btn btn-secondary" id="tournaments-fr-refresh" type="button">Actualiser</button>
+      </div>
+    </form>
+
+    <p id="tournaments-fr-status" class="tournaments-status" role="status" aria-live="polite">Chargement...</p>
+  </section>
+
+  <section class="tournaments-results" aria-label="Resultats tournois France">
+    <p id="tournaments-fr-summary" class="tournaments-summary" aria-live="polite"></p>
+    <div id="tournaments-fr-results" class="tournaments-list" role="list"></div>
+    <nav id="tournaments-fr-pagination" class="tournaments-pagination" aria-label="Pagination des tournois" hidden></nav>
   </section>
 </div>
 
-<script src="/wp-content/themes/echecs92-child/assets/js/tournaments.js?v=20260216-1" defer></script>
+<script src="/wp-content/themes/echecs92-child/assets/js/tournaments.js?v=20260216-2" defer></script>
 <!-- /wp:html -->
 
 <!-- wp:template-part {"slug":"footer","tagName":"footer","theme":"echecs92-child"} /-->
