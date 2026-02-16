@@ -312,7 +312,22 @@ function cdje92_rien_issue_fresh_code() {
         delete_transient( cdje92_rien_code_transient_key( $previous_code ) );
     }
 
-    $code    = cdje92_rien_generate_code();
+    $code = '';
+    for ( $attempt = 0; $attempt < 24; $attempt += 1 ) {
+        $candidate = cdje92_rien_generate_code();
+        if ( $candidate === $previous_code ) {
+            continue;
+        }
+        if ( get_transient( cdje92_rien_code_transient_key( $candidate ) ) ) {
+            continue;
+        }
+        $code = $candidate;
+        break;
+    }
+    if ( $code === '' ) {
+        $code = cdje92_rien_generate_code();
+    }
+
     $expires = time() + CDJE92_RIEN_CODE_TTL_SECONDS;
     set_transient( cdje92_rien_code_transient_key( $code ), '1', CDJE92_RIEN_CODE_TTL_SECONDS );
     $payload = $expires . '.' . $code;
@@ -320,6 +335,43 @@ function cdje92_rien_issue_fresh_code() {
     cdje92_rien_set_cookie( CDJE92_RIEN_CODE_COOKIE, $value, $expires );
 
     return $code;
+}
+
+function cdje92_rien_consume_active_code( $provided_code = '' ) {
+    $active_code = cdje92_rien_get_active_code();
+    if ( $active_code === '' ) {
+        return false;
+    }
+
+    if ( is_string( $provided_code ) && $provided_code !== '' ) {
+        $normalized_provided = strtoupper( preg_replace( '/[^A-Z0-9-]/i', '', $provided_code ) );
+        if ( $normalized_provided === '' || ! hash_equals( $active_code, $normalized_provided ) ) {
+            return false;
+        }
+    }
+
+    delete_transient( cdje92_rien_code_transient_key( $active_code ) );
+    cdje92_rien_clear_cookie( CDJE92_RIEN_CODE_COOKIE );
+    return true;
+}
+
+function cdje92_rest_consume_rien_code( WP_REST_Request $request ) {
+    $payload = $request->get_json_params();
+    $raw_code = '';
+    if ( is_array( $payload ) && isset( $payload['code'] ) ) {
+        $raw_code = (string) $payload['code'];
+    } else {
+        $raw_code = (string) $request->get_param( 'code' );
+    }
+    $provided_code = strtoupper( preg_replace( '/[^A-Z0-9-]/i', '', $raw_code ) );
+
+    $consumed = cdje92_rien_consume_active_code( $provided_code );
+    return new WP_REST_Response(
+        [
+            'consumed' => $consumed,
+        ],
+        200
+    );
 }
 
 function cdje92_should_bootstrap_runtime_easter_egg() {
@@ -344,6 +396,7 @@ function cdje92_output_runtime_easter_egg_config() {
         'trigger' => strtolower( $active_code ),
         'href'    => 'https://www.mathisboche.com',
         'text'    => 'mathisboche.com',
+        'consumeUrl' => rest_url( 'cdje92/v1/rien-code/consume' ),
     ];
 
     echo '<script id="cdje92-runtime-egg-config">window.CDJE92_EASTER_EGG=' . wp_json_encode( $payload ) . ';</script>';
@@ -368,7 +421,7 @@ function cdje92_render_rien_page( $code ) {
 <?php
 echo do_blocks( '<!-- wp:template-part {"slug":"header","tagName":"header","theme":"echecs92-child"} /-->' );
 echo '<main class="cdje-rien-main"><code class="cdje-rien-code">' . esc_html( $code ) . '</code></main>';
-echo '<script>(function(){try{var u=new URL(window.location.href);var changed=false;if(u.searchParams.has("' . esc_js( CDJE92_RIEN_TOKEN_QUERY_PARAM ) . '")){u.searchParams.delete("' . esc_js( CDJE92_RIEN_TOKEN_QUERY_PARAM ) . '");changed=true;}if(u.searchParams.has("' . esc_js( CDJE92_RIEN_QUERY_PARAM ) . '")){u.searchParams.delete("' . esc_js( CDJE92_RIEN_QUERY_PARAM ) . '");changed=true;}if(!changed)return;var clean=u.pathname+(u.search?u.search:"")+u.hash;window.history.replaceState(null,"",clean||"/");}catch(e){}})();</script>';
+echo '<script>(function(){try{var u=new URL(window.location.href);var changed=false;if(u.searchParams.has("' . esc_js( CDJE92_RIEN_TOKEN_QUERY_PARAM ) . '")){u.searchParams.delete("' . esc_js( CDJE92_RIEN_TOKEN_QUERY_PARAM ) . '");changed=true;}if(u.searchParams.has("' . esc_js( CDJE92_RIEN_QUERY_PARAM ) . '")){u.searchParams.delete("' . esc_js( CDJE92_RIEN_QUERY_PARAM ) . '");changed=true;}var targetPath="' . esc_js( trailingslashit( CDJE92_RIEN_PATH ) ) . '";if(u.pathname!==targetPath){u.pathname=targetPath;changed=true;}if(!changed)return;var clean=u.pathname+(u.search?u.search:"")+u.hash;window.history.replaceState(null,"",clean||targetPath);}catch(e){}})();</script>';
 echo do_blocks( '<!-- wp:template-part {"slug":"footer","tagName":"footer","theme":"echecs92-child"} /-->' );
 wp_footer();
 ?>
@@ -3326,6 +3379,20 @@ add_action( 'rest_api_init', function () {
         'methods' => WP_REST_Server::READABLE,
         'callback' => 'cdje92_rest_get_home_stats_92',
         'permission_callback' => '__return_true',
+    ] );
+
+    register_rest_route( 'cdje92/v1', '/rien-code/consume', [
+        'methods' => WP_REST_Server::CREATABLE,
+        'callback' => 'cdje92_rest_consume_rien_code',
+        'permission_callback' => '__return_true',
+        'args' => [
+            'code' => [
+                'required' => false,
+                'sanitize_callback' => function ( $value ) {
+                    return strtoupper( preg_replace( '/[^A-Z0-9-]/i', '', (string) $value ) );
+                },
+            ],
+        ],
     ] );
 } );
 

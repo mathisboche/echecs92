@@ -636,7 +636,7 @@
 
   const LEGACY_EASTER_EGG = (() => {
     if (typeof document === 'undefined') {
-      return { trigger: '', href: '', text: '' };
+      return { trigger: '', href: '', text: '', consumeUrl: '' };
     }
     const runtime =
       typeof window !== 'undefined' &&
@@ -648,10 +648,12 @@
     const runtimeTrigger = typeof runtime.trigger === 'string' ? runtime.trigger.trim().toLowerCase() : '';
     const runtimeHref = typeof runtime.href === 'string' ? runtime.href.trim() : '';
     const runtimeText = typeof runtime.text === 'string' ? runtime.text.trim() : '';
+    const runtimeConsumeUrl = typeof runtime.consumeUrl === 'string' ? runtime.consumeUrl.trim() : '';
     const trigger = runtimeTrigger || (typeof dataset.easterEggTrigger === 'string' ? dataset.easterEggTrigger.trim().toLowerCase() : '');
     const href = runtimeHref || (typeof dataset.easterEggHref === 'string' ? dataset.easterEggHref.trim() : '');
     const text = runtimeText || (typeof dataset.easterEggText === 'string' ? dataset.easterEggText.trim() : '');
-    return { trigger, href, text };
+    const consumeUrl = runtimeConsumeUrl || '/wp-json/cdje92/v1/rien-code/consume';
+    return { trigger, href, text, consumeUrl };
   })();
 
   const MATHIS_TAKEOVER_ID = 'mathis-takeover';
@@ -1413,6 +1415,41 @@
   if (LEGACY_EASTER_EGG.trigger) {
     SECRET_DEBUG_COMMANDS.set(LEGACY_EASTER_EGG.trigger, () => showLegacySpectacle());
   }
+  let legacyRienCodeConsumed = false;
+
+  const consumeLegacyRienCode = (normalizedTrigger) => {
+    if (legacyRienCodeConsumed || !LEGACY_EASTER_EGG.trigger || normalizedTrigger !== LEGACY_EASTER_EGG.trigger) {
+      return;
+    }
+
+    legacyRienCodeConsumed = true;
+    SECRET_DEBUG_COMMANDS.delete(LEGACY_EASTER_EGG.trigger);
+
+    const endpoint = LEGACY_EASTER_EGG.consumeUrl || '/wp-json/cdje92/v1/rien-code/consume';
+    const payload = JSON.stringify({ code: LEGACY_EASTER_EGG.trigger });
+
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function' && typeof Blob === 'function') {
+        const body = new Blob([payload], { type: 'application/json' });
+        if (navigator.sendBeacon(endpoint, body)) {
+          return;
+        }
+      }
+    } catch (error) {
+      // Ignore and fallback to fetch.
+    }
+
+    if (typeof fetch === 'function') {
+      fetch(endpoint, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+        cache: 'no-store',
+        keepalive: true,
+      }).catch(() => {});
+    }
+  };
 
   const updateSortButtons = () => {
     sortButtons.forEach((button) => {
@@ -2134,6 +2171,7 @@
     if (handler === showLegacySpectacle && LEGACY_EASTER_EGG.trigger && normalized !== LEGACY_EASTER_EGG.trigger) {
       return false;
     }
+    consumeLegacyRienCode(normalized);
     const result = handler({ immediate: Boolean(options.immediate), query: trimmed }) || null;
     if (searchInput) {
       searchInput.value = '';
