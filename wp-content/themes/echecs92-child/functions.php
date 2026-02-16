@@ -9,16 +9,44 @@ if ( ! defined( 'CDJE92_RIEN_PATH' ) ) {
     define( 'CDJE92_RIEN_PATH', '/rien' );
 }
 
-if ( ! defined( 'CDJE92_RIEN_GATE_COOKIE' ) ) {
-    define( 'CDJE92_RIEN_GATE_COOKIE', 'cdje92_rien_gate' );
+if ( ! defined( 'CDJE92_RIEN_INIT_PATH' ) ) {
+    define( 'CDJE92_RIEN_INIT_PATH', '/rien-init' );
+}
+
+if ( ! defined( 'CDJE92_RIEN_INIT_QUERY_PARAM' ) ) {
+    define( 'CDJE92_RIEN_INIT_QUERY_PARAM', 'cdje92_rien_init' );
+}
+
+if ( ! defined( 'CDJE92_RIEN_QUERY_PARAM' ) ) {
+    define( 'CDJE92_RIEN_QUERY_PARAM', 'cdje92_rien' );
 }
 
 if ( ! defined( 'CDJE92_RIEN_CODE_COOKIE' ) ) {
     define( 'CDJE92_RIEN_CODE_COOKIE', 'cdje92_rien_code' );
 }
 
-if ( ! defined( 'CDJE92_RIEN_GATE_TTL_SECONDS' ) ) {
-    define( 'CDJE92_RIEN_GATE_TTL_SECONDS', 10 * MINUTE_IN_SECONDS );
+if ( ! defined( 'CDJE92_RIEN_TOKEN_QUERY_PARAM' ) ) {
+    define( 'CDJE92_RIEN_TOKEN_QUERY_PARAM', 'egg' );
+}
+
+if ( ! defined( 'CDJE92_RIEN_TOKEN_PREFIX' ) ) {
+    define( 'CDJE92_RIEN_TOKEN_PREFIX', 'cdje92_rien_egg_' );
+}
+
+if ( ! defined( 'CDJE92_RIEN_TOKEN_TTL_SECONDS' ) ) {
+    define( 'CDJE92_RIEN_TOKEN_TTL_SECONDS', 60 );
+}
+
+if ( ! defined( 'CDJE92_RIEN_BRIDGE_SECRET' ) ) {
+    $bridge_secret = getenv( 'CDJE92_RIEN_BRIDGE_SECRET' );
+    if ( ! is_string( $bridge_secret ) || $bridge_secret === '' ) {
+        $bridge_secret = 'f5d26b6d94ec4d9eb4f8e9e139f95735ec8fb4c4a861cc88d97f1df122f7df3b';
+    }
+    define( 'CDJE92_RIEN_BRIDGE_SECRET', $bridge_secret );
+}
+
+if ( ! defined( 'CDJE92_RIEN_BRIDGE_MAX_FUTURE_SECONDS' ) ) {
+    define( 'CDJE92_RIEN_BRIDGE_MAX_FUTURE_SECONDS', 300 );
 }
 
 if ( ! defined( 'CDJE92_RIEN_CODE_TTL_SECONDS' ) ) {
@@ -53,57 +81,171 @@ function cdje92_rien_clear_cookie( $name ) {
     unset( $_COOKIE[ $name ] );
 }
 
-function cdje92_rien_is_allowed_referer( $raw_referer ) {
-    if ( ! is_string( $raw_referer ) || $raw_referer === '' ) {
-        return false;
+function cdje92_rien_extract_hostname( $value ) {
+    if ( ! is_string( $value ) || $value === '' ) {
+        return '';
     }
 
-    $parsed = wp_parse_url( $raw_referer );
-    $host   = strtolower( (string) ( $parsed['host'] ?? '' ) );
-    $path   = rtrim( (string) ( $parsed['path'] ?? '' ), '/' );
-    if ( $path === '' ) {
-        $path = '/';
+    $host = wp_parse_url( $value, PHP_URL_HOST );
+    if ( is_string( $host ) && $host !== '' ) {
+        return strtolower( $host );
     }
 
-    if ( ! in_array( $host, [ 'ig.boche.co', 'www.ig.boche.co' ], true ) ) {
-        return false;
+    $single = trim( explode( ',', $value )[0] );
+    if ( $single === '' ) {
+        return '';
     }
-
-    // Cross-origin default referrer policy often keeps only the origin path ("/").
-    return $path === '/404' || $path === '/';
+    $single = preg_replace( '/:\d+$/', '', $single );
+    return strtolower( (string) $single );
 }
 
-function cdje92_rien_issue_gate_cookie() {
-    $expires = time() + CDJE92_RIEN_GATE_TTL_SECONDS;
-    $token   = wp_generate_password( 20, false, false );
-    $payload = $expires . '.' . $token;
-    $value   = $payload . '.' . cdje92_rien_sign_payload( $payload );
-    cdje92_rien_set_cookie( CDJE92_RIEN_GATE_COOKIE, $value, $expires );
+function cdje92_rien_get_request_host() {
+    $forwarded = isset( $_SERVER['HTTP_X_FORWARDED_HOST'] ) ? (string) $_SERVER['HTTP_X_FORWARDED_HOST'] : '';
+    if ( $forwarded !== '' ) {
+        return cdje92_rien_extract_hostname( $forwarded );
+    }
+
+    $host = isset( $_SERVER['HTTP_HOST'] ) ? (string) $_SERVER['HTTP_HOST'] : '';
+    return cdje92_rien_extract_hostname( $host );
 }
 
-function cdje92_rien_has_valid_gate_cookie() {
-    $raw = isset( $_COOKIE[ CDJE92_RIEN_GATE_COOKIE ] ) ? (string) $_COOKIE[ CDJE92_RIEN_GATE_COOKIE ] : '';
-    if ( $raw === '' ) {
+function cdje92_rien_allowed_external_origins() {
+    return [ 'https://ig.boche.co', 'https://www.ig.boche.co' ];
+}
+
+function cdje92_rien_allowed_self_hosts() {
+    $home_host = strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ) );
+    $hosts     = [ $home_host, 'echecs92.com', 'www.echecs92.com' ];
+    $hosts     = array_values( array_filter( array_unique( $hosts ) ) );
+    return $hosts;
+}
+
+function cdje92_rien_is_allowed_external_referer( $referer ) {
+    if ( ! is_string( $referer ) || $referer === '' ) {
         return false;
     }
 
-    $parts = explode( '.', $raw );
-    if ( count( $parts ) !== 3 ) {
+    $referer_host = cdje92_rien_extract_hostname( $referer );
+    if ( $referer_host === '' ) {
         return false;
     }
 
-    [ $expires, $token, $signature ] = $parts;
-    if ( ! ctype_digit( $expires ) || $token === '' || $signature === '' ) {
+    foreach ( cdje92_rien_allowed_external_origins() as $origin ) {
+        $origin_host = cdje92_rien_extract_hostname( (string) $origin );
+        if ( $origin_host !== '' && $origin_host === $referer_host ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function cdje92_rien_current_user_agent() {
+    return isset( $_SERVER['HTTP_USER_AGENT'] ) ? (string) $_SERVER['HTTP_USER_AGENT'] : '';
+}
+
+function cdje92_rien_user_agent_fingerprint( $user_agent ) {
+    return hash( 'sha256', (string) $user_agent );
+}
+
+function cdje92_rien_token_transient_key( $token ) {
+    $normalized = preg_replace( '/[^a-zA-Z0-9]/', '', (string) $token );
+    $normalized = strtolower( substr( $normalized, 0, 64 ) );
+    return CDJE92_RIEN_TOKEN_PREFIX . $normalized;
+}
+
+function cdje92_rien_issue_one_time_token( $user_agent ) {
+    $token       = bin2hex( random_bytes( 16 ) );
+    $fingerprint = cdje92_rien_user_agent_fingerprint( $user_agent );
+    $key         = cdje92_rien_token_transient_key( $token );
+    set_transient( $key, $fingerprint, CDJE92_RIEN_TOKEN_TTL_SECONDS );
+    return $token;
+}
+
+function cdje92_rien_consume_one_time_token( $token, $user_agent ) {
+    $key = cdje92_rien_token_transient_key( $token );
+    if ( $key === CDJE92_RIEN_TOKEN_PREFIX ) {
         return false;
     }
 
-    if ( (int) $expires < time() ) {
+    $stored_fingerprint = get_transient( $key );
+    if ( ! is_string( $stored_fingerprint ) || $stored_fingerprint === '' ) {
         return false;
     }
 
-    $payload           = $expires . '.' . $token;
-    $expected_signature = cdje92_rien_sign_payload( $payload );
-    return hash_equals( $expected_signature, $signature );
+    $current_fingerprint = cdje92_rien_user_agent_fingerprint( $user_agent );
+    if ( ! hash_equals( $stored_fingerprint, $current_fingerprint ) ) {
+        return false;
+    }
+
+    delete_transient( $key );
+    return true;
+}
+
+function cdje92_rien_has_valid_external_token() {
+    $token_raw = isset( $_GET[ CDJE92_RIEN_TOKEN_QUERY_PARAM ] ) ? wp_unslash( (string) $_GET[ CDJE92_RIEN_TOKEN_QUERY_PARAM ] ) : '';
+    $token     = preg_replace( '/[^a-zA-Z0-9]/', '', $token_raw );
+    if ( $token === '' ) {
+        return false;
+    }
+
+    return cdje92_rien_consume_one_time_token( $token, cdje92_rien_current_user_agent() );
+}
+
+function cdje92_rien_has_query_flag( $param ) {
+    $raw = isset( $_GET[ $param ] ) ? wp_unslash( (string) $_GET[ $param ] ) : '';
+    return $raw === '1';
+}
+
+function cdje92_rien_has_valid_bridge_signature() {
+    $exp_raw   = isset( $_GET['exp'] ) ? wp_unslash( (string) $_GET['exp'] ) : '';
+    $nonce_raw = isset( $_GET['nonce'] ) ? wp_unslash( (string) $_GET['nonce'] ) : '';
+    $sig_raw   = isset( $_GET['sig'] ) ? wp_unslash( (string) $_GET['sig'] ) : '';
+
+    if ( ! ctype_digit( $exp_raw ) || strlen( $exp_raw ) > 10 ) {
+        return false;
+    }
+
+    $nonce = strtolower( preg_replace( '/[^a-fA-F0-9]/', '', $nonce_raw ) );
+    $sig   = strtolower( preg_replace( '/[^a-fA-F0-9]/', '', $sig_raw ) );
+
+    if ( ! preg_match( '/^[a-f0-9]{32}$/', $nonce ) ) {
+        return false;
+    }
+
+    if ( ! preg_match( '/^[a-f0-9]{64}$/', $sig ) ) {
+        return false;
+    }
+
+    $expires_at = (int) $exp_raw;
+    $now        = time();
+    if ( $expires_at < ( $now - 30 ) ) {
+        return false;
+    }
+
+    if ( $expires_at > ( $now + CDJE92_RIEN_BRIDGE_MAX_FUTURE_SECONDS ) ) {
+        return false;
+    }
+
+    $secret = (string) CDJE92_RIEN_BRIDGE_SECRET;
+    if ( $secret === '' ) {
+        return false;
+    }
+
+    $ua_hash  = hash( 'sha256', cdje92_rien_current_user_agent() );
+    $payload  = $exp_raw . '.' . $nonce . '.' . $ua_hash;
+    $expected = hash_hmac( 'sha256', $payload, $secret );
+
+    return hash_equals( $expected, $sig );
+}
+
+function cdje92_rien_is_allowed_request() {
+    $request_host = cdje92_rien_get_request_host();
+    if ( $request_host !== '' && ! in_array( $request_host, cdje92_rien_allowed_self_hosts(), true ) ) {
+        return false;
+    }
+
+    return cdje92_rien_has_valid_external_token();
 }
 
 function cdje92_rien_generate_code() {
@@ -226,6 +368,7 @@ function cdje92_render_rien_page( $code ) {
 <?php
 echo do_blocks( '<!-- wp:template-part {"slug":"header","tagName":"header","theme":"echecs92-child"} /-->' );
 echo '<main class="cdje-rien-main"><code class="cdje-rien-code">' . esc_html( $code ) . '</code></main>';
+echo '<script>(function(){try{var u=new URL(window.location.href);var changed=false;if(u.searchParams.has("' . esc_js( CDJE92_RIEN_TOKEN_QUERY_PARAM ) . '")){u.searchParams.delete("' . esc_js( CDJE92_RIEN_TOKEN_QUERY_PARAM ) . '");changed=true;}if(u.searchParams.has("' . esc_js( CDJE92_RIEN_QUERY_PARAM ) . '")){u.searchParams.delete("' . esc_js( CDJE92_RIEN_QUERY_PARAM ) . '");changed=true;}if(!changed)return;var clean=u.pathname+(u.search?u.search:"")+u.hash;window.history.replaceState(null,"",clean||"/");}catch(e){}})();</script>';
 echo do_blocks( '<!-- wp:template-part {"slug":"footer","tagName":"footer","theme":"echecs92-child"} /-->' );
 wp_footer();
 ?>
@@ -3191,21 +3334,43 @@ add_action('template_redirect', function () {
     $query_string = isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] ? '?' . $_SERVER['QUERY_STRING'] : '';
     $normalized = '/' . ltrim((string) $request_path, '/');
     $normalized_slash = trailingslashit( $normalized );
+    $is_rien_init_request = ( $normalized_slash === trailingslashit( CDJE92_RIEN_INIT_PATH ) ) || cdje92_rien_has_query_flag( CDJE92_RIEN_INIT_QUERY_PARAM );
+    $is_rien_request = ( $normalized_slash === trailingslashit( CDJE92_RIEN_PATH ) ) || cdje92_rien_has_query_flag( CDJE92_RIEN_QUERY_PARAM );
 
-    if ( $normalized_slash === trailingslashit( CDJE92_RIEN_PATH ) ) {
-        $referer = isset( $_SERVER['HTTP_REFERER'] ) ? (string) $_SERVER['HTTP_REFERER'] : '';
-        $from_ig = cdje92_rien_is_allowed_referer( $referer );
-        $has_gate = cdje92_rien_has_valid_gate_cookie();
+    if ( $is_rien_init_request ) {
+        $request_host = cdje92_rien_get_request_host();
 
-        if ( ! $from_ig && ! $has_gate ) {
-            cdje92_rien_clear_cookie( CDJE92_RIEN_GATE_COOKIE );
-            cdje92_rien_clear_cookie( CDJE92_RIEN_CODE_COOKIE );
+        if ( $request_host !== '' && ! in_array( $request_host, cdje92_rien_allowed_self_hosts(), true ) ) {
+            header( 'X-Robots-Tag: noindex, nofollow, noarchive', true );
             wp_redirect( 'https://www.google.com', 302 );
             exit;
         }
 
-        if ( $from_ig ) {
-            cdje92_rien_issue_gate_cookie();
+        if ( ! cdje92_rien_has_valid_bridge_signature() ) {
+            header( 'X-Robots-Tag: noindex, nofollow, noarchive', true );
+            wp_redirect( 'https://www.google.com', 302 );
+            exit;
+        }
+
+        $token = cdje92_rien_issue_one_time_token( cdje92_rien_current_user_agent() );
+        $target_url = add_query_arg(
+            [
+                CDJE92_RIEN_QUERY_PARAM       => '1',
+                CDJE92_RIEN_TOKEN_QUERY_PARAM => $token,
+            ],
+            home_url( '/' )
+        );
+        header( 'X-Robots-Tag: noindex, nofollow, noarchive', true );
+        wp_redirect( $target_url, 302 );
+        exit;
+    }
+
+    if ( $is_rien_request ) {
+        if ( ! cdje92_rien_is_allowed_request() ) {
+            cdje92_rien_clear_cookie( CDJE92_RIEN_CODE_COOKIE );
+            header( 'X-Robots-Tag: noindex, nofollow, noarchive', true );
+            wp_redirect( 'https://www.google.com', 302 );
+            exit;
         }
 
         $code = cdje92_rien_issue_fresh_code();
@@ -3267,6 +3432,7 @@ add_filter('redirect_canonical', function ($redirect_url, $requested_url) {
         '/carte-des-clubs/' => true,
         '/carte-des-clubs-france/' => true,
         '/carte-des-clubs-92/' => true,
+        trailingslashit( CDJE92_RIEN_INIT_PATH ) => true,
         trailingslashit( CDJE92_RIEN_PATH ) => true,
         '/tournois/' => true,
         '/tournois-france/' => true,
