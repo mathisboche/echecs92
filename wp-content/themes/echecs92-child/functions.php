@@ -33,6 +33,10 @@ if ( ! defined( 'CDJE92_IG_CINEMA_QUERY_PARAM' ) ) {
     define( 'CDJE92_IG_CINEMA_QUERY_PARAM', 'cdje92_ig_cinema' );
 }
 
+if ( ! defined( 'CDJE92_IG_CINEMA_DIRECT_QUERY_PARAM' ) ) {
+    define( 'CDJE92_IG_CINEMA_DIRECT_QUERY_PARAM', 'cdje92_ig_entry' );
+}
+
 if ( ! defined( 'CDJE92_IG_CINEMA_TRIGGER' ) ) {
     define( 'CDJE92_IG_CINEMA_TRIGGER', 'mathisboche' );
 }
@@ -218,22 +222,46 @@ function cdje92_rien_has_query_flag( $param ) {
 }
 
 function cdje92_ig_cinema_has_direct_query_signature() {
-    $expected = [
-        'v'   => '1',
-        's'   => '0',
-        'id'  => 'anNw',
-        'ref' => 'pk',
-    ];
+    $entry = isset( $_GET[ CDJE92_IG_CINEMA_DIRECT_QUERY_PARAM ] ) ? wp_unslash( (string) $_GET[ CDJE92_IG_CINEMA_DIRECT_QUERY_PARAM ] ) : '';
+    $v     = isset( $_GET['v'] ) ? wp_unslash( (string) $_GET['v'] ) : '';
+    $id    = isset( $_GET['id'] ) ? wp_unslash( (string) $_GET['id'] ) : '';
+    $ref   = isset( $_GET['ref'] ) ? wp_unslash( (string) $_GET['ref'] ) : '';
 
-    foreach ( $expected as $key => $value ) {
-        $raw = isset( $_GET[ $key ] ) ? wp_unslash( (string) $_GET[ $key ] ) : '';
-        if ( $raw !== $value ) {
-            return false;
-        }
+    if ( $entry === '1' && $v === '1' && $id === 'anNw' && $ref === 'pk' ) {
+        return true;
     }
 
-    return true;
+    // Legacy signature kept for backward compatibility with already shared links.
+    $s = isset( $_GET['s'] ) ? wp_unslash( (string) $_GET['s'] ) : '';
+    return $v === '1' && $s === '0' && $id === 'anNw' && $ref === 'pk';
 }
+
+add_filter( 'request', function ( $query_vars ) {
+    if ( ! is_array( $query_vars ) ) {
+        return $query_vars;
+    }
+
+    $request_path = isset( $_SERVER['REQUEST_URI'] ) ? wp_parse_url( (string) $_SERVER['REQUEST_URI'], PHP_URL_PATH ) : '';
+    $normalized   = '/' . ltrim( (string) $request_path, '/' );
+    if ( trailingslashit( $normalized ) !== trailingslashit( CDJE92_IG_CINEMA_TARGET_PATH ) ) {
+        return $query_vars;
+    }
+
+    $legacy_s = isset( $_GET['s'] ) ? wp_unslash( (string) $_GET['s'] ) : '';
+    if ( $legacy_s !== '0' ) {
+        return $query_vars;
+    }
+
+    if ( ! cdje92_ig_cinema_has_direct_query_signature() ) {
+        return $query_vars;
+    }
+
+    if ( isset( $query_vars['s'] ) ) {
+        unset( $query_vars['s'] );
+    }
+
+    return $query_vars;
+}, 1 );
 
 function cdje92_rien_has_valid_bridge_signature() {
     $exp_raw   = isset( $_GET['exp'] ) ? wp_unslash( (string) $_GET['exp'] ) : '';
@@ -457,6 +485,7 @@ function cdje92_output_ig_cinema_entry_config() {
         'removeParams' => [
             CDJE92_IG_CINEMA_INIT_QUERY_PARAM,
             CDJE92_IG_CINEMA_QUERY_PARAM,
+            CDJE92_IG_CINEMA_DIRECT_QUERY_PARAM,
             CDJE92_RIEN_TOKEN_QUERY_PARAM,
             'exp',
             'nonce',
