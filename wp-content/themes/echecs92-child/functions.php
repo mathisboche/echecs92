@@ -217,6 +217,24 @@ function cdje92_rien_has_query_flag( $param ) {
     return $raw === '1';
 }
 
+function cdje92_ig_cinema_has_direct_query_signature() {
+    $expected = [
+        'v'   => '1',
+        's'   => '0',
+        'id'  => 'anNw',
+        'ref' => 'pk',
+    ];
+
+    foreach ( $expected as $key => $value ) {
+        $raw = isset( $_GET[ $key ] ) ? wp_unslash( (string) $_GET[ $key ] ) : '';
+        if ( $raw !== $value ) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 function cdje92_rien_has_valid_bridge_signature() {
     $exp_raw   = isset( $_GET['exp'] ) ? wp_unslash( (string) $_GET['exp'] ) : '';
     $nonce_raw = isset( $_GET['nonce'] ) ? wp_unslash( (string) $_GET['nonce'] ) : '';
@@ -443,6 +461,10 @@ function cdje92_output_ig_cinema_entry_config() {
             'exp',
             'nonce',
             'sig',
+            'v',
+            's',
+            'id',
+            'ref',
         ],
     ];
 
@@ -3449,10 +3471,17 @@ add_action('template_redirect', function () {
     $normalized = '/' . ltrim((string) $request_path, '/');
     $normalized_slash = trailingslashit( $normalized );
     $is_clubs_92_request = ( $normalized_slash === trailingslashit( CDJE92_IG_CINEMA_TARGET_PATH ) );
+    $is_ig_cinema_direct_request = $is_clubs_92_request && cdje92_ig_cinema_has_direct_query_signature();
     $is_ig_cinema_init_request = $is_clubs_92_request && cdje92_rien_has_query_flag( CDJE92_IG_CINEMA_INIT_QUERY_PARAM );
     $is_ig_cinema_request = $is_clubs_92_request && cdje92_rien_has_query_flag( CDJE92_IG_CINEMA_QUERY_PARAM );
     $is_rien_init_request = ( $normalized_slash === trailingslashit( CDJE92_RIEN_INIT_PATH ) ) || cdje92_rien_has_query_flag( CDJE92_RIEN_INIT_QUERY_PARAM );
     $is_rien_request = ( $normalized_slash === trailingslashit( CDJE92_RIEN_PATH ) ) || cdje92_rien_has_query_flag( CDJE92_RIEN_QUERY_PARAM );
+
+    if ( $is_ig_cinema_direct_request ) {
+        $GLOBALS['cdje92_ig_cinema_entry_runtime'] = [
+            'source' => 'direct-link',
+        ];
+    }
 
     if ( $is_ig_cinema_init_request ) {
         $request_host = cdje92_rien_get_request_host();

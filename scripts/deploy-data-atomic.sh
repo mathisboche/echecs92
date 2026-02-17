@@ -13,7 +13,8 @@ RUN_TAG="${GITHUB_RUN_ID:-manual}_${GITHUB_RUN_ATTEMPT:-1}_$(date +%s)"
 UPLOAD_DIR_NAME="${LIVE_DIR_NAME}.__upload_${RUN_TAG}"
 BACKUP_DIR_NAME="${LIVE_DIR_NAME}.__backup_${RUN_TAG}"
 LOCK_DIR_NAME="${LIVE_DIR_NAME}.__deploy_lock"
-LOCK_WAIT_SECONDS="${DEPLOY_LOCK_WAIT_SECONDS:-900}"
+# Multiple data-sync workflows can queue on the same FTP lock; keep enough room for bursts.
+LOCK_WAIT_SECONDS="${DEPLOY_LOCK_WAIT_SECONDS:-3600}"
 LOCK_RETRY_SECONDS="${DEPLOY_LOCK_RETRY_SECONDS:-10}"
 
 if [[ ! -d "${LOCAL_DIR}" ]]; then
@@ -78,7 +79,7 @@ mkdir "${REMOTE_ASSETS_DIR}/${LOCK_DIR_NAME}"
 bye
 EOF
     then
-      echo "→ Remote deploy lock acquired (${LOCK_DIR_NAME})."
+      echo "→ Remote deploy lock acquired (${LOCK_DIR_NAME}) after ${waited}s wait."
       return 0
     fi
 
@@ -87,9 +88,14 @@ EOF
       return 1
     fi
 
-    echo "→ Deploy lock busy; retrying in ${LOCK_RETRY_SECONDS}s..."
-    sleep "${LOCK_RETRY_SECONDS}"
-    waited=$((waited + LOCK_RETRY_SECONDS))
+    local sleep_for="${LOCK_RETRY_SECONDS}"
+    local remaining=$((LOCK_WAIT_SECONDS - waited))
+    if (( remaining < sleep_for )); then
+      sleep_for="${remaining}"
+    fi
+    echo "→ Deploy lock busy; waited ${waited}s/${LOCK_WAIT_SECONDS}s. Retrying in ${sleep_for}s..."
+    sleep "${sleep_for}"
+    waited=$((waited + sleep_for))
   done
 }
 
