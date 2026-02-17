@@ -3926,8 +3926,142 @@ html.cdje92-cinema-prep [data-cdje92-cinema-item]:not(.is-cdje92-cinema-visible)
 .cdje92-cinema-overlay.is-active{
   opacity:1;
 }
+.cdje92-cinema-overlay.is-revealing .cdje92-cinema-overlay__prologue,
+.cdje92-cinema-overlay.is-revealing .cdje92-cinema-overlay__code{
+  opacity:0;
+}
+.cdje92-cinema-overlay.is-revealing .cdje92-cinema-overlay__prologue{
+  transform:translate3d(0,-12px,0) scale(.985);
+}
+.cdje92-cinema-overlay.is-revealing .cdje92-cinema-overlay__code{
+  transform:translate3d(-50%,calc(-50% - 12px),0) scale(.985);
+}
 .cdje92-cinema-overlay.is-exit{
   opacity:0;
+}
+.cdje92-cinema-overlay__prologue,
+.cdje92-cinema-overlay__code{
+  transition:
+    opacity .82s cubic-bezier(.2,.78,.24,1),
+    transform .82s cubic-bezier(.2,.78,.24,1);
+}
+.cdje92-cinema-overlay__prologue{
+  position:absolute;
+  inset:0;
+  z-index:2;
+  overflow:hidden;
+  pointer-events:none;
+  opacity:0;
+  animation:cdje92CinemaForestIntro 3000ms cubic-bezier(.18,.8,.24,1) 560ms both;
+  animation-play-state:paused;
+}
+.cdje92-cinema-tree{
+  --tree-w:clamp(8rem, 13vw, 13rem);
+  --tree-h:clamp(18rem, 40vh, 33rem);
+  --tree-top:#3f4348;
+  --tree-mid:#2f3339;
+  --tree-low:#20242a;
+  --tree-scale:1;
+  --tree-x:0;
+  position:absolute;
+  bottom:clamp(6.5rem, 16vh, 11.5rem);
+  width:var(--tree-w);
+  height:var(--tree-h);
+  transform:translate3d(var(--tree-x),0,0) scale(var(--tree-scale));
+  transform-origin:50% 100%;
+  will-change:transform;
+  animation-play-state:paused;
+}
+.cdje92-cinema-tree::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  clip-path:polygon(50% 0, 100% 82%, 70% 82%, 87% 100%, 13% 100%, 30% 82%, 0 82%);
+  background:linear-gradient(180deg, var(--tree-top) 0%, var(--tree-mid) 56%, var(--tree-low) 100%);
+}
+.cdje92-cinema-tree::after{
+  content:"";
+  position:absolute;
+  left:45%;
+  bottom:-7%;
+  width:10%;
+  height:23%;
+  background:linear-gradient(180deg, #2b2f35 0%, #191c22 100%);
+}
+.cdje92-cinema-tree--far-left{
+  left:-4%;
+  --tree-scale:1.08;
+  opacity:.22;
+  filter:blur(1.2px) grayscale(1);
+  animation:cdje92CinemaTreeSwayFar 11.4s ease-in-out 2200ms infinite;
+}
+.cdje92-cinema-tree--far-center{
+  left:24%;
+  --tree-scale:1.14;
+  opacity:.24;
+  filter:blur(1.3px) grayscale(1);
+  animation:cdje92CinemaTreeSwayFar 13s ease-in-out 2800ms infinite;
+}
+.cdje92-cinema-tree--far-right{
+  right:-5%;
+  --tree-scale:1.18;
+  opacity:.2;
+  filter:blur(1.35px) grayscale(1);
+  animation:cdje92CinemaTreeSwayFar 12.4s ease-in-out 2400ms infinite;
+}
+.cdje92-cinema-tree--mid-left{
+  left:8%;
+  --tree-scale:.98;
+  opacity:.38;
+  filter:blur(.45px) grayscale(1);
+  animation:cdje92CinemaTreeSwayMid 9.6s ease-in-out 2000ms infinite;
+}
+.cdje92-cinema-tree--mid-center{
+  left:45%;
+  --tree-x:-50%;
+  --tree-scale:1.02;
+  opacity:.4;
+  filter:blur(.35px) grayscale(1);
+  animation:cdje92CinemaTreeSwayMid 8.8s ease-in-out 2600ms infinite;
+}
+.cdje92-cinema-tree--mid-right{
+  right:12%;
+  --tree-scale:.96;
+  opacity:.36;
+  filter:blur(.45px) grayscale(1);
+  animation:cdje92CinemaTreeSwayMid 10.4s ease-in-out 2300ms infinite;
+}
+.cdje92-cinema-mist{
+  position:absolute;
+  left:-14%;
+  right:-14%;
+  border-radius:999px;
+  pointer-events:none;
+  animation-play-state:paused;
+}
+.cdje92-cinema-mist--back{
+  bottom:clamp(5.4rem, 14vh, 8.8rem);
+  height:clamp(4rem, 9vh, 7rem);
+  background:radial-gradient(ellipse at center, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 72%);
+  opacity:.22;
+  filter:blur(6px);
+  animation:cdje92CinemaMistDriftBack 13.5s ease-in-out 1800ms infinite;
+}
+.cdje92-cinema-mist--front{
+  bottom:clamp(2.9rem, 8vh, 5.7rem);
+  height:clamp(4.4rem, 10vh, 8rem);
+  background:radial-gradient(ellipse at center, rgba(255, 255, 255, .12), rgba(255, 255, 255, 0) 70%);
+  opacity:.26;
+  filter:blur(5px);
+  animation:cdje92CinemaMistDriftFront 11.8s ease-in-out 2400ms infinite;
+}
+.cdje92-cinema-ground{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  height:clamp(7rem, 18vh, 12rem);
+  background:linear-gradient(180deg, rgba(8, 9, 12, 0) 0%, rgba(8, 9, 12, .72) 48%, rgba(8, 9, 12, .94) 100%);
 }
 .cdje92-cinema-overlay__halo,
 .cdje92-cinema-overlay__grain{
@@ -3936,11 +4070,14 @@ html.cdje92-cinema-prep [data-cdje92-cinema-item]:not(.is-cdje92-cinema-visible)
   display:block;
 }
 .cdje92-cinema-overlay__halo{
+  z-index:3;
   background:radial-gradient(circle at center, rgba(255, 255, 255, 0.07), transparent 58%);
   opacity:.44;
   animation:cdje92CinemaHalo 8.6s ease-in-out infinite;
+  animation-play-state:paused;
 }
 .cdje92-cinema-overlay__grain{
+  z-index:6;
   opacity:.08;
   background-image:
     radial-gradient(rgba(255,255,255,.34) 0.45px, transparent 0.45px),
@@ -3949,6 +4086,133 @@ html.cdje92-cinema-prep [data-cdje92-cinema-item]:not(.is-cdje92-cinema-visible)
   background-position:0 0, 1px 1px;
   mix-blend-mode:soft-light;
   animation:cdje92CinemaGrain 2.6s steps(2, end) infinite;
+  animation-play-state:paused;
+}
+.cdje92-cinema-overlay__code{
+  position:absolute;
+  left:50%;
+  top:50%;
+  z-index:5;
+  display:inline-flex;
+  align-items:flex-end;
+  transform:translate3d(-50%,-50%,0);
+  font-family:"Iowan Old Style","Palatino Linotype","Book Antiqua",Palatino,"Times New Roman",serif;
+  font-size:clamp(5.2rem, 21vw, 14.4rem);
+  line-height:1;
+  letter-spacing:-.038em;
+  color:#eceff2;
+  text-shadow:
+    0 14px 32px rgba(0, 0, 0, .58),
+    0 0 10px rgba(255, 255, 255, .14);
+  will-change:transform,opacity;
+  animation:
+    cdje92CinemaCodeIntro 3200ms cubic-bezier(.18,.82,.24,1) 920ms both,
+    cdje92CinemaCodeFadeOut 1800ms ease 12200ms 1 both;
+  animation-play-state:paused;
+}
+.cdje92-cinema-overlay__code-char{
+  display:inline-block;
+  opacity:0;
+  transform:translate3d(0,1.9rem,0) scale(.88);
+  filter:blur(5px);
+  will-change:transform,opacity,filter;
+  animation-play-state:paused;
+}
+.cdje92-cinema-overlay__code-char:nth-child(1){
+  animation:
+    cdje92CinemaDigitEnter 1920ms cubic-bezier(.2,.82,.24,1) 2200ms 1 both,
+    cdje92CinemaDigitIdle 6200ms ease-in-out 4700ms 1 both,
+    cdje92CinemaDigitFade 1600ms ease 12150ms 1 both;
+}
+.cdje92-cinema-overlay__code-char:nth-child(2){
+  animation:
+    cdje92CinemaDigitEnter 1920ms cubic-bezier(.2,.82,.24,1) 2700ms 1 both,
+    cdje92CinemaDigitIdle 6100ms ease-in-out 5000ms 1 both,
+    cdje92CinemaDigitFade 1600ms ease 12300ms 1 both;
+}
+.cdje92-cinema-overlay__code-char:nth-child(3){
+  animation:
+    cdje92CinemaDigitEnter 1920ms cubic-bezier(.2,.82,.24,1) 3200ms 1 both,
+    cdje92CinemaDigitIdle 6000ms ease-in-out 5300ms 1 both,
+    cdje92CinemaDigitFade 1600ms ease 12450ms 1 both;
+}
+.cdje92-cinema-overlay.is-active .cdje92-cinema-overlay__prologue,
+.cdje92-cinema-overlay.is-active .cdje92-cinema-tree,
+.cdje92-cinema-overlay.is-active .cdje92-cinema-mist,
+.cdje92-cinema-overlay.is-active .cdje92-cinema-overlay__halo,
+.cdje92-cinema-overlay.is-active .cdje92-cinema-overlay__grain,
+.cdje92-cinema-overlay.is-active .cdje92-cinema-overlay__code,
+.cdje92-cinema-overlay.is-active .cdje92-cinema-overlay__code-char{
+  animation-play-state:running;
+}
+@media (prefers-reduced-motion: reduce){
+  .cdje92-cinema-overlay__prologue,
+  .cdje92-cinema-tree,
+  .cdje92-cinema-mist,
+  .cdje92-cinema-overlay__halo,
+  .cdje92-cinema-overlay__grain,
+  .cdje92-cinema-overlay__code,
+  .cdje92-cinema-overlay__code-char{
+    animation:none !important;
+    transition:none !important;
+  }
+
+  .cdje92-cinema-overlay__prologue,
+  .cdje92-cinema-overlay__code{
+    opacity:1;
+    transform:translate3d(-50%,-50%,0);
+    filter:none;
+  }
+
+  .cdje92-cinema-overlay__prologue{
+    transform:none;
+  }
+}
+@keyframes cdje92CinemaForestIntro{
+  0%{
+    opacity:0;
+    transform:scale(1.03);
+  }
+  100%{
+    opacity:1;
+    transform:scale(1);
+  }
+}
+@keyframes cdje92CinemaTreeSwayFar{
+  0%,100%{
+    transform:translate3d(var(--tree-x),0,0) rotate(-.35deg) scale(var(--tree-scale, 1));
+  }
+  50%{
+    transform:translate3d(var(--tree-x),0,0) rotate(.45deg) scale(var(--tree-scale, 1));
+  }
+}
+@keyframes cdje92CinemaTreeSwayMid{
+  0%,100%{
+    transform:translate3d(var(--tree-x),0,0) rotate(-.5deg) scale(var(--tree-scale, 1));
+  }
+  50%{
+    transform:translate3d(var(--tree-x),-.06rem,0) rotate(.6deg) scale(var(--tree-scale, 1));
+  }
+}
+@keyframes cdje92CinemaMistDriftBack{
+  0%,100%{
+    transform:translate3d(-2%,0,0);
+    opacity:.18;
+  }
+  50%{
+    transform:translate3d(3%,-.14rem,0);
+    opacity:.28;
+  }
+}
+@keyframes cdje92CinemaMistDriftFront{
+  0%,100%{
+    transform:translate3d(2%,0,0);
+    opacity:.2;
+  }
+  50%{
+    transform:translate3d(-3%,-.1rem,0);
+    opacity:.3;
+  }
 }
 @keyframes cdje92CinemaHalo{
   0%,100%{
@@ -3966,6 +4230,68 @@ html.cdje92-cinema-prep [data-cdje92-cinema-item]:not(.is-cdje92-cinema-visible)
   }
   50%{
     transform:translate3d(1px,-1px,0);
+  }
+}
+@keyframes cdje92CinemaCodeIntro{
+  0%{
+    opacity:0;
+    transform:translate3d(-50%,calc(-50% + 1.3rem),0) scale(.92);
+    filter:blur(3.2px);
+  }
+  60%{
+    opacity:1;
+    transform:translate3d(-50%,calc(-50% - .16rem),0) scale(1.01);
+    filter:blur(.5px);
+  }
+  100%{
+    opacity:1;
+    transform:translate3d(-50%,-50%,0) scale(1);
+    filter:blur(0);
+  }
+}
+@keyframes cdje92CinemaDigitEnter{
+  0%{
+    opacity:0;
+    transform:translate3d(0,1.9rem,0) scale(.88);
+    filter:blur(5px);
+  }
+  62%{
+    opacity:1;
+    transform:translate3d(0,-.2rem,0) scale(1.02);
+    filter:blur(.8px);
+  }
+  100%{
+    opacity:1;
+    transform:translate3d(0,0,0) scale(1);
+    filter:blur(0);
+  }
+}
+@keyframes cdje92CinemaDigitIdle{
+  0%,100%{
+    transform:translate3d(0,0,0) scale(1);
+  }
+  50%{
+    transform:translate3d(0,-.08rem,0) scale(1.006);
+  }
+}
+@keyframes cdje92CinemaDigitFade{
+  0%{
+    opacity:1;
+    transform:translate3d(0,0,0) scale(1);
+    filter:blur(0);
+  }
+  100%{
+    opacity:0;
+    transform:translate3d(0,-.8rem,0) scale(.88);
+    filter:blur(6.5px);
+  }
+}
+@keyframes cdje92CinemaCodeFadeOut{
+  0%{
+    opacity:1;
+  }
+  100%{
+    opacity:0;
   }
 }
 .clubs-search-block{

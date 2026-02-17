@@ -1842,6 +1842,7 @@
   const LOADING_OVERLAY_FALLBACK_ICON = '/wp-content/themes/echecs92-child/assets/cdje92.svg';
   const LOADING_OVERLAY_MIN_VISIBLE_MS = 480;
   const CINEMA_OVERLAY_ID = 'cdje92-cinema-overlay';
+  const CINEMA_PROLOGUE_DURATION_MS = 13850;
   const CINEMA_REVEAL_BASE_DELAY_MS = 380;
   const CINEMA_REVEAL_STEP_MS = 220;
   const CINEMA_TYPING_MIN_DELAY_MS = 64;
@@ -7860,7 +7861,24 @@
     overlay.id = CINEMA_OVERLAY_ID;
     overlay.className = 'cdje92-cinema-overlay';
     overlay.setAttribute('aria-hidden', 'true');
-    overlay.innerHTML = '<span class="cdje92-cinema-overlay__halo"></span><span class="cdje92-cinema-overlay__grain"></span>';
+    overlay.innerHTML =
+      '<div class="cdje92-cinema-overlay__prologue">' +
+      '<span class="cdje92-cinema-tree cdje92-cinema-tree--far-left"></span>' +
+      '<span class="cdje92-cinema-tree cdje92-cinema-tree--far-center"></span>' +
+      '<span class="cdje92-cinema-tree cdje92-cinema-tree--far-right"></span>' +
+      '<span class="cdje92-cinema-tree cdje92-cinema-tree--mid-left"></span>' +
+      '<span class="cdje92-cinema-tree cdje92-cinema-tree--mid-center"></span>' +
+      '<span class="cdje92-cinema-tree cdje92-cinema-tree--mid-right"></span>' +
+      '<span class="cdje92-cinema-mist cdje92-cinema-mist--back"></span>' +
+      '<span class="cdje92-cinema-mist cdje92-cinema-mist--front"></span>' +
+      '<span class="cdje92-cinema-ground"></span>' +
+      '</div>' +
+      '<span class="cdje92-cinema-overlay__code" data-code="404">' +
+      '<span class="cdje92-cinema-overlay__code-char">4</span>' +
+      '<span class="cdje92-cinema-overlay__code-char">0</span>' +
+      '<span class="cdje92-cinema-overlay__code-char">4</span>' +
+      '</span>' +
+      '<span class="cdje92-cinema-overlay__halo"></span><span class="cdje92-cinema-overlay__grain"></span>';
     document.body.appendChild(overlay);
     cinemaOverlayElement = overlay;
     return overlay;
@@ -7938,34 +7956,42 @@
       }
       const overlay = ensureCinemaOverlay();
       const targets = markCinemaRevealTargets();
-      setCinemaDocumentMode('revealing');
       if (overlay) {
+        overlay.classList.remove('is-revealing');
+        overlay.classList.remove('is-exit');
         overlay.classList.add('is-active');
       }
 
-      const revealCount = targets.length;
-      targets.forEach((target, index) => {
-        const jitter = Math.max(0, Math.round(Math.random() * 90 - 20));
-        const delay = CINEMA_REVEAL_BASE_DELAY_MS + index * CINEMA_REVEAL_STEP_MS + jitter;
-        window.setTimeout(() => {
-          target.classList.add('is-cdje92-cinema-visible');
-        }, delay);
-      });
-
-      const revealDoneDelay = CINEMA_REVEAL_BASE_DELAY_MS + Math.max(0, revealCount - 1) * CINEMA_REVEAL_STEP_MS + 760;
       window.setTimeout(() => {
+        setCinemaDocumentMode('revealing');
         if (overlay) {
-          overlay.classList.add('is-exit');
+          overlay.classList.add('is-revealing');
+        }
+
+        const revealCount = targets.length;
+        targets.forEach((target, index) => {
+          const jitter = Math.max(0, Math.round(Math.random() * 90 - 20));
+          const delay = CINEMA_REVEAL_BASE_DELAY_MS + index * CINEMA_REVEAL_STEP_MS + jitter;
           window.setTimeout(() => {
-            removeCinemaOverlay();
-          }, 980);
-        }
-        setCinemaDocumentMode('ready');
-        if (clubsPageShell) {
-          clubsPageShell.classList.remove('cdje92-cinema-entry');
-        }
-        resolve(true);
-      }, revealDoneDelay);
+            target.classList.add('is-cdje92-cinema-visible');
+          }, delay);
+        });
+
+        const revealDoneDelay = CINEMA_REVEAL_BASE_DELAY_MS + Math.max(0, revealCount - 1) * CINEMA_REVEAL_STEP_MS + 760;
+        window.setTimeout(() => {
+          if (overlay) {
+            overlay.classList.add('is-exit');
+            window.setTimeout(() => {
+              removeCinemaOverlay();
+            }, 980);
+          }
+          setCinemaDocumentMode('ready');
+          if (clubsPageShell) {
+            clubsPageShell.classList.remove('cdje92-cinema-entry');
+          }
+          resolve(true);
+        }, revealDoneDelay);
+      }, CINEMA_PROLOGUE_DURATION_MS);
     });
 
   const runCinemaAutoType = () =>
