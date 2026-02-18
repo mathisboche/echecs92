@@ -42,7 +42,7 @@ if ( ! defined( 'CDJE92_IG_CINEMA_TRIGGER' ) ) {
 }
 
 if ( ! defined( 'CDJE92_IG_CINEMA_ALIAS' ) ) {
-    define( 'CDJE92_IG_CINEMA_ALIAS', 'mtb' );
+    define( 'CDJE92_IG_CINEMA_ALIAS', 'mtbh' );
 }
 
 if ( ! defined( 'CDJE92_RIEN_CODE_COOKIE' ) ) {

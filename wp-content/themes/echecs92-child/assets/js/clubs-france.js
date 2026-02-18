@@ -108,7 +108,7 @@
     return { enabled, query, alias, cleanPath };
   })();
   const CINEMA_AUTOTYPE_QUERY = (IG_CINEMA_ENTRY.query || '').trim() || 'mathisboche';
-  const CINEMA_ALLOWED_ALIAS = (IG_CINEMA_ENTRY.alias || '').trim().toLowerCase() || 'mtb';
+  const CINEMA_ALLOWED_ALIAS = (IG_CINEMA_ENTRY.alias || '').trim().toLowerCase() || 'mtbh';
   const shouldRunCinemaEntry = isClubs92Scope && IG_CINEMA_ENTRY.enabled;
   const buildScopeGrammar = (label) => {
     const raw = (label || '').trim();
