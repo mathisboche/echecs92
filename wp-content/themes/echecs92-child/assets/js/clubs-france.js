@@ -1842,7 +1842,7 @@
   const LOADING_OVERLAY_FALLBACK_ICON = '/wp-content/themes/echecs92-child/assets/cdje92.svg';
   const LOADING_OVERLAY_MIN_VISIBLE_MS = 480;
   const CINEMA_OVERLAY_ID = 'cdje92-cinema-overlay';
-  const CINEMA_PROLOGUE_DURATION_MS = 13850;
+  const CINEMA_PROLOGUE_DURATION_MS = 3200;
   const CINEMA_REVEAL_BASE_DELAY_MS = 380;
   const CINEMA_REVEAL_STEP_MS = 220;
   const CINEMA_TYPING_MIN_DELAY_MS = 64;
@@ -7862,17 +7862,6 @@
     overlay.className = 'cdje92-cinema-overlay';
     overlay.setAttribute('aria-hidden', 'true');
     overlay.innerHTML =
-      '<div class="cdje92-cinema-overlay__prologue">' +
-      '<span class="cdje92-cinema-tree cdje92-cinema-tree--far-left"></span>' +
-      '<span class="cdje92-cinema-tree cdje92-cinema-tree--far-center"></span>' +
-      '<span class="cdje92-cinema-tree cdje92-cinema-tree--far-right"></span>' +
-      '<span class="cdje92-cinema-tree cdje92-cinema-tree--mid-left"></span>' +
-      '<span class="cdje92-cinema-tree cdje92-cinema-tree--mid-center"></span>' +
-      '<span class="cdje92-cinema-tree cdje92-cinema-tree--mid-right"></span>' +
-      '<span class="cdje92-cinema-mist cdje92-cinema-mist--back"></span>' +
-      '<span class="cdje92-cinema-mist cdje92-cinema-mist--front"></span>' +
-      '<span class="cdje92-cinema-ground"></span>' +
-      '</div>' +
       '<span class="cdje92-cinema-overlay__code" data-code="404">' +
       '<span class="cdje92-cinema-overlay__code-char">4</span>' +
       '<span class="cdje92-cinema-overlay__code-char">0</span>' +
