@@ -1845,8 +1845,10 @@
   const CINEMA_PROLOGUE_DURATION_MS = 1400;
   const CINEMA_REVEAL_BASE_DELAY_MS = 380;
   const CINEMA_REVEAL_STEP_MS = 220;
-  const CINEMA_TYPING_MIN_DELAY_MS = 64;
-  const CINEMA_TYPING_MAX_DELAY_MS = 148;
+  const CINEMA_QUERY_REVEAL_DELAY_MS = 220;
+  const CINEMA_QUERY_FOCUS_DURATION_MS = 2100;
+  const CINEMA_QUERY_FOCUS_CLASS = 'cdje92-cinema-query-focus';
+  const CINEMA_QUERY_APPEAR_CLASS = 'cdje92-cinema-query-appear';
   let loadingOverlayElement = null;
   let loadingOverlayVisibleSince = 0;
   let loadingOverlayHideTimer = null;
@@ -7982,7 +7984,7 @@
       }, CINEMA_PROLOGUE_DURATION_MS);
     });
 
-  const runCinemaAutoType = () =>
+  const runCinemaQueryReveal = () =>
     new Promise((resolve) => {
       if (!searchInput) {
         resolve(false);
@@ -7995,39 +7997,27 @@
         return;
       }
 
-      let index = 0;
       searchInput.value = '';
       updateClearButtons();
       closeLocationSuggestions();
       dismissMobileSearchKeyboard();
-      if (typeof searchInput.focus === 'function') {
-        try {
-          searchInput.focus({ preventScroll: true });
-        } catch (error) {
-          searchInput.focus();
-        }
-      }
 
-      const scheduleNext = () => {
-        if (index >= query.length) {
-          const finalDelay = 340 + Math.round(Math.random() * 220);
-          window.setTimeout(() => {
-            submitPrimaryLocationSearch();
-            resolve(true);
-          }, finalDelay);
-          return;
-        }
+      searchInput.classList.remove(CINEMA_QUERY_APPEAR_CLASS);
+      searchInput.classList.remove(CINEMA_QUERY_FOCUS_CLASS);
+      void searchInput.offsetWidth;
 
-        searchInput.value += query.charAt(index);
+      window.setTimeout(() => {
+        searchInput.value = query;
         updateClearButtons();
-        index += 1;
-        const jitter = Math.round(Math.random() * (CINEMA_TYPING_MAX_DELAY_MS - CINEMA_TYPING_MIN_DELAY_MS));
-        const punctuationPause = index % 4 === 0 ? 32 + Math.round(Math.random() * 36) : 0;
-        const delay = CINEMA_TYPING_MIN_DELAY_MS + jitter + punctuationPause;
-        window.setTimeout(scheduleNext, delay);
-      };
+        searchInput.classList.add(CINEMA_QUERY_APPEAR_CLASS);
+        searchInput.classList.add(CINEMA_QUERY_FOCUS_CLASS);
 
-      window.setTimeout(scheduleNext, 460);
+        window.setTimeout(() => {
+          searchInput.classList.remove(CINEMA_QUERY_APPEAR_CLASS);
+          searchInput.classList.remove(CINEMA_QUERY_FOCUS_CLASS);
+          resolve(true);
+        }, CINEMA_QUERY_FOCUS_DURATION_MS);
+      }, CINEMA_QUERY_REVEAL_DELAY_MS);
     });
 
   const runCinemaEntryFlow = async () => {
@@ -8036,7 +8026,7 @@
     }
     cinemaFlowConsumed = true;
     await runCinemaEntryReveal();
-    await runCinemaAutoType();
+    await runCinemaQueryReveal();
   };
 
   const sanitiseFfeRef = (value) => {
