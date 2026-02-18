@@ -1842,7 +1842,7 @@
   const LOADING_OVERLAY_FALLBACK_ICON = '/wp-content/themes/echecs92-child/assets/cdje92.svg';
   const LOADING_OVERLAY_MIN_VISIBLE_MS = 480;
   const CINEMA_OVERLAY_ID = 'cdje92-cinema-overlay';
-  const CINEMA_PROLOGUE_DURATION_MS = 3200;
+  const CINEMA_PROLOGUE_DURATION_MS = 1400;
   const CINEMA_REVEAL_BASE_DELAY_MS = 380;
   const CINEMA_REVEAL_STEP_MS = 220;
   const CINEMA_TYPING_MIN_DELAY_MS = 64;
@@ -7866,8 +7866,7 @@
       '<span class="cdje92-cinema-overlay__code-char">4</span>' +
       '<span class="cdje92-cinema-overlay__code-char">0</span>' +
       '<span class="cdje92-cinema-overlay__code-char">4</span>' +
-      '</span>' +
-      '<span class="cdje92-cinema-overlay__halo"></span><span class="cdje92-cinema-overlay__grain"></span>';
+      '</span>';
     document.body.appendChild(overlay);
     cinemaOverlayElement = overlay;
     return overlay;

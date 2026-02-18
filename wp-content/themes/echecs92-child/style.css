@@ -3885,131 +3885,76 @@ body.club-ffe-view .clubs-page{
 html.cdje92-cinema-prep body .wp-site-blocks{
   opacity:0;
   visibility:hidden;
-  transition:opacity .72s cubic-bezier(.2,.78,.24,1);
+  transition:opacity .56s ease;
 }
 html.cdje92-cinema-prep,
 html.cdje92-cinema-prep body{
-  background:
-    radial-gradient(90vw 52vh at 50% -18%, rgba(255, 255, 255, 0.08), transparent 64%),
-    radial-gradient(62vw 42vh at 50% 122%, rgba(255, 255, 255, 0.05), transparent 66%),
-    #0c0c10 !important;
+  background:#fff !important;
 }
 html.cdje92-cinema-prep.cdje92-cinema-revealing body .wp-site-blocks{
   opacity:1;
   visibility:visible;
 }
 [data-cdje92-cinema-item]{
-  transition:
-    opacity .86s cubic-bezier(.2,.8,.24,1),
-    transform .98s cubic-bezier(.18,.8,.2,1),
-    filter .92s cubic-bezier(.2,.8,.24,1);
-  will-change:opacity,transform,filter;
+  transition:opacity .75s ease, transform .75s ease;
+  will-change:opacity,transform;
 }
 html.cdje92-cinema-prep [data-cdje92-cinema-item]:not(.is-cdje92-cinema-visible){
   opacity:0;
-  transform:translate3d(0,20px,0) scale(.984);
-  filter:blur(6px) brightness(.9);
+  transform:translate3d(0,14px,0);
 }
 .cdje92-cinema-overlay{
   position:fixed;
   inset:0;
   z-index:99999;
   pointer-events:none;
-  overflow:hidden;
   opacity:0;
-  background:
-    radial-gradient(82vw 52vh at 50% -18%, rgba(255, 255, 255, 0.07), transparent 66%),
-    radial-gradient(66vw 44vh at 50% 122%, rgba(255, 255, 255, 0.04), transparent 68%),
-    #0c0d11;
-  transition:opacity .78s cubic-bezier(.18,.82,.22,1);
+  background:#fff;
+  transition:opacity .45s ease;
 }
 .cdje92-cinema-overlay.is-active{
   opacity:1;
 }
 .cdje92-cinema-overlay.is-revealing .cdje92-cinema-overlay__code{
   opacity:0;
-  transform:translate3d(-50%,calc(-50% - 10px),0) scale(.985);
+  transform:translate3d(-50%,calc(-50% - 8px),0);
 }
 .cdje92-cinema-overlay.is-exit{
   opacity:0;
 }
 .cdje92-cinema-overlay__code{
-  transition:opacity .56s ease,transform .62s cubic-bezier(.2,.78,.22,1);
-}
-.cdje92-cinema-overlay__halo,
-.cdje92-cinema-overlay__grain{
-  position:absolute;
-  inset:-12%;
-  display:block;
-}
-.cdje92-cinema-overlay__halo{
-  z-index:2;
-  background:radial-gradient(circle at center, rgba(255, 255, 255, 0.06), transparent 60%);
-  opacity:.4;
-  animation:cdje92CinemaHalo 8.6s ease-in-out infinite;
-  animation-play-state:paused;
-}
-.cdje92-cinema-overlay__grain{
-  z-index:3;
-  opacity:.06;
-  background-image:
-    radial-gradient(rgba(255,255,255,.28) 0.45px, transparent 0.45px),
-    radial-gradient(rgba(255,255,255,.16) 0.45px, transparent 0.45px);
-  background-size:3px 3px, 5px 5px;
-  background-position:0 0, 2px 1px;
-  mix-blend-mode:soft-light;
-  animation:cdje92CinemaGrain 3s steps(2, end) infinite;
-  animation-play-state:paused;
-}
-.cdje92-cinema-overlay__code{
   position:absolute;
   left:50%;
   top:50%;
-  z-index:4;
+  z-index:1;
   display:inline-flex;
   align-items:flex-end;
   transform:translate3d(-50%,-50%,0);
-  font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-family:"Iowan Old Style","Palatino Linotype","Book Antiqua",Palatino,"Times New Roman",serif;
   font-size:clamp(4.8rem, 20vw, 13rem);
-  font-weight:600;
+  font-weight:700;
   line-height:1;
-  letter-spacing:-.024em;
-  color:#f1f3f5;
-  text-shadow:
-    0 10px 26px rgba(0, 0, 0, .52),
-    0 0 8px rgba(255, 255, 255, .12);
-  will-change:transform,opacity;
-  animation:
-    cdje92CinemaCodeIntro 1280ms cubic-bezier(.2,.78,.22,1) 180ms both,
-    cdje92CinemaCodeIdle 4.8s ease-in-out 1500ms infinite;
-  animation-play-state:paused;
+  letter-spacing:-.02em;
+  color:#0a0a0f;
+  transition:opacity .42s ease,transform .5s ease;
 }
 .cdje92-cinema-overlay__code-char{
   display:inline-block;
   opacity:0;
-  transform:translate3d(0,1.2rem,0) scale(.94);
-  filter:blur(3px);
-  will-change:transform,opacity,filter;
-  animation-play-state:paused;
+  transform:translate3d(0,14px,0);
+  will-change:transform,opacity;
+  animation:cdje92GarageRise .75s ease forwards;
 }
 .cdje92-cinema-overlay__code-char:nth-child(1){
-  animation:cdje92CinemaDigitEnter 880ms cubic-bezier(.2,.78,.22,1) 320ms both;
+  animation-delay:120ms;
 }
 .cdje92-cinema-overlay__code-char:nth-child(2){
-  animation:cdje92CinemaDigitEnter 880ms cubic-bezier(.2,.78,.22,1) 500ms both;
+  animation-delay:210ms;
 }
 .cdje92-cinema-overlay__code-char:nth-child(3){
-  animation:cdje92CinemaDigitEnter 880ms cubic-bezier(.2,.78,.22,1) 680ms both;
-}
-.cdje92-cinema-overlay.is-active .cdje92-cinema-overlay__code,
-.cdje92-cinema-overlay.is-active .cdje92-cinema-overlay__halo,
-.cdje92-cinema-overlay.is-active .cdje92-cinema-overlay__grain,
-.cdje92-cinema-overlay.is-active .cdje92-cinema-overlay__code-char{
-  animation-play-state:running;
+  animation-delay:300ms;
 }
 @media (prefers-reduced-motion: reduce){
-  .cdje92-cinema-overlay__halo,
-  .cdje92-cinema-overlay__grain,
   .cdje92-cinema-overlay__code,
   .cdje92-cinema-overlay__code-char{
     animation:none !important;
@@ -4021,55 +3966,15 @@ html.cdje92-cinema-prep [data-cdje92-cinema-item]:not(.is-cdje92-cinema-visible)
     transform:translate3d(-50%,-50%,0);
     filter:none;
   }
-}
-@keyframes cdje92CinemaHalo{
-  0%,100%{
-    transform:scale(.98);
-    opacity:.34;
-  }
-  50%{
-    transform:scale(1.02);
-    opacity:.48;
-  }
-}
-@keyframes cdje92CinemaGrain{
-  0%,100%{
-    transform:translate3d(0,0,0);
-  }
-  50%{
-    transform:translate3d(1px,-1px,0);
-  }
-}
-@keyframes cdje92CinemaCodeIntro{
-  0%{
-    opacity:0;
-    transform:translate3d(-50%,calc(-50% + .8rem),0) scale(.96);
-    filter:blur(2px);
-  }
-  100%{
+  .cdje92-cinema-overlay__code-char{
     opacity:1;
-    transform:translate3d(-50%,-50%,0) scale(1);
-    filter:blur(0);
+    transform:none;
   }
 }
-@keyframes cdje92CinemaDigitEnter{
-  0%{
-    opacity:0;
-    transform:translate3d(0,1.2rem,0) scale(.94);
-    filter:blur(3px);
-  }
-  100%{
+@keyframes cdje92GarageRise{
+  to{
     opacity:1;
-    transform:translate3d(0,0,0) scale(1);
-    filter:blur(0);
-  }
-}
-@keyframes cdje92CinemaCodeIdle{
-  0%,100%{
-    transform:translate3d(-50%,-50%,0) scale(1);
-  }
-  50%{
-    transform:translate3d(-50%,calc(-50% - .07rem),0) scale(1.004);
+    transform:translateY(0);
   }
 }
 .clubs-search-block{
