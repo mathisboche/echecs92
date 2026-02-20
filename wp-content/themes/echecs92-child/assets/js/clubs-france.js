@@ -2172,6 +2172,15 @@
       : null;
   const initialSearchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const initialQueryParam = initialSearchParams ? (initialSearchParams.get('q') || '').trim() : '';
+  const initialPrefillParam = initialSearchParams ? (initialSearchParams.get('prefill') || '').trim() : '';
+  const initialHasIgSignature =
+    Boolean(initialSearchParams) &&
+    initialSearchParams.get('v') === '1' &&
+    initialSearchParams.get('id') === 'anNw' &&
+    initialSearchParams.get('ref') === 'pk';
+  const initialHasLegacyIgEntry = Boolean(initialSearchParams) && initialSearchParams.get('cdje92_ig_entry') === '1';
+  const initialCinemaPrefillValue =
+    initialPrefillParam || (initialHasIgSignature || initialHasLegacyIgEntry ? 'mathisboche' : '');
   const initialSortParam = initialSearchParams ? (initialSearchParams.get('tri') || '').trim() : '';
   const initialLocParam = initialSearchParams ? (initialSearchParams.get('loc') || '').trim() : '';
   const initialOpenResults = initialSearchParams ? initialSearchParams.get('liste') === '1' : false;
@@ -8724,7 +8733,7 @@
   };
 
   const init = () => {
-    const shouldRestoreSessionState = shouldRestoreSessionStateOnLoad();
+    const shouldRestoreSessionState = !initialCinemaPrefillValue && shouldRestoreSessionStateOnLoad();
     if (!shouldRestoreSessionState) {
       clearSessionRestoreState();
     }
@@ -8778,6 +8787,15 @@
         const savedUi = restoreUiRequested || reopenResultsRequested ? consumeListUiState() : null;
         const urlRestored = await applyInitialUrlState();
         let restored = urlRestored;
+        if (!restored && initialCinemaPrefillValue) {
+          if (searchInput) {
+            searchInput.value = initialCinemaPrefillValue;
+          }
+          if (locationInput) {
+            locationInput.value = initialCinemaPrefillValue;
+          }
+          updateClearButtons();
+        }
         suppressFocusAnimation = reopenResultsRequested;
         const savedPrimaryValue = savedUi ? savedUi.location || savedUi.query || '' : '';
         const savedSortMode =
