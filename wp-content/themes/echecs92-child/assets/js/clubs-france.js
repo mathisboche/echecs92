@@ -3558,6 +3558,11 @@
 
   const MATHIS_TAKEOVER_ID = 'mathis-takeover';
   const MATHIS_LINK_TEXT = LEGACY_EASTER_EGG.text;
+  const MATHIS_SUBTLE_SUFFIX_START_INDEX = (() => {
+    const value = (MATHIS_LINK_TEXT || '').toLowerCase();
+    const index = value.lastIndexOf('.com');
+    return index >= 0 ? index : -1;
+  })();
   const MATHIS_REVEAL_DELAY = 650;
   const MATHIS_EGG_MIN_VALIDITY_MS = 2 * 1000;
   const MATHIS_EGG_REFRESH_MARGIN_MS = 15 * 1000;
@@ -4435,9 +4440,12 @@
     ensureMathisEggHandler(anchor);
     lettersHost.innerHTML = '';
     const letters = MATHIS_LINK_TEXT.split('');
-    const spans = letters.map((char) => {
+    const spans = letters.map((char, index) => {
       const span = document.createElement('span');
       span.className = 'mathis-clean__letter';
+      if (MATHIS_SUBTLE_SUFFIX_START_INDEX >= 0 && index >= MATHIS_SUBTLE_SUFFIX_START_INDEX) {
+        span.classList.add('mathis-clean__letter--subtle');
+      }
       span.textContent = char;
       lettersHost.appendChild(span);
       return span;

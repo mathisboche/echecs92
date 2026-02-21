@@ -682,7 +682,7 @@ function cdje92_output_runtime_easter_egg_config() {
         'trigger' => CDJE92_IG_CINEMA_TRIGGER,
         'alias'   => CDJE92_IG_CINEMA_ALIAS,
         'href'    => '',
-        'text'    => 'mathisboche',
+        'text'    => 'mathisboche.com',
         'issueUrl' => esc_url_raw( rest_url( 'cdje92/v1/mathis-egg-url' ) ),
         'consumeUrl' => '',
     ];

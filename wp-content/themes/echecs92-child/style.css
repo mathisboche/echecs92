@@ -5486,6 +5486,10 @@ body.mathis-mode .mathis-fragment{
   transform:translateY(0);
   filter:blur(0);
 }
+.mathis-clean__letter.mathis-clean__letter--subtle.is-visible{
+  opacity:.45;
+  transform:translateY(0) scale(.86);
+}
 .mathis-clean__letter.is-exiting{
   opacity:0;
   transform:translateY(-18px);
