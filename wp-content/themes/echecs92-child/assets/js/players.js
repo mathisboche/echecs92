@@ -270,10 +270,12 @@
   let mathisFragmentsPrepared = false;
   const MATHIS_VIEWPORT_MARGIN_DESKTOP = 520;
   const MATHIS_VIEWPORT_MARGIN_MOBILE = 320;
-  const MATHIS_MAX_TARGETS_DESKTOP = 1200;
-  const MATHIS_MAX_TARGETS_MOBILE = 520;
-  const MATHIS_MAX_FRAGMENTS_DESKTOP = 2000;
-  const MATHIS_MAX_FRAGMENTS_MOBILE = 1100;
+  const MATHIS_MAX_TARGETS_DESKTOP = 900;
+  const MATHIS_MAX_TARGETS_MOBILE = 380;
+  const MATHIS_MAX_TARGETS_LOW_POWER = 560;
+  const MATHIS_MAX_FRAGMENTS_DESKTOP = 1400;
+  const MATHIS_MAX_FRAGMENTS_MOBILE = 760;
+  const MATHIS_MAX_FRAGMENTS_LOW_POWER = 460;
   let mathisRectCache = null;
 
   const resetMathisRectCache = () => {
@@ -464,12 +466,33 @@
     return isIOS && isSafari;
   };
 
+  const isMathisLowPowerDevice = () => {
+    if (typeof navigator === 'undefined') {
+      return false;
+    }
+    const cores = Number.parseInt(String(navigator.hardwareConcurrency || ''), 10);
+    const memory = Number.parseFloat(String(navigator.deviceMemory || ''));
+    const lowCoreCount = Number.isFinite(cores) && cores > 0 && cores <= 4;
+    const lowMemory = Number.isFinite(memory) && memory > 0 && memory <= 4;
+    return lowCoreCount || lowMemory;
+  };
+
   const getMathisPerfProfile = () => {
     const constrained = isMobileViewport() || isMathisMobileSafari();
+    const lowPower = isMathisLowPowerDevice();
+    let viewportMargin = constrained ? MATHIS_VIEWPORT_MARGIN_MOBILE : MATHIS_VIEWPORT_MARGIN_DESKTOP;
+    let targetLimit = constrained ? MATHIS_MAX_TARGETS_MOBILE : MATHIS_MAX_TARGETS_DESKTOP;
+    let fragmentLimit = constrained ? MATHIS_MAX_FRAGMENTS_MOBILE : MATHIS_MAX_FRAGMENTS_DESKTOP;
+    if (lowPower) {
+      viewportMargin = Math.min(viewportMargin, constrained ? 260 : 380);
+      targetLimit = Math.min(targetLimit, MATHIS_MAX_TARGETS_LOW_POWER);
+      fragmentLimit = Math.min(fragmentLimit, MATHIS_MAX_FRAGMENTS_LOW_POWER);
+    }
     return {
-      viewportMargin: constrained ? MATHIS_VIEWPORT_MARGIN_MOBILE : MATHIS_VIEWPORT_MARGIN_DESKTOP,
-      targetLimit: constrained ? MATHIS_MAX_TARGETS_MOBILE : MATHIS_MAX_TARGETS_DESKTOP,
-      fragmentLimit: constrained ? MATHIS_MAX_FRAGMENTS_MOBILE : MATHIS_MAX_FRAGMENTS_DESKTOP,
+      viewportMargin,
+      targetLimit,
+      fragmentLimit,
+      enableFragments: !lowPower,
     };
   };
 
@@ -540,6 +563,9 @@
   };
 
   const prepareMathisFragments = (overlayElement, options = {}) => {
+    if (options.enableFragments === false) {
+      return;
+    }
     if (mathisFragmentsPrepared || typeof document === 'undefined' || !document.body) {
       return;
     }
@@ -769,7 +795,7 @@
       mathisCollapsedTargets = [];
       return Promise.resolve();
     }
-    const timelineWindow = Math.min(3600, 1200 + order.length * 1.9);
+    const timelineWindow = Math.min(3000, 900 + order.length * 1.6);
     return new Promise((resolve) => {
       let restoredCount = 0;
       order.forEach((element, index) => {
@@ -1032,7 +1058,7 @@
     }
     const order = valid.slice();
     mathisCollapsedTargets = order.slice();
-    const timelineWindow = Math.min(4200, 1400 + order.length * 2.2);
+    const timelineWindow = Math.min(3600, 1100 + order.length * 1.9);
     return new Promise((resolve) => {
       let completed = 0;
       order.forEach((element, index) => {

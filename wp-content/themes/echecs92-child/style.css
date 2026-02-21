@@ -1,7 +1,7 @@
 /*
  Theme Name: Echecs92 Child
  Template: twentytwentyfive
- Version: 1.1
+ Version: 1.2
 */
 
 /* Wrapper for WordPress template part */
@@ -5373,6 +5373,8 @@ html.mathis-scroll-lock{
 }
 body.mathis-mode .mathis-collapse-target{
   transition:opacity .55s cubic-bezier(0.4,0,0.2,1), transform .55s cubic-bezier(0.4,0,0.2,1), filter .55s cubic-bezier(0.4,0,0.2,1);
+  will-change:opacity, transform, filter;
+  backface-visibility:hidden;
 }
 body.mathis-mode .mathis-collapse-target.is-mathis-collapsing{
   opacity:0;
@@ -5402,6 +5404,7 @@ body.mathis-mode .mathis-fragment{
   opacity:0;
   pointer-events:none;
   transition:opacity .6s ease;
+  contain:layout paint style;
 }
 .mathis-clean.is-blank{
   opacity:1;
@@ -5426,19 +5429,21 @@ body.mathis-mode .mathis-fragment{
   transform:translateY(0);
 }
 .mathis-clean__anchor{
-  font-family: system-ui,-apple-system,BlinkMacSystemFont,"Inter","Helvetica Neue",Arial,sans-serif;
-  font-size:clamp(2rem,6vw,4rem);
-  font-weight:600;
-  color:#0f172a;
+  font-family:"Iowan Old Style","Palatino Linotype","Book Antiqua",Palatino,"Times New Roman",serif;
+  font-size:clamp(2.05rem,5.8vw,3.9rem);
+  font-weight:700;
+  color:#0a0a0f;
   text-decoration:none;
-  letter-spacing:0.08em;
+  letter-spacing:0.02em;
   text-transform:lowercase;
   line-height:1.1;
   border:none;
   background:none;
   cursor:default;
   position:relative;
-  transition:letter-spacing .35s ease, color .35s ease;
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
+  transition:letter-spacing .32s ease, color .32s ease;
 }
 .mathis-clean.is-link-ready .mathis-clean__anchor{
   cursor:pointer;
@@ -5463,7 +5468,7 @@ body.mathis-mode .mathis-fragment{
 }
 .mathis-clean__anchor:hover,
 .mathis-clean__anchor:focus-visible{
-  letter-spacing:0.14em;
+  letter-spacing:0.06em;
   color:#111827;
   outline:none;
 }
@@ -5473,27 +5478,36 @@ body.mathis-mode .mathis-fragment{
 }
 .mathis-clean__letters{
   display:flex;
-  gap:0.08em;
+  gap:0.06em;
 }
 .mathis-clean__letter{
   opacity:0;
   transform:translateY(18px);
   filter:blur(6px);
   transition:opacity .45s ease, transform .45s ease, filter .45s ease;
+  will-change:opacity, transform, filter;
+  backface-visibility:hidden;
 }
 .mathis-clean__letter.is-visible{
   opacity:1;
   transform:translateY(0);
   filter:blur(0);
 }
+.mathis-clean__letter.mathis-clean__letter--subtle{
+  transform-origin:50% 72%;
+}
 .mathis-clean__letter.mathis-clean__letter--subtle.is-visible{
-  opacity:.45;
-  transform:translateY(0) scale(.86);
+  opacity:.16;
+  transform:translateY(.08em) scale(.58);
+  filter:blur(.45px);
 }
 .mathis-clean__letter.is-exiting{
   opacity:0;
   transform:translateY(-18px);
   filter:blur(6px);
+}
+.mathis-clean__letter.mathis-clean__letter--subtle.is-exiting{
+  transform:translateY(-18px) scale(.58);
 }
 .mathis-clean__close{
   position:fixed;
