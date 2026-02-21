@@ -63,10 +63,10 @@ if ( ! defined( 'CDJE92_RIEN_TOKEN_TTL_SECONDS' ) ) {
 
 if ( ! defined( 'CDJE92_RIEN_BRIDGE_SECRET' ) ) {
     $bridge_secret = getenv( 'CDJE92_RIEN_BRIDGE_SECRET' );
-    if ( ! is_string( $bridge_secret ) || $bridge_secret === '' ) {
-        $bridge_secret = 'f5d26b6d94ec4d9eb4f8e9e139f95735ec8fb4c4a861cc88d97f1df122f7df3b';
+    if ( ! is_string( $bridge_secret ) ) {
+        $bridge_secret = '';
     }
-    define( 'CDJE92_RIEN_BRIDGE_SECRET', $bridge_secret );
+    define( 'CDJE92_RIEN_BRIDGE_SECRET', trim( $bridge_secret ) );
 }
 
 if ( ! defined( 'CDJE92_RIEN_BRIDGE_MAX_FUTURE_SECONDS' ) ) {
@@ -75,6 +75,29 @@ if ( ! defined( 'CDJE92_RIEN_BRIDGE_MAX_FUTURE_SECONDS' ) ) {
 
 if ( ! defined( 'CDJE92_RIEN_CODE_TTL_SECONDS' ) ) {
     define( 'CDJE92_RIEN_CODE_TTL_SECONDS', 30 * MINUTE_IN_SECONDS );
+}
+
+if ( ! defined( 'CDJE92_MATHIS_EGG_REMOTE_ENDPOINT' ) ) {
+    define( 'CDJE92_MATHIS_EGG_REMOTE_ENDPOINT', 'https://www.mathisboche.com/api/egg/new' );
+}
+
+if ( ! defined( 'CDJE92_MATHIS_EGG_BRIDGE_SECRET' ) ) {
+    $mathis_egg_bridge_secret = getenv( 'CDJE92_MATHIS_EGG_BRIDGE_SECRET' );
+    if ( ! is_string( $mathis_egg_bridge_secret ) || $mathis_egg_bridge_secret === '' ) {
+        $mathis_egg_bridge_secret = getenv( 'EGG_BRIDGE_HMAC_SECRET' );
+    }
+    if ( ! is_string( $mathis_egg_bridge_secret ) ) {
+        $mathis_egg_bridge_secret = '';
+    }
+    define( 'CDJE92_MATHIS_EGG_BRIDGE_SECRET', trim( $mathis_egg_bridge_secret ) );
+}
+
+if ( ! defined( 'CDJE92_MATHIS_EGG_RATE_LIMIT_WINDOW_SECONDS' ) ) {
+    define( 'CDJE92_MATHIS_EGG_RATE_LIMIT_WINDOW_SECONDS', 60 );
+}
+
+if ( ! defined( 'CDJE92_MATHIS_EGG_RATE_LIMIT_MAX' ) ) {
+    define( 'CDJE92_MATHIS_EGG_RATE_LIMIT_MAX', 8 );
 }
 
 function cdje92_rien_sign_payload( $payload ) {
@@ -234,6 +257,208 @@ function cdje92_ig_cinema_has_direct_query_signature() {
     // Legacy signature kept for backward compatibility with already shared links.
     $s = isset( $_GET['s'] ) ? wp_unslash( (string) $_GET['s'] ) : '';
     return $v === '1' && $s === '0' && $id === 'anNw' && $ref === 'pk';
+}
+
+function cdje92_mathis_egg_client_ip() {
+    $forwarded_for = isset( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ? (string) $_SERVER['HTTP_X_FORWARDED_FOR'] : '';
+    if ( $forwarded_for !== '' ) {
+        $parts = explode( ',', $forwarded_for );
+        $first = trim( (string) $parts[0] );
+        if ( $first !== '' ) {
+            return $first;
+        }
+    }
+
+    return isset( $_SERVER['REMOTE_ADDR'] ) ? (string) $_SERVER['REMOTE_ADDR'] : '';
+}
+
+function cdje92_mathis_egg_rate_limit_key() {
+    $ua  = cdje92_rien_current_user_agent();
+    $ip  = cdje92_mathis_egg_client_ip();
+    $raw = strtolower( trim( $ip ) ) . '|' . strtolower( trim( $ua ) );
+    return 'cdje92_mathis_egg_rl_' . substr( hash( 'sha256', $raw ), 0, 32 );
+}
+
+function cdje92_mathis_egg_is_rate_limited() {
+    $window = (int) CDJE92_MATHIS_EGG_RATE_LIMIT_WINDOW_SECONDS;
+    $limit  = (int) CDJE92_MATHIS_EGG_RATE_LIMIT_MAX;
+    if ( $window <= 0 || $limit <= 0 ) {
+        return false;
+    }
+
+    $key    = cdje92_mathis_egg_rate_limit_key();
+    $bucket = get_transient( $key );
+    $now    = time();
+
+    if ( ! is_array( $bucket ) || ! isset( $bucket['count'], $bucket['started_at'] ) ) {
+        $bucket = [
+            'count'      => 0,
+            'started_at' => $now,
+        ];
+    }
+
+    $started_at = (int) $bucket['started_at'];
+    if ( $started_at <= 0 || ( $now - $started_at ) >= $window ) {
+        $bucket['count']      = 0;
+        $bucket['started_at'] = $now;
+    }
+
+    $bucket['count'] = (int) $bucket['count'] + 1;
+    set_transient( $key, $bucket, $window );
+
+    return $bucket['count'] > $limit;
+}
+
+function cdje92_mathis_egg_bridge_origin() {
+    $home_host = strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ) );
+    if ( $home_host === '' ) {
+        $home_host = 'echecs92.com';
+    }
+    return 'https://' . $home_host;
+}
+
+function cdje92_mathis_egg_is_allowed_rest_request() {
+    $request_host = cdje92_rien_get_request_host();
+    if ( $request_host !== '' && ! in_array( $request_host, cdje92_rien_allowed_self_hosts(), true ) ) {
+        return false;
+    }
+
+    $fetch_site = isset( $_SERVER['HTTP_SEC_FETCH_SITE'] ) ? strtolower( trim( (string) $_SERVER['HTTP_SEC_FETCH_SITE'] ) ) : '';
+    if ( $fetch_site !== '' && ! in_array( $fetch_site, [ 'same-origin', 'same-site' ], true ) ) {
+        return false;
+    }
+
+    $fetch_mode = isset( $_SERVER['HTTP_SEC_FETCH_MODE'] ) ? strtolower( trim( (string) $_SERVER['HTTP_SEC_FETCH_MODE'] ) ) : '';
+    if ( $fetch_mode !== '' && ! in_array( $fetch_mode, [ 'same-origin', 'cors' ], true ) ) {
+        return false;
+    }
+
+    $origin = isset( $_SERVER['HTTP_ORIGIN'] ) ? (string) $_SERVER['HTTP_ORIGIN'] : '';
+    if ( $origin !== '' ) {
+        $origin_host = cdje92_rien_extract_hostname( $origin );
+        if ( $origin_host === '' || ! in_array( $origin_host, cdje92_rien_allowed_self_hosts(), true ) ) {
+            return false;
+        }
+    }
+
+    $referer = isset( $_SERVER['HTTP_REFERER'] ) ? (string) $_SERVER['HTTP_REFERER'] : '';
+    if ( $referer === '' ) {
+        return false;
+    }
+    $referer_host = cdje92_rien_extract_hostname( $referer );
+    if ( $referer_host === '' || ! in_array( $referer_host, cdje92_rien_allowed_self_hosts(), true ) ) {
+        return false;
+    }
+
+    $referer_path       = wp_parse_url( $referer, PHP_URL_PATH );
+    $normalized_referer = '/' . ltrim( (string) $referer_path, '/' );
+    if ( trailingslashit( $normalized_referer ) !== trailingslashit( CDJE92_IG_CINEMA_TARGET_PATH ) ) {
+        return false;
+    }
+
+    return true;
+}
+
+function cdje92_mathis_egg_bridge_request_headers() {
+    $ua = cdje92_rien_current_user_agent();
+    if ( ! is_string( $ua ) || trim( $ua ) === '' ) {
+        $ua = 'Mozilla/5.0 (compatible; CDJE92MathisBridge/1.0)';
+    }
+    $ua = trim( $ua );
+
+    $timestamp = (string) time();
+    try {
+        $nonce = bin2hex( random_bytes( 16 ) );
+    } catch ( Exception $exception ) {
+        $nonce = strtolower( wp_generate_password( 32, false, false ) );
+    }
+
+    $origin    = cdje92_mathis_egg_bridge_origin();
+    $payload   = $timestamp . '.' . $nonce . '.' . $origin . '.' . $ua;
+    $signature = hash_hmac( 'sha256', $payload, (string) CDJE92_MATHIS_EGG_BRIDGE_SECRET );
+
+    return [
+        'Origin'          => $origin,
+        'User-Agent'      => $ua,
+        'Sec-Fetch-Site'  => 'cross-site',
+        'Sec-Fetch-Mode'  => 'cors',
+        'Sec-Fetch-Dest'  => 'empty',
+        'X-Egg-Ts'        => $timestamp,
+        'X-Egg-Nonce'     => $nonce,
+        'X-Egg-Signature' => $signature,
+        'Content-Type'    => 'application/json',
+    ];
+}
+
+function cdje92_rest_issue_mathis_egg_url( WP_REST_Request $request ) {
+    if ( ! cdje92_mathis_egg_is_allowed_rest_request() ) {
+        return new WP_Error( 'cdje92_mathis_egg_forbidden', 'Forbidden', [ 'status' => 403 ] );
+    }
+
+    if ( cdje92_mathis_egg_is_rate_limited() ) {
+        return new WP_Error( 'cdje92_mathis_egg_rate_limited', 'Too Many Requests', [ 'status' => 429 ] );
+    }
+
+    $bridge_secret = trim( (string) CDJE92_MATHIS_EGG_BRIDGE_SECRET );
+    if ( $bridge_secret === '' ) {
+        return new WP_Error( 'cdje92_mathis_egg_misconfigured', 'Service unavailable', [ 'status' => 503 ] );
+    }
+
+    $endpoint = esc_url_raw( (string) CDJE92_MATHIS_EGG_REMOTE_ENDPOINT );
+    if ( ! is_string( $endpoint ) || $endpoint === '' ) {
+        return new WP_Error( 'cdje92_mathis_egg_misconfigured', 'Service unavailable', [ 'status' => 503 ] );
+    }
+
+    $remote = wp_remote_post(
+        $endpoint,
+        [
+            'timeout'     => 8,
+            'redirection' => 0,
+            'blocking'    => true,
+            'headers'     => cdje92_mathis_egg_bridge_request_headers(),
+            'body'        => '{}',
+        ]
+    );
+
+    if ( is_wp_error( $remote ) ) {
+        return new WP_Error( 'cdje92_mathis_egg_upstream_error', 'Upstream unavailable', [ 'status' => 502 ] );
+    }
+
+    $status_code = (int) wp_remote_retrieve_response_code( $remote );
+    if ( $status_code < 200 || $status_code >= 300 ) {
+        return new WP_Error( 'cdje92_mathis_egg_upstream_status', 'Upstream refused request', [ 'status' => 502 ] );
+    }
+
+    $payload = json_decode( (string) wp_remote_retrieve_body( $remote ), true );
+    if ( ! is_array( $payload ) || ! isset( $payload['url'] ) || ! is_string( $payload['url'] ) ) {
+        return new WP_Error( 'cdje92_mathis_egg_invalid_payload', 'Invalid upstream payload', [ 'status' => 502 ] );
+    }
+
+    $one_time_url = esc_url_raw( $payload['url'] );
+    if ( ! is_string( $one_time_url ) || $one_time_url === '' ) {
+        return new WP_Error( 'cdje92_mathis_egg_invalid_url', 'Invalid upstream URL', [ 'status' => 502 ] );
+    }
+
+    $url_host = cdje92_rien_extract_hostname( $one_time_url );
+    if ( ! in_array( $url_host, [ 'mathisboche.com', 'www.mathisboche.com' ], true ) ) {
+        return new WP_Error( 'cdje92_mathis_egg_invalid_host', 'Unexpected upstream host', [ 'status' => 502 ] );
+    }
+
+    $expires_in = isset( $payload['expiresIn'] ) ? (int) $payload['expiresIn'] : 60;
+    $expires_in = max( 1, min( 300, $expires_in ) );
+
+    $response = new WP_REST_Response(
+        [
+            'url'       => $one_time_url,
+            'expiresIn' => $expires_in,
+        ],
+        200
+    );
+    $response->header( 'Cache-Control', 'no-store' );
+    $response->header( 'X-Robots-Tag', 'noindex, nofollow, noarchive' );
+    $response->header( 'Referrer-Policy', 'no-referrer' );
+    $response->header( 'X-Content-Type-Options', 'nosniff' );
+    return $response;
 }
 
 add_filter( 'request', function ( $query_vars ) {
@@ -456,8 +681,9 @@ function cdje92_output_runtime_easter_egg_config() {
     $payload = [
         'trigger' => CDJE92_IG_CINEMA_TRIGGER,
         'alias'   => CDJE92_IG_CINEMA_ALIAS,
-        'href'    => 'https://www.mathisboche.com',
-        'text'    => 'mathisboche.com',
+        'href'    => '',
+        'text'    => 'lien secret',
+        'issueUrl' => esc_url_raw( rest_url( 'cdje92/v1/mathis-egg-url' ) ),
         'consumeUrl' => '',
     ];
 
@@ -3491,6 +3717,12 @@ add_action( 'rest_api_init', function () {
                 },
             ],
         ],
+    ] );
+
+    register_rest_route( 'cdje92/v1', '/mathis-egg-url', [
+        'methods'             => WP_REST_Server::CREATABLE,
+        'callback'            => 'cdje92_rest_issue_mathis_egg_url',
+        'permission_callback' => '__return_true',
     ] );
 } );
 

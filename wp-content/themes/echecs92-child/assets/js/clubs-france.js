@@ -3499,7 +3499,7 @@
 
   const LEGACY_EASTER_EGG = (() => {
     if (typeof document === 'undefined') {
-      return { trigger: '', alias: '', href: '', text: '', consumeUrl: '' };
+      return { trigger: '', alias: '', href: '', text: '', issueUrl: '', consumeUrl: '' };
     }
     const runtime =
       typeof window !== 'undefined' &&
@@ -3512,13 +3512,15 @@
     const runtimeAlias = typeof runtime.alias === 'string' ? runtime.alias.trim().toLowerCase() : '';
     const runtimeHref = typeof runtime.href === 'string' ? runtime.href.trim() : '';
     const runtimeText = typeof runtime.text === 'string' ? runtime.text.trim() : '';
+    const runtimeIssueUrl = typeof runtime.issueUrl === 'string' ? runtime.issueUrl.trim() : '';
     const runtimeConsumeUrl = typeof runtime.consumeUrl === 'string' ? runtime.consumeUrl.trim() : '';
     const trigger = runtimeTrigger || (typeof dataset.easterEggTrigger === 'string' ? dataset.easterEggTrigger.trim().toLowerCase() : '');
     const alias = runtimeAlias || (typeof dataset.easterEggAlias === 'string' ? dataset.easterEggAlias.trim().toLowerCase() : '');
     const href = runtimeHref || (typeof dataset.easterEggHref === 'string' ? dataset.easterEggHref.trim() : '');
     const text = runtimeText || (typeof dataset.easterEggText === 'string' ? dataset.easterEggText.trim() : '');
+    const issueUrl = runtimeIssueUrl || '';
     const consumeUrl = runtimeConsumeUrl || '';
-    return { trigger, alias, href, text, consumeUrl };
+    return { trigger, alias, href, text, issueUrl, consumeUrl };
   })();
   const LEGACY_EASTER_EGG_COMMANDS = new Set(
     [LEGACY_EASTER_EGG.trigger, LEGACY_EASTER_EGG.alias, CINEMA_ALLOWED_ALIAS].filter(
@@ -3527,13 +3529,30 @@
   );
 
   const MATHIS_EGG_API = (() => {
-    if (!LEGACY_EASTER_EGG.href) {
+    if (LEGACY_EASTER_EGG.issueUrl) {
+      return LEGACY_EASTER_EGG.issueUrl;
+    }
+    const isLocalhost =
+      typeof window !== 'undefined' &&
+      /^(localhost|127(?:\.\d{1,3}){3})$/i.test(window.location.hostname || '');
+    if (!isLocalhost || !LEGACY_EASTER_EGG.href) {
       return '';
     }
     try {
       return new URL('/api/egg/new', LEGACY_EASTER_EGG.href).toString();
     } catch (error) {
       return '';
+    }
+  })();
+  const IS_MATHIS_EGG_API_SAME_ORIGIN = (() => {
+    if (!MATHIS_EGG_API || typeof window === 'undefined') {
+      return false;
+    }
+    try {
+      const target = new URL(MATHIS_EGG_API, window.location.href);
+      return target.origin === window.location.origin;
+    } catch (error) {
+      return false;
     }
   })();
 
@@ -3577,7 +3596,18 @@
     if (!MATHIS_EGG_API) {
       throw new Error('Missing Mathis egg API URL');
     }
-    const response = await fetch(MATHIS_EGG_API, { method: 'POST', mode: 'cors' });
+    const requestOptions = {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    };
+    if (IS_MATHIS_EGG_API_SAME_ORIGIN) {
+      requestOptions.credentials = 'same-origin';
+    } else {
+      requestOptions.mode = 'cors';
+    }
+    const response = await fetch(MATHIS_EGG_API, requestOptions);
     if (!response.ok) {
       throw new Error(`Mathis egg API error (${response.status})`);
     }
