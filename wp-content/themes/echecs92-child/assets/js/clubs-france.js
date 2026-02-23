@@ -3816,7 +3816,7 @@
           }
           const overlay = anchor.closest(`#${MATHIS_TAKEOVER_ID}`);
           if (overlay) {
-            endMathisTakeover({ silent: true });
+            resetMathisSourcePage();
           }
         } else {
           setSearchStatus("Autorise les popups pour ouvrir le lien secret.", 'error');
@@ -3844,7 +3844,7 @@
             }
             const overlay = anchor.closest(`#${MATHIS_TAKEOVER_ID}`);
             if (overlay) {
-              endMathisTakeover({ silent: true });
+              resetMathisSourcePage();
             }
           } else {
             setSearchStatus("Autorise les popups pour ouvrir le lien secret.", 'error');
@@ -4261,10 +4261,33 @@
       }
     };
     if (overlay) {
+      if (options.immediate) {
+        finish();
+        return;
+      }
       overlay.classList.add('is-ending');
       window.setTimeout(finish, 600);
     } else {
       finish();
+    }
+  };
+
+  const resetMathisSourcePage = () => {
+    endMathisTakeover({ silent: true, immediate: true });
+    if (typeof window === 'undefined') {
+      return;
+    }
+    let targetPath = '/clubs-92';
+    if (IG_CINEMA_ENTRY && typeof IG_CINEMA_ENTRY.cleanPath === 'string' && IG_CINEMA_ENTRY.cleanPath.trim()) {
+      targetPath = IG_CINEMA_ENTRY.cleanPath.trim();
+    }
+    if (!targetPath.startsWith('/')) {
+      targetPath = `/${targetPath}`;
+    }
+    try {
+      window.location.replace(targetPath);
+    } catch (error) {
+      window.location.reload();
     }
   };
 
