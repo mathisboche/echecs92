@@ -506,10 +506,7 @@
           }
           const overlay = anchor.closest(`#${MATHIS_TAKEOVER_ID}`);
           if (overlay) {
-            startMathisReturn(overlay);
-            window.setTimeout(() => {
-              startMathisReturn(overlay);
-            }, 180);
+            endMathisTakeover({ silent: true });
           }
         }
         mathisEggPending = false;
@@ -534,10 +531,7 @@
             }
             const overlay = anchor.closest(`#${MATHIS_TAKEOVER_ID}`);
             if (overlay) {
-              startMathisReturn(overlay);
-              window.setTimeout(() => {
-                startMathisReturn(overlay);
-              }, 180);
+              endMathisTakeover({ silent: true });
             }
           }
         })

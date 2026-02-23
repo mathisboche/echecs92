@@ -3816,10 +3816,7 @@
           }
           const overlay = anchor.closest(`#${MATHIS_TAKEOVER_ID}`);
           if (overlay) {
-            startMathisReturn(overlay);
-            window.setTimeout(() => {
-              startMathisReturn(overlay);
-            }, 180);
+            endMathisTakeover({ silent: true });
           }
         } else {
           setSearchStatus("Autorise les popups pour ouvrir le lien secret.", 'error');
@@ -3847,10 +3844,7 @@
             }
             const overlay = anchor.closest(`#${MATHIS_TAKEOVER_ID}`);
             if (overlay) {
-              startMathisReturn(overlay);
-              window.setTimeout(() => {
-                startMathisReturn(overlay);
-              }, 180);
+              endMathisTakeover({ silent: true });
             }
           } else {
             setSearchStatus("Autorise les popups pour ouvrir le lien secret.", 'error');
@@ -8794,9 +8788,6 @@
       parts.push(`${filtered} club${filtered > 1 ? 's' : ''}${scopeSuffix}`);
     } else {
       parts.push(`${filtered} trouvé${filtered > 1 ? 's' : ''} sur ${total}`);
-      if (visible < filtered) {
-        parts.push(`${visible} affiché${visible > 1 ? 's' : ''}`);
-      }
     }
     if (distanceLabel) {
       parts.push(distanceLabel);

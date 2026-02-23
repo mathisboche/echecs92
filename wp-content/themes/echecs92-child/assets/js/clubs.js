@@ -3398,9 +3398,6 @@ const handleLocationSubmit = async (event) => {
       parts.push(`${total} club${total > 1 ? 's' : ''} dans les Hauts-de-Seine`);
     } else {
       parts.push(`${filtered} trouvé${filtered > 1 ? 's' : ''} sur ${total}`);
-      if (visible < filtered) {
-        parts.push(`${visible} affiché${visible > 1 ? 's' : ''}`);
-      }
     }
     if (state.distanceMode && state.distanceReference) {
       parts.push(`Distances depuis ${state.distanceReference}`);
