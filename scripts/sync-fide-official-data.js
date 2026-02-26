@@ -37,6 +37,17 @@ const USER_AGENT = 'Mozilla/5.0 (compatible; echecs92-bot/1.0; +https://echecs92
 
 const SHARD_COUNT = 100;
 const BUFFER_FLUSH_BYTES = 512 * 1024;
+const RETRIABLE_HTTP_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+const RETRIABLE_NETWORK_CODES = new Set([
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'EAI_AGAIN',
+  'ENETUNREACH',
+  'ETIMEDOUT',
+  'UND_ERR_CONNECT_TIMEOUT',
+  'UND_ERR_HEADERS_TIMEOUT',
+  'UND_ERR_SOCKET',
+]);
 
 const archivePeriodsRaw = (process.env.FIDE_ARCHIVE_PERIODS || '1').trim().toLowerCase();
 const includeArchiveXml = (process.env.FIDE_ARCHIVE_INCLUDE_XML || '0').trim() === '1';
@@ -143,6 +154,11 @@ const ensureDir = (dirPath) => {
   fs.mkdirSync(dirPath, { recursive: true });
 };
 
+const sleep = (ms) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
 const loadContinentMap = () => {
   try {
     const raw = fs.readFileSync(CONTINENT_MAP_PATH, 'utf8');
@@ -194,24 +210,100 @@ const normalizeUrl = (value) => {
   return raw;
 };
 
-const fetchText = async (url, timeoutMs = 20_000) => {
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        Accept: 'text/html,application/xhtml+xml,*/*',
-        'User-Agent': USER_AGENT,
-      },
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    return await response.text();
-  } finally {
-    clearTimeout(t);
+const getErrorCode = (error) => {
+  if (!error || typeof error !== 'object') {
+    return '';
   }
+  if (typeof error.code === 'string' && error.code) {
+    return error.code;
+  }
+  if (error.cause && typeof error.cause === 'object' && typeof error.cause.code === 'string') {
+    return error.cause.code;
+  }
+  return '';
+};
+
+const isRetriableFetchError = (error) => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const status = Number.parseInt(String(error.httpStatus || ''), 10);
+  if (Number.isFinite(status) && RETRIABLE_HTTP_STATUSES.has(status)) {
+    return true;
+  }
+  const code = getErrorCode(error);
+  if (code && RETRIABLE_NETWORK_CODES.has(code)) {
+    return true;
+  }
+  if (error.name === 'AbortError') {
+    return true;
+  }
+  const message = (error.message || '').toString();
+  return /fetch failed|timeout|temporar|socket|network/i.test(message);
+};
+
+const formatFetchError = (error) => {
+  if (!error || typeof error !== 'object') {
+    return String(error);
+  }
+  const parts = [];
+  const status = Number.parseInt(String(error.httpStatus || ''), 10);
+  if (Number.isFinite(status)) {
+    parts.push(`HTTP ${status}`);
+  }
+  const code = getErrorCode(error);
+  if (code) {
+    parts.push(code);
+  }
+  const message = (error.message || '').toString().trim();
+  if (message && !parts.includes(message)) {
+    parts.push(message);
+  }
+  return parts.join(' | ') || String(error);
+};
+
+const fetchText = async (url, timeoutMs = 20_000, options = {}) => {
+  const attemptsRaw = Number.parseInt(String(options.attempts || ''), 10);
+  const baseDelayRaw = Number.parseInt(String(options.baseDelayMs || ''), 10);
+  const attempts = Number.isFinite(attemptsRaw) && attemptsRaw > 0 ? attemptsRaw : 4;
+  const baseDelayMs = Number.isFinite(baseDelayRaw) && baseDelayRaw > 0 ? baseDelayRaw : 2_500;
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          Accept: 'text/html,application/xhtml+xml,*/*',
+          'User-Agent': USER_AGENT,
+        },
+      });
+      if (!response.ok) {
+        const error = new Error(`HTTP ${response.status}`);
+        error.httpStatus = response.status;
+        throw error;
+      }
+      return await response.text();
+    } catch (error) {
+      lastError = error;
+      if (attempt >= attempts || !isRetriableFetchError(error)) {
+        throw error;
+      }
+      const delayMs = Math.min(baseDelayMs * (2 ** (attempt - 1)), 30_000);
+      console.warn(
+        `WARN: fetch attempt ${attempt}/${attempts} failed for ${url}: ${formatFetchError(
+          error
+        )}. Retrying in ${delayMs}ms...`
+      );
+      await sleep(delayMs);
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  throw lastError || new Error(`Fetch failed for ${url}`);
 };
 
 const parseCurrentDownloadLinks = (html) => {
@@ -303,7 +395,30 @@ const shell = (command, args, options = {}) => {
 
 const downloadFile = (url, targetPath) => {
   ensureDir(path.dirname(targetPath));
-  shell('curl', ['-sSL', '-A', USER_AGENT, '-o', targetPath, url], { stdio: 'inherit' });
+  shell(
+    'curl',
+    [
+      '--fail',
+      '--silent',
+      '--show-error',
+      '--location',
+      '--retry',
+      '4',
+      '--retry-delay',
+      '2',
+      '--retry-max-time',
+      '120',
+      '--retry-connrefused',
+      '--connect-timeout',
+      '20',
+      '-A',
+      USER_AGENT,
+      '-o',
+      targetPath,
+      url,
+    ],
+    { stdio: 'inherit' }
+  );
 };
 
 const parseHeaderPositions = (headerLine) => {
