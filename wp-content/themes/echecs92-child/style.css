@@ -1854,12 +1854,19 @@ body.home .wp-site-blocks > .wp-block-template-part > .wp-block-html{
   font-family:inherit;
   color:#1f2937;
   background:#ffffff;
-  transition:border-color .2s ease, box-shadow .2s ease;
+  transition:border-color .2s ease, box-shadow .2s ease, background-color .2s ease;
 }
 .contact-form__input:focus,
 .contact-form__textarea:focus{
+  border-color:#8ca2b4;
+  box-shadow:0 0 0 1px rgba(11,46,76,0.12);
+  background:#fcfdff;
+  outline:none;
+}
+.contact-form__input:focus-visible,
+.contact-form__textarea:focus-visible{
   border-color:#0b2e4c;
-  box-shadow:0 0 0 3px rgba(11,46,76,0.15);
+  box-shadow:0 0 0 2px rgba(11,46,76,0.14);
   outline:none;
 }
 .contact-form__textarea{
