@@ -7876,16 +7876,123 @@
       run();
     };
 
+    const initialGeolocationOptions = {
+      enableHighAccuracy: false,
+      timeout: 10000,
+      maximumAge: 0,
+    };
+    const fallbackGeolocationOptions = {
+      enableHighAccuracy: false,
+      timeout: 20000,
+      maximumAge: 300000,
+    };
+    let geolocFallbackAttempted = false;
+
+    const onGeolocSuccess = (position) => {
+      const { latitude, longitude } = position.coords;
+      reverseGeocode(latitude, longitude)
+        .catch(() => null)
+        .then(async (place) => {
+          if (requestId !== locationRequestId) {
+            releaseButton();
+            releaseGeolocUi();
+            return;
+          }
+
+          const referenceType = 'geoloc';
+          const baseLabel = toDistanceReferenceLabel(
+            place?.label || 'votre position',
+            place?.postalCode,
+            { type: referenceType }
+          );
+          const referenceContext = deriveReferenceContext(place?.label || '', place || {}, referenceType);
+          const decoratedLabel = decorateReferenceLabel(baseLabel, referenceContext.type);
+          const redirectLabel = place?.label || place?.postalCode || 'votre position';
+          const outOfScopePostal = referenceContext.postalCode || place?.postalCode || '';
+          if (await maybeRedirectToFrance({ label: redirectLabel, postalCode: outOfScopePostal })) {
+            return;
+          }
+
+          if (locationInput) {
+            locationInput.value = decoratedLabel || place?.label || '';
+          }
+          syncPrimarySearchValue(decoratedLabel || place?.label || '');
+
+          expandOptionsPanel();
+          ensureDistanceSectionOpen();
+
+          searchRequestId += 1;
+          const focusRequestId = searchRequestId;
+          const meta = runDistanceSearch({
+            latitude,
+            longitude,
+            label: decoratedLabel,
+            query: place?.label || 'votre position',
+            referencePostalCode: referenceContext.postalCode,
+            referenceCommune: referenceContext.commune,
+            referenceType: referenceContext.type,
+          });
+
+          if (meta.finite > 0) {
+            const reference = meta.label || decoratedLabel || 'votre position';
+            finalizeGeolocSearch(() => {
+              setLocationStatus('', 'info');
+              setSearchStatus('', 'info');
+            }, { scroll: true, focusRequestId });
+          } else {
+            finalizeGeolocSearch(() => {
+              setLocationStatus('Impossible de calculer les distances pour cette localisation.', 'error');
+            }, { focusRequestId });
+          }
+        })
+        .finally(() => {
+          releaseButton();
+          releaseGeolocUi();
+        });
+    };
+
+    const requestGeolocation = (options) => {
+      navigator.geolocation.getCurrentPosition(onGeolocSuccess, handleGeolocError, options);
+    };
+
     const handleGeolocError = (error) => {
-      let message = 'Impossible de récupérer votre position.';
-      if (error && typeof error.code === 'number') {
-        if (error.code === 1) {
-          message = 'Accès à la localisation refusé. Autorisez la localisation.';
-        } else if (error.code === 2) {
-          message = 'Position indisponible pour le moment. Réessayez ou saisissez une ville.';
-        } else if (error.code === 3) {
-          message = 'La recherche de position a expiré. Réessayez ou saisissez une ville.';
+      if (requestId !== locationRequestId) {
+        releaseButton();
+        releaseGeolocUi();
+        return;
+      }
+
+      const code = error && typeof error.code === 'number' ? error.code : null;
+      const detail = error && typeof error.message === 'string' ? error.message : '';
+      if (code === 2 && !geolocFallbackAttempted) {
+        geolocFallbackAttempted = true;
+        if (isDebugMode()) {
+          console.warn(`${DEBUG_CONSOLE_PREFIX} Geoloc code 2, retry avec options fallback.`, detail || 'no-detail');
         }
+        try {
+          requestGeolocation(fallbackGeolocationOptions);
+          return;
+        } catch (retryError) {
+          if (isDebugMode()) {
+            console.warn(`${DEBUG_CONSOLE_PREFIX} Echec retry geoloc fallback.`, retryError);
+          }
+        }
+      }
+
+      if (isDebugMode()) {
+        console.warn(
+          `${DEBUG_CONSOLE_PREFIX} Geolocalisation echouee (code: ${code ?? 'n/a'}).`,
+          detail || error || 'no-detail'
+        );
+      }
+
+      let message = 'Impossible de récupérer votre position.';
+      if (code === 1) {
+        message = 'Accès à la localisation refusé. Autorisez la localisation.';
+      } else if (code === 2) {
+        message = 'Position indisponible pour le moment. Vérifiez la localisation du navigateur, puis réessayez ou saisissez une ville.';
+      } else if (code === 3) {
+        message = 'La recherche de position a expiré. Réessayez ou saisissez une ville.';
       }
       expandOptionsPanel();
       ensureDistanceSectionOpen();
@@ -7898,75 +8005,7 @@
     };
 
     try {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          reverseGeocode(latitude, longitude)
-            .catch(() => null)
-            .then(async (place) => {
-              if (requestId !== locationRequestId) {
-                releaseButton();
-                releaseGeolocUi();
-                return;
-              }
-
-              const referenceType = 'geoloc';
-              const baseLabel = toDistanceReferenceLabel(
-                place?.label || 'votre position',
-                place?.postalCode,
-                { type: referenceType }
-              );
-              const referenceContext = deriveReferenceContext(place?.label || '', place || {}, referenceType);
-              const decoratedLabel = decorateReferenceLabel(baseLabel, referenceContext.type);
-              const redirectLabel = place?.label || place?.postalCode || 'votre position';
-              const outOfScopePostal = referenceContext.postalCode || place?.postalCode || '';
-              if (await maybeRedirectToFrance({ label: redirectLabel, postalCode: outOfScopePostal })) {
-                return;
-              }
-
-              if (locationInput) {
-                locationInput.value = decoratedLabel || place?.label || '';
-              }
-              syncPrimarySearchValue(decoratedLabel || place?.label || '');
-
-              expandOptionsPanel();
-              ensureDistanceSectionOpen();
-
-              searchRequestId += 1;
-              const focusRequestId = searchRequestId;
-              const meta = runDistanceSearch({
-                latitude,
-                longitude,
-                label: decoratedLabel,
-                query: place?.label || 'votre position',
-                referencePostalCode: referenceContext.postalCode,
-                referenceCommune: referenceContext.commune,
-                referenceType: referenceContext.type,
-              });
-
-              if (meta.finite > 0) {
-                const reference = meta.label || decoratedLabel || 'votre position';
-                finalizeGeolocSearch(() => {
-                  setLocationStatus('', 'info');
-                  setSearchStatus('', 'info');
-                }, { scroll: true, focusRequestId });
-              } else {
-                finalizeGeolocSearch(() => {
-                  setLocationStatus('Impossible de calculer les distances pour cette localisation.', 'error');
-                }, { focusRequestId });
-              }
-            })
-            .finally(() => {
-              releaseButton();
-              releaseGeolocUi();
-            });
-        },
-        handleGeolocError,
-        {
-          enableHighAccuracy: false,
-          timeout: 10000,
-        }
-      );
+      requestGeolocation(initialGeolocationOptions);
     } catch (error) {
       handleGeolocError(error);
     }
