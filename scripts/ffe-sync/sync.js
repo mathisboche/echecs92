@@ -15,7 +15,12 @@ const {
   LIST_CONCURRENCY,
   MANIFEST_PATH,
 } = require('./config');
-const { extractPostalCode, formatCommune, formatCommuneWithPostal } = require('./address');
+const {
+  buildStandardAddress,
+  extractPostalCode,
+  formatCommune,
+  formatCommuneWithPostal,
+} = require('./address');
 const { fetchText } = require('./http');
 const { buildLicenseLookup, updateLicenseCountsInFile } = require('./licenses');
 const { fetchClubLists } = require('./lists');
@@ -93,12 +98,16 @@ const buildClubEntries = (detail, listEntry, dept) => {
   const commune =
     formatCommuneWithPostal(detail.commune || listEntry.commune || '', postalCode) ||
     formatCommune(listEntry.commune);
+  const standardAddress = buildStandardAddress(detail.adresse, detail.siege, postalCode, commune, {
+    preferPrimary: true,
+  });
   const id = slugify(detail.name || listEntry.name || `${dept.code}-${detail.ref}`);
 
   const baseEntry = {
     ffe_ref: detail.ref || listEntry.ref,
     nom: detail.name || listEntry.name,
     adresse: detail.adresse || '',
+    adresse_standard: standardAddress || '',
     siege: detail.siege || '',
     salle_jeu: detail.salle_jeu || '',
     telephone: detail.telephone || '',
