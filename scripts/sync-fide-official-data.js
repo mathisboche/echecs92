@@ -13,6 +13,7 @@
  * - FIDE_ARCHIVE_PERIODS: nombre de periodes d'archives a telecharger (defaut: 1, 0 pour desactiver, "all" pour toutes)
  * - FIDE_ARCHIVE_INCLUDE_XML: "1" pour telecharger aussi les XML d'archives (defaut: 0)
  * - FIDE_MAX_ROWS: limite de lignes a parser dans players_list.zip (debug local uniquement)
+ * - FIDE_FALLBACK_MAX_AGE_HOURS: age maximal du snapshot local accepte si FIDE est indisponible (defaut: 72)
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -39,6 +40,14 @@ const SHARD_COUNT = 100;
 const BUFFER_FLUSH_BYTES = 512 * 1024;
 const RETRIABLE_HTTP_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
 const RETRIABLE_NETWORK_CODES = new Set([
+  'CURL_EXIT_6',
+  'CURL_EXIT_7',
+  'CURL_EXIT_18',
+  'CURL_EXIT_28',
+  'CURL_EXIT_35',
+  'CURL_EXIT_47',
+  'CURL_EXIT_52',
+  'CURL_EXIT_56',
   'ECONNREFUSED',
   'ECONNRESET',
   'EAI_AGAIN',
@@ -54,6 +63,9 @@ const includeArchiveXml = (process.env.FIDE_ARCHIVE_INCLUDE_XML || '0').trim() =
 const maxRows = Number.isFinite(Number(process.env.FIDE_MAX_ROWS))
   ? Math.max(0, Number.parseInt(process.env.FIDE_MAX_ROWS, 10))
   : 0;
+const fallbackMaxAgeHours = Number.isFinite(Number(process.env.FIDE_FALLBACK_MAX_AGE_HOURS))
+  ? Math.max(0, Number.parseInt(process.env.FIDE_FALLBACK_MAX_AGE_HOURS, 10))
+  : 72;
 
 const FIDE_FEDERATION_CONTINENT_OVERRIDES = {
   AHO: 'Americas',
@@ -262,30 +274,59 @@ const formatFetchError = (error) => {
   return parts.join(' | ') || String(error);
 };
 
+const parseCurlHttpStatus = (stderr) => {
+  const text = (stderr || '').toString();
+  const match = text.match(/(?:returned error:\s*|HTTP\/\d(?:\.\d)?\s+)(\d{3})/i);
+  const status = Number.parseInt(match && match[1] ? match[1] : '', 10);
+  return Number.isFinite(status) ? status : null;
+};
+
 const fetchText = async (url, timeoutMs = 20_000, options = {}) => {
   const attemptsRaw = Number.parseInt(String(options.attempts || ''), 10);
   const baseDelayRaw = Number.parseInt(String(options.baseDelayMs || ''), 10);
   const attempts = Number.isFinite(attemptsRaw) && attemptsRaw > 0 ? attemptsRaw : 4;
   const baseDelayMs = Number.isFinite(baseDelayRaw) && baseDelayRaw > 0 ? baseDelayRaw : 2_500;
+  const connectTimeoutSeconds = Math.max(5, Math.ceil(timeoutMs / 1000));
+  const maxTimeSeconds = Math.max(connectTimeoutSeconds + 5, connectTimeoutSeconds * 2);
   let lastError = null;
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const response = await fetch(url, {
-        signal: controller.signal,
-        headers: {
-          Accept: 'text/html,application/xhtml+xml,*/*',
-          'User-Agent': USER_AGENT,
+      const run = spawnSync(
+        'curl',
+        [
+          '--fail',
+          '--silent',
+          '--show-error',
+          '--location',
+          '--connect-timeout',
+          String(connectTimeoutSeconds),
+          '--max-time',
+          String(maxTimeSeconds),
+          '-A',
+          USER_AGENT,
+          '--header',
+          'Accept: text/html,application/xhtml+xml,*/*',
+          url,
+        ],
+        {
+          encoding: 'utf8',
+          maxBuffer: 10 * 1024 * 1024,
         },
-      });
-      if (!response.ok) {
-        const error = new Error(`HTTP ${response.status}`);
-        error.httpStatus = response.status;
-        throw error;
+      );
+      if (run.status === 0) {
+        return (run.stdout || '').toString();
       }
-      return await response.text();
+      const stderr = (run.stderr || '').toString();
+      const error = new Error(stderr.trim() || `curl exited with code ${run.status}`);
+      if (Number.isFinite(run.status)) {
+        error.code = `CURL_EXIT_${run.status}`;
+      }
+      const httpStatus = parseCurlHttpStatus(stderr);
+      if (httpStatus) {
+        error.httpStatus = httpStatus;
+      }
+      throw error;
     } catch (error) {
       lastError = error;
       if (attempt >= attempts || !isRetriableFetchError(error)) {
@@ -298,12 +339,89 @@ const fetchText = async (url, timeoutMs = 20_000, options = {}) => {
         )}. Retrying in ${delayMs}ms...`
       );
       await sleep(delayMs);
-    } finally {
-      clearTimeout(t);
     }
   }
 
   throw lastError || new Error(`Fetch failed for ${url}`);
+};
+
+const getExistingSnapshotFallbackState = () => {
+  const requiredPaths = [MANIFEST_PATH, ARCHIVES_INDEX_PATH, RANK_STATS_PATH];
+  const missingPaths = requiredPaths.filter((targetPath) => !fs.existsSync(targetPath));
+  if (missingPaths.length > 0) {
+    return {
+      usable: false,
+      reason: `missing files: ${missingPaths.map((targetPath) => path.relative(ROOT, targetPath)).join(', ')}`,
+    };
+  }
+
+  if (!fs.existsSync(OUTPUT_SHARDS_DIR)) {
+    return {
+      usable: false,
+      reason: `missing folder: ${path.relative(ROOT, OUTPUT_SHARDS_DIR)}`,
+    };
+  }
+
+  const shardCount = fs
+    .readdirSync(OUTPUT_SHARDS_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.json')).length;
+  if (shardCount <= 0) {
+    return {
+      usable: false,
+      reason: `no shard files in ${path.relative(ROOT, OUTPUT_SHARDS_DIR)}`,
+    };
+  }
+
+  try {
+    const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
+    const updatedIso = typeof manifest.updated === 'string' ? manifest.updated : '';
+    const updatedMs = Date.parse(updatedIso);
+    if (!Number.isFinite(updatedMs)) {
+      return { usable: false, reason: 'manifest updated field is invalid' };
+    }
+    const ageHours = (Date.now() - updatedMs) / (1000 * 60 * 60);
+    if (!Number.isFinite(ageHours) || ageHours < 0) {
+      return { usable: false, reason: 'manifest timestamp is in the future or invalid' };
+    }
+    if (ageHours > fallbackMaxAgeHours) {
+      return {
+        usable: false,
+        reason: `snapshot too old (${ageHours.toFixed(1)}h > ${fallbackMaxAgeHours}h)`,
+      };
+    }
+    return {
+      usable: true,
+      updatedIso,
+      ageHours,
+      shardCount,
+    };
+  } catch (error) {
+    return { usable: false, reason: `cannot parse manifest: ${error.message}` };
+  }
+};
+
+const fetchDownloadPageWithFallback = async () => {
+  console.log('Fetching FIDE download page...');
+  try {
+    return await fetchText(DOWNLOAD_PAGE_URL, 25_000, { attempts: 6, baseDelayMs: 3_000 });
+  } catch (error) {
+    const fallback = getExistingSnapshotFallbackState();
+    if (fallback.usable) {
+      console.warn(
+        `WARN: cannot fetch FIDE download page (${formatFetchError(
+          error
+        )}). Keeping existing snapshot updated ${fallback.updatedIso} (${fallback.ageHours.toFixed(
+          1
+        )}h old, ${fallback.shardCount} shards).`
+      );
+      return '';
+    }
+    throw new Error(
+      `FIDE download page unavailable (${formatFetchError(
+        error
+      )}) and no usable local snapshot: ${fallback.reason}`
+    );
+  }
 };
 
 const parseCurrentDownloadLinks = (html) => {
@@ -866,8 +984,11 @@ const main = async () => {
   const continentMap = loadContinentMap();
 
   const updatedIso = new Date().toISOString();
-  console.log('Fetching FIDE download page...');
-  const downloadPageHtml = await fetchText(DOWNLOAD_PAGE_URL, 20_000);
+  const downloadPageHtml = await fetchDownloadPageWithFallback();
+  if (!downloadPageHtml) {
+    console.log('Skipping FIDE refresh; existing local snapshot remains unchanged.');
+    return;
+  }
   const currentLinks = parseCurrentDownloadLinks(downloadPageHtml);
   const archivePeriods = parseArchivePeriods(downloadPageHtml);
 
