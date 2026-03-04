@@ -1,26 +1,24 @@
 # Échecs92 (CDJE 92)
 
-Site web officiel du **Comité Départemental du Jeu d'Échecs des Hauts-de-Seine (CDJE 92)**.
+Dépôt GitHub du site du Comité Départemental du Jeu d'Échecs des Hauts-de-Seine (CDJE 92).
 
-https://echecs92.com
+- Site public : https://echecs92.com
 
-## À propos
+## Périmètre du dépôt
 
-Le CDJE 92 participe au développement du jeu d'échecs dans les Hauts-de-Seine :
-informations pratiques, vie des clubs, compétitions, actualités et ressources utiles.
+Ce dépôt contient les éléments techniques du site :
 
-## Ce que vous trouverez sur le site
+- `wp-content/` (thème, plugins, assets)
+- `scripts/` (synchronisation et maintenance)
+- `.github/workflows/` (automatisations et déploiement)
 
-- Actualités et annonces
-- Compétitions, calendrier et résultats
-- Clubs (annuaires et carte)
-- Documents et ressources
-- Informations sur le comité, son organisation et ses contacts
-- Contact (via le formulaire sur le site)
+Le cœur WordPress n'est pas versionné ici.
 
-## À propos de ce dépôt GitHub
+## Documentation
 
-Ce dépôt sert à conserver et maintenir les sources du site.
-Pour les informations grand public, rendez-vous sur https://echecs92.com.
+- Maintenance technique : `docs/maintenance.md`
 
-(Maintenance du site : `docs/maintenance.md`.)
+## Usage
+
+Ce dépôt s'adresse aux personnes en charge de la maintenance du site.
+Pour les informations destinées au public, consulter https://echecs92.com.
