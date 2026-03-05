@@ -76,10 +76,9 @@ fi
 acquire_remote_lock() {
   local waited=0
   while true; do
-    if lftp -u "${FTP_USERNAME}","${FTP_PASSWORD}" "ftps://${FTP_SERVER}:21" <<EOF
+    if lftp -u "${FTP_USERNAME}","${FTP_PASSWORD}" "ftp://${FTP_SERVER}:21" <<EOF
 set ftp:passive-mode true
-set ftp:ssl-force true
-set ssl:verify-certificate yes
+set ssl:verify-certificate no
 set net:max-retries 2
 set net:reconnect-interval-base 2
 set net:timeout 20
@@ -112,10 +111,9 @@ EOF
 }
 
 release_remote_lock() {
-  lftp -u "${FTP_USERNAME}","${FTP_PASSWORD}" "ftps://${FTP_SERVER}:21" <<EOF || true
+  lftp -u "${FTP_USERNAME}","${FTP_PASSWORD}" "ftp://${FTP_SERVER}:21" <<EOF || true
 set ftp:passive-mode true
-set ftp:ssl-force true
-set ssl:verify-certificate yes
+set ssl:verify-certificate no
 set net:max-retries 1
 set net:reconnect-interval-base 1
 set net:timeout 15
@@ -128,10 +126,9 @@ EOF
 cleanup_attempt_upload_dir() {
   local upload_dir_name="$1"
 
-  lftp -u "${FTP_USERNAME}","${FTP_PASSWORD}" "ftps://${FTP_SERVER}:21" <<EOF || true
+  lftp -u "${FTP_USERNAME}","${FTP_PASSWORD}" "ftp://${FTP_SERVER}:21" <<EOF || true
 set ftp:passive-mode true
-set ftp:ssl-force true
-set ssl:verify-certificate yes
+set ssl:verify-certificate no
 set net:max-retries 2
 set net:reconnect-interval-base 2
 set net:timeout 20
@@ -148,10 +145,9 @@ deploy_once() {
 
   echo "→ Uploading generated data to remote staging (${upload_dir_name})..."
 
-  if lftp -u "${FTP_USERNAME}","${FTP_PASSWORD}" "ftps://${FTP_SERVER}:21" <<EOF
+  if lftp -u "${FTP_USERNAME}","${FTP_PASSWORD}" "ftp://${FTP_SERVER}:21" <<EOF
 set ftp:passive-mode true
-set ftp:ssl-force true
-set ssl:verify-certificate yes
+set ssl:verify-certificate no
 set net:max-retries 8
 set net:reconnect-interval-base 5
 set net:reconnect-interval-max 30
